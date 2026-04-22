@@ -609,6 +609,35 @@ def validate_claim_section_alignment(
     )
 
 
+def validate_notation_section_alignment(parsed: ParsedManuscript) -> ValidationResult:
+    notation_summary = extract_notation_summary(parsed)
+    titles = {section.title.lower() for section in parsed.sections}
+    supporting_titles = {"methods", "model", "notation", "proof", "proofs", "main results"}
+    findings: list[Finding] = []
+    missing_context = (
+        parsed.equation_blocks
+        and notation_summary.undefined_symbols
+        and titles.isdisjoint(supporting_titles)
+    )
+    if missing_context:
+        findings.append(
+            Finding(
+                code="missing-notation-context-section",
+                severity="moderate",
+                message=(
+                    "Equations and undefined notation appear in the manuscript, but no clear "
+                    "methods, model, notation, or proof section was detected."
+                ),
+                validator="notation_section_alignment",
+                evidence=notation_summary.undefined_symbols,
+            )
+        )
+    return ValidationResult(
+        validator_name="notation_section_alignment",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -631,6 +660,7 @@ def run_deterministic_validators(
         validate_bibliography_source_identifiers(parsed),
         validate_bibliography_source_record_readiness(parsed),
         validate_equation_notation_coverage(parsed),
+        validate_notation_section_alignment(parsed),
         validate_claim_section_alignment(parsed, classification),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

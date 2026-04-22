@@ -93,3 +93,12 @@ def test_claim_section_alignment_detects_unsupported_equivalence_claim() -> None
     classification = classify_manuscript(parsed)
     result = validate_claim_section_alignment(parsed, classification)
     assert {finding.code for finding in result.findings} == {"claim-section-misalignment"}
+
+
+def test_notation_section_alignment_flags_equation_without_context_section() -> None:
+    parsed = parse_markdown_manuscript(Path("tests/fixtures/manuscripts/notation_section_gap.md"))
+    classification = classify_manuscript(parsed)
+    results = run_deterministic_validators(parsed, classification)
+    assert any(
+        finding.code == "missing-notation-context-section" for finding in results.all_findings
+    )

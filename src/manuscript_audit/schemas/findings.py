@@ -5,7 +5,12 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from manuscript_audit.schemas.artifacts import NotationSummary, SourceRecordSummary
+from manuscript_audit.schemas.artifacts import (
+    NotationSummary,
+    SourceRecordSummary,
+    SourceRecordVerification,
+    SourceRecordVerificationSummary,
+)
 from manuscript_audit.schemas.routing import (
     DomainRoutingTable,
     ManuscriptClassification,
@@ -86,6 +91,15 @@ class RevisionVerificationReport(BaseModel):
     resolved_findings: list[RevisionFindingRef] = Field(default_factory=list)
     persistent_findings: list[RevisionFindingRef] = Field(default_factory=list)
     new_findings: list[RevisionFindingRef] = Field(default_factory=list)
+    revision_priorities: list[str] = Field(default_factory=list)
+
+
+class SourceRecordVerificationReport(BaseModel):
+    run_id: str
+    manuscript_id: str
+    verification_provider: str
+    verifications: list[SourceRecordVerification] = Field(default_factory=list)
+    summary: SourceRecordVerificationSummary
     revision_priorities: list[str] = Field(default_factory=list)
 
 

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-from manuscript_audit.schemas.findings import FinalVettingReport, RevisionVerificationReport
+from manuscript_audit.schemas.findings import (
+    FinalVettingReport,
+    RevisionVerificationReport,
+    SourceRecordVerificationReport,
+)
 
 
 def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
@@ -54,6 +58,31 @@ def synthesize_revision_report(
         )
     if not priorities:
         priorities.append("No persistent or new moderate-or-worse findings were detected.")
+    report.revision_priorities = priorities
+    return report
+
+
+def synthesize_source_record_verification_report(
+    report: SourceRecordVerificationReport,
+) -> SourceRecordVerificationReport:
+    priorities: list[str] = []
+    if report.summary.metadata_mismatch_count > 0:
+        priorities.append(
+            "Some bibliography entries disagree with the matched source-of-record metadata."
+        )
+    if report.summary.lookup_not_found_count > 0:
+        priorities.append(
+            "Some bibliography entries could not be verified against the selected registry."
+        )
+    if report.summary.skipped_count > 0:
+        priorities.append(
+            "Some bibliography entries were skipped because deterministic source metadata "
+            "was insufficient."
+        )
+    if not priorities:
+        priorities.append(
+            "All verifiable bibliography entries matched the selected source registry."
+        )
     report.revision_priorities = priorities
     return report
 
@@ -167,3 +196,40 @@ def render_revision_verification_report(report: RevisionVerificationReport) -> s
         f"{_render_refs('Persistent findings', report.persistent_findings)}\n\n"
         f"{_render_refs('New findings', report.new_findings)}\n"
     )
+
+
+def render_source_record_verification_report(
+    report: SourceRecordVerificationReport,
+) -> str:
+    priorities = "\n".join(f"- {item}" for item in report.revision_priorities)
+    lines = [
+        "# Source-of-record verification report",
+        "",
+        f"**Run ID:** {report.run_id}",
+        "",
+        f"**Manuscript ID:** {report.manuscript_id}",
+        "",
+        f"**Verification provider:** {report.verification_provider}",
+        "",
+        "## Verification priorities",
+        "",
+        priorities,
+        "",
+        "## Verification summary",
+        "",
+        f"- Total records: {report.summary.total_records}",
+        f"- Verified: {report.summary.verified_count}",
+        f"- Verified direct URL: {report.summary.verified_direct_url_count}",
+        f"- Metadata mismatches: {report.summary.metadata_mismatch_count}",
+        f"- Lookup not found: {report.summary.lookup_not_found_count}",
+        f"- Skipped: {report.summary.skipped_count}",
+        "",
+        "## Record details",
+        "",
+    ]
+    for item in report.verifications:
+        detail = f"- {item.entry_label}: {item.status}"
+        if item.issues:
+            detail += f" ({', '.join(item.issues)})"
+        lines.append(detail)
+    return "\n".join(lines) + "\n"

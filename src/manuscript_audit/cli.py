@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Literal
 
 import typer
 
@@ -127,6 +128,30 @@ def verify_revision_command(
         db_path=db_path,
     )
     typer.echo(f"Completed revision verification {report.run_id} for {report.new_manuscript_id}")
+
+
+@app.command("verify-sources")
+def verify_sources_command(
+    manuscript_path: Path,
+    output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
+    db_path: str = typer.Option("data/working/run_store.duckdb", "--db-path"),
+    provider: Literal["fixture", "crossref"] = typer.Option("fixture", "--provider"),
+    registry_fixture: Path | None = typer.Option(None, "--registry-fixture"),
+    mailto: str | None = typer.Option(None, "--mailto"),
+) -> None:
+    from manuscript_audit.workflows import run_source_record_verification_workflow
+
+    if provider == "fixture" and registry_fixture is None:
+        raise typer.BadParameter("--registry-fixture is required when --provider fixture")
+    report = run_source_record_verification_workflow(
+        manuscript_path=manuscript_path,
+        output_dir=output_dir,
+        db_path=db_path,
+        provider=provider,
+        registry_fixture_path=registry_fixture,
+        mailto=mailto,
+    )
+    typer.echo(f"Completed source verification {report.run_id} for {report.manuscript_id}")
 
 
 def main() -> None:

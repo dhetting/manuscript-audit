@@ -23,3 +23,8 @@ pixi run audit-core examples/software_equivalence_manuscript.md --output-dir dat
 pixi run audit-standard examples/software_equivalence_manuscript.md --output-dir data/outputs/standard-demo
 pixi run verify-revision tests/fixtures/manuscripts/revision_old.md tests/fixtures/manuscripts/revision_new.md --output-dir data/outputs/revision-demo
 ```
+
+
+## Optional source verification
+
+Use `pixi run verify-sources` with a registry fixture or a live provider to verify source-record candidates against a selected registry.

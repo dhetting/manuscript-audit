@@ -65,6 +65,47 @@ class SourceRecordSummary(BaseModel):
     insufficient_metadata_count: int
 
 
+class RegistryMetadataRecord(BaseModel):
+    title: str | None = None
+    authors: list[str] = Field(default_factory=list)
+    year: str | None = None
+    venue: str | None = None
+    doi: str | None = None
+    url: str | None = None
+    provider: str
+    source_url: str | None = None
+
+
+class SourceRecordVerification(BaseModel):
+    entry_key: str | None = None
+    entry_label: str
+    strategy: Literal["doi", "url", "metadata_query", "none"]
+    status: Literal[
+        "verified",
+        "verified_direct_url",
+        "metadata_mismatch",
+        "lookup_not_found",
+        "skipped",
+    ]
+    provider: str | None = None
+    canonical_source_url: str | None = None
+    matched_title: str | None = None
+    matched_year: str | None = None
+    matched_venue: str | None = None
+    matched_doi: str | None = None
+    issues: list[str] = Field(default_factory=list)
+    provenance: str
+
+
+class SourceRecordVerificationSummary(BaseModel):
+    total_records: int
+    verified_count: int
+    verified_direct_url_count: int
+    metadata_mismatch_count: int
+    lookup_not_found_count: int
+    skipped_count: int
+
+
 class NotationSymbol(BaseModel):
     symbol: str
     used_in_equations: bool

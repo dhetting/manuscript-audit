@@ -26,3 +26,4 @@ validate = { cmd = "python -m manuscript_audit.cli validate", env = { PYTHONPATH
 audit-core = { cmd = "python -m manuscript_audit.cli audit-core", env = { PYTHONPATH = "src" } }
 audit-standard = { cmd = "python -m manuscript_audit.cli audit-standard", env = { PYTHONPATH = "src" } }
 verify-revision = { cmd = "python -m manuscript_audit.cli verify-revision", env = { PYTHONPATH = "src" } }
+verify-sources = { cmd = "python -m manuscript_audit.cli verify-sources", env = { PYTHONPATH = "src" } }

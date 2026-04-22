@@ -82,3 +82,26 @@ def test_parse_cli_writes_reference_and_source_record_artifacts(tmp_path: Path) 
     assert (output_dir / "parsed" / "source_records.json").exists()
     assert (output_dir / "parsed" / "source_record_summary.json").exists()
     assert (output_dir / "parsed" / "notation_summary.json").exists()
+
+
+def test_verify_sources_cli_command(tmp_path: Path) -> None:
+    runner = CliRunner()
+    output_dir = tmp_path / "cli_source_verify"
+    db_path = tmp_path / "cli_source_verify.duckdb"
+    result = runner.invoke(
+        app,
+        [
+            "verify-sources",
+            "tests/fixtures/manuscripts/bibliography_metadata.tex",
+            "--output-dir",
+            str(output_dir),
+            "--db-path",
+            str(db_path),
+            "--provider",
+            "fixture",
+            "--registry-fixture",
+            "tests/fixtures/registries/source_registry_fixture.json",
+        ],
+    )
+    assert result.exit_code == 0
+    assert (output_dir / "reports" / "source_record_verification_report.json").exists()
