@@ -6,8 +6,11 @@ import typer
 
 from manuscript_audit.parsers import (
     build_source_record_candidates,
+    build_source_records,
+    extract_notation_summary,
     parse_bibtex,
     parse_manuscript,
+    summarize_source_records,
 )
 from manuscript_audit.routing import build_routing_tables
 from manuscript_audit.utils.io import write_json, write_yaml
@@ -23,7 +26,16 @@ def _prepare_parsed_manuscript(manuscript_path: Path):
         parsed.bibliography_entries = parse_bibtex(bib_path)
         parsed.reference_section_present = True
     source_record_candidates = build_source_record_candidates(parsed.bibliography_entries)
-    return parsed, source_record_candidates
+    source_records = build_source_records(parsed.bibliography_entries)
+    source_record_summary = summarize_source_records(source_records)
+    notation_summary = extract_notation_summary(parsed)
+    return (
+        parsed,
+        source_record_candidates,
+        source_records,
+        source_record_summary,
+        notation_summary,
+    )
 
 
 @app.command("parse")
@@ -31,13 +43,25 @@ def parse_command(
     manuscript_path: Path,
     output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
 ) -> None:
-    parsed, source_record_candidates = _prepare_parsed_manuscript(manuscript_path)
+    (
+        parsed,
+        source_record_candidates,
+        source_records,
+        source_record_summary,
+        notation_summary,
+    ) = _prepare_parsed_manuscript(manuscript_path)
     write_json(output_dir / "parsed" / "manuscript.json", parsed)
     write_json(output_dir / "parsed" / "references.json", parsed.bibliography_entries)
     write_json(
         output_dir / "parsed" / "source_record_candidates.json",
         source_record_candidates,
     )
+    write_json(output_dir / "parsed" / "source_records.json", source_records)
+    write_json(
+        output_dir / "parsed" / "source_record_summary.json",
+        source_record_summary,
+    )
+    write_json(output_dir / "parsed" / "notation_summary.json", notation_summary)
 
 
 @app.command("route")
@@ -45,7 +69,7 @@ def route_command(
     manuscript_path: Path,
     output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
 ) -> None:
-    parsed, _ = _prepare_parsed_manuscript(manuscript_path)
+    parsed, _, _, _, _ = _prepare_parsed_manuscript(manuscript_path)
     classification, module_routing, domain_routing = build_routing_tables(parsed)
     write_json(output_dir / "parsed" / "classification.json", classification)
     write_yaml(output_dir / "routing" / "module_routing.yaml", module_routing)
@@ -57,7 +81,7 @@ def validate_command(
     manuscript_path: Path,
     output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
 ) -> None:
-    parsed, _ = _prepare_parsed_manuscript(manuscript_path)
+    parsed, _, _, _, _ = _prepare_parsed_manuscript(manuscript_path)
     classification, _, _ = build_routing_tables(parsed)
     results = run_deterministic_validators(parsed, classification)
     write_json(output_dir / "findings" / "deterministic_validators.json", results)

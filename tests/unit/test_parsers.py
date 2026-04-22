@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from manuscript_audit.parsers import (
+    extract_notation_summary,
     parse_bibtex,
     parse_latex_manuscript,
     parse_manuscript,
@@ -34,3 +35,11 @@ def test_parse_latex_manuscript_extracts_equation_labels_and_references() -> Non
 def test_parse_dispatch_uses_suffix() -> None:
     parsed = parse_manuscript(Path("tests/fixtures/manuscripts/latex_equivalence.tex"))
     assert parsed.source_format == "latex"
+
+
+def test_notation_summary_detects_defined_and_undefined_symbols() -> None:
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/notation_coverage.tex"))
+    summary = extract_notation_summary(parsed)
+    assert "b" in summary.undefined_symbols
+    assert "y" not in summary.undefined_symbols
+    assert "m" not in summary.undefined_symbols

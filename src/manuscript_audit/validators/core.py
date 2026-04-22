@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from manuscript_audit.config import DEFAULT_VALIDATOR_VERSION
+from manuscript_audit.parsers import build_source_records, extract_notation_summary
 from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
 from manuscript_audit.schemas.findings import Finding, ValidationResult, ValidationSuiteResult
 from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -482,6 +483,63 @@ def validate_bibliography_source_identifiers(parsed: ParsedManuscript) -> Valida
     )
 
 
+def validate_bibliography_source_record_readiness(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    for record in build_source_records(parsed.bibliography_entries):
+        if record.status == "ready_for_lookup":
+            findings.append(
+                Finding(
+                    code="bibliography-source-record-needs-lookup",
+                    severity="minor",
+                    message=(
+                        f"Bibliography entry '{record.entry_label}' still needs a source-of-record "
+                        "lookup step before verification can rely on a canonical record."
+                    ),
+                    validator="bibliography_source_record_readiness",
+                    evidence=[record.lookup_query or record.entry_label],
+                )
+            )
+        if record.status == "insufficient_metadata":
+            findings.append(
+                Finding(
+                    code="bibliography-source-record-insufficient-metadata",
+                    severity="moderate",
+                    message=(
+                        f"Bibliography entry '{record.entry_label}' lacks enough metadata for a "
+                        "deterministic source-of-record plan."
+                    ),
+                    validator="bibliography_source_record_readiness",
+                    evidence=[record.entry_label],
+                )
+            )
+    return ValidationResult(
+        validator_name="bibliography_source_record_readiness",
+        findings=findings,
+    )
+
+
+def validate_equation_notation_coverage(parsed: ParsedManuscript) -> ValidationResult:
+    notation_summary = extract_notation_summary(parsed)
+    findings: list[Finding] = []
+    for symbol in notation_summary.undefined_symbols:
+        findings.append(
+            Finding(
+                code="undefined-equation-symbol",
+                severity="moderate",
+                message=(
+                    f"Equation symbol '{symbol}' appears in parsed equations without an obvious "
+                    "textual definition hint."
+                ),
+                validator="equation_notation_coverage",
+                evidence=[symbol],
+            )
+        )
+    return ValidationResult(
+        validator_name="equation_notation_coverage",
+        findings=findings,
+    )
+
+
 def _section_text(parsed: ParsedManuscript, section_name: str) -> str:
     return " ".join(
         section.body.lower()
@@ -571,6 +629,8 @@ def run_deterministic_validators(
         validate_bibliography_doi_format(parsed),
         validate_bibliography_venue_metadata(parsed),
         validate_bibliography_source_identifiers(parsed),
+        validate_bibliography_source_record_readiness(parsed),
+        validate_equation_notation_coverage(parsed),
         validate_claim_section_alignment(parsed, classification),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

@@ -79,3 +79,6 @@ def test_parse_cli_writes_reference_and_source_record_artifacts(tmp_path: Path) 
     assert result.exit_code == 0
     assert (output_dir / "parsed" / "references.json").exists()
     assert (output_dir / "parsed" / "source_record_candidates.json").exists()
+    assert (output_dir / "parsed" / "source_records.json").exists()
+    assert (output_dir / "parsed" / "source_record_summary.json").exists()
+    assert (output_dir / "parsed" / "notation_summary.json").exists()

@@ -16,6 +16,9 @@ def test_core_workflow_writes_structured_artifacts(tmp_path: Path) -> None:
     assert (output_dir / "parsed" / "manuscript.json").exists()
     assert (output_dir / "parsed" / "references.json").exists()
     assert (output_dir / "parsed" / "source_record_candidates.json").exists()
+    assert (output_dir / "parsed" / "source_records.json").exists()
+    assert (output_dir / "parsed" / "source_record_summary.json").exists()
+    assert (output_dir / "parsed" / "notation_summary.json").exists()
     assert (output_dir / "routing" / "module_routing.yaml").exists()
     assert (output_dir / "findings" / "deterministic_validators.json").exists()
     assert (output_dir / "reports" / "final_vetting_report.md").exists()
@@ -42,6 +45,8 @@ def test_core_workflow_attaches_companion_bibtex(tmp_path: Path) -> None:
     source_record_payload = json.loads(
         (output_dir / "parsed" / "source_record_candidates.json").read_text()
     )
+    source_records_payload = json.loads((output_dir / "parsed" / "source_records.json").read_text())
     assert len(references_payload) == 2
     assert references_payload[0]["key"] == "schuirmann1987"
     assert source_record_payload[0]["status"] == "ready_via_doi"
+    assert source_records_payload[0]["status"] == "resolved_canonical_link"

@@ -4,9 +4,11 @@ from manuscript_audit.parsers import parse_bibtex, parse_manuscript, parse_markd
 from manuscript_audit.routing.rules import classify_manuscript
 from manuscript_audit.validators import run_deterministic_validators
 from manuscript_audit.validators.core import (
+    validate_bibliography_source_record_readiness,
     validate_citation_bibliography_alignment,
     validate_claim_section_alignment,
     validate_duplicate_bibliography_entries,
+    validate_equation_notation_coverage,
     validate_equation_reference_coverage,
     validate_orphaned_equation_definitions,
     validate_orphaned_figure_table_definitions,
@@ -64,6 +66,26 @@ def test_equation_reference_validators_detect_missing_and_orphaned_equations() -
     assert {finding.code for finding in orphaned_result.findings} == {
         "orphaned-equation-definition"
     }
+
+
+def test_equation_notation_validator_detects_undefined_symbol() -> None:
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/notation_coverage.tex"))
+    result = validate_equation_notation_coverage(parsed)
+    assert {finding.code for finding in result.findings} == {"undefined-equation-symbol"}
+    assert any("b" in finding.message for finding in result.findings)
+
+
+def test_source_record_readiness_detects_lookup_and_metadata_gaps() -> None:
+    parsed = parse_markdown_manuscript(
+        Path("tests/fixtures/manuscripts/software_equivalence_manuscript.md")
+    )
+    parsed.bibliography_entries = parse_bibtex(
+        Path("tests/fixtures/manuscripts/bibliography_metadata.bib")
+    )
+    result = validate_bibliography_source_record_readiness(parsed)
+    codes = {finding.code for finding in result.findings}
+    assert "bibliography-source-record-needs-lookup" in codes
+    assert "bibliography-source-record-insufficient-metadata" in codes
 
 
 def test_claim_section_alignment_detects_unsupported_equivalence_claim() -> None:

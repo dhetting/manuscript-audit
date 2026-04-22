@@ -7,6 +7,8 @@ from manuscript_audit.agents import run_routed_agents
 from manuscript_audit.config import DEFAULT_DB_PATH
 from manuscript_audit.parsers import (
     build_source_record_candidates,
+    build_source_records,
+    extract_notation_summary,
     parse_bibtex,
     parse_manuscript,
 )
@@ -80,6 +82,8 @@ def run_revision_verification_workflow(
     old_parsed = parse_manuscript(old_manuscript_path)
     _attach_bibliography_if_available(old_manuscript_path, old_parsed)
     old_source_record_candidates = build_source_record_candidates(old_parsed.bibliography_entries)
+    old_source_records = build_source_records(old_parsed.bibliography_entries)
+    old_notation_summary = extract_notation_summary(old_parsed)
     old_classification, old_module_routing, old_domain_routing = build_routing_tables(old_parsed)
     old_validation = run_deterministic_validators(old_parsed, old_classification)
     old_agents = run_routed_agents(
@@ -92,6 +96,8 @@ def run_revision_verification_workflow(
     new_parsed = parse_manuscript(new_manuscript_path)
     _attach_bibliography_if_available(new_manuscript_path, new_parsed)
     new_source_record_candidates = build_source_record_candidates(new_parsed.bibliography_entries)
+    new_source_records = build_source_records(new_parsed.bibliography_entries)
+    new_notation_summary = extract_notation_summary(new_parsed)
     new_classification, new_module_routing, new_domain_routing = build_routing_tables(new_parsed)
     new_validation = run_deterministic_validators(new_parsed, new_classification)
     new_agents = run_routed_agents(
@@ -133,6 +139,10 @@ def run_revision_verification_workflow(
     write_json(parsed_dir / "new_manuscript.json", new_parsed)
     write_json(parsed_dir / "old_source_record_candidates.json", old_source_record_candidates)
     write_json(parsed_dir / "new_source_record_candidates.json", new_source_record_candidates)
+    write_json(parsed_dir / "old_source_records.json", old_source_records)
+    write_json(parsed_dir / "new_source_records.json", new_source_records)
+    write_json(parsed_dir / "old_notation_summary.json", old_notation_summary)
+    write_json(parsed_dir / "new_notation_summary.json", new_notation_summary)
     write_yaml(routing_dir / "old_module_routing.yaml", old_module_routing)
     write_yaml(routing_dir / "old_domain_routing.yaml", old_domain_routing)
     write_yaml(routing_dir / "new_module_routing.yaml", new_module_routing)
@@ -166,6 +176,10 @@ def run_revision_verification_workflow(
         "new_source_record_candidates",
         new_source_record_candidates,
     )
+    store.record_parsed_artifact(run_id, "old_source_records", old_source_records)
+    store.record_parsed_artifact(run_id, "new_source_records", new_source_records)
+    store.record_parsed_artifact(run_id, "old_notation_summary", old_notation_summary)
+    store.record_parsed_artifact(run_id, "new_notation_summary", new_notation_summary)
     store.record_routing_decision(run_id, "old_module_routing", old_module_routing)
     store.record_routing_decision(run_id, "old_domain_routing", old_domain_routing)
     store.record_routing_decision(run_id, "new_module_routing", new_module_routing)

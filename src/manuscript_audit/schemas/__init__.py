@@ -1,7 +1,11 @@
 from manuscript_audit.schemas.artifacts import BibliographyEntry as BibliographyEntry
+from manuscript_audit.schemas.artifacts import NotationSummary as NotationSummary
+from manuscript_audit.schemas.artifacts import NotationSymbol as NotationSymbol
 from manuscript_audit.schemas.artifacts import ParsedManuscript as ParsedManuscript
 from manuscript_audit.schemas.artifacts import Section as Section
+from manuscript_audit.schemas.artifacts import SourceRecord as SourceRecord
 from manuscript_audit.schemas.artifacts import SourceRecordCandidate as SourceRecordCandidate
+from manuscript_audit.schemas.artifacts import SourceRecordSummary as SourceRecordSummary
 from manuscript_audit.schemas.findings import AgentModuleResult as AgentModuleResult
 from manuscript_audit.schemas.findings import AgentSuiteResult as AgentSuiteResult
 from manuscript_audit.schemas.findings import FinalVettingReport as FinalVettingReport
@@ -27,11 +31,15 @@ __all__ = [
     "Finding",
     "ManuscriptClassification",
     "ModuleRoutingTable",
+    "NotationSummary",
+    "NotationSymbol",
     "ParsedManuscript",
     "RevisionFindingRef",
     "RevisionVerificationReport",
     "Section",
+    "SourceRecord",
     "SourceRecordCandidate",
+    "SourceRecordSummary",
     "ValidationResult",
     "ValidationSuiteResult",
 ]

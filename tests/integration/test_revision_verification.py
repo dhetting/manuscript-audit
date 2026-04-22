@@ -18,6 +18,10 @@ def test_revision_verification_writes_structured_artifacts(tmp_path: Path) -> No
     assert report.route_changed is False
     assert (output_dir / "reports" / "revision_verification_report.json").exists()
     assert (output_dir / "reports" / "revision_verification_report.md").exists()
+    assert (output_dir / "parsed" / "old_source_records.json").exists()
+    assert (output_dir / "parsed" / "new_source_records.json").exists()
+    assert (output_dir / "parsed" / "old_notation_summary.json").exists()
+    assert (output_dir / "parsed" / "new_notation_summary.json").exists()
     payload = json.loads((output_dir / "reports" / "revision_verification_report.json").read_text())
     assert payload["new_manuscript_id"] == report.new_manuscript_id
 

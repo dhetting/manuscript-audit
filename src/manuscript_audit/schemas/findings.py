@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from manuscript_audit.schemas.artifacts import NotationSummary, SourceRecordSummary
 from manuscript_audit.schemas.routing import (
     DomainRoutingTable,
     ManuscriptClassification,
@@ -96,4 +97,6 @@ class FinalVettingReport(BaseModel):
     domain_routing: DomainRoutingTable
     validation_suite: ValidationSuiteResult
     agent_suite: AgentSuiteResult | None = None
+    source_record_summary: SourceRecordSummary | None = None
+    notation_summary: NotationSummary | None = None
     revision_priorities: list[str] = Field(default_factory=list)

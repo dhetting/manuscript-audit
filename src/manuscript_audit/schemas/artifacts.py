@@ -42,6 +42,43 @@ class SourceRecordCandidate(BaseModel):
     rationale: str
 
 
+class SourceRecord(BaseModel):
+    entry_key: str | None = None
+    entry_label: str
+    resolution_strategy: Literal["doi", "url", "metadata_query", "none"]
+    status: Literal[
+        "resolved_canonical_link",
+        "ready_for_lookup",
+        "insufficient_metadata",
+    ]
+    canonical_source_url: str | None = None
+    identifier_value: str | None = None
+    lookup_query: str | None = None
+    metadata_completeness: int
+    provenance: str
+
+
+class SourceRecordSummary(BaseModel):
+    total_entries: int
+    resolved_canonical_link_count: int
+    ready_for_lookup_count: int
+    insufficient_metadata_count: int
+
+
+class NotationSymbol(BaseModel):
+    symbol: str
+    used_in_equations: bool
+    defined_in_text: bool
+    definition_hint: str | None = None
+
+
+class NotationSummary(BaseModel):
+    equation_symbol_count: int
+    defined_symbol_count: int
+    undefined_symbols: list[str] = Field(default_factory=list)
+    symbols: list[NotationSymbol] = Field(default_factory=list)
+
+
 class ParsedManuscript(BaseModel):
     manuscript_id: str
     source_path: str

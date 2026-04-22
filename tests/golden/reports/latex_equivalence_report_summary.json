@@ -1,12 +1,26 @@
 {
+  "notation_summary": {
+    "defined_symbol_count": 0,
+    "equation_symbol_count": 2,
+    "undefined_symbols": [
+      "a",
+      "b"
+    ]
+  },
   "paper_type": "software_workflow_paper",
   "pathway": "data_science",
   "recommended_stack": "maximal",
   "revision_priorities": [
-    "No fatal or major findings in the current audit stack."
+    "Some equation symbols appear without obvious textual definitions; review the notation ledger."
   ],
+  "source_record_summary": {
+    "insufficient_metadata_count": 0,
+    "ready_for_lookup_count": 0,
+    "resolved_canonical_link_count": 2,
+    "total_entries": 2
+  },
   "validator_severity_counts": {
     "minor": 1,
-    "moderate": 2
+    "moderate": 4
   }
 }

@@ -12,6 +12,21 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
         for finding in report.agent_suite.all_findings:
             if finding.severity in {"fatal", "major"}:
                 priorities.append(f"Address {finding.code}: {finding.message}")
+    if report.source_record_summary is not None:
+        if report.source_record_summary.insufficient_metadata_count > 0:
+            priorities.append(
+                "Some bibliography entries still lack enough metadata for deterministic "
+                "source-of-record planning."
+            )
+        if report.source_record_summary.ready_for_lookup_count > 0:
+            priorities.append(
+                "Some bibliography entries still need source-of-record lookup resolution."
+            )
+    if report.notation_summary is not None and report.notation_summary.undefined_symbols:
+        priorities.append(
+            "Some equation symbols appear without obvious textual definitions; review the "
+            "notation ledger."
+        )
     if not priorities:
         priorities.append("No fatal or major findings in the current audit stack.")
     report.revision_priorities = priorities
@@ -69,6 +84,36 @@ def _render_agent_results(report: FinalVettingReport) -> str:
     return "\n".join(lines).strip()
 
 
+def _render_source_record_summary(report: FinalVettingReport) -> str:
+    if report.source_record_summary is None:
+        return "## Source-of-record enrichment\n\nNo source-of-record summary was generated."
+    summary = report.source_record_summary
+    return (
+        "## Source-of-record enrichment\n\n"
+        f"- Total entries: {summary.total_entries}\n"
+        f"- Canonical links resolved deterministically: {summary.resolved_canonical_link_count}\n"
+        f"- Ready for lookup: {summary.ready_for_lookup_count}\n"
+        f"- Insufficient metadata: {summary.insufficient_metadata_count}\n"
+    )
+
+
+def _render_notation_summary(report: FinalVettingReport) -> str:
+    if report.notation_summary is None:
+        return "## Notation coverage\n\nNo notation summary was generated."
+    summary = report.notation_summary
+    lines = [
+        "## Notation coverage",
+        "",
+        f"- Equation symbols parsed: {summary.equation_symbol_count}",
+        f"- Symbols with textual definition hints: {summary.defined_symbol_count}",
+        (
+            "- Undefined symbols: "
+            + (", ".join(summary.undefined_symbols) if summary.undefined_symbols else "none")
+        ),
+    ]
+    return "\n".join(lines)
+
+
 def render_markdown_report(report: FinalVettingReport) -> str:
     validator_counts = report.validation_suite.severity_counts
     validator_text = ", ".join(f"{key}: {value}" for key, value in sorted(validator_counts.items()))
@@ -91,6 +136,8 @@ def render_markdown_report(report: FinalVettingReport) -> str:
         f"## Revision priorities\n\n{priorities}\n\n"
         f"{_render_table('Module routing', report.module_routing.modules)}\n\n"
         f"{_render_table('Domain routing', report.domain_routing.domains)}\n\n"
+        f"{_render_source_record_summary(report)}\n\n"
+        f"{_render_notation_summary(report)}\n\n"
         f"{_render_agent_results(report)}\n"
     )
 

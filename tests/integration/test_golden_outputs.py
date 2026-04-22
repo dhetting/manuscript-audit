@@ -1,7 +1,13 @@
 import json
 from pathlib import Path
 
-from manuscript_audit.parsers import parse_bibtex, parse_manuscript
+from manuscript_audit.parsers import (
+    build_source_records,
+    extract_notation_summary,
+    parse_bibtex,
+    parse_manuscript,
+    summarize_source_records,
+)
 from manuscript_audit.reports import synthesize_report
 from manuscript_audit.routing import build_routing_tables
 from manuscript_audit.schemas.findings import FinalVettingReport
@@ -37,6 +43,9 @@ def test_report_summary_matches_golden_file() -> None:
         Path("tests/fixtures/manuscripts/latex_equivalence.bib")
     )
     parsed.reference_section_present = True
+    source_records = build_source_records(parsed.bibliography_entries)
+    source_record_summary = summarize_source_records(source_records)
+    notation_summary = extract_notation_summary(parsed)
     classification, module_routing, domain_routing = build_routing_tables(parsed)
     validation_suite = run_deterministic_validators(parsed, classification)
     report = synthesize_report(
@@ -47,6 +56,8 @@ def test_report_summary_matches_golden_file() -> None:
             module_routing=module_routing,
             domain_routing=domain_routing,
             validation_suite=validation_suite,
+            source_record_summary=source_record_summary,
+            notation_summary=notation_summary,
         )
     )
     summary = {
@@ -55,5 +66,11 @@ def test_report_summary_matches_golden_file() -> None:
         "recommended_stack": report.classification.recommended_stack,
         "validator_severity_counts": report.validation_suite.severity_counts,
         "revision_priorities": report.revision_priorities,
+        "source_record_summary": report.source_record_summary.model_dump(mode="json"),
+        "notation_summary": {
+            "equation_symbol_count": report.notation_summary.equation_symbol_count,
+            "defined_symbol_count": report.notation_summary.defined_symbol_count,
+            "undefined_symbols": report.notation_summary.undefined_symbols,
+        },
     }
     assert summary == _load_json("tests/golden/reports/latex_equivalence_report_summary.json")
