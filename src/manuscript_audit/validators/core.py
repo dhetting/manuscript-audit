@@ -12,7 +12,18 @@ PLACEHOLDER_RE = re.compile(
     re.IGNORECASE,
 )
 CLAIM_LANGUAGE_RE = re.compile(
-    r"\b(prove|demonstrate|show|improve|equivalent|outperform|significant)\b",
+    (
+        r"\b("
+        r"prove(?:s|d)?|"
+        r"demonstrat(?:e|es|ed|ing)|"
+        r"show(?:s|ed|ing)?|"
+        r"improv(?:e|es|ed|ing)|"
+        r"equivalen(?:t|ce)|"
+        r"outperform(?:s|ed|ing)?|"
+        r"significant(?:ly)?|"
+        r"claim(?:s|ed|ing)?"
+        r")\b"
+    ),
     re.IGNORECASE,
 )
 
