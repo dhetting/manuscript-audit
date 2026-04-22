@@ -5,6 +5,10 @@ from manuscript_audit.schemas.findings import AgentModuleResult as AgentModuleRe
 from manuscript_audit.schemas.findings import AgentSuiteResult as AgentSuiteResult
 from manuscript_audit.schemas.findings import FinalVettingReport as FinalVettingReport
 from manuscript_audit.schemas.findings import Finding as Finding
+from manuscript_audit.schemas.findings import RevisionFindingRef as RevisionFindingRef
+from manuscript_audit.schemas.findings import (
+    RevisionVerificationReport as RevisionVerificationReport,
+)
 from manuscript_audit.schemas.findings import ValidationResult as ValidationResult
 from manuscript_audit.schemas.findings import ValidationSuiteResult as ValidationSuiteResult
 from manuscript_audit.schemas.routing import ApplicabilityDecision as ApplicabilityDecision
@@ -23,6 +27,8 @@ __all__ = [
     "ManuscriptClassification",
     "ModuleRoutingTable",
     "ParsedManuscript",
+    "RevisionFindingRef",
+    "RevisionVerificationReport",
     "Section",
     "ValidationResult",
     "ValidationSuiteResult",

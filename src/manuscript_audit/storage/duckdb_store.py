@@ -43,6 +43,10 @@ class DuckDBRunStore:
                 "CREATE TABLE IF NOT EXISTS report_artifacts "
                 "(run_id TEXT, report_type TEXT, payload_json TEXT)"
             ),
+            (
+                "CREATE TABLE IF NOT EXISTS revision_links "
+                "(run_id TEXT, old_manuscript_id TEXT, new_manuscript_id TEXT, payload_json TEXT)"
+            ),
         ]
         for statement in statements:
             self.connection.execute(statement)
@@ -101,6 +105,18 @@ class DuckDBRunStore:
         self.connection.execute(
             "INSERT INTO report_artifacts VALUES (?, ?, ?)",
             [run_id, report_type, self._serialize(payload)],
+        )
+
+    def record_revision_link(
+        self,
+        run_id: str,
+        old_manuscript_id: str,
+        new_manuscript_id: str,
+        payload: Any,
+    ) -> None:
+        self.connection.execute(
+            "INSERT INTO revision_links VALUES (?, ?, ?, ?)",
+            [run_id, old_manuscript_id, new_manuscript_id, self._serialize(payload)],
         )
 
     def close(self) -> None:

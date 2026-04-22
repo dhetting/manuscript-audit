@@ -11,7 +11,8 @@ The project currently supports:
 - explicit manuscript classification and routing,
 - deterministic validation with structured artifacts,
 - a routed standard audit stack with persisted per-module outputs,
-- local DuckDB storage for run, routing, validator, agent, and report artifacts.
+- revision verification with structured resolved, persistent, and new findings,
+- local DuckDB storage for run, routing, validator, agent, revision, and report artifacts.
 
 ## Quickstart
 
@@ -20,4 +21,5 @@ pixi run lint
 pixi run test
 pixi run audit-core examples/software_equivalence_manuscript.md --output-dir data/outputs/core-demo
 pixi run audit-standard examples/software_equivalence_manuscript.md --output-dir data/outputs/standard-demo
+pixi run verify-revision tests/fixtures/manuscripts/revision_old.md tests/fixtures/manuscripts/revision_new.md --output-dir data/outputs/revision-demo
 ```

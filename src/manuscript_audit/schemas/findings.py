@@ -12,6 +12,7 @@ from manuscript_audit.schemas.routing import (
 )
 
 Severity = Literal["fatal", "major", "moderate", "minor", "info"]
+FindingSourceType = Literal["validator", "agent"]
 
 
 class Finding(BaseModel):
@@ -65,6 +66,26 @@ class AgentSuiteResult(BaseModel):
     @property
     def severity_counts(self) -> dict[str, int]:
         return dict(Counter(finding.severity for finding in self.all_findings))
+
+
+class RevisionFindingRef(BaseModel):
+    source_type: FindingSourceType
+    source_name: str
+    code: str
+    severity: Severity
+    message: str
+    location: str | None = None
+
+
+class RevisionVerificationReport(BaseModel):
+    run_id: str
+    old_manuscript_id: str
+    new_manuscript_id: str
+    route_changed: bool
+    resolved_findings: list[RevisionFindingRef] = Field(default_factory=list)
+    persistent_findings: list[RevisionFindingRef] = Field(default_factory=list)
+    new_findings: list[RevisionFindingRef] = Field(default_factory=list)
+    revision_priorities: list[str] = Field(default_factory=list)
 
 
 class FinalVettingReport(BaseModel):

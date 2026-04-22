@@ -1,9 +1,12 @@
 from pathlib import Path
 
-from manuscript_audit.parsers import parse_bibtex, parse_markdown_manuscript
+from manuscript_audit.parsers import parse_bibtex, parse_manuscript, parse_markdown_manuscript
 from manuscript_audit.routing.rules import classify_manuscript
 from manuscript_audit.validators import run_deterministic_validators
-from manuscript_audit.validators.core import validate_duplicate_bibliography_entries
+from manuscript_audit.validators.core import (
+    validate_citation_bibliography_alignment,
+    validate_duplicate_bibliography_entries,
+)
 
 
 def test_placeholder_fixture_generates_major_and_moderate_findings() -> None:
@@ -27,3 +30,15 @@ def test_duplicate_bibtex_keys_generate_findings() -> None:
     result = validate_duplicate_bibliography_entries(parsed)
     assert len(result.findings) == 1
     assert result.findings[0].code == "duplicate-bibliography-key"
+
+
+def test_citation_bibliography_alignment_detects_missing_and_unused_entries() -> None:
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/citation_alignment.tex"))
+    parsed.bibliography_entries = parse_bibtex(
+        Path("tests/fixtures/manuscripts/citation_alignment.bib")
+    )
+    parsed.reference_section_present = True
+    result = validate_citation_bibliography_alignment(parsed)
+    codes = {finding.code for finding in result.findings}
+    assert "missing-bibliography-entry-for-citation" in codes
+    assert "uncited-bibliography-entry" in codes

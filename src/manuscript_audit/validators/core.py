@@ -12,7 +12,10 @@ PLACEHOLDER_RE = re.compile(
     re.IGNORECASE,
 )
 CLAIM_LANGUAGE_RE = re.compile(
-    r"\b(prove|proves|demonstrate|demonstrates|show|shows|improve|improves|equivalent|equivalence|outperform|outperforms|significant)\b",
+    (
+        r"\b(prove|proves|demonstrate|demonstrates|show|shows|improve|improves|"
+        r"equivalent|equivalence|outperform|outperforms|significant)\b"
+    ),
     re.IGNORECASE,
 )
 NUMERIC_LABEL_RE = re.compile(r"\d+")
@@ -185,6 +188,40 @@ def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> Valida
     )
 
 
+def validate_citation_bibliography_alignment(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    bibliography_keys = {entry.key for entry in parsed.bibliography_entries if entry.key}
+    if parsed.citation_keys and bibliography_keys:
+        missing_entries = sorted(set(parsed.citation_keys) - bibliography_keys)
+        for key in missing_entries:
+            findings.append(
+                Finding(
+                    code="missing-bibliography-entry-for-citation",
+                    severity="major",
+                    message=f"Citation key '{key}' is used but no bibliography entry was found.",
+                    validator="citation_bibliography_alignment",
+                    evidence=[key],
+                )
+            )
+        unused_entries = sorted(bibliography_keys - set(parsed.citation_keys))
+        for key in unused_entries:
+            findings.append(
+                Finding(
+                    code="uncited-bibliography-entry",
+                    severity="minor",
+                    message=(
+                        f"Bibliography entry '{key}' is present but not cited in the manuscript."
+                    ),
+                    validator="citation_bibliography_alignment",
+                    evidence=[key],
+                )
+            )
+    return ValidationResult(
+        validator_name="citation_bibliography_alignment",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -196,5 +233,6 @@ def run_deterministic_validators(
         validate_reference_coverage(parsed),
         validate_duplicate_bibliography_entries(parsed),
         validate_figure_table_reference_coverage(parsed),
+        validate_citation_bibliography_alignment(parsed),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

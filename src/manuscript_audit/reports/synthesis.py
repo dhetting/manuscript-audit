@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from manuscript_audit.schemas.findings import FinalVettingReport
+from manuscript_audit.schemas.findings import FinalVettingReport, RevisionVerificationReport
 
 
 def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
@@ -14,6 +14,31 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
                 priorities.append(f"Address {finding.code}: {finding.message}")
     if not priorities:
         priorities.append("No fatal or major findings in the current audit stack.")
+    report.revision_priorities = priorities
+    return report
+
+
+def synthesize_revision_report(
+    report: RevisionVerificationReport,
+) -> RevisionVerificationReport:
+    priorities: list[str] = []
+    for finding in report.persistent_findings:
+        if finding.severity in {"fatal", "major", "moderate"}:
+            priorities.append(
+                f"Persistent {finding.source_type} finding {finding.code}: {finding.message}"
+            )
+    for finding in report.new_findings:
+        if finding.severity in {"fatal", "major", "moderate"}:
+            priorities.append(
+                f"New {finding.source_type} finding {finding.code}: {finding.message}"
+            )
+    if report.route_changed:
+        priorities.insert(
+            0,
+            "Routing changed between revisions; review scope may need to expand.",
+        )
+    if not priorities:
+        priorities.append("No persistent or new moderate-or-worse findings were detected.")
     report.revision_priorities = priorities
     return report
 
@@ -67,4 +92,31 @@ def render_markdown_report(report: FinalVettingReport) -> str:
         f"{_render_table('Module routing', report.module_routing.modules)}\n\n"
         f"{_render_table('Domain routing', report.domain_routing.domains)}\n\n"
         f"{_render_agent_results(report)}\n"
+    )
+
+
+def render_revision_verification_report(report: RevisionVerificationReport) -> str:
+    def _render_refs(title: str, refs: list) -> str:
+        lines = [f"## {title}", ""]
+        if not refs:
+            lines.append("- None")
+        else:
+            for ref in refs:
+                lines.append(
+                    f"- [{ref.severity}] {ref.source_type}/{ref.source_name}/"
+                    f"{ref.code}: {ref.message}"
+                )
+        return "\n".join(lines)
+
+    priorities = "\n".join(f"- {item}" for item in report.revision_priorities)
+    return (
+        f"# Revision verification report\n\n"
+        f"**Run ID:** {report.run_id}\n\n"
+        f"**Old manuscript ID:** {report.old_manuscript_id}\n\n"
+        f"**New manuscript ID:** {report.new_manuscript_id}\n\n"
+        f"**Route changed:** {'yes' if report.route_changed else 'no'}\n\n"
+        f"## Revision priorities\n\n{priorities}\n\n"
+        f"{_render_refs('Resolved findings', report.resolved_findings)}\n\n"
+        f"{_render_refs('Persistent findings', report.persistent_findings)}\n\n"
+        f"{_render_refs('New findings', report.new_findings)}\n"
     )

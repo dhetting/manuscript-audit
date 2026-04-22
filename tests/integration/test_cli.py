@@ -44,6 +44,26 @@ def test_audit_standard_cli_command(tmp_path: Path) -> None:
     assert (output_dir / "findings" / "modules" / "bibliography_metadata_validation.json").exists()
 
 
+def test_verify_revision_cli_command(tmp_path: Path) -> None:
+    runner = CliRunner()
+    output_dir = tmp_path / "cli_revision_run"
+    db_path = tmp_path / "cli_revision.duckdb"
+    result = runner.invoke(
+        app,
+        [
+            "verify-revision",
+            "tests/fixtures/manuscripts/revision_old.md",
+            "tests/fixtures/manuscripts/revision_new.md",
+            "--output-dir",
+            str(output_dir),
+            "--db-path",
+            str(db_path),
+        ],
+    )
+    assert result.exit_code == 0
+    assert (output_dir / "reports" / "revision_verification_report.json").exists()
+
+
 def test_parse_cli_writes_reference_artifact_for_companion_bibtex(tmp_path: Path) -> None:
     runner = CliRunner()
     output_dir = tmp_path / "parse_run"

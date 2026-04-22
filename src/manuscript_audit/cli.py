@@ -73,6 +73,24 @@ def audit_standard_command(
     typer.echo(f"Completed standard run {report.run_id} for {report.manuscript_id}")
 
 
+@app.command("verify-revision")
+def verify_revision_command(
+    old_manuscript_path: Path,
+    new_manuscript_path: Path,
+    output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
+    db_path: str = typer.Option("data/working/run_store.duckdb", "--db-path"),
+) -> None:
+    from manuscript_audit.workflows import run_revision_verification_workflow
+
+    report = run_revision_verification_workflow(
+        old_manuscript_path=old_manuscript_path,
+        new_manuscript_path=new_manuscript_path,
+        output_dir=output_dir,
+        db_path=db_path,
+    )
+    typer.echo(f"Completed revision verification {report.run_id} for {report.new_manuscript_id}")
+
+
 def main() -> None:
     app()
 
