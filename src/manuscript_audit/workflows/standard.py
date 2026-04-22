@@ -9,6 +9,7 @@ from manuscript_audit.config import DEFAULT_DB_PATH
 from manuscript_audit.parsers import (
     CrossrefSourceRegistryClient,
     FixtureSourceRegistryClient,
+    build_bibliography_confidence_summary,
     build_source_record_candidates,
     build_source_records,
     extract_notation_summary,
@@ -101,6 +102,10 @@ def run_standard_audit_workflow(
             client,
         )
         source_verification_summary = summarize_source_record_verifications(source_verifications)
+    bibliography_confidence_summary = build_bibliography_confidence_summary(
+        source_records,
+        source_verifications,
+    )
     classification, module_routing, domain_routing = build_routing_tables(parsed)
     validation_suite = run_deterministic_validators(parsed, classification)
     agent_suite = run_routed_agents(
@@ -109,6 +114,7 @@ def run_standard_audit_workflow(
         validation_suite,
         module_routing,
         source_verifications=source_verifications,
+        bibliography_confidence_summary=bibliography_confidence_summary,
     )
 
     run_id = _run_id()
@@ -122,6 +128,7 @@ def run_standard_audit_workflow(
             validation_suite=validation_suite,
             agent_suite=agent_suite,
             source_record_summary=source_record_summary,
+            bibliography_confidence_summary=bibliography_confidence_summary,
             source_verification_provider=source_verification_provider_name,
             source_verification_summary=source_verification_summary,
             notation_summary=notation_summary,
@@ -133,6 +140,10 @@ def run_standard_audit_workflow(
     write_json(parsed_dir / "source_record_candidates.json", source_record_candidates)
     write_json(parsed_dir / "source_records.json", source_records)
     write_json(parsed_dir / "source_record_summary.json", source_record_summary)
+    write_json(
+        findings_dir / "bibliography_confidence_summary.json",
+        bibliography_confidence_summary,
+    )
     write_json(parsed_dir / "notation_summary.json", notation_summary)
     if source_verifications is not None and source_verification_summary is not None:
         write_json(findings_dir / "source_record_verifications.json", source_verifications)
@@ -164,6 +175,11 @@ def run_standard_audit_workflow(
     store.record_parsed_artifact(run_id, "source_record_candidates", source_record_candidates)
     store.record_parsed_artifact(run_id, "source_records", source_records)
     store.record_parsed_artifact(run_id, "source_record_summary", source_record_summary)
+    store.record_parsed_artifact(
+        run_id,
+        "bibliography_confidence_summary",
+        bibliography_confidence_summary,
+    )
     if source_verifications is not None and source_verification_summary is not None:
         store.record_parsed_artifact(run_id, "source_record_verifications", source_verifications)
         store.record_parsed_artifact(

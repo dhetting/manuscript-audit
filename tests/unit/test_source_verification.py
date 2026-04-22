@@ -4,6 +4,7 @@ from manuscript_audit.parsers import (
     CrossrefSourceRegistryClient,
     FixtureSourceRegistryClient,
     SourceRegistryLookupError,
+    build_bibliography_confidence_summary,
     build_source_records,
     parse_bibtex,
     summarize_source_record_verifications,
@@ -131,3 +132,31 @@ def test_crossref_client_returns_multiple_candidates_from_payload() -> None:
     assert len(records) == 2
     assert records[0].title == "Candidate One"
     assert records[1].doi == "10.1111/example.2"
+
+
+def test_bibliography_confidence_summary_from_verified_results_is_low() -> None:
+    entries = parse_bibtex(Path("tests/fixtures/manuscripts/bibliography_metadata.bib"))
+    records = build_source_records(entries)
+    client = FixtureSourceRegistryClient.from_json(
+        Path("tests/fixtures/registries/source_registry_fixture.json")
+    )
+    verifications = verify_source_records(entries, records, client)
+
+    summary = build_bibliography_confidence_summary(records, verifications)
+
+    assert summary.basis == "verified_source_records"
+    assert summary.confidence_level == "low"
+    assert summary.manual_review_required_count == 2
+    assert summary.mismatch_entry_count == 1
+    assert summary.insufficient_metadata_count == 1
+
+
+def test_bibliography_confidence_summary_from_deterministic_planning_can_be_high() -> None:
+    entries = parse_bibtex(Path("tests/fixtures/manuscripts/latex_equivalence.bib"))
+    records = build_source_records(entries)
+
+    summary = build_bibliography_confidence_summary(records)
+
+    assert summary.basis == "deterministic_planning"
+    assert summary.confidence_level == "high"
+    assert summary.manual_review_required_count == 0

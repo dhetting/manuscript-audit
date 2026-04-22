@@ -3,6 +3,7 @@ from pathlib import Path
 from manuscript_audit.agents import run_routed_agents
 from manuscript_audit.parsers import (
     FixtureSourceRegistryClient,
+    build_bibliography_confidence_summary,
     build_source_records,
     parse_bibtex,
     parse_manuscript,
@@ -36,12 +37,15 @@ def test_bibliography_agent_consumes_source_verification_results() -> None:
     )
     verifications = verify_source_records(parsed.bibliography_entries, source_records, client)
 
+    confidence_summary = build_bibliography_confidence_summary(source_records, verifications)
+
     agent_suite = run_routed_agents(
         parsed,
         classification,
         validation_suite,
         module_routing,
         source_verifications=verifications,
+        bibliography_confidence_summary=confidence_summary,
     )
 
     bibliography_result = next(
@@ -51,3 +55,4 @@ def test_bibliography_agent_consumes_source_verification_results() -> None:
     )
     codes = {finding.code for finding in bibliography_result.findings}
     assert "source-record-metadata-mismatch" in codes
+    assert "bibliography-confidence-low" in codes

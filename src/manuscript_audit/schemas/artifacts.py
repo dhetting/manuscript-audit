@@ -65,6 +65,23 @@ class SourceRecordSummary(BaseModel):
     insufficient_metadata_count: int
 
 
+class BibliographyConfidenceSummary(BaseModel):
+    total_entries: int
+    verified_entry_count: int
+    verified_direct_url_count: int
+    deterministic_canonical_link_count: int
+    manual_review_required_count: int
+    mismatch_entry_count: int
+    ambiguous_entry_count: int
+    lookup_not_found_count: int
+    provider_error_count: int
+    insufficient_metadata_count: int
+    confidence_score: int
+    confidence_level: Literal["high", "medium", "low", "critical"]
+    basis: Literal["deterministic_planning", "verified_source_records"]
+    rationale: list[str] = Field(default_factory=list)
+
+
 class RegistryMetadataRecord(BaseModel):
     title: str | None = None
     authors: list[str] = Field(default_factory=list)

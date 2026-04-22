@@ -16,6 +16,18 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
         for finding in report.agent_suite.all_findings:
             if finding.severity in {"fatal", "major"}:
                 priorities.append(f"Address {finding.code}: {finding.message}")
+    if report.bibliography_confidence_summary is not None:
+        confidence = report.bibliography_confidence_summary
+        if confidence.confidence_level == "critical":
+            priorities.append(
+                "Bibliography confidence is critical; resolve verification "
+                "blockers before submission."
+            )
+        elif confidence.confidence_level == "low":
+            priorities.append(
+                "Bibliography confidence is low; manual review is still required "
+                "for several entries."
+            )
     if report.source_verification_summary is not None:
         summary = report.source_verification_summary
         if summary.metadata_mismatch_count:
@@ -45,9 +57,7 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
     return report
 
 
-def synthesize_revision_report(
-    report: RevisionVerificationReport,
-) -> RevisionVerificationReport:
+def synthesize_revision_report(report: RevisionVerificationReport) -> RevisionVerificationReport:
     priorities: list[str] = []
     for item in report.new_findings:
         if item.severity in {"fatal", "major"}:
@@ -57,8 +67,7 @@ def synthesize_revision_report(
             priorities.append(f"Persistent issue remains {item.code}: {item.message}")
     if report.route_changed:
         priorities.append(
-            "Routing changed between manuscript versions; "
-            "review newly activated modules."
+            "Routing changed between manuscript versions; review newly activated modules."
         )
     if not priorities:
         priorities.append("No fatal or major issues remain after revision verification.")
@@ -70,6 +79,12 @@ def synthesize_source_record_verification_report(
     report: SourceRecordVerificationReport,
 ) -> SourceRecordVerificationReport:
     priorities: list[str] = []
+    if report.bibliography_confidence_summary is not None:
+        confidence = report.bibliography_confidence_summary
+        if confidence.confidence_level == "critical":
+            priorities.append("Bibliography confidence is critical after source verification.")
+        elif confidence.confidence_level == "low":
+            priorities.append("Bibliography confidence remains low after source verification.")
     for item in report.verifications:
         if item.status == "metadata_mismatch":
             priorities.append(
@@ -128,6 +143,30 @@ def _render_source_record_summary(report: FinalVettingReport) -> str:
     )
 
 
+def _render_bibliography_confidence_summary(report: FinalVettingReport) -> str:
+    if report.bibliography_confidence_summary is None:
+        return "## Bibliography confidence\n\nNo bibliography confidence summary was generated."
+    summary = report.bibliography_confidence_summary
+    lines = [
+        "## Bibliography confidence",
+        "",
+        f"- Basis: {summary.basis}",
+        f"- Confidence level: {summary.confidence_level}",
+        f"- Confidence score: {summary.confidence_score}",
+        f"- Manual review required: {summary.manual_review_required_count}",
+        f"- Metadata mismatches: {summary.mismatch_entry_count}",
+        f"- Ambiguous matches: {summary.ambiguous_entry_count}",
+        f"- Lookup not found: {summary.lookup_not_found_count}",
+        f"- Provider errors: {summary.provider_error_count}",
+        f"- Insufficient metadata: {summary.insufficient_metadata_count}",
+    ]
+    if summary.rationale:
+        lines.extend(["", "Rationale:"])
+        for item in summary.rationale:
+            lines.append(f"- {item}")
+    return "\n".join(lines)
+
+
 def _render_source_verification_summary(report: FinalVettingReport) -> str:
     if report.source_verification_summary is None:
         return "## Source verification\n\nNo source verification summary was generated in this run."
@@ -161,10 +200,8 @@ def _render_notation_summary(report: FinalVettingReport) -> str:
         "",
         f"- Equation symbols parsed: {summary.equation_symbol_count}",
         f"- Symbols with textual definition hints: {summary.defined_symbol_count}",
-        (
-            "- Undefined symbols: "
-            + (", ".join(summary.undefined_symbols) if summary.undefined_symbols else "none")
-        ),
+        "- Undefined symbols: "
+        + (", ".join(summary.undefined_symbols) if summary.undefined_symbols else "none"),
     ]
     return "\n".join(lines)
 
@@ -192,6 +229,7 @@ def render_markdown_report(report: FinalVettingReport) -> str:
         f"{_render_table('Module routing', report.module_routing.modules)}\n\n"
         f"{_render_table('Domain routing', report.domain_routing.domains)}\n\n"
         f"{_render_source_record_summary(report)}\n\n"
+        f"{_render_bibliography_confidence_summary(report)}\n\n"
         f"{_render_source_verification_summary(report)}\n\n"
         f"{_render_notation_summary(report)}\n\n"
         f"{_render_agent_results(report)}\n"
@@ -206,8 +244,8 @@ def render_revision_verification_report(report: RevisionVerificationReport) -> s
         else:
             for ref in refs:
                 lines.append(
-                    f"- [{ref.severity}] {ref.source_type}/{ref.source_name}/"
-                    f"{ref.code}: {ref.message}"
+                    f"- [{ref.severity}] {ref.source_type}/"
+                    f"{ref.source_name}/{ref.code}: {ref.message}"
                 )
         return "\n".join(lines)
 
@@ -225,9 +263,7 @@ def render_revision_verification_report(report: RevisionVerificationReport) -> s
     )
 
 
-def render_source_record_verification_report(
-    report: SourceRecordVerificationReport,
-) -> str:
+def render_source_record_verification_report(report: SourceRecordVerificationReport) -> str:
     priorities = "\n".join(f"- {item}" for item in report.revision_priorities)
     lines = [
         "# Source-of-record verification report",
@@ -242,20 +278,43 @@ def render_source_record_verification_report(
         "",
         priorities,
         "",
-        "## Verification summary",
-        "",
-        f"- Total records: {report.summary.total_records}",
-        f"- Verified: {report.summary.verified_count}",
-        f"- Verified direct URL: {report.summary.verified_direct_url_count}",
-        f"- Metadata mismatches: {report.summary.metadata_mismatch_count}",
-        f"- Ambiguous matches: {report.summary.ambiguous_match_count}",
-        f"- Lookup not found: {report.summary.lookup_not_found_count}",
-        f"- Provider errors: {report.summary.provider_error_count}",
-        f"- Skipped: {report.summary.skipped_count}",
-        "",
-        "## Issue counts",
+        "## Bibliography confidence",
         "",
     ]
+    if report.bibliography_confidence_summary is not None:
+        confidence = report.bibliography_confidence_summary
+        lines.extend(
+            [
+                f"- Basis: {confidence.basis}",
+                f"- Confidence level: {confidence.confidence_level}",
+                f"- Confidence score: {confidence.confidence_score}",
+                f"- Manual review required: {confidence.manual_review_required_count}",
+            ]
+        )
+        if confidence.rationale:
+            lines.extend(["", "Rationale:"])
+            for item in confidence.rationale:
+                lines.append(f"- {item}")
+    else:
+        lines.append("- No bibliography confidence summary generated.")
+    lines.extend(
+        [
+            "",
+            "## Verification summary",
+            "",
+            f"- Total records: {report.summary.total_records}",
+            f"- Verified: {report.summary.verified_count}",
+            f"- Verified direct URL: {report.summary.verified_direct_url_count}",
+            f"- Metadata mismatches: {report.summary.metadata_mismatch_count}",
+            f"- Ambiguous matches: {report.summary.ambiguous_match_count}",
+            f"- Lookup not found: {report.summary.lookup_not_found_count}",
+            f"- Provider errors: {report.summary.provider_error_count}",
+            f"- Skipped: {report.summary.skipped_count}",
+            "",
+            "## Issue counts",
+            "",
+        ]
+    )
     if report.summary.issue_type_counts:
         for issue, count in sorted(report.summary.issue_type_counts.items()):
             lines.append(f"- {issue}: {count}")

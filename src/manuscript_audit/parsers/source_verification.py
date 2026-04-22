@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Protocol
 
 from manuscript_audit.schemas.artifacts import (
+    BibliographyConfidenceSummary,
     BibliographyEntry,
     RegistryMetadataRecord,
     SourceRecord,
@@ -454,4 +455,150 @@ def summarize_source_record_verifications(
         provider_error_count=sum(item.status == "provider_error" for item in verifications),
         skipped_count=sum(item.status == "skipped" for item in verifications),
         issue_type_counts=issue_type_counts,
+    )
+
+
+def build_bibliography_confidence_summary(
+    source_records: list[SourceRecord],
+    verifications: list[SourceRecordVerification] | None = None,
+) -> BibliographyConfidenceSummary:
+    total_entries = len(source_records)
+    if verifications is None:
+        deterministic_canonical_link_count = sum(
+            item.status == "resolved_canonical_link" for item in source_records
+        )
+        ready_for_lookup_count = sum(item.status == "ready_for_lookup" for item in source_records)
+        insufficient_metadata_count = sum(
+            item.status == "insufficient_metadata" for item in source_records
+        )
+        manual_review_required_count = ready_for_lookup_count + insufficient_metadata_count
+        score = max(0, 100 - (ready_for_lookup_count * 8) - (insufficient_metadata_count * 15))
+        rationale: list[str] = []
+        if ready_for_lookup_count:
+            rationale.append(
+                f"{ready_for_lookup_count} entries still require external lookup verification."
+            )
+        if insufficient_metadata_count:
+            rationale.append(
+                f"{insufficient_metadata_count} entries lack enough metadata "
+                "for reliable verification."
+            )
+        if not rationale:
+            rationale.append(
+                "All bibliography entries resolve to deterministic canonical links "
+                "without external lookup planning."
+            )
+        if insufficient_metadata_count > 0 or score < 55:
+            level = "critical"
+        elif ready_for_lookup_count > 0 or score < 75:
+            level = "low"
+        elif score < 90:
+            level = "medium"
+        else:
+            level = "high"
+        return BibliographyConfidenceSummary(
+            total_entries=total_entries,
+            verified_entry_count=0,
+            verified_direct_url_count=0,
+            deterministic_canonical_link_count=deterministic_canonical_link_count,
+            manual_review_required_count=manual_review_required_count,
+            mismatch_entry_count=0,
+            ambiguous_entry_count=0,
+            lookup_not_found_count=0,
+            provider_error_count=0,
+            insufficient_metadata_count=insufficient_metadata_count,
+            confidence_score=score,
+            confidence_level=level,
+            basis="deterministic_planning",
+            rationale=rationale,
+        )
+
+    verified_entry_count = sum(item.status == "verified" for item in verifications)
+    verified_direct_url_count = sum(item.status == "verified_direct_url" for item in verifications)
+    mismatch_entry_count = sum(item.status == "metadata_mismatch" for item in verifications)
+    ambiguous_entry_count = sum(item.status == "ambiguous_match" for item in verifications)
+    lookup_not_found_count = sum(item.status == "lookup_not_found" for item in verifications)
+    provider_error_count = sum(item.status == "provider_error" for item in verifications)
+    insufficient_metadata_count = sum(item.status == "skipped" for item in verifications)
+    deterministic_canonical_link_count = sum(
+        item.status == "resolved_canonical_link" for item in source_records
+    )
+    manual_review_required_count = (
+        mismatch_entry_count
+        + ambiguous_entry_count
+        + lookup_not_found_count
+        + provider_error_count
+        + insufficient_metadata_count
+    )
+
+    score = 100
+    score -= mismatch_entry_count * 25
+    score -= ambiguous_entry_count * 18
+    score -= provider_error_count * 22
+    score -= lookup_not_found_count * 16
+    score -= insufficient_metadata_count * 12
+    score = max(0, score)
+
+    rationale: list[str] = []
+    if verified_entry_count or verified_direct_url_count:
+        rationale.append(
+            f"{verified_entry_count + verified_direct_url_count} entries have "
+            "verification evidence without manual intervention."
+        )
+    if mismatch_entry_count:
+        rationale.append(
+            f"{mismatch_entry_count} verified entries disagree with bibliography metadata."
+        )
+    if ambiguous_entry_count:
+        rationale.append(
+            f"{ambiguous_entry_count} entries need manual adjudication among "
+            "multiple registry candidates."
+        )
+    if lookup_not_found_count:
+        rationale.append(
+            f"{lookup_not_found_count} entries could not be matched to a source-of-record entry."
+        )
+    if provider_error_count:
+        rationale.append(
+            f"{provider_error_count} entries failed because the verification "
+            "provider returned errors."
+        )
+    if insufficient_metadata_count:
+        rationale.append(
+            f"{insufficient_metadata_count} entries still lack enough metadata "
+            "for meaningful verification."
+        )
+    if not rationale:
+        rationale.append(
+            "Bibliography verification did not surface any confidence-reducing issues."
+        )
+
+    if provider_error_count > 0 or mismatch_entry_count >= 2 or score < 40:
+        level = "critical"
+    elif (
+        mismatch_entry_count > 0
+        or manual_review_required_count > max(1, total_entries // 2)
+        or score < 65
+    ):
+        level = "low"
+    elif manual_review_required_count > 0 or score < 90:
+        level = "medium"
+    else:
+        level = "high"
+
+    return BibliographyConfidenceSummary(
+        total_entries=total_entries,
+        verified_entry_count=verified_entry_count,
+        verified_direct_url_count=verified_direct_url_count,
+        deterministic_canonical_link_count=deterministic_canonical_link_count,
+        manual_review_required_count=manual_review_required_count,
+        mismatch_entry_count=mismatch_entry_count,
+        ambiguous_entry_count=ambiguous_entry_count,
+        lookup_not_found_count=lookup_not_found_count,
+        provider_error_count=provider_error_count,
+        insufficient_metadata_count=insufficient_metadata_count,
+        confidence_score=score,
+        confidence_level=level,
+        basis="verified_source_records",
+        rationale=rationale,
     )

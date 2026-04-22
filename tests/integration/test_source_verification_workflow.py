@@ -20,6 +20,8 @@ def test_source_verification_workflow_writes_artifacts_and_report(tmp_path: Path
         registry_fixture_path=fixture_path,
     )
     assert report.summary.verified_count == 2
+    assert report.bibliography_confidence_summary is not None
+    assert report.bibliography_confidence_summary.confidence_level == "low"
     assert (output_dir / "parsed" / "source_record_verifications.json").exists()
     assert (output_dir / "reports" / "source_record_verification_report.md").exists()
 
@@ -27,6 +29,7 @@ def test_source_verification_workflow_writes_artifacts_and_report(tmp_path: Path
         (output_dir / "reports" / "source_record_verification_report.json").read_text()
     )
     assert payload["summary"]["metadata_mismatch_count"] == 1
+    assert payload["bibliography_confidence_summary"]["confidence_level"] == "low"
     assert payload["summary"]["ambiguous_match_count"] == 0
     assert payload["summary"]["provider_error_count"] == 0
 
@@ -51,8 +54,10 @@ def test_source_verification_workflow_reports_ambiguous_matches(tmp_path: Path) 
     )
 
     assert report.summary.ambiguous_match_count == 1
+    assert report.bibliography_confidence_summary is not None
     assert report.summary.issue_type_counts["multiple_candidate_matches"] == 1
     payload = json.loads(
         (output_dir / "reports" / "source_record_verification_report.json").read_text()
     )
     assert payload["summary"]["ambiguous_match_count"] == 1
+    assert payload["bibliography_confidence_summary"]["manual_review_required_count"] >= 1

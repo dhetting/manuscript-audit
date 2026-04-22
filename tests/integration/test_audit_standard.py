@@ -22,6 +22,7 @@ def test_standard_workflow_writes_module_findings_and_agent_records(tmp_path: Pa
     report_payload = json.loads((output_dir / "reports" / "final_vetting_report.json").read_text())
     assert report_payload["agent_suite"] is not None
     assert report_payload["source_record_summary"] is not None
+    assert report_payload["bibliography_confidence_summary"] is not None
     assert report_payload["notation_summary"] is not None
 
     connection = duckdb.connect(str(db_path))
@@ -48,9 +49,11 @@ def test_standard_workflow_integrates_source_verification(tmp_path: Path) -> Non
     assert report.source_verification_provider == "fixture_source_registry"
     assert (output_dir / "findings" / "source_record_verifications.json").exists()
     assert (output_dir / "findings" / "source_record_verification_summary.json").exists()
+    assert (output_dir / "findings" / "bibliography_confidence_summary.json").exists()
 
     payload = json.loads((output_dir / "reports" / "final_vetting_report.json").read_text())
     assert payload["source_verification_summary"]["metadata_mismatch_count"] == 1
+    assert payload["bibliography_confidence_summary"]["confidence_level"] == "low"
     assert payload["source_verification_provider"] == "fixture_source_registry"
     priorities = payload["revision_priorities"]
     assert any("metadata mismatches" in item.lower() for item in priorities)
@@ -60,6 +63,7 @@ def test_standard_workflow_integrates_source_verification(tmp_path: Path) -> Non
     )
     codes = {finding["code"] for finding in module_payload["findings"]}
     assert "source-record-metadata-mismatch" in codes
+    assert "bibliography-confidence-low" in codes
 
     connection = duckdb.connect(str(db_path))
     parsed_count = connection.execute(

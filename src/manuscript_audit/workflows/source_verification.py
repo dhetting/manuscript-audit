@@ -8,6 +8,7 @@ from manuscript_audit.config import DEFAULT_DB_PATH
 from manuscript_audit.parsers import (
     CrossrefSourceRegistryClient,
     FixtureSourceRegistryClient,
+    build_bibliography_confidence_summary,
     build_source_records,
     parse_bibtex,
     parse_manuscript,
@@ -59,6 +60,10 @@ def run_source_record_verification_workflow(
 
     verifications = verify_source_records(parsed.bibliography_entries, source_records, client)
     summary = summarize_source_record_verifications(verifications)
+    bibliography_confidence_summary = build_bibliography_confidence_summary(
+        source_records,
+        verifications,
+    )
 
     run_id = _run_id()
     report = synthesize_source_record_verification_report(
@@ -68,6 +73,7 @@ def run_source_record_verification_workflow(
             verification_provider=provider_name,
             verifications=verifications,
             summary=summary,
+            bibliography_confidence_summary=bibliography_confidence_summary,
         )
     )
 
@@ -75,6 +81,7 @@ def run_source_record_verification_workflow(
     write_json(parsed_dir / "source_records.json", source_records)
     write_json(parsed_dir / "source_record_verifications.json", verifications)
     write_json(parsed_dir / "source_record_verification_summary.json", summary)
+    write_json(parsed_dir / "bibliography_confidence_summary.json", bibliography_confidence_summary)
     write_json(reports_dir / "source_record_verification_report.json", report)
     (reports_dir / "source_record_verification_report.md").write_text(
         render_source_record_verification_report(report),
@@ -90,6 +97,11 @@ def run_source_record_verification_workflow(
         run_id,
         "source_record_verification_summary",
         summary,
+    )
+    store.record_parsed_artifact(
+        run_id,
+        "bibliography_confidence_summary",
+        bibliography_confidence_summary,
     )
     store.record_report(run_id, "source_record_verification_report", report)
     store.close()

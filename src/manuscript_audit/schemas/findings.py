@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from manuscript_audit.schemas.artifacts import (
+    BibliographyConfidenceSummary,
     NotationSummary,
     SourceRecordSummary,
     SourceRecordVerification,
@@ -100,6 +101,7 @@ class SourceRecordVerificationReport(BaseModel):
     verification_provider: str
     verifications: list[SourceRecordVerification] = Field(default_factory=list)
     summary: SourceRecordVerificationSummary
+    bibliography_confidence_summary: BibliographyConfidenceSummary | None = None
     revision_priorities: list[str] = Field(default_factory=list)
 
 
@@ -112,6 +114,7 @@ class FinalVettingReport(BaseModel):
     validation_suite: ValidationSuiteResult
     agent_suite: AgentSuiteResult | None = None
     source_record_summary: SourceRecordSummary | None = None
+    bibliography_confidence_summary: BibliographyConfidenceSummary | None = None
     source_verification_provider: str | None = None
     source_verification_summary: SourceRecordVerificationSummary | None = None
     notation_summary: NotationSummary | None = None

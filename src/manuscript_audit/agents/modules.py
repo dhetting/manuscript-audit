@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import re
 
-from manuscript_audit.schemas.artifacts import ParsedManuscript, SourceRecordVerification
+from manuscript_audit.schemas.artifacts import (
+    BibliographyConfidenceSummary,
+    ParsedManuscript,
+    SourceRecordVerification,
+)
 from manuscript_audit.schemas.findings import AgentModuleResult, Finding, ValidationSuiteResult
 from manuscript_audit.schemas.routing import ApplicabilityDecision, ManuscriptClassification
 
@@ -39,12 +43,14 @@ class BaseHeuristicAgent:
         validation_suite: ValidationSuiteResult,
         applicability: ApplicabilityDecision,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> AgentModuleResult:
         findings = self._build_findings(
             parsed,
             classification,
             validation_suite,
             source_verifications=source_verifications,
+            bibliography_confidence_summary=bibliography_confidence_summary,
         )
         summary = self._build_summary(findings, applicability)
         return AgentModuleResult(
@@ -60,6 +66,7 @@ class BaseHeuristicAgent:
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         return []
 
@@ -85,6 +92,7 @@ class StructureContributionAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         if len(parsed.abstract.split()) < 30:
@@ -124,6 +132,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         if not parsed.bibliography_entries:
             return [
@@ -137,6 +146,34 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                 )
             ]
         findings: list[Finding] = []
+        if bibliography_confidence_summary is not None:
+            if bibliography_confidence_summary.confidence_level == "critical":
+                findings.append(
+                    Finding(
+                        code="bibliography-confidence-critical",
+                        severity="major",
+                        message=(
+                            "Bibliography confidence is critical after source verification; "
+                            "resolve mismatches, provider failures, or missing "
+                            "metadata before submission."
+                        ),
+                        validator=self.name,
+                        evidence=bibliography_confidence_summary.rationale,
+                    )
+                )
+            elif bibliography_confidence_summary.confidence_level == "low":
+                findings.append(
+                    Finding(
+                        code="bibliography-confidence-low",
+                        severity="moderate",
+                        message=(
+                            "Bibliography confidence is low after source verification; "
+                            "manual review is still needed for multiple entries."
+                        ),
+                        validator=self.name,
+                        evidence=bibliography_confidence_summary.rationale,
+                    )
+                )
         if not source_verifications:
             return findings
         for item in source_verifications:
@@ -208,6 +245,7 @@ class StatisticalValidityAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         full_text = parsed.full_text.lower()
@@ -254,6 +292,7 @@ class ResultsConsistencyAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         results_section = next(
@@ -294,6 +333,7 @@ class ReproducibilityAuditAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         if REPO_RE.search(parsed.full_text) is None:
@@ -321,6 +361,7 @@ class AIRiskAuditAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         matches = sorted(dict.fromkeys(AI_RISK_RE.findall(parsed.full_text)))
