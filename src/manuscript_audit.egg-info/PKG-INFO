@@ -2,7 +2,7 @@ Metadata-Version: 2.4
 Name: manuscript-audit
 Version: 0.1.0
 Summary: Local, reproducible manuscript audit framework with explicit routing and deterministic validation.
-Requires-Python: >=3.13
+Requires-Python: <3.14,>=3.13
 Description-Content-Type: text/markdown
 Requires-Dist: duckdb<2,>=1.5.0
 Requires-Dist: pydantic<3,>=2.12.0
@@ -16,30 +16,24 @@ Requires-Dist: ruff<0.16,>=0.15.0; extra == "dev"
 
 Local, Pixi-managed manuscript audit framework for statistical manuscripts.
 
-## Current MVP slice
+## Current implemented slices
 
-This bootstrap implements a minimal end-to-end path that can:
+The project currently supports:
 
-- ingest a markdown manuscript fixture,
-- parse sections and citation mentions,
-- classify the manuscript pathway and paper type,
-- persist module and domain routing decisions,
-- run deterministic validators,
-- write structured JSON/YAML/Markdown artifacts,
-- store run metadata in DuckDB.
+- deterministic parsing for Markdown and LaTeX manuscripts,
+- companion BibTeX parsing,
+- explicit manuscript classification and routing,
+- deterministic validation with structured artifacts,
+- a routed standard audit stack with persisted per-module outputs,
+- revision verification with structured resolved, persistent, and new findings,
+- local DuckDB storage for run, routing, validator, agent, revision, and report artifacts.
 
 ## Quickstart
 
 ```bash
-pixi run test
 pixi run lint
-pixi run audit-core examples/software_equivalence_manuscript.md --output-dir data/outputs/demo
-```
-
-If Pixi is unavailable, the underlying commands are:
-
-```bash
-ruff check .
-python -m pytest tests/unit -q
-PYTHONPATH=src python -m manuscript_audit.cli audit-core examples/software_equivalence_manuscript.md --output-dir data/outputs/demo --db-path data/working/demo.duckdb
+pixi run test
+pixi run audit-core examples/software_equivalence_manuscript.md --output-dir data/outputs/core-demo
+pixi run audit-standard examples/software_equivalence_manuscript.md --output-dir data/outputs/standard-demo
+pixi run verify-revision tests/fixtures/manuscripts/revision_old.md tests/fixtures/manuscripts/revision_new.md --output-dir data/outputs/revision-demo
 ```
