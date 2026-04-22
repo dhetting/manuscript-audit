@@ -6,6 +6,7 @@ from manuscript_audit.validators import run_deterministic_validators
 from manuscript_audit.validators.core import (
     validate_citation_bibliography_alignment,
     validate_duplicate_bibliography_entries,
+    validate_orphaned_figure_table_definitions,
 )
 
 
@@ -42,3 +43,11 @@ def test_citation_bibliography_alignment_detects_missing_and_unused_entries() ->
     codes = {finding.code for finding in result.findings}
     assert "missing-bibliography-entry-for-citation" in codes
     assert "uncited-bibliography-entry" in codes
+
+
+def test_orphaned_figure_table_definitions_are_detected() -> None:
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/orphaned_figures.md"))
+    result = validate_orphaned_figure_table_definitions(parsed)
+    codes = {finding.code for finding in result.findings}
+    assert "orphaned-figure-definition" in codes
+    assert "orphaned-table-definition" in codes

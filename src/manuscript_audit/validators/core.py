@@ -228,46 +228,87 @@ def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> Valida
     )
 
 
-def validate_citation_bibliography_alignment(parsed: ParsedManuscript) -> ValidationResult:
+def _extract_non_definition_numeric_mentions(parsed: ParsedManuscript, kind: str) -> set[str]:
+    if kind not in {"figure", "table"}:
+        return set()
+    pattern = re.compile(rf"\b{kind.title()}\s+(\d+)\b", re.IGNORECASE)
+    definition_pattern = re.compile(rf"^{kind.title()}\s+\d+\s*[:.-]", re.IGNORECASE)
+    labels: set[str] = set()
+    for line in parsed.full_text.splitlines():
+        stripped = line.strip()
+        if definition_pattern.match(stripped):
+            continue
+        for match in pattern.finditer(stripped):
+            labels.add(match.group(1))
+    return labels
+
+
+def validate_orphaned_figure_table_definitions(parsed: ParsedManuscript) -> ValidationResult:
     findings: list[Finding] = []
-    bibliography_keys = {entry.key for entry in parsed.bibliography_entries if entry.key}
-    if parsed.citation_keys and not bibliography_keys and parsed.reference_section_present:
+    figure_labels = _extract_non_definition_numeric_mentions(parsed, "figure")
+    figure_defs = {
+        NUMERIC_LABEL_RE.search(label).group(0)
+        for label in parsed.figure_definitions
+        if NUMERIC_LABEL_RE.search(label)
+    }
+    orphaned_figures = sorted(figure_defs - figure_labels)
+    for label in orphaned_figures:
         findings.append(
             Finding(
-                code="no-citable-bibliography-keys",
-                severity="major",
-                message=(
-                    "Citations are present, but no structured bibliography keys were available "
-                    "for alignment checking."
-                ),
-                validator="citation_bibliography_alignment",
+                code="orphaned-figure-definition",
+                severity="minor",
+                message=f"Figure {label} has a parsed definition/caption but is never referenced.",
+                validator="orphaned_figure_table_definitions",
+                evidence=[label],
             )
         )
-    if parsed.citation_keys and bibliography_keys:
-        missing_entries = sorted(set(parsed.citation_keys) - bibliography_keys)
-        for key in missing_entries:
-            findings.append(
-                Finding(
-                    code="missing-bibliography-entry-for-citation",
-                    severity="major",
-                    message=f"Citation key '{key}' is used but no bibliography entry was found.",
-                    validator="citation_bibliography_alignment",
-                    evidence=[key],
-                )
+    table_labels = _extract_non_definition_numeric_mentions(parsed, "table")
+    table_defs = {
+        NUMERIC_LABEL_RE.search(label).group(0)
+        for label in parsed.table_definitions
+        if NUMERIC_LABEL_RE.search(label)
+    }
+    orphaned_tables = sorted(table_defs - table_labels)
+    for label in orphaned_tables:
+        findings.append(
+            Finding(
+                code="orphaned-table-definition",
+                severity="minor",
+                message=f"Table {label} has a parsed definition but is never referenced.",
+                validator="orphaned_figure_table_definitions",
+                evidence=[label],
             )
-        unused_entries = sorted(bibliography_keys - set(parsed.citation_keys))
-        for key in unused_entries:
-            findings.append(
-                Finding(
-                    code="uncited-bibliography-entry",
-                    severity="minor",
-                    message=(
-                        f"Bibliography entry '{key}' is present but not cited in the manuscript."
-                    ),
-                    validator="citation_bibliography_alignment",
-                    evidence=[key],
-                )
+        )
+    return ValidationResult(
+        validator_name="orphaned_figure_table_definitions",
+        findings=findings,
+    )
+
+
+def validate_citation_bibliography_alignment(parsed: ParsedManuscript) -> ValidationResult:
+    bibliography_keys = {entry.key for entry in parsed.bibliography_entries if entry.key}
+    cited_keys = set(parsed.citation_keys)
+    findings: list[Finding] = []
+    for key in sorted(cited_keys - bibliography_keys):
+        findings.append(
+            Finding(
+                code="missing-bibliography-entry-for-citation",
+                severity="major",
+                message=f"Citation key '{key}' has no matching bibliography entry.",
+                validator="citation_bibliography_alignment",
+                evidence=[key],
             )
+        )
+    for key in sorted(bibliography_keys - cited_keys):
+        findings.append(
+            Finding(
+                code="uncited-bibliography-entry",
+                severity="minor",
+                message=f"Bibliography entry '{key}' is present but not cited in the manuscript.",
+                validator="citation_bibliography_alignment",
+                evidence=[key],
+            )
+        )
     return ValidationResult(
         validator_name="citation_bibliography_alignment",
         findings=findings,
@@ -351,6 +392,66 @@ def validate_bibliography_doi_format(parsed: ParsedManuscript) -> ValidationResu
     )
 
 
+def validate_bibliography_venue_metadata(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    for entry in parsed.bibliography_entries:
+        if entry.source != "bibtex" or not entry.entry_type:
+            continue
+        label = entry.key or entry.raw_text[:40]
+        if entry.entry_type == "article" and not entry.journal:
+            findings.append(
+                Finding(
+                    code="missing-bibliography-venue",
+                    severity="moderate",
+                    message=f"Bibliography entry '{label}' is missing a journal field.",
+                    validator="bibliography_venue_metadata",
+                    evidence=["journal"],
+                )
+            )
+        if entry.entry_type in {"inproceedings", "incollection"} and not entry.booktitle:
+            findings.append(
+                Finding(
+                    code="missing-bibliography-venue",
+                    severity="moderate",
+                    message=f"Bibliography entry '{label}' is missing a booktitle field.",
+                    validator="bibliography_venue_metadata",
+                    evidence=["booktitle"],
+                )
+            )
+    return ValidationResult(
+        validator_name="bibliography_venue_metadata",
+        findings=findings,
+    )
+
+
+def validate_bibliography_source_identifiers(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    for entry in parsed.bibliography_entries:
+        if entry.source != "bibtex" or not entry.entry_type:
+            continue
+        if entry.entry_type not in {"article", "inproceedings", "incollection", "book"}:
+            continue
+        if entry.doi or entry.url:
+            continue
+        label = entry.key or entry.raw_text[:40]
+        findings.append(
+            Finding(
+                code="missing-bibliography-source-identifier",
+                severity="minor",
+                message=(
+                    f"Bibliography entry '{label}' has neither a DOI nor a URL field for "
+                    "source-of-record follow-up."
+                ),
+                validator="bibliography_source_identifiers",
+                evidence=[entry.entry_type],
+            )
+        )
+    return ValidationResult(
+        validator_name="bibliography_source_identifiers",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -362,9 +463,12 @@ def run_deterministic_validators(
         validate_reference_coverage(parsed),
         validate_duplicate_bibliography_entries(parsed),
         validate_figure_table_reference_coverage(parsed),
+        validate_orphaned_figure_table_definitions(parsed),
         validate_citation_bibliography_alignment(parsed),
         validate_bibliography_metadata_completeness(parsed),
         validate_bibliography_year_format(parsed),
         validate_bibliography_doi_format(parsed),
+        validate_bibliography_venue_metadata(parsed),
+        validate_bibliography_source_identifiers(parsed),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

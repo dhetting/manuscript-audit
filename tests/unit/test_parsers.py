@@ -8,6 +8,8 @@ def test_parse_bibtex_extracts_structured_entries() -> None:
     assert len(entries) == 2
     assert entries[0].key == "schuirmann1987"
     assert entries[0].title == "A comparison of the two one-sided tests procedure"
+    assert entries[0].journal == "Journal of Pharmacokinetics and Biopharmaceutics"
+    assert entries[0].doi == "10.1007/BF01068419"
 
 
 def test_parse_latex_manuscript_extracts_sections_and_citations() -> None:

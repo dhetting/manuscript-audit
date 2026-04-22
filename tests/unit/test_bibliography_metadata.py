@@ -20,3 +20,5 @@ def test_bibliography_metadata_validators_detect_incomplete_and_malformed_entrie
     assert "incomplete-bibliography-metadata" in codes
     assert "invalid-bibliography-year" in codes
     assert "invalid-bibliography-doi" in codes
+    assert "missing-bibliography-venue" in codes
+    assert "missing-bibliography-source-identifier" in codes
