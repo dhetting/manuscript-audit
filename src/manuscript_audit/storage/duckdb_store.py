@@ -36,6 +36,10 @@ class DuckDBRunStore:
                 "(run_id TEXT, validator_name TEXT, payload_json TEXT)"
             ),
             (
+                "CREATE TABLE IF NOT EXISTS agent_findings "
+                "(run_id TEXT, module_name TEXT, payload_json TEXT)"
+            ),
+            (
                 "CREATE TABLE IF NOT EXISTS report_artifacts "
                 "(run_id TEXT, report_type TEXT, payload_json TEXT)"
             ),
@@ -85,6 +89,12 @@ class DuckDBRunStore:
         self.connection.execute(
             "INSERT INTO validator_findings VALUES (?, ?, ?)",
             [run_id, validator_name, self._serialize(payload)],
+        )
+
+    def record_agent_result(self, run_id: str, module_name: str, payload: Any) -> None:
+        self.connection.execute(
+            "INSERT INTO agent_findings VALUES (?, ?, ?)",
+            [run_id, module_name, self._serialize(payload)],
         )
 
     def record_report(self, run_id: str, report_type: str, payload: Any) -> None:

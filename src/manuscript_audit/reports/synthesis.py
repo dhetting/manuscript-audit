@@ -8,8 +8,12 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
     for finding in report.validation_suite.all_findings:
         if finding.severity in {"fatal", "major"}:
             priorities.append(f"Address {finding.code}: {finding.message}")
+    if report.agent_suite is not None:
+        for finding in report.agent_suite.all_findings:
+            if finding.severity in {"fatal", "major"}:
+                priorities.append(f"Address {finding.code}: {finding.message}")
     if not priorities:
-        priorities.append("No fatal or major deterministic findings in the MVP suite.")
+        priorities.append("No fatal or major findings in the current audit stack.")
     report.revision_priorities = priorities
     return report
 
@@ -22,10 +26,33 @@ def _render_table(title: str, entries: list) -> str:
     return "\n".join(lines)
 
 
+def _render_agent_results(report: FinalVettingReport) -> str:
+    if report.agent_suite is None:
+        return "## Routed module execution\n\nNo routed agent modules were executed in this run."
+    lines = ["## Routed module execution", ""]
+    for result in report.agent_suite.results:
+        lines.append(f"### {result.module_name}")
+        lines.append("")
+        lines.append(result.summary)
+        lines.append("")
+        if result.findings:
+            for finding in result.findings:
+                lines.append(f"- [{finding.severity}] {finding.code}: {finding.message}")
+        else:
+            lines.append("- No structured findings.")
+        lines.append("")
+    return "\n".join(lines).strip()
+
+
 def render_markdown_report(report: FinalVettingReport) -> str:
-    counts = report.validation_suite.severity_counts
-    counts_text = ", ".join(f"{key}: {value}" for key, value in sorted(counts.items()))
-    counts_text = counts_text or "no findings"
+    validator_counts = report.validation_suite.severity_counts
+    validator_text = ", ".join(f"{key}: {value}" for key, value in sorted(validator_counts.items()))
+    validator_text = validator_text or "no findings"
+    agent_text = "not run"
+    if report.agent_suite is not None:
+        agent_counts = report.agent_suite.severity_counts
+        agent_text = ", ".join(f"{key}: {value}" for key, value in sorted(agent_counts.items()))
+        agent_text = agent_text or "no findings"
     priorities = "\n".join(f"- {item}" for item in report.revision_priorities)
     return (
         f"# Final vetting report\n\n"
@@ -34,8 +61,10 @@ def render_markdown_report(report: FinalVettingReport) -> str:
         f"**Pathway:** {report.classification.pathway}\n\n"
         f"**Paper type:** {report.classification.paper_type}\n\n"
         f"**Recommended stack:** {report.classification.recommended_stack}\n\n"
-        f"**Deterministic findings:** {counts_text}\n\n"
+        f"**Deterministic findings:** {validator_text}\n\n"
+        f"**Routed module findings:** {agent_text}\n\n"
         f"## Revision priorities\n\n{priorities}\n\n"
         f"{_render_table('Module routing', report.module_routing.modules)}\n\n"
-        f"{_render_table('Domain routing', report.domain_routing.domains)}\n"
+        f"{_render_table('Domain routing', report.domain_routing.domains)}\n\n"
+        f"{_render_agent_results(report)}\n"
     )

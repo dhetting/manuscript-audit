@@ -44,6 +44,29 @@ class ValidationSuiteResult(BaseModel):
         return dict(Counter(finding.severity for finding in self.all_findings))
 
 
+class AgentModuleResult(BaseModel):
+    module_name: str
+    agent_name: str
+    summary: str
+    findings: list[Finding] = Field(default_factory=list)
+
+
+class AgentSuiteResult(BaseModel):
+    agent_version: str
+    results: list[AgentModuleResult] = Field(default_factory=list)
+
+    @property
+    def all_findings(self) -> list[Finding]:
+        findings: list[Finding] = []
+        for result in self.results:
+            findings.extend(result.findings)
+        return findings
+
+    @property
+    def severity_counts(self) -> dict[str, int]:
+        return dict(Counter(finding.severity for finding in self.all_findings))
+
+
 class FinalVettingReport(BaseModel):
     run_id: str
     manuscript_id: str
@@ -51,4 +74,5 @@ class FinalVettingReport(BaseModel):
     module_routing: ModuleRoutingTable
     domain_routing: DomainRoutingTable
     validation_suite: ValidationSuiteResult
+    agent_suite: AgentSuiteResult | None = None
     revision_priorities: list[str] = Field(default_factory=list)

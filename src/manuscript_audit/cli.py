@@ -61,6 +61,18 @@ def audit_core_command(
     typer.echo(f"Completed run {report.run_id} for {report.manuscript_id}")
 
 
+@app.command("audit-standard")
+def audit_standard_command(
+    manuscript_path: Path,
+    output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
+    db_path: str = typer.Option("data/working/run_store.duckdb", "--db-path"),
+) -> None:
+    from manuscript_audit.workflows import run_standard_audit_workflow
+
+    report = run_standard_audit_workflow(manuscript_path, output_dir=output_dir, db_path=db_path)
+    typer.echo(f"Completed standard run {report.run_id} for {report.manuscript_id}")
+
+
 def main() -> None:
     app()
 

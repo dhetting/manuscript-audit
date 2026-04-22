@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+from manuscript_audit.agents.modules import (
+    AIRiskAuditAgent,
+    BibliographyMetadataAgent,
+    ReproducibilityAuditAgent,
+    ResultsConsistencyAgent,
+    StatisticalValidityAgent,
+    StructureContributionAgent,
+    StubRoutedAgent,
+)
+from manuscript_audit.schemas.artifacts import ParsedManuscript
+from manuscript_audit.schemas.findings import AgentSuiteResult, ValidationSuiteResult
+from manuscript_audit.schemas.routing import ManuscriptClassification, ModuleRoutingTable
+
+AGENT_VERSION = "agents-mvp-v1"
+
+
+def _agent_for_module(module_name: str):
+    registry = {
+        "structure_contribution_and_fit": StructureContributionAgent(),
+        "bibliography_metadata_validation": BibliographyMetadataAgent(),
+        "statistical_validity_and_assumptions": StatisticalValidityAgent(),
+        "results_figures_tables_consistency": ResultsConsistencyAgent(),
+        "reproducibility_and_computational_audit": ReproducibilityAuditAgent(),
+        "ai_generated_manuscript_risk_audit": AIRiskAuditAgent(),
+    }
+    return registry.get(module_name, StubRoutedAgent(module_name))
+
+
+def run_routed_agents(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+    validation_suite: ValidationSuiteResult,
+    module_routing: ModuleRoutingTable,
+) -> AgentSuiteResult:
+    results = []
+    for applicability in module_routing.modules:
+        if not applicability.applicable:
+            continue
+        agent = _agent_for_module(applicability.name)
+        results.append(
+            agent.run(
+                parsed=parsed,
+                classification=classification,
+                validation_suite=validation_suite,
+                applicability=applicability,
+            )
+        )
+    return AgentSuiteResult(agent_version=AGENT_VERSION, results=results)

@@ -1,6 +1,8 @@
 from manuscript_audit.schemas.artifacts import BibliographyEntry as BibliographyEntry
 from manuscript_audit.schemas.artifacts import ParsedManuscript as ParsedManuscript
 from manuscript_audit.schemas.artifacts import Section as Section
+from manuscript_audit.schemas.findings import AgentModuleResult as AgentModuleResult
+from manuscript_audit.schemas.findings import AgentSuiteResult as AgentSuiteResult
 from manuscript_audit.schemas.findings import FinalVettingReport as FinalVettingReport
 from manuscript_audit.schemas.findings import Finding as Finding
 from manuscript_audit.schemas.findings import ValidationResult as ValidationResult
@@ -11,6 +13,8 @@ from manuscript_audit.schemas.routing import ManuscriptClassification as Manuscr
 from manuscript_audit.schemas.routing import ModuleRoutingTable as ModuleRoutingTable
 
 __all__ = [
+    "AgentModuleResult",
+    "AgentSuiteResult",
     "ApplicabilityDecision",
     "BibliographyEntry",
     "DomainRoutingTable",

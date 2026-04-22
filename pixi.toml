@@ -24,3 +24,4 @@ parse = { cmd = "python -m manuscript_audit.cli parse", env = { PYTHONPATH = "sr
 route = { cmd = "python -m manuscript_audit.cli route", env = { PYTHONPATH = "src" } }
 validate = { cmd = "python -m manuscript_audit.cli validate", env = { PYTHONPATH = "src" } }
 audit-core = { cmd = "python -m manuscript_audit.cli audit-core", env = { PYTHONPATH = "src" } }
+audit-standard = { cmd = "python -m manuscript_audit.cli audit-standard", env = { PYTHONPATH = "src" } }

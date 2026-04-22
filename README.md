@@ -2,24 +2,22 @@
 
 Local, Pixi-managed manuscript audit framework for statistical manuscripts.
 
-## Current deterministic MVP slice
+## Current implemented slices
 
-This build implements a stronger deterministic front end that can:
+The project currently supports:
 
-- ingest markdown and LaTeX manuscript fixtures,
-- parse sections and citation mentions,
-- parse BibTeX reference files into structured bibliography entries,
-- classify the manuscript pathway and paper type,
-- persist module and domain routing decisions,
-- run deterministic validators,
-- write structured JSON/YAML/Markdown artifacts,
-- store run metadata in DuckDB.
+- deterministic parsing for Markdown and LaTeX manuscripts,
+- companion BibTeX parsing,
+- explicit manuscript classification and routing,
+- deterministic validation with structured artifacts,
+- a routed standard audit stack with persisted per-module outputs,
+- local DuckDB storage for run, routing, validator, agent, and report artifacts.
 
-## Implemented deterministic validators
+## Quickstart
 
-- required section presence
-- unresolved placeholders
-- citation-density heuristic
-- reference-section coverage
-- duplicate bibliography key detection
-- figure/table reference coverage
+```bash
+pixi run lint
+pixi run test
+pixi run audit-core examples/software_equivalence_manuscript.md --output-dir data/outputs/core-demo
+pixi run audit-standard examples/software_equivalence_manuscript.md --output-dir data/outputs/standard-demo
+```
