@@ -3,14 +3,17 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript, Section
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 BRACKET_CITATION_RE = re.compile(r"\[@([^\]]+)\]")
 LATEX_CITATION_RE = re.compile(r"\\cite[t|p]?\{([^}]+)\}")
 FIGURE_RE = re.compile(r"\bFigure\s+\d+\b", re.IGNORECASE)
 TABLE_RE = re.compile(r"\bTable\s+\d+\b", re.IGNORECASE)
+FIGURE_DEF_RE = re.compile(r"^Figure\s+\d+\s*[:.-]", re.IGNORECASE)
+TABLE_DEF_RE = re.compile(r"^Table\s+\d+\s*[:.-]", re.IGNORECASE)
 EQUATION_RE = re.compile(r"\$\$(.*?)\$\$", re.DOTALL)
+YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
 
 
 def _slugify(value: str) -> str:
@@ -44,6 +47,25 @@ def _extract_citation_keys(text: str) -> list[str]:
     return sorted(dict.fromkeys(keys))
 
 
+def _extract_markdown_bibliography_entries(reference_body: str) -> list[BibliographyEntry]:
+    entries: list[BibliographyEntry] = []
+    for line in reference_body.splitlines():
+        if not line.strip().startswith("-"):
+            continue
+        raw_text = line.strip().lstrip("-").strip()
+        year_match = YEAR_RE.search(raw_text)
+        title = raw_text.split(".", maxsplit=2)[1].strip() if raw_text.count(".") >= 2 else None
+        entries.append(
+            BibliographyEntry(
+                raw_text=raw_text,
+                title=title,
+                year=year_match.group(0) if year_match else None,
+                source="markdown_reference_list",
+            )
+        )
+    return entries
+
+
 def parse_markdown_manuscript(path: str | Path) -> ParsedManuscript:
     file_path = Path(path)
     raw_text = file_path.read_text(encoding="utf-8")
@@ -64,11 +86,9 @@ def parse_markdown_manuscript(path: str | Path) -> ParsedManuscript:
     )
     bibliography_entries = []
     if reference_section:
-        bibliography_entries = [
-            line.strip("- ").strip()
-            for line in reference_section.body.splitlines()
-            if line.strip().startswith("-")
-        ]
+        bibliography_entries = _extract_markdown_bibliography_entries(reference_section.body)
+    figure_definitions = [line.strip() for line in lines if FIGURE_DEF_RE.match(line.strip())]
+    table_definitions = [line.strip() for line in lines if TABLE_DEF_RE.match(line.strip())]
     return ParsedManuscript(
         manuscript_id=_slugify(title),
         source_path=str(file_path),
@@ -80,6 +100,8 @@ def parse_markdown_manuscript(path: str | Path) -> ParsedManuscript:
         citation_keys=_extract_citation_keys(raw_text),
         figure_mentions=sorted(dict.fromkeys(FIGURE_RE.findall(raw_text))),
         table_mentions=sorted(dict.fromkeys(TABLE_RE.findall(raw_text))),
+        figure_definitions=figure_definitions,
+        table_definitions=table_definitions,
         equation_blocks=[match.strip() for match in EQUATION_RE.findall(raw_text)],
         reference_section_present=reference_section is not None,
         bibliography_entries=bibliography_entries,

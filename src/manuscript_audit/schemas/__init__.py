@@ -1,3 +1,4 @@
+from manuscript_audit.schemas.artifacts import BibliographyEntry as BibliographyEntry
 from manuscript_audit.schemas.artifacts import ParsedManuscript as ParsedManuscript
 from manuscript_audit.schemas.artifacts import Section as Section
 from manuscript_audit.schemas.findings import FinalVettingReport as FinalVettingReport
@@ -11,6 +12,7 @@ from manuscript_audit.schemas.routing import ModuleRoutingTable as ModuleRouting
 
 __all__ = [
     "ApplicabilityDecision",
+    "BibliographyEntry",
     "DomainRoutingTable",
     "FinalVettingReport",
     "Finding",

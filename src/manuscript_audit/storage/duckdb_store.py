@@ -43,8 +43,18 @@ class DuckDBRunStore:
         for statement in statements:
             self.connection.execute(statement)
 
+    def _normalize_payload(self, payload: BaseModel | dict[str, Any] | list[Any]) -> Any:
+        if isinstance(payload, BaseModel):
+            return payload.model_dump(mode="json")
+        if isinstance(payload, list):
+            return [
+                item.model_dump(mode="json") if isinstance(item, BaseModel) else item
+                for item in payload
+            ]
+        return payload
+
     def _serialize(self, payload: BaseModel | dict[str, Any] | list[Any]) -> str:
-        data = payload.model_dump(mode="json") if isinstance(payload, BaseModel) else payload
+        data = self._normalize_payload(payload)
         return json.dumps(data, sort_keys=True)
 
     def record_run(

@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+SECTION_RE = re.compile(r"\\(section|subsection|subsubsection)\{([^}]+)\}")
+TITLE_RE = re.compile(r"\\title\{([^}]+)\}")
+ABSTRACT_RE = re.compile(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", re.DOTALL)
+CITE_RE = re.compile(r"\\cite[t|p]?\{([^}]+)\}")
+FIGURE_RE = re.compile(r"\\ref\{fig:[^}]+\}|\bFigure\s+\d+\b", re.IGNORECASE)
+TABLE_RE = re.compile(r"\\ref\{tab:[^}]+\}|\bTable\s+\d+\b", re.IGNORECASE)
+FIGURE_DEF_RE = re.compile(r"\\caption\{([^}]+)\}")
+BIB_RE = re.compile(r"\\bibliography\{([^}]+)\}")
+EQUATION_RE = re.compile(r"\\begin\{equation\}(.*?)\\end\{equation\}", re.DOTALL)
+
+
+def _slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug or "manuscript"
+
+
+def _extract_sections(text: str) -> list[Section]:
+    matches = list(SECTION_RE.finditer(text))
+    sections: list[Section] = []
+    level_map = {"section": 1, "subsection": 2, "subsubsection": 3}
+    for i, match in enumerate(matches):
+        start = match.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        section_kind, title = match.groups()
+        body = text[start:end].strip()
+        start_line = text[: match.start()].count("\n") + 1
+        sections.append(
+            Section(
+                title=title.strip(),
+                level=level_map[section_kind],
+                body=body,
+                start_line=start_line,
+            )
+        )
+    return sections
+
+
+def parse_latex_manuscript(path: str | Path) -> ParsedManuscript:
+    file_path = Path(path)
+    raw_text = file_path.read_text(encoding="utf-8")
+    sections = _extract_sections(raw_text)
+    title_match = TITLE_RE.search(raw_text)
+    title = title_match.group(1).strip() if title_match else file_path.stem
+    abstract_match = ABSTRACT_RE.search(raw_text)
+    abstract = abstract_match.group(1).strip() if abstract_match else ""
+    citation_keys: list[str] = []
+    for raw_match in CITE_RE.findall(raw_text):
+        citation_keys.extend(piece.strip() for piece in raw_match.split(",") if piece.strip())
+    bibliography_present = BIB_RE.search(raw_text) is not None or any(
+        section.title.lower() in {"references", "bibliography"} for section in sections
+    )
+    figure_definitions = [caption.strip() for caption in FIGURE_DEF_RE.findall(raw_text)]
+    return ParsedManuscript(
+        manuscript_id=_slugify(title),
+        source_path=str(file_path),
+        source_format="latex",
+        title=title,
+        abstract=abstract,
+        sections=sections,
+        full_text=raw_text,
+        citation_keys=sorted(dict.fromkeys(citation_keys)),
+        figure_mentions=sorted(dict.fromkeys(FIGURE_RE.findall(raw_text))),
+        table_mentions=sorted(dict.fromkeys(TABLE_RE.findall(raw_text))),
+        figure_definitions=figure_definitions,
+        table_definitions=[],
+        equation_blocks=[match.strip() for match in EQUATION_RE.findall(raw_text)],
+        reference_section_present=bibliography_present,
+        bibliography_entries=[],
+    )

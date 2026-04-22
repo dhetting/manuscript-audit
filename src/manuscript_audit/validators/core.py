@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 from manuscript_audit.config import DEFAULT_VALIDATOR_VERSION
-from manuscript_audit.schemas.artifacts import ParsedManuscript
+from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
 from manuscript_audit.schemas.findings import Finding, ValidationResult, ValidationSuiteResult
 from manuscript_audit.schemas.routing import ManuscriptClassification
 
@@ -12,20 +12,10 @@ PLACEHOLDER_RE = re.compile(
     re.IGNORECASE,
 )
 CLAIM_LANGUAGE_RE = re.compile(
-    (
-        r"\b("
-        r"prove(?:s|d)?|"
-        r"demonstrat(?:e|es|ed|ing)|"
-        r"show(?:s|ed|ing)?|"
-        r"improv(?:e|es|ed|ing)|"
-        r"equivalen(?:t|ce)|"
-        r"outperform(?:s|ed|ing)?|"
-        r"significant(?:ly)?|"
-        r"claim(?:s|ed|ing)?"
-        r")\b"
-    ),
+    r"\b(prove|proves|demonstrate|demonstrates|show|shows|improve|improves|equivalent|equivalence|outperform|outperforms|significant)\b",
     re.IGNORECASE,
 )
+NUMERIC_LABEL_RE = re.compile(r"\d+")
 
 
 def validate_required_sections(
@@ -116,6 +106,85 @@ def validate_reference_coverage(parsed: ParsedManuscript) -> ValidationResult:
     return ValidationResult(validator_name="reference_coverage", findings=findings)
 
 
+def _duplicate_bibliography_keys(entries: list[BibliographyEntry]) -> list[str]:
+    counts: dict[str, int] = {}
+    for entry in entries:
+        if entry.key is None:
+            continue
+        counts[entry.key] = counts.get(entry.key, 0) + 1
+    return sorted(key for key, count in counts.items() if count > 1)
+
+
+def validate_duplicate_bibliography_entries(parsed: ParsedManuscript) -> ValidationResult:
+    duplicates = _duplicate_bibliography_keys(parsed.bibliography_entries)
+    findings = [
+        Finding(
+            code="duplicate-bibliography-key",
+            severity="major",
+            message=f"Duplicate bibliography key detected: {key}.",
+            validator="duplicate_bibliography_entries",
+            evidence=[key],
+        )
+        for key in duplicates
+    ]
+    return ValidationResult(
+        validator_name="duplicate_bibliography_entries",
+        findings=findings,
+    )
+
+
+def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    figure_labels = {
+        NUMERIC_LABEL_RE.search(label).group(0)
+        for label in parsed.figure_mentions
+        if NUMERIC_LABEL_RE.search(label)
+    }
+    figure_defs = {
+        NUMERIC_LABEL_RE.search(label).group(0)
+        for label in parsed.figure_definitions
+        if NUMERIC_LABEL_RE.search(label)
+    }
+    missing_figures = sorted(figure_labels - figure_defs)
+    for label in missing_figures:
+        findings.append(
+            Finding(
+                code="missing-figure-definition",
+                severity="moderate",
+                message=(
+                    f"Figure {label} is referenced but no figure definition/caption was parsed."
+                ),
+                validator="figure_table_reference_coverage",
+                evidence=[label],
+            )
+        )
+    table_labels = {
+        NUMERIC_LABEL_RE.search(label).group(0)
+        for label in parsed.table_mentions
+        if NUMERIC_LABEL_RE.search(label)
+    }
+    table_defs = {
+        NUMERIC_LABEL_RE.search(label).group(0)
+        for label in parsed.table_definitions
+        if NUMERIC_LABEL_RE.search(label)
+    }
+    missing_tables = sorted(table_labels - table_defs)
+    for label in missing_tables:
+        findings.append(
+            Finding(
+                code="missing-table-definition",
+                severity="moderate",
+                message=f"Table {label} is referenced but no table definition was parsed.",
+                validator="figure_table_reference_coverage",
+                evidence=[label],
+            )
+        )
+    return ValidationResult(
+        validator_name="figure_table_reference_coverage",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -125,5 +194,7 @@ def run_deterministic_validators(
         validate_unresolved_placeholders(parsed),
         validate_citation_density(parsed),
         validate_reference_coverage(parsed),
+        validate_duplicate_bibliography_entries(parsed),
+        validate_figure_table_reference_coverage(parsed),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
