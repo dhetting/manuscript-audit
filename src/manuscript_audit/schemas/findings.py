@@ -112,5 +112,7 @@ class FinalVettingReport(BaseModel):
     validation_suite: ValidationSuiteResult
     agent_suite: AgentSuiteResult | None = None
     source_record_summary: SourceRecordSummary | None = None
+    source_verification_provider: str | None = None
+    source_verification_summary: SourceRecordVerificationSummary | None = None
     notation_summary: NotationSummary | None = None
     revision_priorities: list[str] = Field(default_factory=list)

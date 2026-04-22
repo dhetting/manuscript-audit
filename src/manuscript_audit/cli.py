@@ -105,10 +105,27 @@ def audit_standard_command(
     manuscript_path: Path,
     output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
     db_path: str = typer.Option("data/working/run_store.duckdb", "--db-path"),
+    source_verification_provider: Literal["fixture", "crossref"] | None = typer.Option(
+        None,
+        "--source-verification-provider",
+    ),
+    registry_fixture: Path | None = typer.Option(None, "--registry-fixture"),
+    mailto: str | None = typer.Option(None, "--mailto"),
 ) -> None:
     from manuscript_audit.workflows import run_standard_audit_workflow
 
-    report = run_standard_audit_workflow(manuscript_path, output_dir=output_dir, db_path=db_path)
+    if source_verification_provider == "fixture" and registry_fixture is None:
+        raise typer.BadParameter(
+            "--registry-fixture is required when --source-verification-provider fixture"
+        )
+    report = run_standard_audit_workflow(
+        manuscript_path,
+        output_dir=output_dir,
+        db_path=db_path,
+        source_verification_provider=source_verification_provider,
+        registry_fixture_path=registry_fixture,
+        mailto=mailto,
+    )
     typer.echo(f"Completed standard run {report.run_id} for {report.manuscript_id}")
 
 

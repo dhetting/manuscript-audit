@@ -16,23 +16,31 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
         for finding in report.agent_suite.all_findings:
             if finding.severity in {"fatal", "major"}:
                 priorities.append(f"Address {finding.code}: {finding.message}")
-    if report.source_record_summary is not None:
-        if report.source_record_summary.insufficient_metadata_count > 0:
+    if report.source_verification_summary is not None:
+        summary = report.source_verification_summary
+        if summary.metadata_mismatch_count:
             priorities.append(
-                "Some bibliography entries still lack enough metadata for deterministic "
-                "source-of-record planning."
+                "Resolve bibliography metadata mismatches against source-of-record verification."
             )
-        if report.source_record_summary.ready_for_lookup_count > 0:
+        if summary.ambiguous_match_count:
             priorities.append(
-                "Some bibliography entries still need source-of-record lookup resolution."
+                "Adjudicate ambiguous source-record matches before final bibliography review."
+            )
+        if summary.provider_error_count:
+            priorities.append(
+                "Rerun source verification after provider errors are resolved or retried."
+            )
+        if summary.lookup_not_found_count:
+            priorities.append(
+                "Investigate bibliography entries that could not be matched to a source record."
             )
     if report.notation_summary is not None and report.notation_summary.undefined_symbols:
         priorities.append(
-            "Some equation symbols appear without obvious textual definitions; review the "
-            "notation ledger."
+            "Some equation symbols appear without obvious textual definitions; "
+            "review the notation ledger."
         )
     if not priorities:
-        priorities.append("No fatal or major findings in the current audit stack.")
+        priorities.append("No fatal or major deterministic findings in the current audit stack.")
     report.revision_priorities = priorities
     return report
 
@@ -41,23 +49,19 @@ def synthesize_revision_report(
     report: RevisionVerificationReport,
 ) -> RevisionVerificationReport:
     priorities: list[str] = []
-    for finding in report.persistent_findings:
-        if finding.severity in {"fatal", "major", "moderate"}:
-            priorities.append(
-                f"Persistent {finding.source_type} finding {finding.code}: {finding.message}"
-            )
-    for finding in report.new_findings:
-        if finding.severity in {"fatal", "major", "moderate"}:
-            priorities.append(
-                f"New {finding.source_type} finding {finding.code}: {finding.message}"
-            )
+    for item in report.new_findings:
+        if item.severity in {"fatal", "major"}:
+            priorities.append(f"Address new finding {item.code}: {item.message}")
+    for item in report.persistent_findings:
+        if item.severity in {"fatal", "major"}:
+            priorities.append(f"Persistent issue remains {item.code}: {item.message}")
     if report.route_changed:
-        priorities.insert(
-            0,
-            "Routing changed between revisions; review scope may need to expand.",
+        priorities.append(
+            "Routing changed between manuscript versions; "
+            "review newly activated modules."
         )
     if not priorities:
-        priorities.append("No persistent or new moderate-or-worse findings were detected.")
+        priorities.append("No fatal or major issues remain after revision verification.")
     report.revision_priorities = priorities
     return report
 
@@ -66,32 +70,21 @@ def synthesize_source_record_verification_report(
     report: SourceRecordVerificationReport,
 ) -> SourceRecordVerificationReport:
     priorities: list[str] = []
-    if report.summary.metadata_mismatch_count > 0:
-        priorities.append(
-            "Some bibliography entries disagree with the matched source-of-record metadata."
-        )
-    if report.summary.ambiguous_match_count > 0:
-        priorities.append(
-            "Some metadata-query lookups returned multiple plausible registry candidates and "
-            "need human adjudication."
-        )
-    if report.summary.lookup_not_found_count > 0:
-        priorities.append(
-            "Some bibliography entries could not be verified against the selected registry."
-        )
-    if report.summary.provider_error_count > 0:
-        priorities.append(
-            "Some registry lookups failed because the selected provider returned an error."
-        )
-    if report.summary.skipped_count > 0:
-        priorities.append(
-            "Some bibliography entries were skipped because deterministic source metadata "
-            "was insufficient."
-        )
+    for item in report.verifications:
+        if item.status == "metadata_mismatch":
+            priorities.append(
+                f"Resolve metadata mismatch for bibliography entry {item.entry_label}."
+            )
+        elif item.status == "ambiguous_match":
+            priorities.append(
+                f"Manually adjudicate ambiguous registry candidates for {item.entry_label}."
+            )
+        elif item.status == "provider_error":
+            priorities.append(
+                f"Retry registry lookup or inspect provider failure for {item.entry_label}."
+            )
     if not priorities:
-        priorities.append(
-            "All verifiable bibliography entries matched the selected source registry."
-        )
+        priorities.append("No source-record verification issues require escalation.")
     report.revision_priorities = priorities
     return report
 
@@ -135,6 +128,30 @@ def _render_source_record_summary(report: FinalVettingReport) -> str:
     )
 
 
+def _render_source_verification_summary(report: FinalVettingReport) -> str:
+    if report.source_verification_summary is None:
+        return "## Source verification\n\nNo source verification summary was generated in this run."
+    summary = report.source_verification_summary
+    provider = report.source_verification_provider or "unknown"
+    lines = [
+        "## Source verification",
+        "",
+        f"- Provider: {provider}",
+        f"- Verified: {summary.verified_count}",
+        f"- Verified direct URL: {summary.verified_direct_url_count}",
+        f"- Metadata mismatches: {summary.metadata_mismatch_count}",
+        f"- Ambiguous matches: {summary.ambiguous_match_count}",
+        f"- Lookup not found: {summary.lookup_not_found_count}",
+        f"- Provider errors: {summary.provider_error_count}",
+        f"- Skipped: {summary.skipped_count}",
+    ]
+    if summary.issue_type_counts:
+        lines.extend(["", "Issue counts:"])
+        for issue, count in sorted(summary.issue_type_counts.items()):
+            lines.append(f"- {issue}: {count}")
+    return "\n".join(lines)
+
+
 def _render_notation_summary(report: FinalVettingReport) -> str:
     if report.notation_summary is None:
         return "## Notation coverage\n\nNo notation summary was generated."
@@ -175,6 +192,7 @@ def render_markdown_report(report: FinalVettingReport) -> str:
         f"{_render_table('Module routing', report.module_routing.modules)}\n\n"
         f"{_render_table('Domain routing', report.domain_routing.domains)}\n\n"
         f"{_render_source_record_summary(report)}\n\n"
+        f"{_render_source_verification_summary(report)}\n\n"
         f"{_render_notation_summary(report)}\n\n"
         f"{_render_agent_results(report)}\n"
     )

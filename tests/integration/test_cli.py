@@ -44,6 +44,30 @@ def test_audit_standard_cli_command(tmp_path: Path) -> None:
     assert (output_dir / "findings" / "modules" / "bibliography_metadata_validation.json").exists()
 
 
+def test_audit_standard_cli_command_with_source_verification(tmp_path: Path) -> None:
+    runner = CliRunner()
+    output_dir = tmp_path / "cli_standard_verify_run"
+    db_path = tmp_path / "cli_standard_verify.duckdb"
+    result = runner.invoke(
+        app,
+        [
+            "audit-standard",
+            "tests/fixtures/manuscripts/bibliography_metadata.tex",
+            "--output-dir",
+            str(output_dir),
+            "--db-path",
+            str(db_path),
+            "--source-verification-provider",
+            "fixture",
+            "--registry-fixture",
+            "tests/fixtures/registries/source_registry_fixture.json",
+        ],
+    )
+    assert result.exit_code == 0
+    assert (output_dir / "findings" / "source_record_verifications.json").exists()
+    assert (output_dir / "reports" / "final_vetting_report.json").exists()
+
+
 def test_verify_revision_cli_command(tmp_path: Path) -> None:
     runner = CliRunner()
     output_dir = tmp_path / "cli_revision_run"

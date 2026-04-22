@@ -9,7 +9,7 @@ from manuscript_audit.agents.modules import (
     StructureContributionAgent,
     StubRoutedAgent,
 )
-from manuscript_audit.schemas.artifacts import ParsedManuscript
+from manuscript_audit.schemas.artifacts import ParsedManuscript, SourceRecordVerification
 from manuscript_audit.schemas.findings import AgentSuiteResult, ValidationSuiteResult
 from manuscript_audit.schemas.routing import ManuscriptClassification, ModuleRoutingTable
 
@@ -33,6 +33,7 @@ def run_routed_agents(
     classification: ManuscriptClassification,
     validation_suite: ValidationSuiteResult,
     module_routing: ModuleRoutingTable,
+    source_verifications: list[SourceRecordVerification] | None = None,
 ) -> AgentSuiteResult:
     results = []
     for applicability in module_routing.modules:
@@ -45,6 +46,7 @@ def run_routed_agents(
                 classification=classification,
                 validation_suite=validation_suite,
                 applicability=applicability,
+                source_verifications=source_verifications,
             )
         )
     return AgentSuiteResult(agent_version=AGENT_VERSION, results=results)

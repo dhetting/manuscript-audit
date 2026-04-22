@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from manuscript_audit.schemas.artifacts import ParsedManuscript
+from manuscript_audit.schemas.artifacts import ParsedManuscript, SourceRecordVerification
 from manuscript_audit.schemas.findings import AgentModuleResult, Finding, ValidationSuiteResult
 from manuscript_audit.schemas.routing import ApplicabilityDecision, ManuscriptClassification
 
@@ -38,8 +38,14 @@ class BaseHeuristicAgent:
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
         applicability: ApplicabilityDecision,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> AgentModuleResult:
-        findings = self._build_findings(parsed, classification, validation_suite)
+        findings = self._build_findings(
+            parsed,
+            classification,
+            validation_suite,
+            source_verifications=source_verifications,
+        )
         summary = self._build_summary(findings, applicability)
         return AgentModuleResult(
             module_name=self.module_name,
@@ -53,6 +59,7 @@ class BaseHeuristicAgent:
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         return []
 
@@ -77,6 +84,7 @@ class StructureContributionAgent(BaseHeuristicAgent):
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         if len(parsed.abstract.split()) < 30:
@@ -115,6 +123,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         if not parsed.bibliography_entries:
             return [
@@ -127,7 +136,66 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                     validator=self.name,
                 )
             ]
-        return []
+        findings: list[Finding] = []
+        if not source_verifications:
+            return findings
+        for item in source_verifications:
+            if item.status == "metadata_mismatch":
+                findings.append(
+                    Finding(
+                        code="source-record-metadata-mismatch",
+                        severity="major",
+                        message=(
+                            "Verified source metadata did not match bibliography "
+                            f"entry {item.entry_label}."
+                        ),
+                        validator=self.name,
+                        location=item.entry_label,
+                        evidence=item.issues,
+                    )
+                )
+            elif item.status == "ambiguous_match":
+                findings.append(
+                    Finding(
+                        code="source-record-ambiguous-match",
+                        severity="moderate",
+                        message=(
+                            f"Multiple plausible source records were found for {item.entry_label}."
+                        ),
+                        validator=self.name,
+                        location=item.entry_label,
+                        evidence=item.issues,
+                    )
+                )
+            elif item.status == "lookup_not_found":
+                findings.append(
+                    Finding(
+                        code="source-record-not-found",
+                        severity="moderate",
+                        message=(
+                            "No source-of-record match was found for bibliography "
+                            f"entry {item.entry_label}."
+                        ),
+                        validator=self.name,
+                        location=item.entry_label,
+                        evidence=item.issues,
+                    )
+                )
+            elif item.status == "provider_error":
+                findings.append(
+                    Finding(
+                        code="source-record-provider-error",
+                        severity="major",
+                        message=(
+                            "Source verification provider failed while checking "
+                            f"{item.entry_label}."
+                        ),
+                        validator=self.name,
+                        location=item.entry_label,
+                        evidence=item.issues,
+                    )
+                )
+        return findings
 
 
 class StatisticalValidityAgent(BaseHeuristicAgent):
@@ -139,6 +207,7 @@ class StatisticalValidityAgent(BaseHeuristicAgent):
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         full_text = parsed.full_text.lower()
@@ -184,6 +253,7 @@ class ResultsConsistencyAgent(BaseHeuristicAgent):
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         results_section = next(
@@ -223,6 +293,7 @@ class ReproducibilityAuditAgent(BaseHeuristicAgent):
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         if REPO_RE.search(parsed.full_text) is None:
@@ -249,6 +320,7 @@ class AIRiskAuditAgent(BaseHeuristicAgent):
         parsed: ParsedManuscript,
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
     ) -> list[Finding]:
         findings: list[Finding] = []
         matches = sorted(dict.fromkeys(AI_RISK_RE.findall(parsed.full_text)))

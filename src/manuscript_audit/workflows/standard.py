@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Literal
 
 from manuscript_audit.agents import run_routed_agents
 from manuscript_audit.config import DEFAULT_DB_PATH
 from manuscript_audit.parsers import (
+    CrossrefSourceRegistryClient,
+    FixtureSourceRegistryClient,
     build_source_record_candidates,
     build_source_records,
     extract_notation_summary,
     parse_bibtex,
     parse_manuscript,
+    summarize_source_record_verifications,
     summarize_source_records,
+    verify_source_records,
 )
 from manuscript_audit.reports import render_markdown_report, synthesize_report
 from manuscript_audit.routing import build_routing_tables
@@ -19,6 +24,8 @@ from manuscript_audit.schemas.findings import FinalVettingReport
 from manuscript_audit.storage import DuckDBRunStore
 from manuscript_audit.utils.io import ensure_dir, write_json, write_yaml
 from manuscript_audit.validators import run_deterministic_validators
+
+SourceVerificationProvider = Literal["fixture", "crossref"]
 
 
 def _run_id() -> str:
@@ -43,10 +50,28 @@ def _render_module_markdown(module_result) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _build_source_registry_client(
+    provider: SourceVerificationProvider,
+    registry_fixture_path: str | Path | None,
+    mailto: str | None,
+):
+    if provider == "fixture":
+        if registry_fixture_path is None:
+            raise ValueError("registry_fixture_path is required for fixture verification")
+        return (
+            FixtureSourceRegistryClient.from_json(registry_fixture_path),
+            "fixture_source_registry",
+        )
+    return CrossrefSourceRegistryClient(mailto=mailto), "crossref_rest_api"
+
+
 def run_standard_audit_workflow(
     manuscript_path: str | Path,
     output_dir: str | Path,
     db_path: str | Path = DEFAULT_DB_PATH,
+    source_verification_provider: SourceVerificationProvider | None = None,
+    registry_fixture_path: str | Path | None = None,
+    mailto: str | None = None,
 ) -> FinalVettingReport:
     output_path = Path(output_dir)
     parsed_dir = ensure_dir(output_path / "parsed")
@@ -61,9 +86,30 @@ def run_standard_audit_workflow(
     source_records = build_source_records(parsed.bibliography_entries)
     source_record_summary = summarize_source_records(source_records)
     notation_summary = extract_notation_summary(parsed)
+    source_verifications = None
+    source_verification_summary = None
+    source_verification_provider_name = None
+    if source_verification_provider is not None:
+        client, source_verification_provider_name = _build_source_registry_client(
+            source_verification_provider,
+            registry_fixture_path,
+            mailto,
+        )
+        source_verifications = verify_source_records(
+            parsed.bibliography_entries,
+            source_records,
+            client,
+        )
+        source_verification_summary = summarize_source_record_verifications(source_verifications)
     classification, module_routing, domain_routing = build_routing_tables(parsed)
     validation_suite = run_deterministic_validators(parsed, classification)
-    agent_suite = run_routed_agents(parsed, classification, validation_suite, module_routing)
+    agent_suite = run_routed_agents(
+        parsed,
+        classification,
+        validation_suite,
+        module_routing,
+        source_verifications=source_verifications,
+    )
 
     run_id = _run_id()
     report = synthesize_report(
@@ -76,6 +122,8 @@ def run_standard_audit_workflow(
             validation_suite=validation_suite,
             agent_suite=agent_suite,
             source_record_summary=source_record_summary,
+            source_verification_provider=source_verification_provider_name,
+            source_verification_summary=source_verification_summary,
             notation_summary=notation_summary,
         )
     )
@@ -86,6 +134,12 @@ def run_standard_audit_workflow(
     write_json(parsed_dir / "source_records.json", source_records)
     write_json(parsed_dir / "source_record_summary.json", source_record_summary)
     write_json(parsed_dir / "notation_summary.json", notation_summary)
+    if source_verifications is not None and source_verification_summary is not None:
+        write_json(findings_dir / "source_record_verifications.json", source_verifications)
+        write_json(
+            findings_dir / "source_record_verification_summary.json",
+            source_verification_summary,
+        )
     write_json(parsed_dir / "classification.json", classification)
     write_yaml(routing_dir / "module_routing.yaml", module_routing)
     write_yaml(routing_dir / "domain_routing.yaml", domain_routing)
@@ -110,6 +164,13 @@ def run_standard_audit_workflow(
     store.record_parsed_artifact(run_id, "source_record_candidates", source_record_candidates)
     store.record_parsed_artifact(run_id, "source_records", source_records)
     store.record_parsed_artifact(run_id, "source_record_summary", source_record_summary)
+    if source_verifications is not None and source_verification_summary is not None:
+        store.record_parsed_artifact(run_id, "source_record_verifications", source_verifications)
+        store.record_parsed_artifact(
+            run_id,
+            "source_record_verification_summary",
+            source_verification_summary,
+        )
     store.record_parsed_artifact(run_id, "notation_summary", notation_summary)
     store.record_parsed_artifact(run_id, "classification", classification)
     store.record_routing_decision(run_id, "module_routing", module_routing)
