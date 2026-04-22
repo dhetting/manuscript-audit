@@ -1,0 +1,12 @@
+{
+  "paper_type": "software_workflow_paper",
+  "pathway": "data_science",
+  "recommended_stack": "maximal",
+  "revision_priorities": [
+    "No fatal or major findings in the current audit stack."
+  ],
+  "validator_severity_counts": {
+    "minor": 1,
+    "moderate": 2
+  }
+}

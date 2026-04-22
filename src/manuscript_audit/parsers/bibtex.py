@@ -6,7 +6,7 @@ from pathlib import Path
 from manuscript_audit.schemas.artifacts import BibliographyEntry
 
 ENTRY_RE = re.compile(r"@(\w+)\s*\{\s*([^,]+)\s*,(.*?)\n\}\s*", re.DOTALL)
-FIELD_RE = re.compile(r"(\w+)\s*=\s*[\{\"](.*?)[\}\"]\s*(?:,|$)", re.DOTALL)
+FIELD_RE = re.compile(r'(\w+)\s*=\s*[\{"](.*?)[\}"]\s*(?:,|$)', re.DOTALL)
 
 
 def parse_bibtex(path: str | Path) -> list[BibliographyEntry]:
@@ -28,6 +28,8 @@ def parse_bibtex(path: str | Path) -> list[BibliographyEntry]:
                 title=fields.get("title"),
                 authors=authors,
                 year=fields.get("year"),
+                journal=fields.get("journal") or fields.get("booktitle"),
+                doi=fields.get("doi"),
                 source="bibtex",
             )
         )

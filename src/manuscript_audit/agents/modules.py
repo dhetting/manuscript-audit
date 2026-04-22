@@ -116,9 +116,8 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
         classification: ManuscriptClassification,
         validation_suite: ValidationSuiteResult,
     ) -> list[Finding]:
-        findings: list[Finding] = []
         if not parsed.bibliography_entries:
-            findings.append(
+            return [
                 Finding(
                     code="no-structured-bibliography-entries",
                     severity="major",
@@ -127,31 +126,8 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                     ),
                     validator=self.name,
                 )
-            )
-            return findings
-        for entry in parsed.bibliography_entries:
-            missing_fields: list[str] = []
-            if not entry.title:
-                missing_fields.append("title")
-            if not entry.year:
-                missing_fields.append("year")
-            if not entry.authors:
-                missing_fields.append("authors")
-            if missing_fields:
-                label = entry.key or entry.raw_text[:40]
-                findings.append(
-                    Finding(
-                        code="incomplete-bibliography-metadata",
-                        severity="moderate",
-                        message=(
-                            f"Bibliography entry '{label}' is missing metadata fields: "
-                            f"{', '.join(missing_fields)}."
-                        ),
-                        validator=self.name,
-                        evidence=missing_fields,
-                    )
-                )
-        return findings
+            ]
+        return []
 
 
 class StatisticalValidityAgent(BaseHeuristicAgent):

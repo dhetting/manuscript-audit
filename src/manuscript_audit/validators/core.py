@@ -19,6 +19,8 @@ CLAIM_LANGUAGE_RE = re.compile(
     re.IGNORECASE,
 )
 NUMERIC_LABEL_RE = re.compile(r"\d+")
+YEAR_RE = re.compile(r"^(19|20)\d{2}$")
+DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$", re.IGNORECASE)
 
 
 def validate_required_sections(
@@ -26,7 +28,9 @@ def validate_required_sections(
     classification: ManuscriptClassification,
 ) -> ValidationResult:
     titles = {section.title.lower() for section in parsed.sections}
-    required = {"abstract", "introduction", "references"}
+    has_abstract = bool(parsed.abstract.strip()) or "abstract" in titles
+    has_references = parsed.reference_section_present or "references" in titles
+    required = {"introduction"}
     findings: list[Finding] = []
     if classification.paper_type == "theory_paper":
         required.add("discussion")
@@ -41,6 +45,26 @@ def validate_required_sections(
             )
     else:
         required.update({"methods", "results", "discussion"})
+    if not has_abstract:
+        findings.append(
+            Finding(
+                code="missing-required-section",
+                severity="major",
+                message="Missing required section: abstract.",
+                validator="required_sections",
+                location="abstract",
+            )
+        )
+    if not has_references:
+        findings.append(
+            Finding(
+                code="missing-required-section",
+                severity="major",
+                message="Missing required section: references.",
+                validator="required_sections",
+                location="references",
+            )
+        )
     for section in sorted(required):
         if section not in titles:
             findings.append(
@@ -78,7 +102,7 @@ def validate_citation_density(parsed: ParsedManuscript) -> ValidationResult:
         if section.title.lower() in {"references", "bibliography"}:
             continue
         word_count = len(section.body.split())
-        has_citation = "[@" in section.body or "\\cite" in section.body
+        has_citation = "[@" in section.body or r"\cite" in section.body
         makes_claim = CLAIM_LANGUAGE_RE.search(section.body) is not None
         if word_count >= 20 and makes_claim and not has_citation:
             findings.append(
@@ -103,6 +127,22 @@ def validate_reference_coverage(parsed: ParsedManuscript) -> ValidationResult:
                 code="missing-references-section",
                 severity="major",
                 message="Citations are present but no references section was detected.",
+                validator="reference_coverage",
+            )
+        )
+    if (
+        parsed.citation_keys
+        and parsed.reference_section_present
+        and not parsed.bibliography_entries
+    ):
+        findings.append(
+            Finding(
+                code="references-section-without-structured-entries",
+                severity="major",
+                message=(
+                    "A references section or bibliography command was detected, but no "
+                    "structured bibliography entries were parsed."
+                ),
                 validator="reference_coverage",
             )
         )
@@ -191,6 +231,18 @@ def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> Valida
 def validate_citation_bibliography_alignment(parsed: ParsedManuscript) -> ValidationResult:
     findings: list[Finding] = []
     bibliography_keys = {entry.key for entry in parsed.bibliography_entries if entry.key}
+    if parsed.citation_keys and not bibliography_keys and parsed.reference_section_present:
+        findings.append(
+            Finding(
+                code="no-citable-bibliography-keys",
+                severity="major",
+                message=(
+                    "Citations are present, but no structured bibliography keys were available "
+                    "for alignment checking."
+                ),
+                validator="citation_bibliography_alignment",
+            )
+        )
     if parsed.citation_keys and bibliography_keys:
         missing_entries = sorted(set(parsed.citation_keys) - bibliography_keys)
         for key in missing_entries:
@@ -222,6 +274,83 @@ def validate_citation_bibliography_alignment(parsed: ParsedManuscript) -> Valida
     )
 
 
+def validate_bibliography_metadata_completeness(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    for entry in parsed.bibliography_entries:
+        missing_fields: list[str] = []
+        if entry.key is None:
+            missing_fields.append("key")
+        if not entry.title:
+            missing_fields.append("title")
+        if not entry.year:
+            missing_fields.append("year")
+        if not entry.authors:
+            missing_fields.append("authors")
+        if missing_fields:
+            label = entry.key or entry.raw_text[:40]
+            findings.append(
+                Finding(
+                    code="incomplete-bibliography-metadata",
+                    severity="moderate",
+                    message=(
+                        f"Bibliography entry '{label}' is missing metadata fields: "
+                        f"{', '.join(missing_fields)}."
+                    ),
+                    validator="bibliography_metadata_completeness",
+                    evidence=missing_fields,
+                )
+            )
+    return ValidationResult(
+        validator_name="bibliography_metadata_completeness",
+        findings=findings,
+    )
+
+
+def validate_bibliography_year_format(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    for entry in parsed.bibliography_entries:
+        if entry.year and YEAR_RE.fullmatch(entry.year) is None:
+            label = entry.key or entry.raw_text[:40]
+            findings.append(
+                Finding(
+                    code="invalid-bibliography-year",
+                    severity="moderate",
+                    message=(
+                        f"Bibliography entry '{label}' has a non-standard year value "
+                        f"'{entry.year}'."
+                    ),
+                    validator="bibliography_year_format",
+                    evidence=[entry.year],
+                )
+            )
+    return ValidationResult(
+        validator_name="bibliography_year_format",
+        findings=findings,
+    )
+
+
+def validate_bibliography_doi_format(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    for entry in parsed.bibliography_entries:
+        if entry.doi and DOI_RE.fullmatch(entry.doi) is None:
+            label = entry.key or entry.raw_text[:40]
+            findings.append(
+                Finding(
+                    code="invalid-bibliography-doi",
+                    severity="moderate",
+                    message=(
+                        f"Bibliography entry '{label}' has a malformed DOI value '{entry.doi}'."
+                    ),
+                    validator="bibliography_doi_format",
+                    evidence=[entry.doi],
+                )
+            )
+    return ValidationResult(
+        validator_name="bibliography_doi_format",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -234,5 +363,8 @@ def run_deterministic_validators(
         validate_duplicate_bibliography_entries(parsed),
         validate_figure_table_reference_coverage(parsed),
         validate_citation_bibliography_alignment(parsed),
+        validate_bibliography_metadata_completeness(parsed),
+        validate_bibliography_year_format(parsed),
+        validate_bibliography_doi_format(parsed),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

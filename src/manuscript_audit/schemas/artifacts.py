@@ -19,6 +19,8 @@ class BibliographyEntry(BaseModel):
     title: str | None = None
     authors: list[str] = Field(default_factory=list)
     year: str | None = None
+    journal: str | None = None
+    doi: str | None = None
     source: Literal["markdown_reference_list", "bibtex"]
 
 
