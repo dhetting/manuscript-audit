@@ -176,20 +176,44 @@ def validate_duplicate_bibliography_entries(parsed: ParsedManuscript) -> Validat
     )
 
 
+def _normalize_label(label: str) -> str:
+    numeric = NUMERIC_LABEL_RE.search(label)
+    if numeric is not None:
+        return numeric.group(0)
+    return label.strip()
+
+
+def _extract_non_definition_labels(parsed: ParsedManuscript, kind: str) -> set[str]:
+    if kind not in {"figure", "table", "equation"}:
+        return set()
+    if parsed.source_format == "latex":
+        mapping = {
+            "figure": parsed.figure_mentions,
+            "table": parsed.table_mentions,
+            "equation": parsed.equation_mentions,
+        }
+        return {_normalize_label(label) for label in mapping[kind]}
+    pattern = re.compile(rf"\b{kind.title()}\s+(\d+)\b", re.IGNORECASE)
+    definition_pattern = re.compile(rf"^{kind.title()}\s+\d+\s*[:.-]", re.IGNORECASE)
+    labels: set[str] = set()
+    for line in parsed.full_text.splitlines():
+        stripped = line.strip()
+        if definition_pattern.match(stripped):
+            continue
+        for match in pattern.finditer(stripped):
+            labels.add(match.group(1))
+    return labels
+
+
+def _definition_labels(labels: list[str]) -> set[str]:
+    return {_normalize_label(label) for label in labels}
+
+
 def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> ValidationResult:
     findings: list[Finding] = []
-    figure_labels = {
-        NUMERIC_LABEL_RE.search(label).group(0)
-        for label in parsed.figure_mentions
-        if NUMERIC_LABEL_RE.search(label)
-    }
-    figure_defs = {
-        NUMERIC_LABEL_RE.search(label).group(0)
-        for label in parsed.figure_definitions
-        if NUMERIC_LABEL_RE.search(label)
-    }
-    missing_figures = sorted(figure_labels - figure_defs)
-    for label in missing_figures:
+    figure_labels = _extract_non_definition_labels(parsed, "figure")
+    figure_defs = _definition_labels(parsed.figure_definitions)
+    for label in sorted(figure_labels - figure_defs):
         findings.append(
             Finding(
                 code="missing-figure-definition",
@@ -201,18 +225,9 @@ def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> Valida
                 evidence=[label],
             )
         )
-    table_labels = {
-        NUMERIC_LABEL_RE.search(label).group(0)
-        for label in parsed.table_mentions
-        if NUMERIC_LABEL_RE.search(label)
-    }
-    table_defs = {
-        NUMERIC_LABEL_RE.search(label).group(0)
-        for label in parsed.table_definitions
-        if NUMERIC_LABEL_RE.search(label)
-    }
-    missing_tables = sorted(table_labels - table_defs)
-    for label in missing_tables:
+    table_labels = _extract_non_definition_labels(parsed, "table")
+    table_defs = _definition_labels(parsed.table_definitions)
+    for label in sorted(table_labels - table_defs):
         findings.append(
             Finding(
                 code="missing-table-definition",
@@ -228,31 +243,11 @@ def validate_figure_table_reference_coverage(parsed: ParsedManuscript) -> Valida
     )
 
 
-def _extract_non_definition_numeric_mentions(parsed: ParsedManuscript, kind: str) -> set[str]:
-    if kind not in {"figure", "table"}:
-        return set()
-    pattern = re.compile(rf"\b{kind.title()}\s+(\d+)\b", re.IGNORECASE)
-    definition_pattern = re.compile(rf"^{kind.title()}\s+\d+\s*[:.-]", re.IGNORECASE)
-    labels: set[str] = set()
-    for line in parsed.full_text.splitlines():
-        stripped = line.strip()
-        if definition_pattern.match(stripped):
-            continue
-        for match in pattern.finditer(stripped):
-            labels.add(match.group(1))
-    return labels
-
-
 def validate_orphaned_figure_table_definitions(parsed: ParsedManuscript) -> ValidationResult:
     findings: list[Finding] = []
-    figure_labels = _extract_non_definition_numeric_mentions(parsed, "figure")
-    figure_defs = {
-        NUMERIC_LABEL_RE.search(label).group(0)
-        for label in parsed.figure_definitions
-        if NUMERIC_LABEL_RE.search(label)
-    }
-    orphaned_figures = sorted(figure_defs - figure_labels)
-    for label in orphaned_figures:
+    figure_labels = _extract_non_definition_labels(parsed, "figure")
+    figure_defs = _definition_labels(parsed.figure_definitions)
+    for label in sorted(figure_defs - figure_labels):
         findings.append(
             Finding(
                 code="orphaned-figure-definition",
@@ -262,14 +257,9 @@ def validate_orphaned_figure_table_definitions(parsed: ParsedManuscript) -> Vali
                 evidence=[label],
             )
         )
-    table_labels = _extract_non_definition_numeric_mentions(parsed, "table")
-    table_defs = {
-        NUMERIC_LABEL_RE.search(label).group(0)
-        for label in parsed.table_definitions
-        if NUMERIC_LABEL_RE.search(label)
-    }
-    orphaned_tables = sorted(table_defs - table_labels)
-    for label in orphaned_tables:
+    table_labels = _extract_non_definition_labels(parsed, "table")
+    table_defs = _definition_labels(parsed.table_definitions)
+    for label in sorted(table_defs - table_labels):
         findings.append(
             Finding(
                 code="orphaned-table-definition",
@@ -281,6 +271,46 @@ def validate_orphaned_figure_table_definitions(parsed: ParsedManuscript) -> Vali
         )
     return ValidationResult(
         validator_name="orphaned_figure_table_definitions",
+        findings=findings,
+    )
+
+
+def validate_equation_reference_coverage(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    equation_labels = _extract_non_definition_labels(parsed, "equation")
+    equation_defs = _definition_labels(parsed.equation_definitions)
+    for label in sorted(equation_labels - equation_defs):
+        findings.append(
+            Finding(
+                code="missing-equation-definition",
+                severity="moderate",
+                message=f"Equation {label} is referenced but no equation definition was parsed.",
+                validator="equation_reference_coverage",
+                evidence=[label],
+            )
+        )
+    return ValidationResult(
+        validator_name="equation_reference_coverage",
+        findings=findings,
+    )
+
+
+def validate_orphaned_equation_definitions(parsed: ParsedManuscript) -> ValidationResult:
+    findings: list[Finding] = []
+    equation_labels = _extract_non_definition_labels(parsed, "equation")
+    equation_defs = _definition_labels(parsed.equation_definitions)
+    for label in sorted(equation_defs - equation_labels):
+        findings.append(
+            Finding(
+                code="orphaned-equation-definition",
+                severity="minor",
+                message=f"Equation {label} has a parsed definition but is never referenced.",
+                validator="orphaned_equation_definitions",
+                evidence=[label],
+            )
+        )
+    return ValidationResult(
+        validator_name="orphaned_equation_definitions",
         findings=findings,
     )
 
@@ -452,6 +482,75 @@ def validate_bibliography_source_identifiers(parsed: ParsedManuscript) -> Valida
     )
 
 
+def _section_text(parsed: ParsedManuscript, section_name: str) -> str:
+    return " ".join(
+        section.body.lower()
+        for section in parsed.sections
+        if section.title.lower() == section_name.lower()
+    )
+
+
+def _contains_any(text: str, keywords: set[str]) -> bool:
+    return any(keyword in text for keyword in keywords)
+
+
+def validate_claim_section_alignment(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    findings: list[Finding] = []
+    methods_text = _section_text(parsed, "methods")
+    results_text = _section_text(parsed, "results")
+    abstract_text = parsed.abstract.lower()
+    claim_specs = {
+        "equivalence": {
+            "keywords": {"equivalence", "equivalent", "tost", "margin", "noninferiority"},
+            "message": (
+                "Equivalence claims appear in the abstract or routing metadata, "
+                "but the methods/results sections do not show clear "
+                "equivalence-analysis language."
+            ),
+        },
+        "prediction": {
+            "keywords": {"predict", "prediction", "forecast", "accuracy", "validation"},
+            "message": (
+                "Prediction claims appear in the abstract or routing metadata, "
+                "but the methods/results sections do not show clear "
+                "predictive-model language."
+            ),
+        },
+        "causal": {
+            "keywords": {"causal", "treatment effect", "propensity", "confounding", "instrument"},
+            "message": (
+                "Causal claims appear in the abstract or routing metadata, "
+                "but the methods/results sections do not show clear "
+                "causal-identification language."
+            ),
+        },
+    }
+    combined_text = f"{methods_text} {results_text}".strip()
+    for claim_type, spec in claim_specs.items():
+        if claim_type not in classification.claim_types:
+            continue
+        abstract_mentions = _contains_any(abstract_text, spec["keywords"])
+        body_support = _contains_any(combined_text, spec["keywords"])
+        if abstract_mentions and not body_support:
+            findings.append(
+                Finding(
+                    code="claim-section-misalignment",
+                    severity="moderate",
+                    message=spec["message"],
+                    validator="claim_section_alignment",
+                    location="methods/results",
+                    evidence=[claim_type],
+                )
+            )
+    return ValidationResult(
+        validator_name="claim_section_alignment",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -464,11 +563,14 @@ def run_deterministic_validators(
         validate_duplicate_bibliography_entries(parsed),
         validate_figure_table_reference_coverage(parsed),
         validate_orphaned_figure_table_definitions(parsed),
+        validate_equation_reference_coverage(parsed),
+        validate_orphaned_equation_definitions(parsed),
         validate_citation_bibliography_alignment(parsed),
         validate_bibliography_metadata_completeness(parsed),
         validate_bibliography_year_format(parsed),
         validate_bibliography_doi_format(parsed),
         validate_bibliography_venue_metadata(parsed),
         validate_bibliography_source_identifiers(parsed),
+        validate_claim_section_alignment(parsed, classification),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

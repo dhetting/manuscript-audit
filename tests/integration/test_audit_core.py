@@ -15,6 +15,7 @@ def test_core_workflow_writes_structured_artifacts(tmp_path: Path) -> None:
     assert report.classification.pathway == "data_science"
     assert (output_dir / "parsed" / "manuscript.json").exists()
     assert (output_dir / "parsed" / "references.json").exists()
+    assert (output_dir / "parsed" / "source_record_candidates.json").exists()
     assert (output_dir / "routing" / "module_routing.yaml").exists()
     assert (output_dir / "findings" / "deterministic_validators.json").exists()
     assert (output_dir / "reports" / "final_vetting_report.md").exists()
@@ -38,5 +39,9 @@ def test_core_workflow_attaches_companion_bibtex(tmp_path: Path) -> None:
     report = run_core_audit_workflow(manuscript, output_dir=output_dir, db_path=db_path)
     assert report.classification.pathway == "data_science"
     references_payload = json.loads((output_dir / "parsed" / "references.json").read_text())
+    source_record_payload = json.loads(
+        (output_dir / "parsed" / "source_record_candidates.json").read_text()
+    )
     assert len(references_payload) == 2
     assert references_payload[0]["key"] == "schuirmann1987"
+    assert source_record_payload[0]["status"] == "ready_via_doi"

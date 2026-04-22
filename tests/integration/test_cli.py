@@ -64,7 +64,7 @@ def test_verify_revision_cli_command(tmp_path: Path) -> None:
     assert (output_dir / "reports" / "revision_verification_report.json").exists()
 
 
-def test_parse_cli_writes_reference_artifact_for_companion_bibtex(tmp_path: Path) -> None:
+def test_parse_cli_writes_reference_and_source_record_artifacts(tmp_path: Path) -> None:
     runner = CliRunner()
     output_dir = tmp_path / "parse_run"
     result = runner.invoke(
@@ -78,3 +78,4 @@ def test_parse_cli_writes_reference_artifact_for_companion_bibtex(tmp_path: Path
     )
     assert result.exit_code == 0
     assert (output_dir / "parsed" / "references.json").exists()
+    assert (output_dir / "parsed" / "source_record_candidates.json").exists()

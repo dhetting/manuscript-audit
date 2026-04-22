@@ -5,7 +5,10 @@ from manuscript_audit.routing.rules import classify_manuscript
 from manuscript_audit.validators import run_deterministic_validators
 from manuscript_audit.validators.core import (
     validate_citation_bibliography_alignment,
+    validate_claim_section_alignment,
     validate_duplicate_bibliography_entries,
+    validate_equation_reference_coverage,
+    validate_orphaned_equation_definitions,
     validate_orphaned_figure_table_definitions,
 )
 
@@ -51,3 +54,20 @@ def test_orphaned_figure_table_definitions_are_detected() -> None:
     codes = {finding.code for finding in result.findings}
     assert "orphaned-figure-definition" in codes
     assert "orphaned-table-definition" in codes
+
+
+def test_equation_reference_validators_detect_missing_and_orphaned_equations() -> None:
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/equation_alignment.tex"))
+    missing_result = validate_equation_reference_coverage(parsed)
+    orphaned_result = validate_orphaned_equation_definitions(parsed)
+    assert {finding.code for finding in missing_result.findings} == {"missing-equation-definition"}
+    assert {finding.code for finding in orphaned_result.findings} == {
+        "orphaned-equation-definition"
+    }
+
+
+def test_claim_section_alignment_detects_unsupported_equivalence_claim() -> None:
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/claim_alignment.md"))
+    classification = classify_manuscript(parsed)
+    result = validate_claim_section_alignment(parsed, classification)
+    assert {finding.code for finding in result.findings} == {"claim-section-misalignment"}

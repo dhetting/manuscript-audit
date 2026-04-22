@@ -4,7 +4,11 @@ from pathlib import Path
 
 import typer
 
-from manuscript_audit.parsers import parse_bibtex, parse_manuscript
+from manuscript_audit.parsers import (
+    build_source_record_candidates,
+    parse_bibtex,
+    parse_manuscript,
+)
 from manuscript_audit.routing import build_routing_tables
 from manuscript_audit.utils.io import write_json, write_yaml
 from manuscript_audit.validators import run_deterministic_validators
@@ -12,18 +16,28 @@ from manuscript_audit.validators import run_deterministic_validators
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 
-@app.command("parse")
-def parse_command(
-    manuscript_path: Path,
-    output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
-) -> None:
+def _prepare_parsed_manuscript(manuscript_path: Path):
     parsed = parse_manuscript(manuscript_path)
     bib_path = manuscript_path.with_suffix(".bib")
     if bib_path.exists():
         parsed.bibliography_entries = parse_bibtex(bib_path)
         parsed.reference_section_present = True
+    source_record_candidates = build_source_record_candidates(parsed.bibliography_entries)
+    return parsed, source_record_candidates
+
+
+@app.command("parse")
+def parse_command(
+    manuscript_path: Path,
+    output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
+) -> None:
+    parsed, source_record_candidates = _prepare_parsed_manuscript(manuscript_path)
     write_json(output_dir / "parsed" / "manuscript.json", parsed)
     write_json(output_dir / "parsed" / "references.json", parsed.bibliography_entries)
+    write_json(
+        output_dir / "parsed" / "source_record_candidates.json",
+        source_record_candidates,
+    )
 
 
 @app.command("route")
@@ -31,7 +45,7 @@ def route_command(
     manuscript_path: Path,
     output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
 ) -> None:
-    parsed = parse_manuscript(manuscript_path)
+    parsed, _ = _prepare_parsed_manuscript(manuscript_path)
     classification, module_routing, domain_routing = build_routing_tables(parsed)
     write_json(output_dir / "parsed" / "classification.json", classification)
     write_yaml(output_dir / "routing" / "module_routing.yaml", module_routing)
@@ -43,7 +57,7 @@ def validate_command(
     manuscript_path: Path,
     output_dir: Path = typer.Option(..., "--output-dir", dir_okay=True, file_okay=False),
 ) -> None:
-    parsed = parse_manuscript(manuscript_path)
+    parsed, _ = _prepare_parsed_manuscript(manuscript_path)
     classification, _, _ = build_routing_tables(parsed)
     results = run_deterministic_validators(parsed, classification)
     write_json(output_dir / "findings" / "deterministic_validators.json", results)

@@ -20,7 +20,13 @@ def classify_manuscript(parsed: ParsedManuscript) -> ManuscriptClassification:
     software_keywords = {"software", "workflow", "package", "repository", "cli", "pipeline"}
     simulation_keywords = {"simulation", "monte carlo"}
     empirical_keywords = {"data", "results", "experiment", "observations", "sample"}
-    equivalence_keywords = {"equivalence", "noninferiority", "bioequivalence", "tost"}
+    equivalence_keywords = {
+        "equivalence",
+        "equivalent",
+        "noninferiority",
+        "bioequivalence",
+        "tost",
+    }
     spatial_keywords = {"spatial", "spatiotemporal", "gaussian process", "variogram"}
     ai_keywords = {"chatgpt", "llm", "ai-generated", "language model"}
 

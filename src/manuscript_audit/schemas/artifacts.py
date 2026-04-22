@@ -26,6 +26,22 @@ class BibliographyEntry(BaseModel):
     source: Literal["markdown_reference_list", "bibtex"]
 
 
+class SourceRecordCandidate(BaseModel):
+    entry_key: str | None = None
+    entry_label: str
+    status: Literal[
+        "ready_via_doi",
+        "ready_via_url",
+        "needs_metadata_lookup",
+        "insufficient_metadata",
+    ]
+    preferred_identifier_type: Literal["doi", "url", "metadata_query", "none"]
+    identifier_value: str | None = None
+    lookup_query: str | None = None
+    metadata_completeness: int
+    rationale: str
+
+
 class ParsedManuscript(BaseModel):
     manuscript_id: str
     source_path: str
@@ -37,8 +53,10 @@ class ParsedManuscript(BaseModel):
     citation_keys: list[str] = Field(default_factory=list)
     figure_mentions: list[str] = Field(default_factory=list)
     table_mentions: list[str] = Field(default_factory=list)
+    equation_mentions: list[str] = Field(default_factory=list)
     figure_definitions: list[str] = Field(default_factory=list)
     table_definitions: list[str] = Field(default_factory=list)
+    equation_definitions: list[str] = Field(default_factory=list)
     equation_blocks: list[str] = Field(default_factory=list)
     reference_section_present: bool = False
     bibliography_entries: list[BibliographyEntry] = Field(default_factory=list)

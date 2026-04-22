@@ -1,6 +1,10 @@
 from pathlib import Path
 
-from manuscript_audit.parsers import parse_bibtex, parse_latex_manuscript, parse_manuscript
+from manuscript_audit.parsers import (
+    parse_bibtex,
+    parse_latex_manuscript,
+    parse_manuscript,
+)
 
 
 def test_parse_bibtex_extracts_structured_entries() -> None:
@@ -19,6 +23,12 @@ def test_parse_latex_manuscript_extracts_sections_and_citations() -> None:
     assert "schuirmann1987" in parsed.citation_keys
     assert "Introduction" in parsed.section_titles
     assert parsed.reference_section_present is True
+
+
+def test_parse_latex_manuscript_extracts_equation_labels_and_references() -> None:
+    parsed = parse_latex_manuscript(Path("tests/fixtures/manuscripts/equation_alignment.tex"))
+    assert "eq:missing" in parsed.equation_mentions
+    assert "eq:unused" in parsed.equation_definitions
 
 
 def test_parse_dispatch_uses_suffix() -> None:
