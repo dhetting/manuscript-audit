@@ -70,9 +70,18 @@ def synthesize_source_record_verification_report(
         priorities.append(
             "Some bibliography entries disagree with the matched source-of-record metadata."
         )
+    if report.summary.ambiguous_match_count > 0:
+        priorities.append(
+            "Some metadata-query lookups returned multiple plausible registry candidates and "
+            "need human adjudication."
+        )
     if report.summary.lookup_not_found_count > 0:
         priorities.append(
             "Some bibliography entries could not be verified against the selected registry."
+        )
+    if report.summary.provider_error_count > 0:
+        priorities.append(
+            "Some registry lookups failed because the selected provider returned an error."
         )
     if report.summary.skipped_count > 0:
         priorities.append(
@@ -221,14 +230,26 @@ def render_source_record_verification_report(
         f"- Verified: {report.summary.verified_count}",
         f"- Verified direct URL: {report.summary.verified_direct_url_count}",
         f"- Metadata mismatches: {report.summary.metadata_mismatch_count}",
+        f"- Ambiguous matches: {report.summary.ambiguous_match_count}",
         f"- Lookup not found: {report.summary.lookup_not_found_count}",
+        f"- Provider errors: {report.summary.provider_error_count}",
         f"- Skipped: {report.summary.skipped_count}",
         "",
-        "## Record details",
+        "## Issue counts",
         "",
     ]
+    if report.summary.issue_type_counts:
+        for issue, count in sorted(report.summary.issue_type_counts.items()):
+            lines.append(f"- {issue}: {count}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "## Record details", ""])
     for item in report.verifications:
         detail = f"- {item.entry_label}: {item.status}"
+        if item.candidate_count:
+            detail += f" [candidates={item.candidate_count}]"
+        if item.selected_match_score is not None:
+            detail += f" [score={item.selected_match_score:.1f}]"
         if item.issues:
             detail += f" ({', '.join(item.issues)})"
         lines.append(detail)

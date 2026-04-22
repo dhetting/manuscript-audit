@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -17,12 +18,17 @@ from manuscript_audit.schemas.artifacts import (
 
 YEAR_TOKEN_RE = re.compile(r"(19|20)\d{2}")
 DOI_URL_RE = re.compile(r"https?://doi\.org/(.+)$", re.IGNORECASE)
+TOKEN_RE = re.compile(r"[a-z0-9]+")
+
+
+class SourceRegistryLookupError(RuntimeError):
+    """Raised when a registry provider fails to answer a lookup request."""
 
 
 class SourceRegistryClient(Protocol):
     def lookup_doi(self, doi: str) -> RegistryMetadataRecord | None: ...
 
-    def lookup_bibliographic_query(self, query: str) -> RegistryMetadataRecord | None: ...
+    def lookup_bibliographic_candidates(self, query: str) -> list[RegistryMetadataRecord]: ...
 
 
 class FixtureSourceRegistryClient:
@@ -31,9 +37,22 @@ class FixtureSourceRegistryClient:
             key.lower(): RegistryMetadataRecord.model_validate(value)
             for key, value in payload.get("doi", {}).items()
         }
-        self._query_records = {
-            self._normalize_query(key): RegistryMetadataRecord.model_validate(value)
-            for key, value in payload.get("query", {}).items()
+        self._query_records: dict[str, list[RegistryMetadataRecord]] = {}
+        for key, value in payload.get("query", {}).items():
+            normalized_key = self._normalize_query(key)
+            if isinstance(value, list):
+                self._query_records[normalized_key] = [
+                    RegistryMetadataRecord.model_validate(item) for item in value
+                ]
+            else:
+                self._query_records[normalized_key] = [RegistryMetadataRecord.model_validate(value)]
+        self._doi_errors = {
+            item.lower() for item in payload.get("doi_errors", []) if isinstance(item, str)
+        }
+        self._query_errors = {
+            self._normalize_query(item)
+            for item in payload.get("query_errors", [])
+            if isinstance(item, str)
         }
 
     @classmethod
@@ -42,10 +61,16 @@ class FixtureSourceRegistryClient:
         return cls(payload)
 
     def lookup_doi(self, doi: str) -> RegistryMetadataRecord | None:
-        return self._doi_records.get(doi.lower())
+        normalized = doi.lower()
+        if normalized in self._doi_errors:
+            raise SourceRegistryLookupError(f"Fixture DOI lookup failed for {doi}")
+        return self._doi_records.get(normalized)
 
-    def lookup_bibliographic_query(self, query: str) -> RegistryMetadataRecord | None:
-        return self._query_records.get(self._normalize_query(query))
+    def lookup_bibliographic_candidates(self, query: str) -> list[RegistryMetadataRecord]:
+        normalized = self._normalize_query(query)
+        if normalized in self._query_errors:
+            raise SourceRegistryLookupError(f"Fixture query lookup failed for {query}")
+        return list(self._query_records.get(normalized, []))
 
     @staticmethod
     def _normalize_query(query: str) -> str:
@@ -60,8 +85,16 @@ class CrossrefSourceRegistryClient:
     def _request_json(self, url: str) -> dict:
         headers = {"User-Agent": "manuscript-audit/0.1.0"}
         request = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(request, timeout=self.timeout) as response:
-            return json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (
+            urllib.error.URLError,
+            urllib.error.HTTPError,
+            TimeoutError,
+            json.JSONDecodeError,
+        ) as exc:
+            raise SourceRegistryLookupError(str(exc)) from exc
 
     @staticmethod
     def _record_from_crossref_message(message: dict) -> RegistryMetadataRecord:
@@ -104,16 +137,14 @@ class CrossrefSourceRegistryClient:
             return None
         return self._record_from_crossref_message(message)
 
-    def lookup_bibliographic_query(self, query: str) -> RegistryMetadataRecord | None:
-        params = {"rows": "1", "query.bibliographic": query}
+    def lookup_bibliographic_candidates(self, query: str) -> list[RegistryMetadataRecord]:
+        params = {"rows": "5", "query.bibliographic": query}
         if self.mailto:
             params["mailto"] = self.mailto
         url = "https://api.crossref.org/works?" + urllib.parse.urlencode(params)
         payload = self._request_json(url)
         items = (payload.get("message") or {}).get("items") or []
-        if not items:
-            return None
-        return self._record_from_crossref_message(items[0])
+        return [self._record_from_crossref_message(item) for item in items]
 
 
 def _normalize_text(value: str | None) -> str | None:
@@ -186,6 +217,76 @@ def _compare_entry_to_registry(
     return issues
 
 
+def _token_set(value: str | None) -> set[str]:
+    if value is None:
+        return set()
+    return set(TOKEN_RE.findall(value.lower()))
+
+
+def _title_score(entry_title: str | None, candidate_title: str | None) -> float:
+    normalized_entry = _normalize_text(entry_title)
+    normalized_candidate = _normalize_text(candidate_title)
+    if normalized_entry is None or normalized_candidate is None:
+        return 0.0
+    if normalized_entry == normalized_candidate:
+        return 5.0
+    if normalized_entry in normalized_candidate or normalized_candidate in normalized_entry:
+        return 4.0
+    entry_tokens = _token_set(normalized_entry)
+    candidate_tokens = _token_set(normalized_candidate)
+    if not entry_tokens or not candidate_tokens:
+        return 0.0
+    overlap = len(entry_tokens & candidate_tokens) / len(entry_tokens | candidate_tokens)
+    if overlap >= 0.75:
+        return 3.0
+    if overlap >= 0.5:
+        return 2.0
+    if overlap >= 0.3:
+        return 1.0
+    return 0.0
+
+
+def _similarity_score(entry: BibliographyEntry, candidate: RegistryMetadataRecord) -> float:
+    score = _title_score(entry.title, candidate.title)
+    entry_year = _normalize_year(entry.year)
+    candidate_year = _normalize_year(candidate.year)
+    if entry_year and candidate_year and entry_year == candidate_year:
+        score += 2.0
+    entry_venue = _normalize_text(_entry_venue(entry))
+    candidate_venue = _normalize_text(candidate.venue)
+    if entry_venue and candidate_venue:
+        if entry_venue == candidate_venue:
+            score += 2.0
+        elif entry_venue in candidate_venue or candidate_venue in entry_venue:
+            score += 1.0
+    entry_author_tokens = _token_set(" ".join(entry.authors))
+    candidate_author_tokens = _token_set(" ".join(candidate.authors))
+    if entry_author_tokens and candidate_author_tokens:
+        overlap = len(entry_author_tokens & candidate_author_tokens)
+        if overlap >= 2:
+            score += 1.5
+        elif overlap == 1:
+            score += 0.5
+    return score
+
+
+def _select_best_candidate(
+    entry: BibliographyEntry,
+    candidates: list[RegistryMetadataRecord],
+) -> tuple[RegistryMetadataRecord | None, float | None, list[str]]:
+    if not candidates:
+        return None, None, ["lookup_not_found"]
+    scored = [(candidate, _similarity_score(entry, candidate)) for candidate in candidates]
+    scored.sort(key=lambda item: item[1], reverse=True)
+    best_candidate, best_score = scored[0]
+    second_score = scored[1][1] if len(scored) > 1 else None
+    if best_score < 3.0:
+        return None, None, ["no_confident_candidate_match"]
+    if second_score is not None and best_score - second_score < 1.0:
+        return None, None, ["multiple_candidate_matches"]
+    return best_candidate, best_score, []
+
+
 def _doi_from_source_record(record: SourceRecord) -> str | None:
     if record.resolution_strategy == "doi" and record.identifier_value:
         return record.identifier_value
@@ -218,6 +319,7 @@ def verify_source_records(
                     status="skipped",
                     canonical_source_url=record.canonical_source_url,
                     issues=["insufficient_metadata"],
+                    candidate_count=0,
                     provenance="source_record_verification_skipped",
                 )
             )
@@ -235,18 +337,63 @@ def verify_source_records(
                     matched_title=entry.title,
                     matched_year=_normalize_year(entry.year),
                     matched_venue=_entry_venue(entry),
+                    candidate_count=1,
+                    adjudication="direct_url_passthrough",
                     provenance="source_record_direct_url_verification",
                 )
             )
             continue
 
-        registry_record: RegistryMetadataRecord | None = None
-        if record.resolution_strategy == "doi":
-            doi = _doi_from_source_record(record)
-            if doi:
-                registry_record = client.lookup_doi(doi)
-        elif record.resolution_strategy == "metadata_query" and record.lookup_query:
-            registry_record = client.lookup_bibliographic_query(record.lookup_query)
+        try:
+            if record.resolution_strategy == "doi":
+                doi = _doi_from_source_record(record)
+                registry_record = client.lookup_doi(doi) if doi else None
+                candidate_count = 1 if registry_record is not None else 0
+                selected_score = 7.0 if registry_record is not None else None
+                adjudication = "doi_exact_lookup"
+            else:
+                candidates = client.lookup_bibliographic_candidates(record.lookup_query or "")
+                candidate_count = len(candidates)
+                registry_record, selected_score, selection_issues = _select_best_candidate(
+                    entry,
+                    candidates,
+                )
+                if registry_record is None:
+                    status = (
+                        "lookup_not_found"
+                        if "lookup_not_found" in selection_issues
+                        else "ambiguous_match"
+                    )
+                    verifications.append(
+                        SourceRecordVerification(
+                            entry_key=record.entry_key,
+                            entry_label=record.entry_label,
+                            strategy=record.resolution_strategy,
+                            status=status,
+                            canonical_source_url=record.canonical_source_url,
+                            issues=selection_issues,
+                            candidate_count=candidate_count,
+                            adjudication="metadata_query_candidate_selection",
+                            provenance="source_record_verification_lookup_failed",
+                        )
+                    )
+                    continue
+                adjudication = "metadata_query_candidate_selection"
+        except SourceRegistryLookupError as exc:
+            verifications.append(
+                SourceRecordVerification(
+                    entry_key=record.entry_key,
+                    entry_label=record.entry_label,
+                    strategy=record.resolution_strategy,
+                    status="provider_error",
+                    canonical_source_url=record.canonical_source_url,
+                    issues=["provider_error"],
+                    candidate_count=0,
+                    adjudication="registry_lookup_failed",
+                    provenance=str(exc),
+                )
+            )
+            continue
 
         if registry_record is None:
             verifications.append(
@@ -257,6 +404,8 @@ def verify_source_records(
                     status="lookup_not_found",
                     canonical_source_url=record.canonical_source_url,
                     issues=["lookup_not_found"],
+                    candidate_count=0,
+                    adjudication=adjudication,
                     provenance="source_record_verification_lookup_failed",
                 )
             )
@@ -277,6 +426,9 @@ def verify_source_records(
                 matched_venue=registry_record.venue,
                 matched_doi=registry_record.doi,
                 issues=issues,
+                candidate_count=candidate_count,
+                selected_match_score=selected_score,
+                adjudication=adjudication,
                 provenance="source_record_registry_verification",
             )
         )
@@ -286,6 +438,10 @@ def verify_source_records(
 def summarize_source_record_verifications(
     verifications: list[SourceRecordVerification],
 ) -> SourceRecordVerificationSummary:
+    issue_type_counts: dict[str, int] = {}
+    for item in verifications:
+        for issue in item.issues:
+            issue_type_counts[issue] = issue_type_counts.get(issue, 0) + 1
     return SourceRecordVerificationSummary(
         total_records=len(verifications),
         verified_count=sum(item.status == "verified" for item in verifications),
@@ -294,5 +450,8 @@ def summarize_source_record_verifications(
         ),
         metadata_mismatch_count=sum(item.status == "metadata_mismatch" for item in verifications),
         lookup_not_found_count=sum(item.status == "lookup_not_found" for item in verifications),
+        ambiguous_match_count=sum(item.status == "ambiguous_match" for item in verifications),
+        provider_error_count=sum(item.status == "provider_error" for item in verifications),
         skipped_count=sum(item.status == "skipped" for item in verifications),
+        issue_type_counts=issue_type_counts,
     )

@@ -85,6 +85,8 @@ class SourceRecordVerification(BaseModel):
         "verified_direct_url",
         "metadata_mismatch",
         "lookup_not_found",
+        "ambiguous_match",
+        "provider_error",
         "skipped",
     ]
     provider: str | None = None
@@ -94,6 +96,9 @@ class SourceRecordVerification(BaseModel):
     matched_venue: str | None = None
     matched_doi: str | None = None
     issues: list[str] = Field(default_factory=list)
+    candidate_count: int = 0
+    selected_match_score: float | None = None
+    adjudication: str | None = None
     provenance: str
 
 
@@ -103,7 +108,10 @@ class SourceRecordVerificationSummary(BaseModel):
     verified_direct_url_count: int
     metadata_mismatch_count: int
     lookup_not_found_count: int
+    ambiguous_match_count: int
+    provider_error_count: int
     skipped_count: int
+    issue_type_counts: dict[str, int] = Field(default_factory=dict)
 
 
 class NotationSymbol(BaseModel):

@@ -20,6 +20,7 @@ src/manuscript_audit/parsers/latex.py
 src/manuscript_audit/parsers/markdown.py
 src/manuscript_audit/parsers/notation.py
 src/manuscript_audit/parsers/source_record.py
+src/manuscript_audit/parsers/source_verification.py
 src/manuscript_audit/reports/__init__.py
 src/manuscript_audit/reports/synthesis.py
 src/manuscript_audit/routing/__init__.py
@@ -36,4 +37,5 @@ src/manuscript_audit/validators/core.py
 src/manuscript_audit/workflows/__init__.py
 src/manuscript_audit/workflows/core.py
 src/manuscript_audit/workflows/revision.py
+src/manuscript_audit/workflows/source_verification.py
 src/manuscript_audit/workflows/standard.py

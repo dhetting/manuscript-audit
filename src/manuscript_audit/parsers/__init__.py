@@ -19,6 +19,9 @@ from manuscript_audit.parsers.source_verification import (
     FixtureSourceRegistryClient as FixtureSourceRegistryClient,
 )
 from manuscript_audit.parsers.source_verification import (
+    SourceRegistryLookupError as SourceRegistryLookupError,
+)
+from manuscript_audit.parsers.source_verification import (
     summarize_source_record_verifications as summarize_source_record_verifications,
 )
 from manuscript_audit.parsers.source_verification import (
@@ -27,6 +30,7 @@ from manuscript_audit.parsers.source_verification import (
 
 __all__ = [
     "CrossrefSourceRegistryClient",
+    "SourceRegistryLookupError",
     "FixtureSourceRegistryClient",
     "build_source_record_candidates",
     "build_source_records",
