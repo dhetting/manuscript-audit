@@ -168,14 +168,37 @@ Validated commands:
 - `pixi run audit-standard tests/fixtures/manuscripts/claim_grounding.md --output-dir <out>` → produces 5 citationless findings (3 quantitative, 2 comparative)
 - `pixi run audit-standard tests/fixtures/manuscripts/bibliography_metadata.tex --output-dir <out> --source-verification-provider fixture --registry-fixture <fixture>` → unchanged behavior, bibliography confidence still produced
 
+## Phase 14 validated state
+
+Phase 14 was validated end-to-end from the live repo on 2026-04-30.
+
+Phase 14 added:
+- One new deterministic validator: `validate_abstract_metric_coverage(parsed)` in `validators/core.py`
+- New helper constants and functions: `_SUPPORT_SECTION_KEYWORDS`, `_is_support_section()`, `_extract_metric_values()`
+- Algorithm: extract normalized `%`/`fold`/`x` metrics from abstract; check if each appears in support sections (results, discussion, conclusion, experiments, evaluation, analysis); flag missing ones
+- Finding code: `abstract-metric-unsupported` (moderate)
+- Skips silently when: no abstract, no abstract metrics, or no support sections present
+- New fixture: `tests/fixtures/manuscripts/cross_artifact_consistency.md`
+- 3 new unit tests (detection, no-false-positive, skip-without-support-sections)
+- 50 total tests pass (up from 47)
+- Golden test for `latex_equivalence.tex` still `{'moderate': 4, 'minor': 1}`
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 50 passed
+- `pixi run audit-standard tests/fixtures/manuscripts/cross_artifact_consistency.md --output-dir <out>` → 2 findings: `95%` and `3x` absent from Results
+
+Known limitations (acceptable for MVP):
+- Does not bind metric to semantic anchor (e.g., "95% accuracy" vs "95% confidence interval")
+- Does not exempt metrics from cited prior-work sentences in the abstract
+- Restricted to `%`, `fold`, `x`-factor forms only
+
 ## Current immediate next task
 
-Phase 13 is closed. Next candidate phases:
-1. **Phase 14: cross-artifact consistency** — check that abstract claims match body/results; detect quantitative values in the abstract not supported by results section numbers
-2. **Phase 14: notation and equation audit hardening** — agent-assisted detection of undefined symbols, inconsistent notation across sections, missing equation labels
-3. **Phase 14: claim severity escalation** — if multiple citationless claims detected, escalate to major severity in revision priorities
-
-The highest-value next slice is likely **cross-artifact consistency** since it directly serves the adversarial audit goal of catching inflated or misrepresented abstract claims.
+Phase 14 is closed. Next candidate phases:
+1. **Phase 15: notation and equation audit hardening** — agent-assisted detection of undefined symbols, inconsistent notation across sections, and missing equation labels
+2. **Phase 15: claim severity escalation** — if multiple citationless or unsupported claims are detected, escalate to major severity in revision priorities and surface a summary finding
+3. **Phase 15: revision verification coverage** — extend `verify-revision` to track phase-13/14 finding codes across revisions
 
 ## Bundle and handoff requirements
 

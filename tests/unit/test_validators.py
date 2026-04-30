@@ -157,3 +157,57 @@ def test_cited_quantitative_and_comparative_claims_not_flagged() -> None:
     c_result = validate_citationless_comparative_claims(parsed)
     assert q_result.findings == []
     assert c_result.findings == []
+
+
+def test_abstract_metric_unsupported_detected() -> None:
+    from manuscript_audit.validators.core import validate_abstract_metric_coverage
+
+    parsed = parse_markdown_manuscript(
+        Path("tests/fixtures/manuscripts/cross_artifact_consistency.md")
+    )
+    result = validate_abstract_metric_coverage(parsed)
+    codes = [f.code for f in result.findings]
+    assert codes.count("abstract-metric-unsupported") == 2
+    flagged_values = {f.evidence[0] for f in result.findings}
+    assert "95%" in flagged_values
+    assert "3x" in flagged_values
+
+
+def test_abstract_metric_present_in_results_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_abstract_metric_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="consistent",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Consistent Manuscript",
+        abstract="Our method achieves 95% accuracy on the benchmark.",
+        full_text="",
+        sections=[
+            Section(title="Results", level=2, body="The model achieved 95% accuracy."),
+        ],
+    )
+    result = validate_abstract_metric_coverage(parsed)
+    assert result.findings == []
+
+
+def test_abstract_metric_coverage_skips_without_support_sections() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_abstract_metric_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="no-support",
+        source_path="synthetic",
+        source_format="markdown",
+        title="No Results Section",
+        abstract="Our method achieves 95% accuracy.",
+        full_text="",
+        sections=[
+            Section(title="Introduction", level=2, body="We propose a new method."),
+            Section(title="Methods", level=2, body="We use gradient descent."),
+        ],
+    )
+    result = validate_abstract_metric_coverage(parsed)
+    assert result.findings == []
+

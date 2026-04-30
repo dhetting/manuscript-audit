@@ -739,6 +739,71 @@ def validate_citationless_comparative_claims(parsed: ParsedManuscript) -> Valida
     )
 
 
+_SUPPORT_SECTION_KEYWORDS = {
+    "result", "discussion", "conclusion", "experiment",
+    "evaluation", "analysis", "finding",
+}
+
+
+def _is_support_section(title: str) -> bool:
+    lower = title.lower()
+    return any(keyword in lower for keyword in _SUPPORT_SECTION_KEYWORDS)
+
+
+def _extract_metric_values(text: str) -> set[str]:
+    """Return normalized metric strings (%, fold, x) found in text."""
+    return {re.sub(r"\s+", "", m.group(0)).lower() for m in METRIC_RE.finditer(text)}
+
+
+def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag abstract numeric metrics (%, fold, x) absent from results/discussion sections.
+
+    Checks that every quantitative metric mentioned in the abstract also appears in at
+    least one support section (results, discussion, conclusion, experiments, evaluation,
+    analysis). Skips silently when the manuscript has no abstract metrics or no support
+    sections.
+    """
+    findings: list[Finding] = []
+
+    if not parsed.abstract.strip():
+        return ValidationResult(
+            validator_name="abstract_metric_coverage", findings=findings
+        )
+
+    abstract_metrics = _extract_metric_values(parsed.abstract)
+    if not abstract_metrics:
+        return ValidationResult(
+            validator_name="abstract_metric_coverage", findings=findings
+        )
+
+    support_sections = [s for s in parsed.sections if _is_support_section(s.title)]
+    if not support_sections:
+        return ValidationResult(
+            validator_name="abstract_metric_coverage", findings=findings
+        )
+
+    support_metrics = _extract_metric_values(
+        " ".join(s.body for s in support_sections)
+    )
+
+    for value in sorted(abstract_metrics - support_metrics):
+        findings.append(
+            Finding(
+                code="abstract-metric-unsupported",
+                severity="moderate",
+                message=(
+                    f"Abstract references '{value}' but this value does not appear "
+                    "in any results or discussion section."
+                ),
+                validator="abstract_metric_coverage",
+                location="abstract",
+                evidence=[value],
+            )
+        )
+
+    return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -765,5 +830,6 @@ def run_deterministic_validators(
         validate_claim_section_alignment(parsed, classification),
         validate_citationless_quantitative_claims(parsed),
         validate_citationless_comparative_claims(parsed),
+        validate_abstract_metric_coverage(parsed),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
