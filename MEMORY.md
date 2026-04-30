@@ -143,17 +143,39 @@ Validated commands:
 - `pixi run audit-standard <tex> --output-dir <out> --source-verification-provider fixture --registry-fixture <fixture>` → produces bibliography confidence artifacts
 - `pixi run verify-sources <tex> --output-dir <out> --provider fixture --registry-fixture <ambiguous_fixture>` → produces bibliography confidence artifacts
 
+## Phase 13 validated state
+
+Phase 13 was validated end-to-end from the live repo on 2026-04-30.
+
+Phase 13 added:
+- Two new deterministic validators in `validators/core.py`:
+  - `validate_citationless_quantitative_claims(parsed)` — detects paragraphs with numeric metrics (%, fold, Nx) combined with evaluative language but no citation
+  - `validate_citationless_comparative_claims(parsed)` — detects paragraphs with strong external-comparison language (state-of-the-art, outperforms, superior to, etc.) but no citation
+- New regex patterns: `CITATION_IN_TEXT_RE`, `METRIC_RE`, `EVALUATIVE_CONTEXT_RE`, `COMPARATIVE_CLAIM_RE`, `_SKIP_SECTIONS`, `_split_paragraphs`
+- Both validators scan the abstract and all non-reference/non-bibliography sections
+- Abstract is scanned from `parsed.abstract`; the "Abstract" section in `sections` is skipped to prevent duplicates
+- New finding codes:
+  - `citationless-quantitative-claim` (moderate)
+  - `citationless-comparative-claim` (moderate)
+- New test fixture: `tests/fixtures/manuscripts/claim_grounding.md`
+- New unit tests: 3 new tests covering detection and non-flagging of cited claims
+- 47 total tests pass (up from 44)
+- Golden test for `latex_equivalence.tex` is unaffected (no citationless findings on that fixture)
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 47 passed
+- `pixi run audit-standard tests/fixtures/manuscripts/claim_grounding.md --output-dir <out>` → produces 5 citationless findings (3 quantitative, 2 comparative)
+- `pixi run audit-standard tests/fixtures/manuscripts/bibliography_metadata.tex --output-dir <out> --source-verification-provider fixture --registry-fixture <fixture>` → unchanged behavior, bibliography confidence still produced
+
 ## Current immediate next task
 
-Phase 12 is closed. Identify and begin the next development phase.
+Phase 13 is closed. Next candidate phases:
+1. **Phase 14: cross-artifact consistency** — check that abstract claims match body/results; detect quantitative values in the abstract not supported by results section numbers
+2. **Phase 14: notation and equation audit hardening** — agent-assisted detection of undefined symbols, inconsistent notation across sections, missing equation labels
+3. **Phase 14: claim severity escalation** — if multiple citationless claims detected, escalate to major severity in revision priorities
 
-Candidate next phases (in priority order):
-1. **Phase 13: claim grounding and citation adequacy** — deterministic checks for citation-claim alignment, insufficient citation density per claim type, and citationless assertion detection
-2. **Phase 13: notation and equation audit hardening** — extend equation/notation coverage validators with agent-assisted checks for undefined symbols, inconsistent notation, and missing equation labels
-3. **Phase 13: cross-artifact consistency** — cross-check claims between abstract, body, appendix, and supplement
-4. **Phase 13: enhanced routing** — add domain-specific routing beyond the current applied/theory/software archetypes
-
-The highest-value next slice is likely **claim grounding and citation adequacy** since that is core to the adversarial citation review goal in the project design.
+The highest-value next slice is likely **cross-artifact consistency** since it directly serves the adversarial audit goal of catching inflated or misrepresented abstract claims.
 
 ## Bundle and handoff requirements
 

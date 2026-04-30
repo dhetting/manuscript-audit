@@ -102,3 +102,58 @@ def test_notation_section_alignment_flags_equation_without_context_section() -> 
     assert any(
         finding.code == "missing-notation-context-section" for finding in results.all_findings
     )
+
+
+def test_citationless_quantitative_claims_detected() -> None:
+    from manuscript_audit.validators.core import validate_citationless_quantitative_claims
+
+    parsed = parse_markdown_manuscript(Path("tests/fixtures/manuscripts/claim_grounding.md"))
+    result = validate_citationless_quantitative_claims(parsed)
+    codes = [f.code for f in result.findings]
+    assert codes.count("citationless-quantitative-claim") >= 2
+    locations = {f.location for f in result.findings}
+    assert "abstract" in locations
+    assert "Introduction" in locations
+
+
+def test_citationless_comparative_claims_detected() -> None:
+    from manuscript_audit.validators.core import validate_citationless_comparative_claims
+
+    parsed = parse_markdown_manuscript(Path("tests/fixtures/manuscripts/claim_grounding.md"))
+    result = validate_citationless_comparative_claims(parsed)
+    codes = [f.code for f in result.findings]
+    assert len(codes) >= 2
+    assert all(c == "citationless-comparative-claim" for c in codes)
+    locations = {f.location for f in result.findings}
+    assert "abstract" in locations
+
+
+def test_cited_quantitative_and_comparative_claims_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import (
+        validate_citationless_comparative_claims,
+        validate_citationless_quantitative_claims,
+    )
+
+    parsed = ParsedManuscript(
+        manuscript_id="cited-only",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Cited Claims",
+        abstract="",
+        full_text="",
+        sections=[
+            Section(
+                title="Results",
+                level=2,
+                body=(
+                    "Our method is 30% faster than the baseline [@smith2020], "
+                    "which is state-of-the-art [@jones2021]."
+                ),
+            )
+        ],
+    )
+    q_result = validate_citationless_quantitative_claims(parsed)
+    c_result = validate_citationless_comparative_claims(parsed)
+    assert q_result.findings == []
+    assert c_result.findings == []

@@ -23,6 +23,38 @@ NUMERIC_LABEL_RE = re.compile(r"\d+")
 YEAR_RE = re.compile(r"^(19|20)\d{2}$")
 DOI_RE = re.compile(r"^10\.\d{4,9}/\S+$", re.IGNORECASE)
 
+# Claim-grounding validators: detect citationless quantitative and comparative claims.
+CITATION_IN_TEXT_RE = re.compile(
+    r"\[@[^\]]+\]"  # markdown: [@key], [@key1; @key2], [@key, p. 5]
+    r"|\\cite\w*\{[^}]+\}",  # LaTeX: \cite{key}, \citep{key,key2}, \citet{key}
+)
+METRIC_RE = re.compile(
+    r"\b\d+(?:\.\d+)?\s*%"  # X% or X.Y%
+    r"|\b\d+(?:\.\d+)?-fold\b"  # X-fold
+    r"|\b\d+(?:\.\d+)?\s*[xX]\b",  # 3x, 2.5X
+    re.IGNORECASE,
+)
+EVALUATIVE_CONTEXT_RE = re.compile(
+    r"\b(outperform|improv|achiev|attain|faster|better\s+than|higher\s+than|"
+    r"lower\s+than|exceed|surpass|reduc)",
+    re.IGNORECASE,
+)
+COMPARATIVE_CLAIM_RE = re.compile(
+    r"\b(state[\s-]of[\s-]the[\s-]art"
+    r"|outperform[sd]?"
+    r"|superior\s+to"
+    r"|better\s+than"
+    r"|best[\s-]performing"
+    r"|significantly\s+(?:better|outperform|improv))\b",
+    re.IGNORECASE,
+)
+_SKIP_SECTIONS = {"references", "bibliography", "abstract"}
+
+
+def _split_paragraphs(text: str) -> list[str]:
+    """Split text into non-empty paragraphs on blank lines."""
+    return [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+
 
 def validate_required_sections(
     parsed: ParsedManuscript,
@@ -638,6 +670,75 @@ def validate_notation_section_alignment(parsed: ParsedManuscript) -> ValidationR
     )
 
 
+def validate_citationless_quantitative_claims(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag paragraphs with a numeric metric + evaluative language but no citation."""
+    findings: list[Finding] = []
+
+    def _check_block(text: str, location: str) -> None:
+        for para in _split_paragraphs(text):
+            if (
+                METRIC_RE.search(para)
+                and EVALUATIVE_CONTEXT_RE.search(para)
+                and not CITATION_IN_TEXT_RE.search(para)
+            ):
+                findings.append(
+                    Finding(
+                        code="citationless-quantitative-claim",
+                        severity="moderate",
+                        message=(
+                            f"'{location}' contains a quantitative performance claim "
+                            "without citation support."
+                        ),
+                        validator="citationless_quantitative_claims",
+                        location=location,
+                        evidence=[para[:120]],
+                    )
+                )
+
+    if parsed.abstract.strip():
+        _check_block(parsed.abstract, "abstract")
+    for section in parsed.sections:
+        if section.title.lower() not in _SKIP_SECTIONS:
+            _check_block(section.body, section.title)
+
+    return ValidationResult(
+        validator_name="citationless_quantitative_claims",
+        findings=findings,
+    )
+
+
+def validate_citationless_comparative_claims(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag paragraphs with strong external-comparison language but no citation."""
+    findings: list[Finding] = []
+
+    def _check_block(text: str, location: str) -> None:
+        for para in _split_paragraphs(text):
+            if COMPARATIVE_CLAIM_RE.search(para) and not CITATION_IN_TEXT_RE.search(para):
+                findings.append(
+                    Finding(
+                        code="citationless-comparative-claim",
+                        severity="moderate",
+                        message=(
+                            f"'{location}' contains a comparative claim without citation support."
+                        ),
+                        validator="citationless_comparative_claims",
+                        location=location,
+                        evidence=[para[:120]],
+                    )
+                )
+
+    if parsed.abstract.strip():
+        _check_block(parsed.abstract, "abstract")
+    for section in parsed.sections:
+        if section.title.lower() not in _SKIP_SECTIONS:
+            _check_block(section.body, section.title)
+
+    return ValidationResult(
+        validator_name="citationless_comparative_claims",
+        findings=findings,
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -662,5 +763,7 @@ def run_deterministic_validators(
         validate_equation_notation_coverage(parsed),
         validate_notation_section_alignment(parsed),
         validate_claim_section_alignment(parsed, classification),
+        validate_citationless_quantitative_claims(parsed),
+        validate_citationless_comparative_claims(parsed),
     ]
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
