@@ -9204,3 +9204,329 @@ def test_main_effect_non_empirical_no_fire() -> None:
     )
     result = validate_main_effect_confidence_interval(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 181 – validate_covariate_justification
+# ---------------------------------------------------------------------------
+
+
+def _cov_ms(methods_body: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="cov-1",
+        source_path="cov.md",
+        source_format="markdown",
+        title="Covariate Study",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=methods_body)],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_covariate_no_justification_fires() -> None:
+    from manuscript_audit.validators.core import validate_covariate_justification
+
+    ms, cl = _cov_ms(
+        "Age and gender were included as covariates in all regression models. "
+        "ANCOVA was used to control for baseline differences."
+    )
+    result = validate_covariate_justification(ms, cl)
+    assert any(f.code == "missing-covariate-justification" for f in result.findings)
+
+
+def test_covariate_with_justification_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_covariate_justification
+
+    ms, cl = _cov_ms(
+        "Age was included as a covariate because prior research indicates it is a "
+        "known confounder of cognitive performance. "
+        "ANCOVA was used to control for baseline differences."
+    )
+    result = validate_covariate_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_covariates_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_covariate_justification
+
+    ms, cl = _cov_ms(
+        "Independent samples t-tests were used to compare group means. "
+        "No additional variables were included in the model."
+    )
+    result = validate_covariate_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_covariate_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_covariate_justification
+
+    ms, cl = _cov_ms(
+        "Covariates are included in the theoretical regression specification.",
+        "math_theory_paper",
+    )
+    result = validate_covariate_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 182 – validate_gender_sex_conflation
+# ---------------------------------------------------------------------------
+
+
+def _gs_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="gs-1",
+        source_path="gs.md",
+        source_format="markdown",
+        title="Gender Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_gender_sex_conflation_fires() -> None:
+    from manuscript_audit.validators.core import validate_gender_sex_conflation
+
+    ms, cl = _gs_ms(
+        "Participant gender was male or female. "
+        "Gender was used as a covariate in the regression model."
+    )
+    result = validate_gender_sex_conflation(ms, cl)
+    assert any(f.code == "gender-sex-conflation" for f in result.findings)
+
+
+def test_gender_sex_distinct_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gender_sex_conflation
+
+    ms, cl = _gs_ms(
+        "We measured biological sex (male/female) and gender identity separately. "
+        "Biological sex and gender identity are distinct constructs in this study."
+    )
+    result = validate_gender_sex_conflation(ms, cl)
+    assert result.findings == []
+
+
+def test_gender_only_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gender_sex_conflation
+
+    ms, cl = _gs_ms(
+        "Participants were diverse in gender, age, and educational background."
+    )
+    result = validate_gender_sex_conflation(ms, cl)
+    assert result.findings == []
+
+
+def test_gender_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gender_sex_conflation
+
+    ms, cl = _gs_ms(
+        "Gender was male or female in this theoretical example.",
+        "math_theory_paper",
+    )
+    result = validate_gender_sex_conflation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 183 – validate_multicollinearity_reporting
+# ---------------------------------------------------------------------------
+
+
+def _multi_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="multi-1",
+        source_path="multi.md",
+        source_format="markdown",
+        title="Regression Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_regression_no_vif_fires() -> None:
+    from manuscript_audit.validators.core import validate_multicollinearity_reporting
+
+    ms, cl = _multi_ms(
+        "Multiple linear regression was used to predict depression from stress, "
+        "social support, and coping strategies."
+    )
+    result = validate_multicollinearity_reporting(ms, cl)
+    assert any(f.code == "missing-multicollinearity-check" for f in result.findings)
+
+
+def test_regression_with_vif_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multicollinearity_reporting
+
+    ms, cl = _multi_ms(
+        "Multiple regression was conducted. Variance inflation factors (VIF < 3.0) "
+        "indicated no multicollinearity among predictors."
+    )
+    result = validate_multicollinearity_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_multicollinearity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multicollinearity_reporting
+
+    ms, cl = _multi_ms(
+        "Chi-square tests and Wilcoxon signed-rank tests were used throughout."
+    )
+    result = validate_multicollinearity_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_multicollinearity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multicollinearity_reporting
+
+    ms, cl = _multi_ms(
+        "Multicollinearity in regression is analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_multicollinearity_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 184 – validate_control_group_description
+# ---------------------------------------------------------------------------
+
+
+def _rct_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="rct-1",
+        source_path="rct.md",
+        source_format="markdown",
+        title="RCT Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_rct_no_control_type_fires() -> None:
+    from manuscript_audit.validators.core import validate_control_group_description
+
+    ms, cl = _rct_ms(
+        "Participants were randomly assigned to treatment or control conditions. "
+        "This randomized controlled trial evaluated the intervention effect."
+    )
+    result = validate_control_group_description(ms, cl)
+    assert any(f.code == "missing-control-group-type" for f in result.findings)
+
+
+def test_rct_with_placebo_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_control_group_description
+
+    ms, cl = _rct_ms(
+        "This RCT compared CBT (treatment) to a placebo control condition. "
+        "Participants were randomly assigned to treatment arm vs. control."
+    )
+    result = validate_control_group_description(ms, cl)
+    assert result.findings == []
+
+
+def test_non_rct_observational_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_control_group_description
+
+    ms, cl = _rct_ms(
+        "This observational cohort study followed participants for 2 years."
+    )
+    result = validate_control_group_description(ms, cl)
+    assert result.findings == []
+
+
+def test_rct_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_control_group_description
+
+    ms, cl = _rct_ms(
+        "The RCT design is analyzed in this theoretical framework.",
+        "math_theory_paper",
+    )
+    result = validate_control_group_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 185 – validate_heteroscedasticity_testing
+# ---------------------------------------------------------------------------
+
+
+def _hetero_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="hetero-1",
+        source_path="hetero.md",
+        source_format="markdown",
+        title="Heteroscedasticity Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_ols_no_hetero_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_heteroscedasticity_testing
+
+    ms, cl = _hetero_ms(
+        "Ordinary least squares regression was used to estimate the model. "
+        "Predictors included age, income, and education."
+    )
+    result = validate_heteroscedasticity_testing(ms, cl)
+    assert any(f.code == "missing-heteroscedasticity-check" for f in result.findings)
+
+
+def test_ols_with_breusch_pagan_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_heteroscedasticity_testing
+
+    ms, cl = _hetero_ms(
+        "Multiple linear regression was conducted using OLS. "
+        "The Breusch-Pagan test confirmed homoscedasticity of residuals."
+    )
+    result = validate_heteroscedasticity_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ols_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_heteroscedasticity_testing
+
+    ms, cl = _hetero_ms(
+        "A Bayesian hierarchical model was used with MCMC estimation."
+    )
+    result = validate_heteroscedasticity_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_hetero_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_heteroscedasticity_testing
+
+    ms, cl = _hetero_ms(
+        "Heteroscedasticity in OLS regression is analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_heteroscedasticity_testing(ms, cl)
+    assert result.findings == []

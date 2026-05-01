@@ -6689,6 +6689,11 @@ def run_deterministic_validators(
         validate_outcome_measure_validation(parsed, classification),
         validate_outlier_handling_disclosure(parsed, classification),
         validate_main_effect_confidence_interval(parsed, classification),
+        validate_covariate_justification(parsed, classification),
+        validate_gender_sex_conflation(parsed, classification),
+        validate_multicollinearity_reporting(parsed, classification),
+        validate_control_group_description(parsed, classification),
+        validate_heteroscedasticity_testing(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -10364,6 +10369,363 @@ def validate_main_effect_confidence_interval(
                 ),
                 validator="main_effect_confidence_interval",
                 location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 181 – Missing covariates justification
+# ---------------------------------------------------------------------------
+
+_COVARIATE_RE = re.compile(
+    r"\b(?:covariate|covariates|covaried|covariance\s+(?:matrix|structure)|"
+    r"adjusted?\s+(?:for|by)\s+(?:\w+\s*){1,4}|"
+    r"controlled?\s+for\s+(?:\w+\s*){1,3}|"
+    r"ANCOVA|hierarchical\s+regression|modeled?\s+as\s+(?:a\s+)?covariate)\b",
+    re.IGNORECASE,
+)
+_COVARIATE_JUSTIFY_RE = re.compile(
+    r"\b(?:based\s+on\s+(?:prior|previous|theoretical|empirical)|"
+    r"known\s+(?:confounder|covariate|predictor)|"
+    r"literature\s+(?:suggests?|indicates?|shows?)|"
+    r"prior\s+(?:research|evidence|studies?)\s+(?:suggests?|indicates?|shows?)|"
+    r"theoretically\s+(?:motivated|justified|relevant)|"
+    r"control\s+for\s+(?:known|potential)\s+confound)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_covariate_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies that include covariates without theoretical justification.
+
+    Emits ``missing-covariate-justification`` (minor) when covariates or adjustments
+    are used but no theoretical or empirical rationale is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="covariate_justification", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="covariate_justification", findings=[]
+        )
+
+    if not _COVARIATE_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="covariate_justification", findings=[]
+        )
+
+    if _COVARIATE_JUSTIFY_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="covariate_justification", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="covariate_justification",
+        findings=[
+            Finding(
+                code="missing-covariate-justification",
+                severity="minor",
+                message=(
+                    "Covariates or adjusted analyses are used but no theoretical or "
+                    "empirical justification is provided for their inclusion. "
+                    "Justify covariate selection based on theory or prior evidence."
+                ),
+                validator="covariate_justification",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 182 – Gender/sex conflation
+# ---------------------------------------------------------------------------
+
+_GENDER_SEX_RE = re.compile(
+    r"\b(?:gender|sex)\b",
+    re.IGNORECASE,
+)
+_GENDER_SEX_CONFLATE_RE = re.compile(
+    r"\b(?:gender\s+(?:was|were)\s+(?:male|female|man|woman|men|women)|"
+    r"sex\s+(?:was|were)\s+(?:male|female|man|woman|men|women)|"
+    r"(?:male|female)\s+gender|gender\s*[=:]\s*(?:male|female)|"
+    r"sex\s*(?:/|and)\s*gender\b|gender\s*(?:/|and)\s*sex\b)\b",
+    re.IGNORECASE,
+)
+_GENDER_SEX_DISTINCT_RE = re.compile(
+    r"\b(?:biological\s+sex|gender\s+identity|assigned\s+sex|sex\s+at\s+birth|"
+    r"sex\s+and\s+gender\s+are\s+distinct|gender\s+versus\s+sex)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_gender_sex_conflation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag conflation of sex and gender without explicit distinction.
+
+    Emits ``gender-sex-conflation`` (minor) when sex and gender are used
+    interchangeably without acknowledging the conceptual distinction.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="gender_sex_conflation", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="gender_sex_conflation", findings=[]
+        )
+
+    if not _GENDER_SEX_RE.search(full):
+        return ValidationResult(
+            validator_name="gender_sex_conflation", findings=[]
+        )
+
+    if _GENDER_SEX_DISTINCT_RE.search(full):
+        return ValidationResult(
+            validator_name="gender_sex_conflation", findings=[]
+        )
+
+    if not _GENDER_SEX_CONFLATE_RE.search(full):
+        return ValidationResult(
+            validator_name="gender_sex_conflation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="gender_sex_conflation",
+        findings=[
+            Finding(
+                code="gender-sex-conflation",
+                severity="minor",
+                message=(
+                    "Gender and sex appear to be used interchangeably without "
+                    "acknowledging the distinction between biological sex and gender identity. "
+                    "Clarify whether the study measured biological sex, gender identity, or both."
+                ),
+                validator="gender_sex_conflation",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 183 – Multicollinearity reporting in regression
+# ---------------------------------------------------------------------------
+
+_REGRESSION_MODEL_RE = re.compile(
+    r"\b(?:multiple\s+(?:linear|logistic)?\s*regression|"
+    r"hierarchical\s+regression|stepwise\s+regression|"
+    r"ordinary\s+least\s+squares|OLS\s+regression|"
+    r"logistic\s+regression|poisson\s+regression|"
+    r"cox\s+(?:regression|proportional))\b",
+    re.IGNORECASE,
+)
+_MULTICOLLINEARITY_RE = re.compile(
+    r"\b(?:multicollinearity|variance\s+inflation\s+factor|VIF\b|"
+    r"tolerance\s+(?:statistic|value)|condition\s+(?:index|number)|"
+    r"correlation\s+matrix|bivariate\s+correlation\s+(?:among|between)\s+predictors?|"
+    r"predictors?\s+(?:were|are)\s+not\s+(?:highly\s+)?correlated)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multicollinearity_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression studies that omit multicollinearity assessment.
+
+    Emits ``missing-multicollinearity-check`` (minor) when regression with
+    multiple predictors is used but no multicollinearity assessment is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="multicollinearity_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="multicollinearity_reporting", findings=[]
+        )
+
+    if not _REGRESSION_MODEL_RE.search(full):
+        return ValidationResult(
+            validator_name="multicollinearity_reporting", findings=[]
+        )
+
+    if _MULTICOLLINEARITY_RE.search(full):
+        return ValidationResult(
+            validator_name="multicollinearity_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="multicollinearity_reporting",
+        findings=[
+            Finding(
+                code="missing-multicollinearity-check",
+                severity="minor",
+                message=(
+                    "Multiple regression model detected but no multicollinearity "
+                    "assessment (VIF, tolerance, condition index) is reported. "
+                    "Check and report multicollinearity statistics for predictors."
+                ),
+                validator="multicollinearity_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 184 – Placebo or active control group reporting
+# ---------------------------------------------------------------------------
+
+_RCT_RE = re.compile(
+    r"\b(?:randomized?\s+(?:controlled?|clinical)?\s*trial|RCT\b|"
+    r"randomly\s+assigned?|random\s+assignment|"
+    r"treatment\s+(?:arm|group|condition)\s+vs\.?\s+control|"
+    r"intervention\s+(?:group|condition)\s+(?:vs\.?|versus|compared\s+to)\s+control)\b",
+    re.IGNORECASE,
+)
+_CONTROL_TYPE_RE = re.compile(
+    r"\b(?:placebo(?:\s+control)?|active\s+control|waitlist\s+control|"
+    r"treatment.?as.?usual|TAU\b|sham\s+(?:control|condition)|"
+    r"active\s+comparison|comparison\s+condition|"
+    r"no.?treatment\s+control|attention\s+control)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_control_group_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RCTs that don't specify the type of control condition.
+
+    Emits ``missing-control-group-type`` (moderate) when an RCT design is
+    detected but the control condition type (placebo, active, waitlist, TAU) is
+    not specified.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="control_group_description", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="control_group_description", findings=[]
+        )
+
+    if not _RCT_RE.search(full):
+        return ValidationResult(
+            validator_name="control_group_description", findings=[]
+        )
+
+    if _CONTROL_TYPE_RE.search(full):
+        return ValidationResult(
+            validator_name="control_group_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="control_group_description",
+        findings=[
+            Finding(
+                code="missing-control-group-type",
+                severity="moderate",
+                message=(
+                    "RCT or randomized controlled design detected but the type of "
+                    "control condition (placebo, active control, waitlist, TAU) is "
+                    "not specified. Clearly describe what the control group received."
+                ),
+                validator="control_group_description",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 185 – Heteroscedasticity testing
+# ---------------------------------------------------------------------------
+
+_HETEROSCEDASTICITY_TRIGGER_RE = re.compile(
+    r"\b(?:multiple\s+(?:linear\s+)?regression|OLS\s+regression|"
+    r"ordinary\s+least\s+squares|linear\s+regression\s+model)\b",
+    re.IGNORECASE,
+)
+_HETEROSCEDASTICITY_CHECK_RE = re.compile(
+    r"\b(?:heteroscedasticity|homoscedasticity|"
+    r"Breusch.Pagan|White\s+test|Goldfeld.Quandt|"
+    r"residual\s+(?:plot|variance)|"
+    r"constant\s+(?:error\s+variance|residual\s+variance)|"
+    r"equal\s+(?:error\s+)?variances?|"
+    r"robust\s+standard\s+errors?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_heteroscedasticity_testing(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag OLS regression studies that omit heteroscedasticity checks.
+
+    Emits ``missing-heteroscedasticity-check`` (minor) when OLS regression
+    is used but residual variance / heteroscedasticity is not assessed.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="heteroscedasticity_testing", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="heteroscedasticity_testing", findings=[]
+        )
+
+    if not _HETEROSCEDASTICITY_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="heteroscedasticity_testing", findings=[]
+        )
+
+    if _HETEROSCEDASTICITY_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="heteroscedasticity_testing", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="heteroscedasticity_testing",
+        findings=[
+            Finding(
+                code="missing-heteroscedasticity-check",
+                severity="minor",
+                message=(
+                    "OLS or linear regression detected but no heteroscedasticity "
+                    "assessment (Breusch-Pagan, White test, residual plots, robust SEs) "
+                    "is reported. Check and report residual variance assumption."
+                ),
+                validator="heteroscedasticity_testing",
+                location="Methods",
                 evidence=[],
             )
         ],
