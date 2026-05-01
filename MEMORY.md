@@ -391,15 +391,14 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 62 is closed. Next candidate phases:
-1. **Phase 64: COI disclosure** — flag missing conflict of interest statement
-2. **Phase 65: Data availability** — flag empirical papers without data availability info
-3. **Phase 66: Ethics/IRB** — flag human/animal studies without ethics approval statement
-4. **Phase 67: Citation style consistency** — flag mixing numbered and author-year styles
-5. **Phase 68: Cross-reference integrity** — flag Figure/Table N mentions > definition count
-6. **Phase 69: Decimal precision** — flag same metric at different decimal precisions
-7. **Phase 70: Future-work balance** — flag discussions heavy on future work
-8. **Phase 71: Null result acknowledgment** — flag empirical papers with no negative results
+Phase 71 is closed. Next candidate phases:
+1. **Phase 73: Hedging language** — flag dense use of hedging words in abstract/intro/conclusion
+2. **Phase 74: Duplicate section content** — Jaccard sentence overlap across sections
+3. **Phase 75: Abstract length** — flag too-short (<100 words) or too-long (>350 words)
+4. **Phase 76: Methods word count** — flag thin Methods (<150 words) in empirical papers
+5. **Phase 77: Passive voice ratio** — flag Methods dominated by passive voice (>70%)
+6. **Phase 78: List overuse** — flag prose sections with >50% list items
+7. **Phase 79: Section balance** — flag single section >60% of total word count
 
 ## Phase 22–62 validated state
 
@@ -552,26 +551,39 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `_imrad_key()` maps Introduction/Method/Result/Discussion to slots 0-3
 - Flags adjacent inversions; only fires for empirical/applied papers
 
-**Phase 59** (`4d96f54`) — Author keyword coverage
-- `validate_keyword_section_coverage(parsed)` → `missing-keyword-coverage` (minor)
-- Extracts from 'Keywords:' line or dedicated section; checks each in body; capped at 5
+**Phase 64** (`d5802cc`) — Conflict of interest disclosure
+- `validate_conflict_of_interest(parsed, classification)` → `missing-coi-statement` (minor)
+- Fires for empirical/applied/software papers with ≥5 bib entries and no COI language
 
-**Phase 60** (`4d96f54`) — Statistical test reporting
-- `validate_statistical_test_reporting(parsed, classification)` → `missing-p-value-report` (moderate)
-- `_STAT_TEST_RE` detects 11 test types; fires when test named but no p-value found
-- Empirical/applied papers only
+**Phase 65** (`d5802cc`) — Data availability statement
+- `validate_data_availability(parsed, classification)` → `missing-data-availability` (minor)
+- Fires for empirical/software papers; scans for zenodo, figshare, osf.io, etc.
 
-**Phase 61** (`4d96f54`) — Effect size reporting
-- `validate_effect_size_reporting(parsed, classification)` → `missing-effect-size` (minor)
-- `_EFFECT_SIZE_RE`: Cohen's d/f, η², odds/hazard ratio, Hedges' g, etc.
-- Only fires when p-values present but effect size absent
+**Phase 66** (`d5802cc`) — Ethics/IRB statement
+- `validate_ethics_statement(parsed)` → `missing-ethics-statement` (moderate)
+- Detects human-subject or animal-study keywords; fires when no ethics approval language found
 
-**Phase 62** (`4d96f54`) — Acknowledgments presence
-- `validate_acknowledgments_presence(parsed, classification)` → `missing-acknowledgments` (minor)
-- Checks for section AND `_FUNDING_RE` keywords in full text
-- Requires ≥5 bibliography entries; empirical/applied/software only
+**Phase 67** (`d5802cc`) — Citation style consistency
+- `validate_citation_style_consistency(parsed)` → `citation-style-inconsistency` (minor)
+- Fires when numbered [N] and author-year styles mix and minority >10% of total
 
-Current test count: **164 passing** (after phase 62)
+**Phase 68** (`d5802cc`) — Cross-reference integrity
+- `validate_cross_reference_integrity(parsed)` → `cross-reference-out-of-range` (minor)
+- Checks Figure/Table N references against figure_definitions/table_definitions counts
+
+**Phase 69** (`d5802cc`) — Decimal precision consistency
+- `validate_decimal_precision_consistency(parsed)` → `decimal-precision-inconsistency` (minor)
+- Flags same integer base appearing with and without decimal places in same section
+
+**Phase 70** (`d5802cc`) — Future-work balance
+- `validate_future_work_balance(parsed)` → `future-work-heavy` (minor)
+- Fires when >40% of Discussion/Conclusion sentences contain future-work signals
+
+**Phase 71** (`d5802cc`) — Null result acknowledgment
+- `validate_null_result_acknowledgment(parsed, classification)` → `no-negative-results-acknowledged` (minor)
+- Fires for empirical papers with ≥4 result paragraphs but no null/negative language
+
+Current test count: **195 passing** (after phase 71)
 
 
 ## Bundle and handoff requirements
