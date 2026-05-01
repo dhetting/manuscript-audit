@@ -5251,3 +5251,218 @@ def test_no_coding_no_fire() -> None:
     ms, clf = _irr_manuscript(body)
     result = validate_interrater_reliability(ms, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 112 – Spurious precision
+# ---------------------------------------------------------------------------
+
+
+def _spurious_precision_manuscript(results_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="sp-test",
+        source_path="sp.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=results_body)],
+        full_text=results_body,
+    )
+
+
+def test_spurious_precision_fires() -> None:
+    from manuscript_audit.validators.core import validate_spurious_precision
+
+    body = (
+        "The mean accuracy was 0.91234567 and standard error was 0.00123456. "
+        "Effect size Cohen's d = 0.72345678."
+    )
+    ms = _spurious_precision_manuscript(body)
+    result = validate_spurious_precision(ms)
+    codes = [f.code for f in result.findings]
+    assert "spurious-precision" in codes
+
+
+def test_reasonable_precision_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spurious_precision
+
+    body = "The mean accuracy was 0.912 and the standard error was 0.023."
+    ms = _spurious_precision_manuscript(body)
+    result = validate_spurious_precision(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 113 – Vague temporal claims
+# ---------------------------------------------------------------------------
+
+
+def _temporal_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="temp-test",
+        source_path="temp.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_vague_temporal_fires() -> None:
+    from manuscript_audit.validators.core import validate_vague_temporal_claims
+
+    text = (
+        "Recently, deep learning has shown impressive results. "
+        "In recent years, the field has grown rapidly. "
+        "Lately, researchers have focused on interpretability. "
+        "In recent months there have been many new advances."
+    )
+    ms = _temporal_manuscript(text)
+    result = validate_vague_temporal_claims(ms)
+    codes = [f.code for f in result.findings]
+    assert "vague-temporal-claims" in codes
+
+
+def test_anchored_temporal_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vague_temporal_claims
+
+    text = (
+        "Recently, deep learning has shown impressive results. "
+        "In recent years the field has grown, especially since 2017. "
+        "Between 2018 and 2023, multiple large models were released. "
+        "In recent months new benchmarks have been proposed."
+    )
+    ms = _temporal_manuscript(text)
+    result = validate_vague_temporal_claims(ms)
+    assert result.findings == []
+
+
+def test_few_temporal_references_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vague_temporal_claims
+
+    text = (
+        "Recently, the field has advanced. "
+        "The approach is now state-of-the-art."
+    )
+    ms = _temporal_manuscript(text)
+    result = validate_vague_temporal_claims(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 114 – Exclusion criteria
+# ---------------------------------------------------------------------------
+
+
+def _exclusion_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="excl-test",
+        source_path="excl.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_inclusion_without_exclusion_fires() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria
+
+    body = (
+        "Inclusion criteria: participants must be aged 18-65 and English-speaking. "
+        "Eligible participants were recruited from community centers."
+    )
+    ms, clf = _exclusion_manuscript(body)
+    result = validate_exclusion_criteria(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-exclusion-criteria" in codes
+
+
+def test_inclusion_and_exclusion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria
+
+    body = (
+        "Inclusion criteria: adults aged 18-65. "
+        "Exclusion criteria: participants with prior neurological diagnosis "
+        "were excluded from the study."
+    )
+    ms, clf = _exclusion_manuscript(body)
+    result = validate_exclusion_criteria(ms, clf)
+    assert result.findings == []
+
+
+def test_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria
+
+    body = "We implemented a new algorithm for graph traversal."
+    ms, clf = _exclusion_manuscript(body, paper_type="software_workflow_paper")
+    result = validate_exclusion_criteria(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 115 – Title length
+# ---------------------------------------------------------------------------
+
+
+def _title_manuscript(title: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="title-test",
+        source_path="title.md",
+        source_format="markdown",
+        title=title,
+        abstract="Abstract.",
+        full_text="Content.",
+    )
+
+
+def test_title_too_long_fires() -> None:
+    from manuscript_audit.validators.core import validate_title_length
+
+    title = (
+        "A comprehensive investigation into the long-term effects of "
+        "machine learning on organizational decision-making processes in "
+        "large multinational corporations across diverse industry sectors"
+    )
+    ms = _title_manuscript(title)
+    result = validate_title_length(ms)
+    codes = [f.code for f in result.findings]
+    assert "title-too-long" in codes
+
+
+def test_title_too_short_fires() -> None:
+    from manuscript_audit.validators.core import validate_title_length
+
+    ms = _title_manuscript("AI methods")
+    result = validate_title_length(ms)
+    codes = [f.code for f in result.findings]
+    assert "title-too-short" in codes
+
+
+def test_normal_title_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_title_length
+
+    ms = _title_manuscript(
+        "Deterministic validators for adversarial manuscript vetting"
+    )
+    result = validate_title_length(ms)
+    assert result.findings == []

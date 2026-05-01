@@ -5758,6 +5758,229 @@ def validate_interrater_reliability(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 112 – Spurious numerical precision
+# ---------------------------------------------------------------------------
+
+_SPURIOUS_PRECISION_RE = re.compile(
+    r"\b\d+\.\d{5,}\b"
+)
+_SPURIOUS_SECTION_TITLES = frozenset(
+    {"results", "analysis", "findings", "statistical analysis"}
+)
+
+
+def validate_spurious_precision(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag results reported with excessive decimal places.
+
+    Emits ``spurious-precision`` (minor) when Results sections contain
+    numbers with 5+ decimal places (e.g., mean = 3.14159265), which
+    implies false precision in measurement.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() not in _SPURIOUS_SECTION_TITLES:
+            continue
+        matches = _SPURIOUS_PRECISION_RE.findall(section.body)
+        if matches:
+            findings.append(
+                Finding(
+                    code="spurious-precision",
+                    severity="minor",
+                    message=(
+                        f"Section '{section.title}' reports values with excessive "
+                        f"decimal precision ({matches[0]}...). "
+                        "Round to 2-3 significant digits appropriate to measurement."
+                    ),
+                    validator="spurious_precision",
+                    location=section.title,
+                    evidence=matches[:3],
+                )
+            )
+    return ValidationResult(validator_name="spurious_precision", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 113 – Vague temporal reference
+# ---------------------------------------------------------------------------
+
+_VAGUE_TEMPORAL_RE = re.compile(
+    r"\b(recently|in recent (?:years|months|times?|decades?)|"
+    r"lately|in the past (?:few|several|recent) years|"
+    r"nowadays|these days|currently available)\b",
+    re.IGNORECASE,
+)
+_TEMPORAL_ANCHOR_RE = re.compile(
+    r"\b(since \d{4}|in \d{4}|between \d{4} and \d{4}|"
+    r"from \d{4} to \d{4}|\[\d+\]|[@\\]cite)\b",
+    re.IGNORECASE,
+)
+_VAGUE_TEMPORAL_THRESHOLD = 3
+
+
+def validate_vague_temporal_claims(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts with multiple unanchored temporal references.
+
+    Emits ``vague-temporal-claims`` (minor) when ≥ ``_VAGUE_TEMPORAL_THRESHOLD``
+    vague temporal references (e.g., "recently", "in recent years") appear
+    without date anchors or citations nearby.
+    """
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    vague_matches = _VAGUE_TEMPORAL_RE.findall(combined)
+    if len(vague_matches) < _VAGUE_TEMPORAL_THRESHOLD:
+        return ValidationResult(
+            validator_name="vague_temporal_claims", findings=[]
+        )
+    if _TEMPORAL_ANCHOR_RE.search(combined):
+        return ValidationResult(
+            validator_name="vague_temporal_claims", findings=[]
+        )
+
+    unique = list({m.lower() for m in vague_matches})[:3]
+    return ValidationResult(
+        validator_name="vague_temporal_claims",
+        findings=[
+            Finding(
+                code="vague-temporal-claims",
+                severity="minor",
+                message=(
+                    f"Manuscript contains {len(vague_matches)} unanchored temporal "
+                    "references (e.g., 'recently', 'in recent years') without date "
+                    "anchors or citations. Replace with specific years or cite sources."
+                ),
+                validator="vague_temporal_claims",
+                location="manuscript",
+                evidence=unique,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 114 – Missing exclusion criteria
+# ---------------------------------------------------------------------------
+
+_EXCLUSION_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "clinical_trial_report",
+        "survey_study",
+    }
+)
+_INCLUSION_RE = re.compile(
+    r"\b(inclusion criteria|included (participants?|subjects?|patients?)|"
+    r"eligible (participants?|subjects?|patients?)|"
+    r"eligibility criteria)\b",
+    re.IGNORECASE,
+)
+_EXCLUSION_RE = re.compile(
+    r"\b(exclusion criteria|excluded (participants?|subjects?|patients?|from)|"
+    r"ineligible|were excluded|excluded (if|due to|because))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_exclusion_criteria(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies with inclusion but no exclusion criteria.
+
+    Emits ``missing-exclusion-criteria`` (moderate) when Methods describe
+    inclusion criteria for participants without corresponding exclusion criteria.
+    """
+    if classification.paper_type not in _EXCLUSION_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="exclusion_criteria", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {
+            "methods", "methodology", "participants", "sample", "procedure"
+        }
+    )
+    if not methods_body:
+        return ValidationResult(validator_name="exclusion_criteria", findings=[])
+
+    if not _INCLUSION_RE.search(methods_body):
+        return ValidationResult(validator_name="exclusion_criteria", findings=[])
+
+    if _EXCLUSION_RE.search(methods_body):
+        return ValidationResult(validator_name="exclusion_criteria", findings=[])
+
+    return ValidationResult(
+        validator_name="exclusion_criteria",
+        findings=[
+            Finding(
+                code="missing-exclusion-criteria",
+                severity="moderate",
+                message=(
+                    "Methods describe inclusion criteria but no exclusion criteria. "
+                    "Explicitly state who was excluded and why."
+                ),
+                validator="exclusion_criteria",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 115 – Title length
+# ---------------------------------------------------------------------------
+
+_TITLE_MAX_WORDS = 20
+_TITLE_MIN_WORDS = 5
+
+
+def validate_title_length(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag overlong or excessively short titles.
+
+    Emits ``title-too-long`` (minor) when the title exceeds
+    ``_TITLE_MAX_WORDS`` words, and ``title-too-short`` (minor) when
+    the title has fewer than ``_TITLE_MIN_WORDS`` words.
+    """
+    title = parsed.title or ""
+    word_count = len(title.split())
+    if word_count > _TITLE_MAX_WORDS:
+        return ValidationResult(
+            validator_name="title_length",
+            findings=[
+                Finding(
+                    code="title-too-long",
+                    severity="minor",
+                    message=(
+                        f"Title has {word_count} words (max {_TITLE_MAX_WORDS}). "
+                        "Shorten to improve discoverability and journal compliance."
+                    ),
+                    validator="title_length",
+                    location="title",
+                    evidence=[f"{word_count} words"],
+                )
+            ],
+        )
+    if word_count > 0 and word_count < _TITLE_MIN_WORDS:
+        return ValidationResult(
+            validator_name="title_length",
+            findings=[
+                Finding(
+                    code="title-too-short",
+                    severity="minor",
+                    message=(
+                        f"Title has only {word_count} words (min {_TITLE_MIN_WORDS}). "
+                        "A descriptive title improves discoverability."
+                    ),
+                    validator="title_length",
+                    location="title",
+                    evidence=[f"{word_count} words"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="title_length", findings=[])
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -5863,6 +6086,10 @@ def run_deterministic_validators(
         validate_attrition_reporting(parsed, classification),
         validate_generalizability_overclaim(parsed),
         validate_interrater_reliability(parsed, classification),
+        validate_spurious_precision(parsed),
+        validate_vague_temporal_claims(parsed),
+        validate_exclusion_criteria(parsed, classification),
+        validate_title_length(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
