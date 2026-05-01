@@ -1117,6 +1117,61 @@ def validate_passive_voice_density(parsed: ParsedManuscript) -> ValidationResult
     return ValidationResult(validator_name="passive_voice_density", findings=findings)
 
 
+# Duplicate quantitative claim detection.
+# Matches: a numeric value (possibly with % or decimal) adjacent to a noun-like word that
+# suggests a performance metric, e.g. "94% accuracy", "F1 of 0.85", "p < 0.05".
+_DUP_CLAIM_RE = re.compile(
+    r"(?:"
+    r"\d+(?:\.\d+)?%\s+\w+"       # "94% accuracy"
+    r"|"
+    r"\w+\s+of\s+\d+(?:\.\d+)?"   # "F1 of 0.85"
+    r"|"
+    r"p\s*[<>=]\s*0\.\d+"          # "p < 0.05"
+    r"|"
+    r"\d+(?:\.\d+)?\s+\w+\s+(?:score|rate|ratio|precision|recall|accuracy)\b"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def validate_duplicate_claims(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag quantitative claim strings that appear verbatim in two or more distinct sections.
+
+    Looks for patterns matching ``_DUP_CLAIM_RE`` across all non-abstract sections.
+    When the same normalised pattern string appears in ≥2 different sections, emits a
+    ``duplicate-quantitative-claim`` (minor) finding, as copy-pasted numbers in different
+    sections are often inconsistently updated during revision.
+    """
+    from collections import defaultdict
+
+    # Map normalised claim string → set of section titles where it appears.
+    claim_sections: dict[str, set[str]] = defaultdict(set)
+    for section in parsed.sections:
+        if section.title.lower() in _SKIP_SECTIONS:
+            continue
+        for match in _DUP_CLAIM_RE.finditer(section.body):
+            normalised = " ".join(match.group(0).lower().split())
+            claim_sections[normalised].add(section.title)
+
+    findings: list[Finding] = []
+    for claim, sections in sorted(claim_sections.items()):
+        if len(sections) >= 2:
+            section_list = ", ".join(f"'{s}'" for s in sorted(sections))
+            findings.append(
+                Finding(
+                    code="duplicate-quantitative-claim",
+                    severity="minor",
+                    message=(
+                        f"Quantitative claim \"{claim}\" appears verbatim in "
+                        f"{len(sections)} sections ({section_list}) — verify consistency."
+                    ),
+                    validator="duplicate_claims",
+                    evidence=[claim],
+                )
+            )
+    return ValidationResult(validator_name="duplicate_claims", findings=findings)
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1149,6 +1204,7 @@ def run_deterministic_validators(
         validate_abstract_length(parsed),
         validate_section_body_completeness(parsed),
         validate_passive_voice_density(parsed),
+        validate_duplicate_claims(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

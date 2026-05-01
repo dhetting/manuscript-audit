@@ -764,3 +764,56 @@ def test_comparative_claim_evidence_contains_trigger_sentence() -> None:
     evidence = result.findings[0].evidence
     assert evidence
     assert "outperforms" in evidence[0]
+
+
+# ---------------------------------------------------------------------------
+# Phase 28: duplicate quantitative claim detection
+# ---------------------------------------------------------------------------
+
+
+def _dup_claim_manuscript(sections: list[tuple[str, str]]):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="dup-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Dup claim test",
+        full_text="",
+        sections=[Section(title=t, level=2, body=b) for t, b in sections],
+    )
+
+
+def test_duplicate_claim_detected_across_sections() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_claims
+
+    parsed = _dup_claim_manuscript([
+        ("Results", "Our model achieves 94% accuracy on the test set."),
+        ("Discussion", "The 94% accuracy result confirms our hypothesis."),
+    ])
+    result = validate_duplicate_claims(parsed)
+    codes = [f.code for f in result.findings]
+    assert "duplicate-quantitative-claim" in codes
+
+
+def test_unique_claims_not_flagged() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_claims
+
+    parsed = _dup_claim_manuscript([
+        ("Results", "Model A achieves 94% accuracy on the test set."),
+        ("Discussion", "Model B achieves 87% accuracy in cross-validation."),
+    ])
+    result = validate_duplicate_claims(parsed)
+    assert result.findings == []
+
+
+def test_duplicate_claim_skips_abstract_section() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_claims
+
+    parsed = _dup_claim_manuscript([
+        ("Abstract", "Our approach achieves 94% accuracy."),
+        ("Results", "We report 94% accuracy on the held-out test set."),
+    ])
+    # Abstract is in _SKIP_SECTIONS; only Results matches, so no duplicate
+    result = validate_duplicate_claims(parsed)
+    assert result.findings == []
