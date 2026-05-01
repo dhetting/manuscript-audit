@@ -6655,6 +6655,11 @@ def run_deterministic_validators(
         validate_replication_dataset(parsed, classification),
         validate_appendix_reference_consistency(parsed),
         validate_open_science_statement(parsed, classification),
+        validate_cohort_attrition(parsed, classification),
+        validate_blinding_procedure(parsed, classification),
+        validate_floor_ceiling_effects(parsed, classification),
+        validate_negative_result_framing(parsed),
+        validate_abstract_results_consistency(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -7944,6 +7949,351 @@ def validate_open_science_statement(
                 validator="open_science_statement",
                 location="manuscript",
                 evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 146 – Cohort attrition / dropout reporting
+# ---------------------------------------------------------------------------
+
+_LONGITUDINAL_RE = re.compile(
+    r"\b(?:longitudinal|follow.?up|cohort\s+study|panel\s+study|"
+    r"prospective\s+study|repeated\s+measures|wave\s+\d|time\s+point\s+\d|"
+    r"baseline\s+and\s+follow.?up)\b",
+    re.IGNORECASE,
+)
+_ATTRITION_RE = re.compile(
+    r"\b(?:attrition|dropout|drop.out|lost\s+to\s+follow.?up|"
+    r"missing\s+(?:data\s+due|participants\s+due)|"
+    r"(?:\d+|[a-z]+)\s+(?:participants?|subjects?)\s+(?:withdrew|dropped|"
+    r"were\s+lost|did\s+not\s+complete))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cohort_attrition(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag longitudinal empirical manuscripts missing attrition reporting.
+
+    Emits ``missing-attrition-reporting`` (moderate) when a longitudinal
+    study is detected but no dropout or attrition information is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="cohort_attrition", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="cohort_attrition", findings=[])
+
+    if not _LONGITUDINAL_RE.search(full):
+        return ValidationResult(validator_name="cohort_attrition", findings=[])
+
+    if _ATTRITION_RE.search(full):
+        return ValidationResult(validator_name="cohort_attrition", findings=[])
+
+    return ValidationResult(
+        validator_name="cohort_attrition",
+        findings=[
+            Finding(
+                code="missing-attrition-reporting",
+                severity="moderate",
+                message=(
+                    "Longitudinal study detected but no attrition or dropout "
+                    "information was reported. "
+                    "Report the number and reasons for participant dropout."
+                ),
+                validator="cohort_attrition",
+                location="manuscript",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 147 – Blinding procedure reporting
+# ---------------------------------------------------------------------------
+
+_INTERVENTION_RE = re.compile(
+    r"\b(?:randomized?\s+(?:controlled\s+)?trial|RCT|intervention\s+study|"
+    r"treatment\s+group|control\s+group|placebo|experimental\s+condition|"
+    r"between.?subjects?\s+design|within.?subjects?\s+design)\b",
+    re.IGNORECASE,
+)
+_BLINDING_RE = re.compile(
+    r"\b(?:blind(?:ed|ing)?|double.blind|single.blind|"
+    r"masked|unblinded|open.label|assessors?\s+(?:were|blinded))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_blinding_procedure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag intervention/RCT manuscripts without blinding description.
+
+    Emits ``missing-blinding-procedure`` (moderate) when a controlled trial or
+    intervention design is detected but no blinding procedure is described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="blinding_procedure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="blinding_procedure", findings=[]
+        )
+
+    if not _INTERVENTION_RE.search(full):
+        return ValidationResult(
+            validator_name="blinding_procedure", findings=[]
+        )
+
+    if _BLINDING_RE.search(full):
+        return ValidationResult(
+            validator_name="blinding_procedure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="blinding_procedure",
+        findings=[
+            Finding(
+                code="missing-blinding-procedure",
+                severity="moderate",
+                message=(
+                    "Intervention or controlled-trial design detected but no blinding "
+                    "procedure is described. "
+                    "Specify whether participants, assessors, or analysts were blinded."
+                ),
+                validator="blinding_procedure",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 148 – Floor/ceiling effect reporting
+# ---------------------------------------------------------------------------
+
+_SCALE_MEASURE_RE = re.compile(
+    r"\b(?:Likert|questionnaire|scale|psychometric|instrument|inventory|"
+    r"self.report|rating\s+scale|survey\s+instrument)\b",
+    re.IGNORECASE,
+)
+_FLOOR_CEILING_RE = re.compile(
+    r"\b(?:floor\s+effects?|ceiling\s+effects?|floor/ceiling|"
+    r"maximum\s+possible\s+score|minimum\s+possible\s+score|"
+    r"skew(?:ed|ness)?\s+(?:toward|near)\s+(?:maximum|minimum|ceiling|floor))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_floor_ceiling_effects(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag psychometric studies without floor/ceiling effects discussion.
+
+    Emits ``missing-floor-ceiling-discussion`` (minor) when scale/questionnaire
+    measures are used but floor/ceiling effects are not addressed.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="floor_ceiling_effects", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="floor_ceiling_effects", findings=[]
+        )
+
+    scale_matches = _SCALE_MEASURE_RE.findall(full)
+    if len(scale_matches) < 3:
+        return ValidationResult(
+            validator_name="floor_ceiling_effects", findings=[]
+        )
+
+    if _FLOOR_CEILING_RE.search(full):
+        return ValidationResult(
+            validator_name="floor_ceiling_effects", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="floor_ceiling_effects",
+        findings=[
+            Finding(
+                code="missing-floor-ceiling-discussion",
+                severity="minor",
+                message=(
+                    "Scale/questionnaire measures detected but floor and ceiling "
+                    "effects are not discussed. "
+                    "Address whether floor or ceiling effects may affect score distributions."
+                ),
+                validator="floor_ceiling_effects",
+                location="Results/Discussion",
+                evidence=list(dict.fromkeys(scale_matches[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 149 – Negative result / non-significant result framing
+# ---------------------------------------------------------------------------
+
+_NON_SIG_RE = re.compile(
+    r"\b(?:not\s+significant|non.significant|did\s+not\s+(?:reach|achieve)\s+"
+    r"significance|no\s+significant\s+(?:difference|effect|association|"
+    r"relationship)|failed\s+to\s+(?:reach|achieve)\s+significance|"
+    r"p\s*[=>]\s*0\.0[5-9]|p\s*[=>]\s*[1-9]\.?\d*)\b",
+    re.IGNORECASE,
+)
+_NEGATIVE_DISCUSSION_RE = re.compile(
+    r"\b(?:null\s+(?:result|finding|hypothesis)|negative\s+(?:result|finding)|"
+    r"lack\s+of\s+(?:significance|effect)|absence\s+of\s+(?:effect|significant)|"
+    r"no\s+evidence\s+(?:of|for)|power\s+may\s+have|underpowered)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_negative_result_framing(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts with non-significant results lacking explicit acknowledgment.
+
+    Emits ``negative-result-underreported`` (minor) when non-significant
+    p-value patterns appear in Results but the Discussion lacks any null/negative
+    result framing.
+    """
+    results_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title and "result" in s.title.lower()
+    )
+    discussion_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title and "discussion" in s.title.lower()
+    )
+    if not results_text or not discussion_text:
+        return ValidationResult(
+            validator_name="negative_result_framing", findings=[]
+        )
+
+    non_sig_count = len(_NON_SIG_RE.findall(results_text))
+    if non_sig_count < 2:
+        return ValidationResult(
+            validator_name="negative_result_framing", findings=[]
+        )
+
+    if _NEGATIVE_DISCUSSION_RE.search(discussion_text):
+        return ValidationResult(
+            validator_name="negative_result_framing", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="negative_result_framing",
+        findings=[
+            Finding(
+                code="negative-result-underreported",
+                severity="minor",
+                message=(
+                    f"Results section contains {non_sig_count} non-significant findings "
+                    "but Discussion does not explicitly address null results, lack of "
+                    "evidence, or underpowering. "
+                    "Discuss the implications of non-significant results."
+                ),
+                validator="negative_result_framing",
+                location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 150 – Abstract–results consistency check
+# ---------------------------------------------------------------------------
+
+_ABSTRACT_CLAIM_RE = re.compile(
+    r"\b(?:we\s+found|we\s+show(?:ed)?|results?\s+(?:show|indicate|suggest|"
+    r"demonstrate)|our\s+(?:results?|findings?|study)\s+(?:show|indicate|"
+    r"suggest|demonstrate|reveal)|significantly\s+(?:higher|lower|better|"
+    r"worse|greater|reduced|increased))\b",
+    re.IGNORECASE,
+)
+_RESULTS_CLAIM_RE = re.compile(
+    r"\b(?:(?:were|was|is|are)\s+significantly|significantly\s+(?:higher|lower|"
+    r"better|worse|greater|reduced|increased)|p\s*[<≤]\s*0\.0[0-5])\b",
+    re.IGNORECASE,
+)
+
+
+def validate_abstract_results_consistency(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts where abstract makes result claims but Results section is sparse.
+
+    Emits ``abstract-results-mismatch`` (moderate) when the abstract makes
+    >= 2 result claims but the Results section has fewer result claim patterns,
+    suggesting the abstract may overclaim relative to reported results.
+    """
+    abstract = parsed.abstract or ""
+    if not abstract:
+        return ValidationResult(
+            validator_name="abstract_results_consistency", findings=[]
+        )
+
+    results_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title and "result" in s.title.lower()
+    )
+    if not results_text:
+        return ValidationResult(
+            validator_name="abstract_results_consistency", findings=[]
+        )
+
+    abstract_claims = _ABSTRACT_CLAIM_RE.findall(abstract)
+    results_claims = _RESULTS_CLAIM_RE.findall(results_text)
+
+    if len(abstract_claims) < 2:
+        return ValidationResult(
+            validator_name="abstract_results_consistency", findings=[]
+        )
+
+    if len(results_claims) >= len(abstract_claims):
+        return ValidationResult(
+            validator_name="abstract_results_consistency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="abstract_results_consistency",
+        findings=[
+            Finding(
+                code="abstract-results-mismatch",
+                severity="moderate",
+                message=(
+                    f"Abstract makes {len(abstract_claims)} result claims but "
+                    f"Results section contains only {len(results_claims)} "
+                    "supporting quantitative claims. "
+                    "Ensure abstract claims are fully supported in the Results."
+                ),
+                validator="abstract_results_consistency",
+                location="Abstract/Results",
+                evidence=[
+                    f"abstract claims: {len(abstract_claims)}",
+                    f"results claims: {len(results_claims)}",
+                ],
             )
         ],
     )

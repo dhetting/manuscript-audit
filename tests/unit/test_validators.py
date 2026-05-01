@@ -7118,3 +7118,315 @@ def test_open_science_non_empirical_no_fire() -> None:
     )
     result = validate_open_science_statement(ms, _open_science_clf("math_theory_paper"))
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 146 – Cohort attrition reporting
+# ---------------------------------------------------------------------------
+
+
+def _attrition_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="attrition-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _attrition_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_attrition_reporting_fires() -> None:
+    from manuscript_audit.validators.core import validate_cohort_attrition
+
+    ms = _attrition_ms(
+        "We conducted a longitudinal study with baseline and follow-up assessments. "
+        "Participants completed questionnaires at each time point. "
+        "The study used a prospective cohort design."
+    )
+    result = validate_cohort_attrition(ms, _attrition_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-attrition-reporting" in codes
+
+
+def test_attrition_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cohort_attrition
+
+    ms = _attrition_ms(
+        "We conducted a longitudinal study. At follow-up, 23 participants were lost "
+        "to follow-up due to relocation. Attrition was 8% overall."
+    )
+    result = validate_cohort_attrition(ms, _attrition_clf())
+    assert result.findings == []
+
+
+def test_attrition_cross_sectional_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cohort_attrition
+
+    ms = _attrition_ms(
+        "We recruited 300 participants for a cross-sectional survey study. "
+        "Participants completed a one-time questionnaire."
+    )
+    result = validate_cohort_attrition(ms, _attrition_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 147 – Blinding procedure reporting
+# ---------------------------------------------------------------------------
+
+
+def _blinding_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="blinding-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _blinding_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_blinding_procedure_fires() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure
+
+    ms = _blinding_ms(
+        "We conducted a randomized controlled trial comparing drug A vs placebo. "
+        "Participants were allocated to treatment group or control group."
+    )
+    result = validate_blinding_procedure(ms, _blinding_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-blinding-procedure" in codes
+
+
+def test_blinding_described_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure
+
+    ms = _blinding_ms(
+        "We conducted a randomized controlled trial. The study was double-blind: "
+        "participants and assessors were masked to treatment allocation."
+    )
+    result = validate_blinding_procedure(ms, _blinding_clf())
+    assert result.findings == []
+
+
+def test_no_intervention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure
+
+    ms = _blinding_ms(
+        "We surveyed 400 adults about their health behaviors. "
+        "All responses were anonymous and confidential."
+    )
+    result = validate_blinding_procedure(ms, _blinding_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 148 – Floor/ceiling effects
+# ---------------------------------------------------------------------------
+
+
+def _floor_ceiling_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="floor-ceiling-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _floor_ceiling_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_floor_ceiling_discussion_fires() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effects
+
+    ms = _floor_ceiling_ms(
+        "We administered three Likert-scale questionnaires measuring wellbeing. "
+        "Each questionnaire is a validated psychometric instrument. "
+        "The scale scores were analyzed using linear regression."
+    )
+    result = validate_floor_ceiling_effects(ms, _floor_ceiling_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-floor-ceiling-discussion" in codes
+
+
+def test_floor_ceiling_discussed_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effects
+
+    ms = _floor_ceiling_ms(
+        "We administered three Likert-scale questionnaires using a validated "
+        "psychometric instrument. We checked for floor effects and ceiling effects "
+        "before analysis; none were detected."
+    )
+    result = validate_floor_ceiling_effects(ms, _floor_ceiling_clf())
+    assert result.findings == []
+
+
+def test_few_scale_refs_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effects
+
+    ms = _floor_ceiling_ms(
+        "We used a brief Likert scale to measure satisfaction."
+    )
+    result = validate_floor_ceiling_effects(ms, _floor_ceiling_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 149 – Negative result framing
+# ---------------------------------------------------------------------------
+
+
+def _neg_result_ms(results_body: str, discussion_body: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="neg-result-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[
+            Section(title="Results", level=2, body=results_body),
+            Section(title="Discussion", level=2, body=discussion_body),
+        ],
+        full_text=results_body + "\n" + discussion_body,
+    )
+
+
+def test_negative_result_underreported_fires() -> None:
+    from manuscript_audit.validators.core import validate_negative_result_framing
+
+    ms = _neg_result_ms(
+        results_body=(
+            "The association was not significant (p = 0.42). "
+            "No significant difference was found between groups (p > 0.05). "
+            "The intervention did not reach significance."
+        ),
+        discussion_body=(
+            "Our findings suggest that the intervention was effective in several domains. "
+            "Future research should explore additional mechanisms."
+        ),
+    )
+    result = validate_negative_result_framing(ms)
+    codes = [f.code for f in result.findings]
+    assert "negative-result-underreported" in codes
+
+
+def test_negative_result_acknowledged_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_negative_result_framing
+
+    ms = _neg_result_ms(
+        results_body=(
+            "The association was not significant (p = 0.42). "
+            "No significant difference was found between groups (p > 0.05). "
+        ),
+        discussion_body=(
+            "The null result for the primary outcome may reflect insufficient "
+            "power. These negative results should be interpreted cautiously."
+        ),
+    )
+    result = validate_negative_result_framing(ms)
+    assert result.findings == []
+
+
+def test_no_results_section_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_negative_result_framing
+
+    ms = ParsedManuscript(
+        manuscript_id="no-results",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Introduction", level=2, body="Background context.")],
+        full_text="Background context.",
+    )
+    result = validate_negative_result_framing(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 150 – Abstract–results consistency
+# ---------------------------------------------------------------------------
+
+
+def _abstract_results_ms(abstract: str, results_body: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="abstract-results-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        abstract=abstract,
+        sections=[Section(title="Results", level=2, body=results_body)],
+        full_text=abstract + "\n" + results_body,
+    )
+
+
+def test_abstract_results_mismatch_fires() -> None:
+    from manuscript_audit.validators.core import validate_abstract_results_consistency
+
+    ms = _abstract_results_ms(
+        abstract=(
+            "We found that treatment significantly improved outcomes. "
+            "Results show significantly higher scores in the treatment group. "
+            "Our findings demonstrate a significant reduction in symptoms."
+        ),
+        results_body="Participants reported improved wellbeing after treatment.",
+    )
+    result = validate_abstract_results_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "abstract-results-mismatch" in codes
+
+
+def test_abstract_results_consistent_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_results_consistency
+
+    ms = _abstract_results_ms(
+        abstract=(
+            "We found that treatment significantly improved outcomes. "
+            "Results show significantly higher scores."
+        ),
+        results_body=(
+            "Scores were significantly higher in the treatment group (p < 0.001). "
+            "The intervention was significantly more effective than control (p < 0.01)."
+        ),
+    )
+    result = validate_abstract_results_consistency(ms)
+    assert result.findings == []
+
+
+def test_abstract_consistency_no_abstract_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_results_consistency
+
+    ms = ParsedManuscript(
+        manuscript_id="no-abstract",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        abstract="",
+        sections=[Section(title="Results", level=2, body="Means were compared.")],
+        full_text="Means were compared.",
+    )
+    result = validate_abstract_results_consistency(ms)
+    assert result.findings == []
