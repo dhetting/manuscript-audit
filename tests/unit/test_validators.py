@@ -1950,3 +1950,268 @@ def test_conclusion_scope_no_fire_when_metrics_established() -> None:
     )
     result = validate_conclusion_scope(parsed)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 53 – equation density
+# ---------------------------------------------------------------------------
+
+def _eq_density_manuscript(eq_count: int, section_count: int, pathway: str = "math_stats_theory"):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    sections = [
+        Section(title=f"Section {i}", level=2, body="Some content here with words.")
+        for i in range(section_count)
+    ]
+    parsed = ParsedManuscript(
+        manuscript_id="eq-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="EQ test",
+        full_text="",
+        equation_blocks=[f"E_{i} = x" for i in range(eq_count)],
+        sections=sections,
+    )
+    clf = ManuscriptClassification(
+        paper_type="math_stats_theory",
+        pathway=pathway,
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_equation_density_fires() -> None:
+    from manuscript_audit.validators.core import validate_equation_density
+
+    # 4 sections, 0 equations → ratio 0.0 < 0.5
+    parsed, clf = _eq_density_manuscript(eq_count=0, section_count=4)
+    result = validate_equation_density(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "low-equation-density" in codes
+
+
+def test_equation_density_no_fire_sufficient() -> None:
+    from manuscript_audit.validators.core import validate_equation_density
+
+    # 4 sections, 4 equations → ratio 1.0 ≥ 0.5
+    parsed, clf = _eq_density_manuscript(eq_count=4, section_count=4)
+    result = validate_equation_density(parsed, clf)
+    assert result.findings == []
+
+
+def test_equation_density_skipped_non_theory() -> None:
+    from manuscript_audit.validators.core import validate_equation_density
+
+    parsed, clf = _eq_density_manuscript(eq_count=0, section_count=4, pathway="applied_stats")
+    clf.paper_type = "empirical_paper"  # type: ignore[assignment]
+    result = validate_equation_density(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 54 – abstract structure
+# ---------------------------------------------------------------------------
+
+def test_abstract_structure_fires_missing_result() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_abstract_structure
+
+    abstract = (
+        "Machine learning is widely used. We propose a new approach to classification "
+        "that leverages deep neural networks. Our framework processes input sequences "
+        "and produces structured outputs via attention layers. "
+        "The architecture consists of an encoder and decoder module. "
+        "We train the system on standard benchmarks using cross-entropy loss. "
+        "The method is described in detail in the following sections. "
+        "This approach handles long-range dependencies effectively and efficiently."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="abs-struct",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Abs struct",
+        full_text="",
+        abstract=abstract,
+        sections=[],
+    )
+    result = validate_abstract_structure(parsed)
+    codes = [f.code for f in result.findings]
+    assert "missing-abstract-component" in codes
+
+
+def test_abstract_structure_passes_complete() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_abstract_structure
+
+    abstract = (
+        "Machine learning is widely used for structured prediction tasks. "
+        "We propose a new attention mechanism for sequence-to-sequence tasks. "
+        "Our framework processes variable-length inputs efficiently. "
+        "We show that our approach achieves state-of-the-art accuracy on three benchmarks. "
+        "Results demonstrate a 5% improvement over baseline methods on all tasks. "
+        "The system is computationally efficient and scales to large datasets effectively."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="abs-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Abs OK",
+        full_text="",
+        abstract=abstract,
+        sections=[],
+    )
+    result = validate_abstract_structure(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 55 – URL format
+# ---------------------------------------------------------------------------
+
+def test_url_format_malformed_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_url_format
+
+    body = "See www.example.com for details and www.other.org for more."
+    parsed = ParsedManuscript(
+        manuscript_id="url-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="URL test",
+        full_text=body,
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_url_format(parsed)
+    codes = [f.code for f in result.findings]
+    assert "malformed-url" in codes
+
+
+def test_url_format_valid_no_fire() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_url_format
+
+    body = "See https://example.com for details."
+    parsed = ParsedManuscript(
+        manuscript_id="url-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="URL OK",
+        full_text=body,
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_url_format(parsed)
+    codes = [f.code for f in result.findings]
+    assert "malformed-url" not in codes
+
+
+# ---------------------------------------------------------------------------
+# Phase 56 – figure/table balance
+# ---------------------------------------------------------------------------
+
+def _fig_balance_manuscript(n_figs: int, n_tabs: int, paper_type: str = "empirical_paper"):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="fig-balance",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Fig balance",
+        full_text="",
+        figure_mentions=[f"Figure {i}" for i in range(n_figs)],
+        table_mentions=[f"Table {i}" for i in range(n_tabs)],
+        sections=[
+            Section(title=t, level=2, body="Some content.")
+            for t in ["Introduction", "Methods", "Results", "Discussion"]
+        ],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_insufficient_figures_fires() -> None:
+    from manuscript_audit.validators.core import validate_figure_table_balance
+
+    parsed, clf = _fig_balance_manuscript(n_figs=0, n_tabs=2)
+    result = validate_figure_table_balance(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "insufficient-figures" in codes
+
+
+def test_table_heavy_fires() -> None:
+    from manuscript_audit.validators.core import validate_figure_table_balance
+
+    parsed, clf = _fig_balance_manuscript(n_figs=2, n_tabs=8)
+    result = validate_figure_table_balance(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "table-heavy" in codes
+
+
+def test_figure_balance_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_table_balance
+
+    parsed, clf = _fig_balance_manuscript(n_figs=3, n_tabs=2)
+    result = validate_figure_table_balance(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 57 – section ordering
+# ---------------------------------------------------------------------------
+
+def _ordering_manuscript(titles: list[str], paper_type: str = "empirical_paper"):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="order-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Order test",
+        full_text="",
+        sections=[Section(title=t, level=2, body="Content here.") for t in titles],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_section_ordering_violation_fires() -> None:
+    from manuscript_audit.validators.core import validate_section_ordering
+
+    # Results before Methods — violation
+    parsed, clf = _ordering_manuscript(
+        ["Introduction", "Results", "Methods", "Discussion"]
+    )
+    result = validate_section_ordering(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "section-order-violation" in codes
+
+
+def test_section_ordering_correct_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_section_ordering
+
+    parsed, clf = _ordering_manuscript(
+        ["Introduction", "Methods", "Results", "Discussion"]
+    )
+    result = validate_section_ordering(parsed, clf)
+    assert result.findings == []
+
+
+def test_section_ordering_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_section_ordering
+
+    parsed, clf = _ordering_manuscript(
+        ["Introduction", "Results", "Methods", "Discussion"],
+        paper_type="math_stats_theory",
+    )
+    result = validate_section_ordering(parsed, clf)
+    assert result.findings == []

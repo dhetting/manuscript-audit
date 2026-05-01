@@ -2416,6 +2416,325 @@ def validate_conclusion_scope(parsed: ParsedManuscript) -> ValidationResult:
     return ValidationResult(validator_name="conclusion_scope", findings=[])
 
 
+# ---------------------------------------------------------------------------
+# Phase 53 – Equation density validator
+# ---------------------------------------------------------------------------
+
+_EQUATION_DENSITY_MIN_SECTIONS = 4
+_EQUATION_DENSITY_MIN_RATIO = 0.5  # equations per section
+
+
+def validate_equation_density(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag math/theory papers with unexpectedly low equation density.
+
+    For ``math_stats_theory`` papers only.  When the manuscript has at least
+    ``_EQUATION_DENSITY_MIN_SECTIONS`` non-trivial sections but fewer than
+    ``_EQUATION_DENSITY_MIN_RATIO`` equation blocks per section, emits
+    ``low-equation-density`` (minor) — the paper claims to be a theory paper
+    but reads more like a descriptive survey.
+    """
+    if classification.pathway != "math_stats_theory":
+        return ValidationResult(validator_name="equation_density", findings=[])
+
+    content_sections = [
+        s for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS
+    ]
+    if len(content_sections) < _EQUATION_DENSITY_MIN_SECTIONS:
+        return ValidationResult(validator_name="equation_density", findings=[])
+
+    eq_count = len(parsed.equation_blocks)
+    ratio = eq_count / len(content_sections)
+
+    if ratio < _EQUATION_DENSITY_MIN_RATIO:
+        return ValidationResult(
+            validator_name="equation_density",
+            findings=[
+                Finding(
+                    code="low-equation-density",
+                    severity="minor",
+                    message=(
+                        f"Math/theory paper has only {eq_count} equation block(s) across "
+                        f"{len(content_sections)} sections (ratio {ratio:.2f}) — "
+                        "theory papers typically contain more formal derivations."
+                    ),
+                    validator="equation_density",
+                    location="manuscript body",
+                    evidence=[f"equations: {eq_count}; sections: {len(content_sections)}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="equation_density", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 54 – Abstract structure validator
+# ---------------------------------------------------------------------------
+
+_ABSTRACT_METHOD_RE = re.compile(
+    r"\b(we\s+propose|we\s+present|we\s+introduce|we\s+develop|we\s+use|"
+    r"we\s+apply|our\s+(?:method|approach|model|framework|system)|"
+    r"this\s+(?:paper|work|study)\s+(?:proposes?|presents?|introduces?|uses?|applies?))\b",
+    re.IGNORECASE,
+)
+_ABSTRACT_RESULT_RE = re.compile(
+    r"\b(we\s+(?:show|demonstrate|find|establish|achieve|obtain)|"
+    r"(?:results?\s+(?:show|demonstrate|indicate)|experiments?\s+(?:show|confirm))|"
+    r"(?:achieve[sd]?|outperform[sd]?|improv[esd]+)\b)",
+    re.IGNORECASE,
+)
+_ABSTRACT_MIN_WORDS = 50
+
+
+def validate_abstract_structure(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag abstracts missing method or result components.
+
+    A well-structured abstract should contain at least a method signal
+    (what was done) and a result signal (what was found).  Emits
+    ``missing-abstract-component`` (minor) when either is absent.
+    Requires ≥``_ABSTRACT_MIN_WORDS`` words to avoid trivial cases.
+    """
+    abstract = (parsed.abstract or "").strip()
+    if not abstract or len(abstract.split()) < _ABSTRACT_MIN_WORDS:
+        return ValidationResult(validator_name="abstract_structure", findings=[])
+
+    missing = []
+    if not _ABSTRACT_METHOD_RE.search(abstract):
+        missing.append("method/approach description")
+    if not _ABSTRACT_RESULT_RE.search(abstract):
+        missing.append("result/finding statement")
+
+    if missing:
+        return ValidationResult(
+            validator_name="abstract_structure",
+            findings=[
+                Finding(
+                    code="missing-abstract-component",
+                    severity="minor",
+                    message=(
+                        "Abstract is missing: "
+                        + "; ".join(missing)
+                        + " — abstracts should state what was done and what was found."
+                    ),
+                    validator="abstract_structure",
+                    location="abstract",
+                    evidence=[f"absent: {', '.join(missing)}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="abstract_structure", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 55 – URL format validator
+# ---------------------------------------------------------------------------
+
+_URL_IN_TEXT_RE = re.compile(
+    r"(?:https?://\S+|www\.\S+|ftp://\S+)",
+    re.IGNORECASE,
+)
+_VALID_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
+_URL_FINDINGS_CAP = 5
+
+
+def validate_url_format(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag malformed URLs and bibliography URLs missing access dates.
+
+    Scans full_text for bare URLs.  Emits ``malformed-url`` (minor) for
+    URLs that do not start with ``http://`` or ``https://``.
+
+    Also scans bibliography entries: emits ``url-without-access-date`` (minor)
+    when an entry has a ``url`` field but no indication of an access date in
+    its ``raw_text``.  Capped at ``_URL_FINDINGS_CAP`` total findings.
+    """
+    findings: list[Finding] = []
+
+    text_to_scan = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    for m in _URL_IN_TEXT_RE.finditer(text_to_scan):
+        url = m.group(0).rstrip(".,;)")
+        if not _VALID_URL_RE.match(url):
+            findings.append(
+                Finding(
+                    code="malformed-url",
+                    severity="minor",
+                    message=(
+                        f"URL '{url[:60]}' does not start with http:// or https://."
+                    ),
+                    validator="url_format",
+                    location="manuscript body",
+                    evidence=[url[:80]],
+                )
+            )
+            if len(findings) >= _URL_FINDINGS_CAP:
+                break
+
+    if len(findings) < _URL_FINDINGS_CAP:
+        access_keywords = re.compile(
+            r"\b(accessed|retrieved|available|last\s+visited)\b", re.IGNORECASE
+        )
+        for entry in parsed.bibliography_entries:
+            if entry.url and not access_keywords.search(entry.raw_text):
+                findings.append(
+                    Finding(
+                        code="url-without-access-date",
+                        severity="minor",
+                        message=(
+                            f"Bibliography entry '{entry.key or entry.raw_text[:40]}' "
+                            "has a URL but no access date — add 'Accessed: YYYY-MM-DD'."
+                        ),
+                        validator="url_format",
+                        location="bibliography",
+                        evidence=[entry.url[:80]],
+                    )
+                )
+                if len(findings) >= _URL_FINDINGS_CAP:
+                    break
+
+    return ValidationResult(validator_name="url_format", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 56 – Figure/table balance validator
+# ---------------------------------------------------------------------------
+
+_FIG_TABLE_MIN_SECTIONS = 4
+_MIN_FIGURE_MENTIONS = 2
+_TABLE_DOMINANCE_FACTOR = 2
+
+
+def validate_figure_table_balance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers that are under-illustrated or table-heavy.
+
+    Emits ``insufficient-figures`` (minor) when an empirical paper has
+    ≥``_FIG_TABLE_MIN_SECTIONS`` content sections but fewer than
+    ``_MIN_FIGURE_MENTIONS`` figure mentions.
+
+    Emits ``table-heavy`` (minor) when table mentions exceed
+    ``_TABLE_DOMINANCE_FACTOR``× figure mentions and both are non-zero.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="figure_table_balance", findings=[])
+
+    content_sections = [
+        s for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS
+    ]
+    if len(content_sections) < _FIG_TABLE_MIN_SECTIONS:
+        return ValidationResult(validator_name="figure_table_balance", findings=[])
+
+    n_figs = len(parsed.figure_mentions)
+    n_tabs = len(parsed.table_mentions)
+    findings: list[Finding] = []
+
+    if n_figs < _MIN_FIGURE_MENTIONS:
+        findings.append(
+            Finding(
+                code="insufficient-figures",
+                severity="minor",
+                message=(
+                    f"Empirical paper has only {n_figs} figure mention(s) across "
+                    f"{len(content_sections)} sections — consider adding visualisations."
+                ),
+                validator="figure_table_balance",
+                location="manuscript body",
+                evidence=[f"figure mentions: {n_figs}"],
+            )
+        )
+
+    if n_figs > 0 and n_tabs > _TABLE_DOMINANCE_FACTOR * n_figs:
+        findings.append(
+            Finding(
+                code="table-heavy",
+                severity="minor",
+                message=(
+                    f"Table mentions ({n_tabs}) exceed {_TABLE_DOMINANCE_FACTOR}× "
+                    f"figure mentions ({n_figs}) — consider converting some tables "
+                    "to figures for readability."
+                ),
+                validator="figure_table_balance",
+                location="manuscript body",
+                evidence=[f"figures: {n_figs}; tables: {n_tabs}"],
+            )
+        )
+    return ValidationResult(validator_name="figure_table_balance", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 57 – Standard section ordering (IMRaD) validator
+# ---------------------------------------------------------------------------
+
+_IMRAD_ORDER = ["introduction", "method", "result", "discussion"]
+_IMRAD_SECTION_TYPES = frozenset(
+    {"introduction", "method", "result", "discussion",
+     "methodology", "methods", "results", "conclusions"}
+)
+
+
+def _imrad_key(title: str) -> int | None:
+    """Return IMRaD order index (0-3) for a section title, or None if not IMRaD."""
+    t = title.lower()
+    if "introduction" in t:
+        return 0
+    if "method" in t:
+        return 1
+    if "result" in t or "experiment" in t:
+        return 2
+    if "discussion" in t or "conclusion" in t:
+        return 3
+    return None
+
+
+def validate_section_ordering(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag violations of standard IMRaD section order in empirical papers.
+
+    For empirical and applied papers, Introduction must precede Methods,
+    Methods must precede Results, and Results must precede Discussion.
+    Only sections that can be mapped to an IMRaD slot are checked.
+    Emits ``section-order-violation`` (minor) for each inversion found.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="section_ordering", findings=[])
+
+    imrad_positions: list[tuple[int, str]] = []
+    for section in parsed.sections:
+        key = _imrad_key(section.title)
+        if key is not None:
+            imrad_positions.append((key, section.title))
+
+    if len(imrad_positions) < 2:
+        return ValidationResult(validator_name="section_ordering", findings=[])
+
+    findings: list[Finding] = []
+    for idx in range(len(imrad_positions) - 1):
+        key_a, title_a = imrad_positions[idx]
+        key_b, title_b = imrad_positions[idx + 1]
+        if key_a > key_b:
+            findings.append(
+                Finding(
+                    code="section-order-violation",
+                    severity="minor",
+                    message=(
+                        f"Section '{title_a}' appears before '{title_b}' "
+                        "but standard IMRaD order requires the reverse — "
+                        "reorder for convention compliance."
+                    ),
+                    validator="section_ordering",
+                    location=f"sections '{title_a}' / '{title_b}'",
+                    evidence=[f"order: {key_a} before {key_b}"],
+                )
+            )
+    return ValidationResult(validator_name="section_ordering", findings=findings)
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -2468,6 +2787,11 @@ def run_deterministic_validators(
         validate_reproducibility_checklist(parsed, classification),
         validate_self_citation_ratio(parsed),
         validate_conclusion_scope(parsed),
+        validate_equation_density(parsed, classification),
+        validate_abstract_structure(parsed),
+        validate_url_format(parsed),
+        validate_figure_table_balance(parsed, classification),
+        validate_section_ordering(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
