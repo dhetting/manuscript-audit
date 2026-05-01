@@ -6665,6 +6665,10 @@ def run_deterministic_validators(
         validate_preregistration_statement(parsed, classification),
         validate_cross_validation_reporting(parsed, classification),
         validate_sensitivity_analysis_reporting(parsed, classification),
+        validate_regression_diagnostics(parsed, classification),
+        validate_sample_representativeness(parsed, classification),
+        validate_variable_operationalization(parsed, classification),
+        validate_control_variable_justification(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -8646,6 +8650,303 @@ def validate_sensitivity_analysis_reporting(
                 validator="sensitivity_analysis_reporting",
                 location="Methods/Results",
                 evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 156 – Regression diagnostics / assumption checks
+# ---------------------------------------------------------------------------
+
+_REGRESSION_RE = re.compile(
+    r"\b(?:(?:linear|logistic|multiple|OLS|multilevel|hierarchical)\s+regression|"
+    r"regression\s+(?:model|analysis)|we\s+ran\s+a\s+regression|"
+    r"generalized\s+linear\s+(?:model|mixed)|GLM|GLMM|lme4|lm\(|glm\()\b",
+    re.IGNORECASE,
+)
+_DIAGNOSTICS_RE = re.compile(
+    r"\b(?:multicollinearity|VIF|variance\s+inflation|"
+    r"homoscedasticity|homogeneity\s+of\s+variance|"
+    r"residual\s+(?:plot|analysis|normality)|"
+    r"Breusch.Pagan|Cook(?:'s)?\s+distance|leverage|influential\s+obs|"
+    r"Shapiro.Wilk|Kolmogorov.Smirnov|Q.Q\s+plot|"
+    r"assumption\s+(?:of\s+(?:normality|homoscedasticity)|check))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_regression_diagnostics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression analyses lacking assumption checks.
+
+    Emits ``missing-regression-diagnostics`` (moderate) when regression models
+    are described but no diagnostic checks (VIF, residual plots, normality
+    tests, homoscedasticity) are mentioned.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="regression_diagnostics", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="regression_diagnostics", findings=[]
+        )
+
+    if not _REGRESSION_RE.search(full):
+        return ValidationResult(
+            validator_name="regression_diagnostics", findings=[]
+        )
+
+    if _DIAGNOSTICS_RE.search(full):
+        return ValidationResult(
+            validator_name="regression_diagnostics", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="regression_diagnostics",
+        findings=[
+            Finding(
+                code="missing-regression-diagnostics",
+                severity="moderate",
+                message=(
+                    "Regression analysis detected but no diagnostic checks are reported "
+                    "(multicollinearity/VIF, residual plots, normality, homoscedasticity). "
+                    "Report assumption checks for all regression models."
+                ),
+                validator="regression_diagnostics",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 157 – Sample representativeness / generalizability caveat
+# ---------------------------------------------------------------------------
+
+_SINGLE_SITE_RE = re.compile(
+    r"\b(?:(?:a\s+single|one)\s+(?:hospital|clinic|school|university|site|"
+    r"institution|center|centre|country|region|city)|"
+    r"convenience\s+sample|non.?random\s+sample|opportunistic\s+sample|"
+    r"recruited\s+from\s+(?:a\s+single|one))\b",
+    re.IGNORECASE,
+)
+_SINGLE_SITE_CLAIM_RE = re.compile(
+    r"\b(?:(?:our\s+)?results?\s+(?:are\s+generaliz|can\s+be\s+generaliz|"
+    r"generaliz(?:able|e)\s+to)|broadly\s+applicable|wide(?:r|ly)\s+applicable|"
+    r"implications?\s+for\s+(?:all|the\s+general\s+population|society))\b",
+    re.IGNORECASE,
+)
+_LIMITATION_CAVEAT_RE = re.compile(
+    r"\b(?:limitation|caveat|generalizability\s+(?:is\s+limited|may\s+be)|"
+    r"may\s+not\s+generalize|caution\s+(?:in\s+generalizing|when\s+applying)|"
+    r"external\s+validity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sample_representativeness(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag single-site studies that claim generalizability without caveats.
+
+    Emits ``non-representative-sample`` (moderate) when convenience/single-site
+    sampling is detected alongside broad generalizability claims and no
+    limitation caveat is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="sample_representativeness", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="sample_representativeness", findings=[]
+        )
+
+    if not _SINGLE_SITE_RE.search(full):
+        return ValidationResult(
+            validator_name="sample_representativeness", findings=[]
+        )
+
+    if not _SINGLE_SITE_CLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="sample_representativeness", findings=[]
+        )
+
+    if _LIMITATION_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="sample_representativeness", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="sample_representativeness",
+        findings=[
+            Finding(
+                code="non-representative-sample",
+                severity="moderate",
+                message=(
+                    "Convenience or single-site sample detected with broad "
+                    "generalizability claims but no representativeness caveat. "
+                    "Discuss limitations of sample representativeness."
+                ),
+                validator="sample_representativeness",
+                location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 158 – Variable operationalization
+# ---------------------------------------------------------------------------
+
+_VARIABLE_MENTION_RE = re.compile(
+    r"\b(?:independent\s+variable|dependent\s+variable|predictor\s+variable|"
+    r"outcome\s+variable|criterion\s+variable|covariate|moderator|mediator)\b",
+    re.IGNORECASE,
+)
+_OPERATIONALIZATION_RE = re.compile(
+    r"\b(?:operationalized?\s+(?:as|by)|defined\s+as|coded\s+as|"
+    r"measured\s+(?:by|using|as|with)|assessed\s+(?:by|using|with)|"
+    r"scored\s+(?:by|as|using)|calculated\s+(?:as|by)|"
+    r"index(?:ed)?\s+(?:as|by)|composite\s+(?:score|variable))\b",
+    re.IGNORECASE,
+)
+_VARIABLE_MIN = 3
+
+
+def validate_variable_operationalization(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts with many variable mentions but no operationalization.
+
+    Emits ``missing-variable-operationalization`` (minor) when >= 3 variable
+    mentions appear but no operationalization/definition language is found.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="variable_operationalization", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="variable_operationalization", findings=[]
+        )
+
+    var_matches = _VARIABLE_MENTION_RE.findall(methods_text)
+    if len(var_matches) < _VARIABLE_MIN:
+        return ValidationResult(
+            validator_name="variable_operationalization", findings=[]
+        )
+
+    if _OPERATIONALIZATION_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="variable_operationalization", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="variable_operationalization",
+        findings=[
+            Finding(
+                code="missing-variable-operationalization",
+                severity="minor",
+                message=(
+                    f"Methods section references {len(var_matches)} variables "
+                    "(independent/dependent/predictor/covariate etc.) but provides "
+                    "no operationalization or measurement definition. "
+                    "Define how each variable was measured or coded."
+                ),
+                validator="variable_operationalization",
+                location="Methods",
+                evidence=list(dict.fromkeys(var_matches[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 160 – Control variable justification
+# ---------------------------------------------------------------------------
+
+_CONTROL_VAR_RE = re.compile(
+    r"\b(?:control(?:led|ling)?\s+for|we\s+controlled\s+for|"
+    r"controlling\s+for|covariates?\s+(?:included|were)|"
+    r"control\s+variables?\s+(?:included|were|such\s+as))\b",
+    re.IGNORECASE,
+)
+_CONTROL_JUSTIFICATION_RE = re.compile(
+    r"\b(?:(?:a\s+priori|theoretically?\s+(?:motivated|justified|grounded)|"
+    r"based\s+on\s+(?:theory|literature|prior\s+research)|"
+    r"confound(?:er|ing)|potential\s+confounder|"
+    r"following\s+(?:prior\s+research|the\s+literature)))\b",
+    re.IGNORECASE,
+)
+_CONTROL_MIN_MENTIONS = 2
+
+
+def validate_control_variable_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag models with many controls but no theoretical justification.
+
+    Emits ``missing-control-justification`` (minor) when control variables are
+    mentioned >= 2 times but no theoretical or literature-based justification
+    is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="control_variable_justification", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="control_variable_justification", findings=[]
+        )
+
+    control_matches = _CONTROL_VAR_RE.findall(methods_text)
+    if len(control_matches) < _CONTROL_MIN_MENTIONS:
+        return ValidationResult(
+            validator_name="control_variable_justification", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _CONTROL_JUSTIFICATION_RE.search(full):
+        return ValidationResult(
+            validator_name="control_variable_justification", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="control_variable_justification",
+        findings=[
+            Finding(
+                code="missing-control-justification",
+                severity="minor",
+                message=(
+                    f"Methods section mentions control variables {len(control_matches)} "
+                    "time(s) but provides no theoretical or literature-based justification "
+                    "for their inclusion. "
+                    "Justify control variable selection with theory or prior research."
+                ),
+                validator="control_variable_justification",
+                location="Methods",
+                evidence=list(dict.fromkeys(control_matches[:3])),
             )
         ],
     )

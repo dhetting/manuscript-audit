@@ -7720,3 +7720,294 @@ def test_no_primary_analysis_no_fire() -> None:
     )
     result = validate_sensitivity_analysis_reporting(ms, _sensitivity_clf())
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 156 – Regression diagnostics
+# ---------------------------------------------------------------------------
+
+
+def _regression_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="regression-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _regression_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_regression_diagnostics_fires() -> None:
+    from manuscript_audit.validators.core import validate_regression_diagnostics
+
+    ms = _regression_ms(
+        "We used multiple regression to predict depression scores from age, "
+        "gender, and treatment. The regression model was significant (F = 12.3)."
+    )
+    result = validate_regression_diagnostics(ms, _regression_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-regression-diagnostics" in codes
+
+
+def test_regression_diagnostics_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_diagnostics
+
+    ms = _regression_ms(
+        "We used multiple regression. We checked multicollinearity (VIF < 3 for "
+        "all predictors) and residual normality via Q-Q plots."
+    )
+    result = validate_regression_diagnostics(ms, _regression_clf())
+    assert result.findings == []
+
+
+def test_no_regression_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_diagnostics
+
+    ms = _regression_ms(
+        "We compared group means using an independent-samples t-test."
+    )
+    result = validate_regression_diagnostics(ms, _regression_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 157 – Sample representativeness
+# ---------------------------------------------------------------------------
+
+
+def _sample_rep_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="sample-rep-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _sample_rep_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_non_representative_sample_fires() -> None:
+    from manuscript_audit.validators.core import validate_sample_representativeness
+
+    ms = _sample_rep_ms(
+        "We recruited from a single university campus using a convenience sample. "
+        "Our results are generalizable to young adults broadly applicable "
+        "to the general population."
+    )
+    result = validate_sample_representativeness(ms, _sample_rep_clf())
+    codes = [f.code for f in result.findings]
+    assert "non-representative-sample" in codes
+
+
+def test_sample_rep_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sample_representativeness
+
+    ms = _sample_rep_ms(
+        "We recruited from a single university campus using a convenience sample. "
+        "Our results may be broadly applicable but a limitation is that results "
+        "may not generalize beyond our convenience sample."
+    )
+    result = validate_sample_representativeness(ms, _sample_rep_clf())
+    assert result.findings == []
+
+
+def test_no_single_site_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sample_representativeness
+
+    ms = _sample_rep_ms(
+        "We collected data from 12 hospitals across 4 countries. "
+        "The multi-center design enhances external validity."
+    )
+    result = validate_sample_representativeness(ms, _sample_rep_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 158 – Variable operationalization
+# ---------------------------------------------------------------------------
+
+
+def _var_ops_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="var-ops-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _var_ops_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_variable_operationalization_fires() -> None:
+    from manuscript_audit.validators.core import validate_variable_operationalization
+
+    ms = _var_ops_ms(
+        "The independent variable was socioeconomic status. The dependent variable "
+        "was academic achievement. A covariate was included for age. "
+        "The predictor variable was parental education."
+    )
+    result = validate_variable_operationalization(ms, _var_ops_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-variable-operationalization" in codes
+
+
+def test_variable_operationalization_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variable_operationalization
+
+    ms = _var_ops_ms(
+        "The independent variable was socioeconomic status, operationalized as "
+        "household income tercile. The dependent variable was measured using "
+        "standardized test scores. The covariate was coded as years of age."
+    )
+    result = validate_variable_operationalization(ms, _var_ops_clf())
+    assert result.findings == []
+
+
+def test_few_variable_mentions_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variable_operationalization
+
+    ms = _var_ops_ms(
+        "The dependent variable was BMI. The independent variable was diet quality."
+    )
+    result = validate_variable_operationalization(ms, _var_ops_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 159 – Interrater reliability
+# ---------------------------------------------------------------------------
+
+
+def _irr_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="irr-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _irr_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_interrater_reliability_fires() -> None:
+    from manuscript_audit.validators.core import validate_interrater_reliability
+
+    ms = _irr_ms(
+        "Two independent raters coded all responses using a predefined coding scheme. "
+        "Discrepancies were resolved by discussion."
+    )
+    result = validate_interrater_reliability(ms, _irr_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-interrater-reliability" in codes
+
+
+def test_irr_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrater_reliability
+
+    ms = _irr_ms(
+        "Two independent raters coded all responses. Cohen's kappa = 0.87 "
+        "indicating strong inter-rater agreement."
+    )
+    result = validate_interrater_reliability(ms, _irr_clf())
+    assert result.findings == []
+
+
+def test_no_independent_coding_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrater_reliability
+
+    ms = _irr_ms(
+        "Survey responses were analyzed using descriptive statistics."
+    )
+    result = validate_interrater_reliability(ms, _irr_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 160 – Control variable justification
+# ---------------------------------------------------------------------------
+
+
+def _control_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="control-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _control_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_control_justification_fires() -> None:
+    from manuscript_audit.validators.core import validate_control_variable_justification
+
+    ms = _control_ms(
+        "We controlled for age, gender, and education. Controlling for these "
+        "variables, the main effect remained significant."
+    )
+    result = validate_control_variable_justification(ms, _control_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-control-justification" in codes
+
+
+def test_control_justification_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_control_variable_justification
+
+    ms = _control_ms(
+        "We controlled for age and gender based on prior research demonstrating "
+        "their role as confounders. Controlling for these theoretically motivated "
+        "variables, the effect was maintained."
+    )
+    result = validate_control_variable_justification(ms, _control_clf())
+    assert result.findings == []
+
+
+def test_few_control_mentions_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_control_variable_justification
+
+    ms = _control_ms(
+        "We controlled for age in the regression model."
+    )
+    result = validate_control_variable_justification(ms, _control_clf())
+    assert result.findings == []
