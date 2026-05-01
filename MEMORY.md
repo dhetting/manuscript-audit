@@ -391,13 +391,13 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 35 is closed. Next candidate phases:
-1. **Phase 37: Citation cluster detector** — flag 5+ consecutive uncited sentences in Results/Discussion (empirical papers)
-2. **Phase 38: Power-word overuse** — flag excessive "novel", "significant", "unprecedented" in abstract/intro
-3. **Phase 39: Number format consistency** — flag digit vs comma-separated inconsistency within sections
-4. **Phase 40: Abstract keyword coverage** — flag when abstract technical terms don't appear in body
+Phase 40 is closed. Next candidate phases:
+1. **Phase 42: Contribution claim verifier** — extract "N contributions" from abstract, verify body supports them
+2. **Phase 43: First-person consistency** — flag "I" vs "we" mixing in body text
+3. **Phase 44: Caption quality** — flag short or unpunctuated figure/table captions
+4. **Phase 45: Reference staleness** — flag when >60% of bibliography is >10 years old (empirical papers)
 
-## Phase 22–35 validated state
+## Phase 22–40 validated state
 
 All phases validated end-to-end from the live repo on 2026-05-01.
 
@@ -458,7 +458,26 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `SENTENCE_LENGTH_THRESHOLD = 60` words; `_FINDINGS_PER_SECTION_CAP = 3` per section
 - Golden updated: `latex_equivalence_report_summary.json` moderate count 9→10
 
-Current test count: **105 passing** (after phase 35)
+**Phase 37** (`0b687d0`) — Citation cluster gap detector
+- `validate_citation_cluster_gap(parsed, classification)` → `citation-cluster-gap` (minor)
+- Fires in Results/Discussion of empirical papers when 5+ consecutive sentences have no citation
+- Requires ≥8 sentences in section; _CITATION_RE handles [N], Author et al. YYYY, \cite{key}
+
+**Phase 38** (`0b687d0`) — Power-word overuse detector
+- `validate_power_word_overuse(parsed)` → `power-word-overuse` (minor)
+- Fires when any term from `_POWER_WORDS` appears >3× across abstract + introduction combined
+- `_POWER_WORDS`: novel, state-of-the-art, significant, unprecedented, groundbreaking, revolutionary…
+
+**Phase 39** (`0b687d0`) — Number formatting consistency validator
+- `validate_number_format_consistency(parsed)` → `number-format-inconsistency` (minor)
+- Fires when same-magnitude large numbers appear in both bare (10000) and comma-formatted (10,000) styles within a section
+
+**Phase 40** (`0b687d0`) — Abstract keyword coverage validator
+- `validate_abstract_keyword_coverage(parsed)` → `abstract-body-disconnect` (moderate)
+- Extracts capitalized multi-word phrases and hyphenated compounds from abstract
+- Fires when <30% of extracted terms appear in body; requires ≥3 extracted terms
+
+Current test count: **116 passing** (after phase 40)
 
 
 ## Bundle and handoff requirements
