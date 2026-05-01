@@ -651,14 +651,47 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - Phase 114: `validate_exclusion_criteria` → `missing-exclusion-criteria` (moderate) — inclusion but no exclusion criteria
 - Phase 115: `validate_title_length` → `title-too-long` / `title-too-short` (minor) — >20 or <5 words
 
-Current test count: **307 passing** (after phase 115)
+**Phases 116–120** (`41d30ed`) — Five validators
+- Phase 116: `validate_statistical_power` → `missing-power-analysis` (moderate) — empirical without power analysis in Methods
+- Phase 117: `validate_keywords_present` → `missing-keywords` (minor) — no keywords section or inline keyword list
+- Phase 118: `validate_overlong_sentences` → `overlong-sentence` (minor) — Results/Discussion sentences >60 words
+- Phase 119: `validate_heading_capitalization_consistency` → `inconsistent-heading-capitalization` (minor) — mixed Title/Sentence case
+- Phase 120: `validate_research_question_addressed` → `unanswered-research-question` (moderate) — RQs in intro but no results language
+- **Golden**: minor 9→10 (missing-keywords fires on latex_equivalence.tex)
 
-Phase 115 is closed. Next candidate phases:
-1. **Phase 116: Missing keywords section** — no keywords section present
-2. **Phase 117: Passive introduction** — introduction entirely in passive voice
-3. **Phase 118: Unbalanced parentheses/brackets** — malformed citation notation
-4. **Phase 119: Inconsistent heading capitalization** — mixed title case vs sentence case
-5. **Phase 120: Missing conflict of interest for clinical** — clinical trials always require COI
+**Phases 121–125** (`ff9964c`) — Five validators
+- Phase 121: COI validator already existed (phase 63 — `validate_conflict_of_interest`); added regression tests
+- Phase 122: `validate_citations_in_abstract` → `citations-in-abstract` (minor) — citation markers in abstract
+- Phase 123: `validate_funding_statement` → `missing-funding-statement` (minor) — no acknowledgment/funding section
+- Phase 124: `validate_discussion_section_presence` → `missing-discussion-section` (moderate) — empirical Results but no Discussion
+- Phase 125: `validate_pvalue_notation_consistency` → `inconsistent-pvalue-notation` (minor) — mixed p<, P<, p-value< styles
+- **Golden**: minor 10→11 (missing-funding-statement fires on latex_equivalence.tex)
+
+**Phases 126–130** (`39b8a52`) — Five validators
+- Phase 126: `validate_methods_section_presence` → `missing-methods-section` (major) — empirical paper without Methods section
+- Phase 127: `validate_conclusion_section_presence` → `missing-conclusion-section` (minor) — no Conclusion/Summary (≥3 sections)
+- Phase 128: `validate_participant_demographics` → `missing-participant-demographics` (moderate) — participants without demographics
+- Phase 129: `validate_conflicting_acronym_definitions` → `inconsistent-acronym-definition` (minor) — same acronym, different expansions
+  - Uses `_CONFLICT_ACRONYM_RE` (distinct from existing `_ACRONYM_DEF_RE`)
+- Phase 130: `validate_percentage_notation_consistency` → `inconsistent-percentage-notation` (minor) — mixed %, percent, per cent
+- **Golden**: minor 11→12 (missing-conclusion-section fires on latex_equivalence.tex)
+
+**Phases 131–135** (`69419ac`) — Five validators
+- Phase 131: `validate_figure_label_consistency` → `inconsistent-figure-labels` (minor) — mixing Fig./Figure/fig.
+- Phase 132: `validate_draft_title_markers` → `draft-title-marker` (major) — title has TBD/DRAFT/[Title]
+  - Bug fix: bracket patterns need `\[` not `\b\[` since `[` is not a word boundary character
+- Phase 133: `validate_study_period_reporting` → `missing-study-period` (moderate) — empirical/clinical without study period
+- Phase 134: `validate_scale_anchor_reporting` → `missing-scale-anchors` (minor) — Likert scale without anchor labels
+- Phase 135: `validate_model_specification` → `missing-model-specification` (moderate) — regression/SEM without predictor spec
+
+Current test count: **362 passing** (after phase 135)
+
+Phase 135 is closed. Next candidate phases:
+1. **Phase 136: Missing raw data description** — empirical papers mentioning datasets without describing format/source
+2. **Phase 137: Excessive decimal precision in tables** — table values with >4 decimal places
+3. **Phase 138: Results without effect direction** — "significant difference" without stating which group was higher
+4. **Phase 139: Untested moderation claims** — papers claiming moderation effects without interaction terms
+5. **Phase 140: Missing sensitivity analysis** — papers with multiple imputation or selection bias without sensitivity check
 
 
 ## Bundle and handoff requirements
