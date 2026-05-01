@@ -729,8 +729,73 @@ Current test count: **362 passing** (after phase 135)
 - Phase 159: `validate_interrater_reliability` already existed — added regression tests only
 - Phase 160: `validate_control_variable_justification` → `missing-control-justification` (minor) — ≥2 control mentions without justification
 
-Current test count: **437 passing** (after phase 160)
-HEAD: `e99ac19`
+**Phases 161–165** (`c514405`) — Five validators (451 tests)
+- Phase 161: `validate_prospective_vs_retrospective` → `retrospective-design-claim` (minor)
+- Phase 162: `validate_clinical_trial_consort` → `missing-consort-elements` (moderate)
+- Phase 163: `validate_ecological_validity` → `missing-ecological-validity` (minor)
+- Phase 164: `validate_media_source_citations` → `non-peer-reviewed-citation` (minor)
+- Phase 165: `validate_competing_model_comparison` → `missing-model-comparison` (moderate)
+
+**Phases 166–170** (`c3c3f9a`) — Five validators (466 tests)
+- Phase 166: `validate_causal_language` → `unsupported-causal-claim` (moderate)
+- Phase 167: `validate_missing_standard_errors` → `missing-standard-errors` (minor)
+  - Bug fix: trailing `\b` in regex removed; replaced with explicit `\bSE\s*=` patterns
+- Phase 168: `validate_subjective_claim_hedging` → `unhedged-subjective-claim` (minor)
+- Phase 169: `validate_population_definition` → `missing-population-definition` (moderate)
+- Phase 170: `validate_pilot_study_claims` → `overclaimed-pilot-study` (minor)
+- **Golden**: moderate 13→14 (new validator fires on latex_equivalence.tex)
+
+**Phases 171–175** (`72459e3`) — Five validators (486 tests)
+- Phase 171: `validate_exclusion_criteria_reporting` → `missing-exclusion-criteria-rationale` (minor)
+- Phase 172: `validate_normal_distribution_assumption` → `untested-normality-assumption` (minor)
+- Phase 173: `validate_figure_axes_labeling` → `unlabeled-figure-axes` (minor)
+  - Counts **distinct** figure numbers (not raw occurrences) to avoid false positives from caption+body refs
+  - `_FIGURE_MENTION_RE` extracts capturing group; `_FIGURE_MIN_DISTINCT = 2`
+- Phase 174: `validate_duplicate_reporting` → `duplicate-reporting` (major)
+- Phase 175: `validate_response_rate_reporting` → `missing-response-rate` (moderate)
+
+**Phases 176–180** (`1ee8854`) — Five validators (506 tests)
+- Phase 176: `validate_longitudinal_attrition_bias` → `missing-attrition-bias-analysis` (moderate)
+  - Uses `_LONGITUDINAL_DESIGN_RE` (not `_LONGITUDINAL_RE`) to avoid constant shadowing
+  - Removed `time\s+point` from pattern (too broad; matches cross-sectional text)
+- Phase 177: `validate_continuous_variable_dichotomization` → `unjustified-dichotomization` (moderate)
+- Phase 178: `validate_outcome_measure_validation` → `missing-measure-validity` (moderate)
+- Phase 179: `validate_outlier_handling_disclosure` → `missing-outlier-handling` (minor)
+  - Uses `outliers?` (plural form) not `outlier` to match both forms
+- Phase 180: `validate_main_effect_confidence_interval` → `missing-main-effect-ci` (moderate)
+
+**Phases 181–185** (`e8a2486`) — Five validators (526 tests)
+- Phase 181: `validate_covariate_justification` → `missing-covariate-justification` (minor)
+- Phase 182: `validate_gender_sex_conflation` → `gender-sex-conflation` (minor)
+- Phase 183: `validate_multicollinearity_reporting` → `missing-multicollinearity-check` (minor)
+- Phase 184: `validate_control_group_description` → `missing-control-group-type` (moderate)
+- Phase 185: `validate_heteroscedasticity_testing` → `missing-heteroscedasticity-check` (minor)
+
+**Phases 186–190** (`7b05baf`) — Five validators (546 tests)
+- Phase 186: `validate_interaction_effect_interpretation` → `missing-interaction-probing` (moderate)
+- Phase 187: `validate_post_hoc_framing` → `post-hoc-not-labelled` (moderate)
+- Phase 188: `validate_multiple_comparison_correction` → `missing-multiple-comparison-correction` (moderate)
+- Phase 189: `validate_publication_bias_statement` → `missing-publication-bias-statement` (major)
+- Phase 190: `validate_degrees_of_freedom_reporting` → `missing-degrees-of-freedom` (minor)
+  - Uses `_INFERENTIAL_STAT_RE` (not `_STAT_TEST_RE`) to avoid constant shadowing
+  - `_DF_PRESENT_RE` and `_INFERENTIAL_STAT_RE` drop trailing `\b` (parens are non-word chars)
+
+**Phases 191–195** (`856dde7`) — Five validators (566 tests)
+- Phase 191: `validate_power_analysis_reporting` → `missing-power-analysis` (moderate)
+- Phase 192: `validate_demographic_description` → `missing-demographic-description` (minor)
+- Phase 193: `validate_randomization_procedure` → `missing-randomization-procedure` (moderate)
+- Phase 194: `validate_generalizability_caveat` → `overclaimed-generalizability` (moderate)
+- Phase 195: `validate_software_version_reporting` → `missing-software-version` (minor)
+
+**Phases 196–200** (`bdd7770`) — Five validators (586 tests)
+- Phase 196: `validate_ethics_approval_statement` → `missing-ethics-approval` (major)
+- Phase 197: `validate_prisma_reporting` → `missing-prisma-elements` (moderate)
+- Phase 198: `validate_mediation_analysis_transparency` → `missing-mediation-bootstrap` (moderate)
+- Phase 199: `validate_latent_variable_model_fit` → `missing-model-fit-indices` (moderate)
+- Phase 200: `validate_pilot_study_disclosure` → `undisclosed-pilot-study` (minor)
+
+Current test count: **586 passing** (after phase 200)
+HEAD: `bdd7770`
 
 ## Critical technical gotchas (accumulated)
 
@@ -740,12 +805,17 @@ HEAD: `e99ac19`
   - Field is `paper_type` (NOT `primary_type`)
   - `pathway` must be one of `"math_stats_theory"`, `"applied_stats"`, `"data_science"`, `"unknown"`
 - **Constant shadowing hazard**: check before adding any module-level constant (`grep -n "^_CONST_NAME"` in core.py)
+  - Known shadowed constants fixed: `_AUTHOR_YEAR_CITE_RE` → `_FORMAT_AUTHOR_YEAR_CITE_RE`, `_GENERALIZE_CLAIM_RE` → `_SINGLE_SITE_CLAIM_RE`, `_LONGITUDINAL_RE` → `_LONGITUDINAL_DESIGN_RE`, `_STAT_TEST_RE` → `_INFERENTIAL_STAT_RE`
 - **Function shadowing hazard**: check before adding any function (`grep -n "^def func_name"` in core.py and test file)
+  - Phase 159 `validate_interrater_reliability` was already implemented — duplicate removed
+- **Duplicate test name hazard**: before adding tests, `grep -n "^def test_name"` in test file
+  - Known duplicates fixed: `test_longitudinal_with_attrition_no_fire`, `test_no_regression_no_fire`, `test_non_rct_no_fire`, `test_software_with_version_no_fire`
 - **`_EMPIRICAL_PAPER_TYPES`** = `frozenset({"empirical_paper", "applied_stats_paper", "software_workflow_paper"})`
   - `math_theory_paper` is NOT in this set (use as the "skip" type in tests)
-- **Floor/ceiling regex**: use `effects?` not `effect` (plural form common in papers)
+- **Trailing `\b` regex bug**: patterns ending in non-word characters (parens `)`, brackets `]`, `=`) cannot be followed by `\b`. Drop `\b` or rewrite with explicit word boundaries at start only
+- **Floor/ceiling regex**: use `effects?` not `effect` (plural form common)
 - **MULTILINE regex** needed when checking for line-anchored captions (`^Table N.`)
-- **Test helpers with `ParsedManuscript`**: always include all required fields; `ManuscriptClassification` needs `recommended_stack`
+- **Figure axis validator**: use distinct figure numbers (not raw occurrences); `_FIGURE_MENTION_RE` uses capturing group; threshold is `_FIGURE_MIN_DISTINCT = 2` distinct numbers
 
 ## Bundle and handoff requirements
 
@@ -800,7 +870,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- continue from the phase-12 bibliography-confidence slice
-- first close the remaining workflow-validation gap
-- then package a truly validated phase-12 bundle
-- only then proceed to the next phase
+- currently at phase 200 with 586 tests passing
+- continue adding batches of 5 deterministic validators per phase group
+- check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
+- update MEMORY.md after every 40 phases (next update due after phase 240)
