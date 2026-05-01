@@ -8284,3 +8284,283 @@ def test_no_model_proposal_no_fire() -> None:
     )
     result = validate_competing_model_comparison(ms, _model_proposal_clf())
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 166 – Causal language in observational studies
+# ---------------------------------------------------------------------------
+
+
+def _causal_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="causal-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Discussion", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _causal_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_unsupported_causal_claim_fires() -> None:
+    from manuscript_audit.validators.core import validate_causal_language
+
+    ms = _causal_ms(
+        "In this cross-sectional survey, the effect of exercise on mental health "
+        "was examined. Exercise leads to lower depression scores."
+    )
+    result = validate_causal_language(ms, _causal_clf())
+    codes = [f.code for f in result.findings]
+    assert "unsupported-causal-claim" in codes
+
+
+def test_causal_claim_with_framework_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_causal_language
+
+    ms = _causal_ms(
+        "In this cross-sectional survey, the effect of exercise on mental health "
+        "was examined using a causal inference framework with a directed acyclic graph."
+    )
+    result = validate_causal_language(ms, _causal_clf())
+    assert result.findings == []
+
+
+def test_no_observational_design_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_causal_language
+
+    ms = _causal_ms(
+        "We conducted an RCT and found that the treatment leads to better outcomes."
+    )
+    result = validate_causal_language(ms, _causal_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 167 – Missing standard errors
+# ---------------------------------------------------------------------------
+
+
+def _std_errors_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="std-errors-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Results", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _std_errors_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_standard_errors_fires() -> None:
+    from manuscript_audit.validators.core import validate_missing_standard_errors
+
+    ms = _std_errors_ms(
+        "The regression results are shown in Table 1. Unstandardized coefficient "
+        "for age was β = 0.45, p < 0.001. The standardized coefficient for "
+        "education was β = 0.32."
+    )
+    result = validate_missing_standard_errors(ms, _std_errors_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-standard-errors" in codes
+
+
+def test_standard_errors_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_standard_errors
+
+    ms = _std_errors_ms(
+        "The regression results are shown in Table 1. The unstandardized coefficient "
+        "for age was β = 0.45 (SE = 0.12), p < 0.001."
+    )
+    result = validate_missing_standard_errors(ms, _std_errors_clf())
+    assert result.findings == []
+
+
+def test_no_regression_table_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_standard_errors
+
+    ms = _std_errors_ms(
+        "We compared group means using t-tests. Mean scores were 4.2 and 3.8."
+    )
+    result = validate_missing_standard_errors(ms, _std_errors_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 168 – Unhedged subjective claims
+# ---------------------------------------------------------------------------
+
+
+def _subjective_ms(disc_text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="subjective-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Discussion", level=2, body=disc_text)],
+        full_text=disc_text,
+    )
+
+
+def test_unhedged_subjective_claim_fires() -> None:
+    from manuscript_audit.validators.core import validate_subjective_claim_hedging
+
+    ms = _subjective_ms(
+        "It is crucial that policymakers adopt these findings immediately. "
+        "This clearly demonstrates that our intervention is the most effective approach. "
+        "The key finding is that early intervention undoubtedly prevents relapse."
+    )
+    result = validate_subjective_claim_hedging(ms)
+    codes = [f.code for f in result.findings]
+    assert "unhedged-subjective-claim" in codes
+
+
+def test_hedged_claims_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_subjective_claim_hedging
+
+    ms = _subjective_ms(
+        "It is crucial that policymakers consider these findings. "
+        "This clearly demonstrates a pattern that suggests our intervention "
+        "may be effective. Results indicate that early intervention might help."
+    )
+    result = validate_subjective_claim_hedging(ms)
+    assert result.findings == []
+
+
+def test_no_discussion_section_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_subjective_claim_hedging
+
+    ms = ParsedManuscript(
+        manuscript_id="no-discussion",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Introduction", level=2, body="Background text.")],
+        full_text="Background text.",
+    )
+    result = validate_subjective_claim_hedging(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 169 – Target population definition
+# ---------------------------------------------------------------------------
+
+
+def _population_ms(methods_text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="population-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=methods_text)],
+        full_text=methods_text,
+    )
+
+
+def _population_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_population_definition_fires() -> None:
+    from manuscript_audit.validators.core import validate_population_definition
+
+    ms = _population_ms(
+        "We conducted an online survey. Participants completed questionnaires "
+        "and data were analyzed using linear regression."
+    )
+    result = validate_population_definition(ms, _population_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-population-definition" in codes
+
+
+def test_population_defined_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_population_definition
+
+    ms = _population_ms(
+        "We recruited adults aged 18-65 with a diagnosis of depression. "
+        "Inclusion criteria: primary diagnosis of MDD. Exclusion criteria: "
+        "psychotic symptoms, substance use disorder."
+    )
+    result = validate_population_definition(ms, _population_clf())
+    assert result.findings == []
+
+
+def test_population_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_population_definition
+
+    ms = _population_ms(
+        "We present a theoretical framework for analyzing survey data."
+    )
+    result = validate_population_definition(ms, _population_clf("math_theory_paper"))
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 170 – Pilot study overclaiming
+# ---------------------------------------------------------------------------
+
+
+def _pilot_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="pilot-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Discussion", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def test_overclaimed_pilot_study_fires() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_claims
+
+    ms = _pilot_ms(
+        "This pilot study demonstrates that the intervention is effective. "
+        "Our findings definitively show that the treatment improves outcomes. "
+        "Results are generalizable to the general population."
+    )
+    result = validate_pilot_study_claims(ms)
+    codes = [f.code for f in result.findings]
+    assert "overclaimed-pilot-study" in codes
+
+
+def test_pilot_study_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_claims
+
+    ms = _pilot_ms(
+        "This pilot study demonstrates initial promise for the intervention. "
+        "A larger randomized controlled trial is needed to confirm these findings."
+    )
+    result = validate_pilot_study_claims(ms)
+    assert result.findings == []
+
+
+def test_non_pilot_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_claims
+
+    ms = _pilot_ms(
+        "This definitive multi-center trial conclusively proves that the treatment "
+        "is effective and results are broadly generalizable."
+    )
+    result = validate_pilot_study_claims(ms)
+    assert result.findings == []

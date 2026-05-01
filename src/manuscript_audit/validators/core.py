@@ -6674,6 +6674,11 @@ def run_deterministic_validators(
         validate_ecological_validity(parsed, classification),
         validate_media_source_citations(parsed),
         validate_competing_model_comparison(parsed, classification),
+        validate_causal_language(parsed, classification),
+        validate_missing_standard_errors(parsed, classification),
+        validate_subjective_claim_hedging(parsed),
+        validate_population_definition(parsed, classification),
+        validate_pilot_study_claims(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -9305,6 +9310,373 @@ def validate_competing_model_comparison(
                 ),
                 validator="competing_model_comparison",
                 location="Results/Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 166 – Causal language in observational studies
+# ---------------------------------------------------------------------------
+
+_OBSERVATIONAL_RE = re.compile(
+    r"\b(?:observational\s+(?:study|design|data)|cross.?sectional|"
+    r"survey\s+(?:study|data|design)|correlation(?:al)?\s+(?:study|design|analysis)|"
+    r"retrospective\s+(?:study|cohort|analysis)|"
+    r"administrative\s+(?:data|records?)|"
+    r"ecological\s+(?:study|correlation))\b",
+    re.IGNORECASE,
+)
+_CAUSAL_LANGUAGE_RE = re.compile(
+    r"\b(?:(?:X\s+)?caus(?:ed|es|ing|al)\s+(?:Y\s+)?|"
+    r"(?:the\s+)?effect\s+of\s+\w+\s+on\s+\w+|"
+    r"impact\s+of\s+\w+\s+on\s+(?:outcomes?|health|behavior)|"
+    r"leads?\s+to\s+(?:higher|lower|increased|decreased|greater|reduced)|"
+    r"due\s+to\s+the\s+(?:treatment|exposure|intervention|effect\s+of)|"
+    r"(?:treatment|exposure|intervention)\s+(?:causes?|results?\s+in|leads?\s+to))\b",
+    re.IGNORECASE,
+)
+_CAUSAL_FRAMEWORK_RE = re.compile(
+    r"\b(?:causal\s+(?:inference|diagram|model|effect|identification)|"
+    r"instrumental\s+variable|difference.?in.?differences|"
+    r"regression\s+discontinuity|propensity\s+score|"
+    r"directed\s+acyclic\s+graph|DAG|counterfactual|"
+    r"we\s+cannot\s+(?:establish|infer|conclude)\s+causality|"
+    r"causality\s+cannot\s+be\s+(?:established|inferred))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_causal_language(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag observational studies using causal language without causal framework.
+
+    Emits ``unsupported-causal-claim`` (moderate) when an observational design
+    is detected alongside causal language but no causal inference framework or
+    explicit caveat is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="causal_language", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="causal_language", findings=[]
+        )
+
+    if not _OBSERVATIONAL_RE.search(full):
+        return ValidationResult(
+            validator_name="causal_language", findings=[]
+        )
+
+    if not _CAUSAL_LANGUAGE_RE.search(full):
+        return ValidationResult(
+            validator_name="causal_language", findings=[]
+        )
+
+    if _CAUSAL_FRAMEWORK_RE.search(full):
+        return ValidationResult(
+            validator_name="causal_language", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="causal_language",
+        findings=[
+            Finding(
+                code="unsupported-causal-claim",
+                severity="moderate",
+                message=(
+                    "Observational study design detected with causal language "
+                    "(caused, effect of, leads to) but no causal inference framework "
+                    "or caveat about correlation vs. causation. "
+                    "Replace causal language with associative language or justify "
+                    "using a formal causal inference framework."
+                ),
+                validator="causal_language",
+                location="manuscript",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 167 – Missing standard errors in regression output
+# ---------------------------------------------------------------------------
+
+_REGRESSION_TABLE_RE = re.compile(
+    r"\b(?:table\s+\d+[^\n]*(?:regression|coefficient|model|predictor)|"
+    r"regression\s+(?:results?|output|table|model)|"
+    r"β\s*=|b\s*=\s*[-\d.]|unstandardized\s+coefficient|"
+    r"standardized\s+coefficient)\b",
+    re.IGNORECASE,
+)
+_STANDARD_ERROR_RE = re.compile(
+    r"(?:\bstandard\s+error\b|\bSE\s*=|\bS\.E\.\s*=|"
+    r"\b95\s*%\s*(?:CI\b|confidence\s+interval\b)|"
+    r"\(\d+\.\d+\)\s*$|\(\s*SE\s*=)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def validate_missing_standard_errors(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression tables lacking standard errors or confidence intervals.
+
+    Emits ``missing-standard-errors`` (minor) when regression output is reported
+    but no standard errors (SE) or CIs are included.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="missing_standard_errors", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="missing_standard_errors", findings=[]
+        )
+
+    if not _REGRESSION_TABLE_RE.search(full):
+        return ValidationResult(
+            validator_name="missing_standard_errors", findings=[]
+        )
+
+    if _STANDARD_ERROR_RE.search(full):
+        return ValidationResult(
+            validator_name="missing_standard_errors", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="missing_standard_errors",
+        findings=[
+            Finding(
+                code="missing-standard-errors",
+                severity="minor",
+                message=(
+                    "Regression coefficients reported but no standard errors (SE) "
+                    "or confidence intervals (CI) are present. "
+                    "Report SE or 95% CI for all regression estimates."
+                ),
+                validator="missing_standard_errors",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 168 – Unhedged subjective / normative claims
+# ---------------------------------------------------------------------------
+
+_NORMATIVE_CLAIM_RE = re.compile(
+    r"\b(?:it\s+is\s+(?:crucial|essential|vital|imperative|undeniable|"
+    r"clear|obvious|evident|indisputable)\s+that|"
+    r"undoubtedly|unquestionably|clearly\s+demonstrates?|"
+    r"this\s+(?:proves?|conclusively\s+shows?|demonstrates?\s+beyond)|"
+    r"the\s+(?:most\s+important|key|fundamental|critical)\s+(?:finding|result|"
+    r"implication|contribution|insight)\s+is)\b",
+    re.IGNORECASE,
+)
+_HEDGE_RE = re.compile(
+    r"\b(?:suggest(?:s|ed)?|indicate(?:s|d)?|may|might|could|appear(?:s)?|"
+    r"seem(?:s)?|likely|perhaps|potentially|tentatively|arguably|"
+    r"consistent\s+with|compatible\s+with|we\s+(?:believe|argue|propose))\b",
+    re.IGNORECASE,
+)
+_NORMATIVE_MIN = 2
+
+
+def validate_subjective_claim_hedging(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts with normative/certainty claims lacking hedging language.
+
+    Emits ``unhedged-subjective-claim`` (minor) when >= 2 strong normative or
+    certainty-implying phrases appear in the discussion/conclusion but no hedging
+    language is present in those sections.
+    """
+    disc_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title and any(
+            k in s.title.lower() for k in ("discussion", "conclusion", "implication")
+        )
+    )
+    if not disc_text:
+        return ValidationResult(
+            validator_name="subjective_claim_hedging", findings=[]
+        )
+
+    normative_matches = _NORMATIVE_CLAIM_RE.findall(disc_text)
+    if len(normative_matches) < _NORMATIVE_MIN:
+        return ValidationResult(
+            validator_name="subjective_claim_hedging", findings=[]
+        )
+
+    if _HEDGE_RE.search(disc_text):
+        return ValidationResult(
+            validator_name="subjective_claim_hedging", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="subjective_claim_hedging",
+        findings=[
+            Finding(
+                code="unhedged-subjective-claim",
+                severity="minor",
+                message=(
+                    f"Discussion/Conclusion contains {len(normative_matches)} "
+                    "strong normative or certainty claims but no hedging language. "
+                    "Use qualifying language (suggests, may, appears) for claims "
+                    "that go beyond the data."
+                ),
+                validator="subjective_claim_hedging",
+                location="Discussion/Conclusion",
+                evidence=list(dict.fromkeys(normative_matches[:2])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 169 – Target population definition
+# ---------------------------------------------------------------------------
+
+_POPULATION_DEFINITION_RE = re.compile(
+    r"\b(?:target\s+population|study\s+population|"
+    r"eligible\s+(?:participants?|patients?|subjects?)|"
+    r"inclusion\s+criteria|exclusion\s+criteria|"
+    r"we\s+(?:recruited|enrolled|sampled)\s+(?:adults?|patients?|"
+    r"participants?|children|women|men)\s+(?:who|aged|with|between|from))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_population_definition(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts without an explicit target population definition.
+
+    Emits ``missing-population-definition`` (moderate) when the manuscript is
+    empirical but lacks inclusion/exclusion criteria or a population description.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="population_definition", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="population_definition", findings=[]
+        )
+
+    if _POPULATION_DEFINITION_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="population_definition", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="population_definition",
+        findings=[
+            Finding(
+                code="missing-population-definition",
+                severity="moderate",
+                message=(
+                    "Empirical Methods section does not define the target population, "
+                    "inclusion/exclusion criteria, or sampling frame. "
+                    "Explicitly define who was eligible to participate."
+                ),
+                validator="population_definition",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 170 – Pilot study overclaiming
+# ---------------------------------------------------------------------------
+
+_PILOT_STUDY_RE = re.compile(
+    r"\b(?:pilot\s+(?:study|trial|investigation|test|RCT)|"
+    r"feasibility\s+(?:study|trial)|"
+    r"preliminary\s+(?:study|investigation|data|findings|results?)|"
+    r"this\s+(?:is\s+a\s+)?pilot|exploratory\s+pilot)\b",
+    re.IGNORECASE,
+)
+_PILOT_OVERCLAIM_RE = re.compile(
+    r"\b(?:(?:our\s+)?(?:results?|findings?)\s+(?:demonstrate|prove|establish|confirm"
+    r"|show\s+conclusively)|definitive\s+(?:evidence|proof|conclusion)|"
+    r"we\s+(?:definitively|conclusively)\s+(?:show|demonstrate|establish)|"
+    r"generaliz(?:able|ed)\s+to\s+(?:the\s+(?:general\s+population|broader))|"
+    r"policy\s+(?:recommendation|implication)\s+(?:is\s+that|should))\b",
+    re.IGNORECASE,
+)
+_PILOT_CAVEAT_RE = re.compile(
+    r"\b(?:pilot\s+(?:study\s+limitations?|findings?\s+should\s+be\s+(?:interpreted"
+    r"|treated|considered))|larger\s+(?:study|trial|sample|RCT)|"
+    r"future\s+(?:study|research|trial|work)\s+(?:with\s+larger|should\s+replicate)|"
+    r"confirmatory\s+(?:study|trial|research))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_pilot_study_claims(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag pilot studies making overclaimed conclusions without appropriate caveats.
+
+    Emits ``overclaimed-pilot-study`` (minor) when a pilot study makes definitive
+    or generalizable conclusions without recommending larger confirmatory research.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="pilot_study_claims", findings=[]
+        )
+
+    if not _PILOT_STUDY_RE.search(full):
+        return ValidationResult(
+            validator_name="pilot_study_claims", findings=[]
+        )
+
+    if not _PILOT_OVERCLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="pilot_study_claims", findings=[]
+        )
+
+    if _PILOT_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="pilot_study_claims", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="pilot_study_claims",
+        findings=[
+            Finding(
+                code="overclaimed-pilot-study",
+                severity="minor",
+                message=(
+                    "Pilot study with definitive or broadly generalizable conclusion "
+                    "claims detected but no recommendation for larger confirmatory "
+                    "research is present. "
+                    "Qualify pilot findings and call for replication."
+                ),
+                validator="pilot_study_claims",
+                location="Discussion/Conclusion",
                 evidence=[],
             )
         ],
