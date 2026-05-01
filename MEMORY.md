@@ -269,12 +269,41 @@ Validated commands:
 - `pixi run lint` → clean
 - `pixi run test` → 58 passed
 
+## Phase 18 validated state
+
+Phase 18 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 18 added:
+- Three private helper functions in `cli.py`:
+  - `_format_audit_summary(report)` — severity counts (fatal/major/moderate/minor + total), pathway, stack, priority count
+  - `_format_sources_summary(report)` — total/verified/issues/skipped counts, bibliography confidence level, priority count
+  - `_format_revision_summary(report)` — resolved/persistent/introduced counts and route-changed flag
+- Connected to all four applicable commands:
+  - `audit-core` → `_format_audit_summary`
+  - `audit-standard` → `_format_audit_summary`
+  - `verify-revision` → `_format_revision_summary`
+  - `verify-sources` → `_format_sources_summary`
+- Updated 4 existing CLI tests to assert presence of summary tokens in `result.output`
+- 58 tests pass (count unchanged — updated tests, no new tests)
+
+Example output after `audit-standard`:
+```
+Completed standard run run-20260501T153602Z for my-manuscript
+  findings:  fatal=0  major=3  moderate=9  minor=3  (15 total)
+  routing:   data_science | maximal stack | 4 priorities
+```
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 58 passed
+- `pixi run audit-standard ... --output-dir <out>` → summary lines appear as expected
+
 ## Current immediate next task
 
-Phase 17 is closed. Next candidate phases:
-1. **Phase 18: structured severity summary in CLI output** — print a grouped severity/count table to stdout on audit completion (audit-standard and verify-sources)
-2. **Phase 18: notation cross-section consistency** — flag symbols used in one section but defined only in a later section
-3. **Phase 18: revision finding-code coverage report** — include per-code resolve/persist/introduce counts in the revision verification Markdown report
+Phase 18 is closed. Next candidate phases:
+1. **Phase 19: notation cross-section consistency** — flag symbols used in one section but defined only in a later section (requires order-aware scan of sections)
+2. **Phase 19: revision finding-code coverage report** — per-code resolve/persist/introduce counts in the revision verification Markdown report
+3. **Phase 19: agent heuristic confidence scoring** — attach a numeric confidence score to each agent finding based on signal strength
 
 ## Bundle and handoff requirements
 

@@ -20,6 +20,60 @@ from manuscript_audit.validators import run_deterministic_validators
 app = typer.Typer(add_completion=False, no_args_is_help=True)
 
 
+def _format_audit_summary(report) -> str:
+    """One-line-per-category summary for audit-core / audit-standard."""
+    from collections import Counter
+
+    counts: Counter = Counter(report.validation_suite.severity_counts)
+    if report.agent_suite:
+        counts.update(report.agent_suite.severity_counts)
+    total = sum(counts.values())
+    parts = "  ".join(
+        f"{sev}={counts.get(sev, 0)}" for sev in ("fatal", "major", "moderate", "minor")
+    )
+    pathway = report.classification.pathway
+    stack = report.classification.recommended_stack
+    n_pri = len(report.revision_priorities)
+    return (
+        f"  findings:  {parts}  ({total} total)\n"
+        f"  routing:   {pathway} | {stack} stack | {n_pri} priorities"
+    )
+
+
+def _format_sources_summary(report) -> str:
+    """One-line-per-category summary for verify-sources."""
+    s = report.summary
+    verified = s.verified_count + s.verified_direct_url_count
+    issues = (
+        s.metadata_mismatch_count
+        + s.lookup_not_found_count
+        + s.ambiguous_match_count
+        + s.provider_error_count
+    )
+    conf = (
+        report.bibliography_confidence_summary.confidence_level
+        if report.bibliography_confidence_summary
+        else "n/a"
+    )
+    n_pri = len(report.revision_priorities)
+    return (
+        f"  sources:    {s.total_records} total  {verified} verified  "
+        f"{issues} issues  skipped={s.skipped_count}\n"
+        f"  confidence: {conf} | {n_pri} priorities"
+    )
+
+
+def _format_revision_summary(report) -> str:
+    """One-line summary for verify-revision."""
+    route = "yes" if report.route_changed else "no"
+    return (
+        f"  resolved={len(report.resolved_findings)}  "
+        f"persistent={len(report.persistent_findings)}  "
+        f"introduced={len(report.new_findings)}  "
+        f"route-changed={route}"
+    )
+
+
 def _prepare_parsed_manuscript(manuscript_path: Path):
     parsed = parse_manuscript(manuscript_path)
     bib_path = manuscript_path.with_suffix(".bib")
@@ -98,6 +152,7 @@ def audit_core_command(
 
     report = run_core_audit_workflow(manuscript_path, output_dir=output_dir, db_path=db_path)
     typer.echo(f"Completed run {report.run_id} for {report.manuscript_id}")
+    typer.echo(_format_audit_summary(report))
 
 
 @app.command("audit-standard")
@@ -127,6 +182,7 @@ def audit_standard_command(
         mailto=mailto,
     )
     typer.echo(f"Completed standard run {report.run_id} for {report.manuscript_id}")
+    typer.echo(_format_audit_summary(report))
 
 
 @app.command("verify-revision")
@@ -145,6 +201,7 @@ def verify_revision_command(
         db_path=db_path,
     )
     typer.echo(f"Completed revision verification {report.run_id} for {report.new_manuscript_id}")
+    typer.echo(_format_revision_summary(report))
 
 
 @app.command("verify-sources")
@@ -169,6 +226,7 @@ def verify_sources_command(
         mailto=mailto,
     )
     typer.echo(f"Completed source verification {report.run_id} for {report.manuscript_id}")
+    typer.echo(_format_sources_summary(report))
 
 
 def main() -> None:
