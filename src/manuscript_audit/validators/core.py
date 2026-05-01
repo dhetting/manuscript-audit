@@ -3000,6 +3000,476 @@ def validate_acknowledgments_presence(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 64 – Conflict of interest disclosure
+# ---------------------------------------------------------------------------
+
+_COI_RE = re.compile(
+    r"\b(conflict[s]?\s+of\s+interest|competing\s+interest[s]?|"
+    r"declaration\s+of\s+interest[s]?|coi\b|no\s+competing|"
+    r"nothing\s+to\s+disclose|disclose[sd]?\s+no)\b",
+    re.IGNORECASE,
+)
+_COI_MIN_ENTRIES = 5
+
+
+def validate_conflict_of_interest(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical/applied/software papers missing a COI statement."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="conflict_of_interest", findings=[])
+
+    if len(parsed.bibliography_entries) < _COI_MIN_ENTRIES:
+        return ValidationResult(validator_name="conflict_of_interest", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _COI_RE.search(full):
+        return ValidationResult(validator_name="conflict_of_interest", findings=[])
+
+    for section in parsed.sections:
+        if _COI_RE.search(section.title) or _COI_RE.search(section.body):
+            return ValidationResult(
+                validator_name="conflict_of_interest", findings=[]
+            )
+
+    return ValidationResult(
+        validator_name="conflict_of_interest",
+        findings=[
+            Finding(
+                code="missing-coi-statement",
+                severity="minor",
+                message=(
+                    "No conflict of interest statement was found — "
+                    "most journals require a COI declaration."
+                ),
+                validator="conflict_of_interest",
+                location="manuscript structure",
+                evidence=["no COI language detected"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 65 – Data availability statement
+# ---------------------------------------------------------------------------
+
+_DATA_AVAIL_RE = re.compile(
+    r"\b(data\s+availability|data\s+available|dataset[s]?\s+(?:are\s+)?(?:available|released|shared)|"
+    r"code\s+and\s+data|open\s+data|"
+    r"data\s+(?:can\s+be\s+)?(?:accessed|downloaded|obtained)|"
+    r"zenodo|figshare|osf\.io|dryad|harvard\s+dataverse|data\s+repository|"
+    r"upon\s+(?:reasonable\s+)?request)\b",
+    re.IGNORECASE,
+)
+_DATA_AVAIL_PAPER_TYPES = frozenset({"empirical_paper", "software_workflow_paper"})
+
+
+def validate_data_availability(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical/software papers without a data availability statement."""
+    if classification.paper_type not in _DATA_AVAIL_PAPER_TYPES:
+        return ValidationResult(validator_name="data_availability", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _DATA_AVAIL_RE.search(full):
+        return ValidationResult(validator_name="data_availability", findings=[])
+
+    return ValidationResult(
+        validator_name="data_availability",
+        findings=[
+            Finding(
+                code="missing-data-availability",
+                severity="minor",
+                message=(
+                    "No data availability statement was found — "
+                    "state where data and/or code can be accessed."
+                ),
+                validator="data_availability",
+                location="manuscript structure",
+                evidence=["no data availability language detected"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 66 – Ethics/IRB statement
+# ---------------------------------------------------------------------------
+
+_HUMAN_STUDY_RE = re.compile(
+    r"\b(participants?|subjects?|patients?|volunteers?|respondents?|"
+    r"human\s+(?:subjects?|participants?|data)|survey(?:ed)?|interview[sd]?|"
+    r"informed\s+consent)\b",
+    re.IGNORECASE,
+)
+_ANIMAL_STUDY_RE = re.compile(
+    r"\b(mice|rats?|rabbits?|primates?|rodents?|animal\s+(?:study|subjects?|model)|"
+    r"in\s+vivo|murine|zebrafish)\b",
+    re.IGNORECASE,
+)
+_ETHICS_RE = re.compile(
+    r"\b(irb|institutional\s+review\s+board|ethics\s+(?:committee|approval|board)|"
+    r"ethical\s+approval|approved\s+by|protocol\s+approved|declaration\s+of\s+helsinki|"
+    r"iacuc|animal\s+(?:care|ethics|welfare)|research\s+ethics)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ethics_statement(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag human/animal studies lacking an ethics/IRB approval statement."""
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+
+    is_human = bool(_HUMAN_STUDY_RE.search(full))
+    is_animal = bool(_ANIMAL_STUDY_RE.search(full))
+
+    if not (is_human or is_animal):
+        return ValidationResult(validator_name="ethics_statement", findings=[])
+
+    if _ETHICS_RE.search(full):
+        return ValidationResult(validator_name="ethics_statement", findings=[])
+
+    study_type = "human-subject" if is_human else "animal"
+    return ValidationResult(
+        validator_name="ethics_statement",
+        findings=[
+            Finding(
+                code="missing-ethics-statement",
+                severity="moderate",
+                message=(
+                    f"Manuscript appears to involve {study_type} research but no "
+                    "IRB/ethics approval statement was found."
+                ),
+                validator="ethics_statement",
+                location="manuscript body",
+                evidence=[f"study type detected: {study_type}"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 67 – Citation style consistency
+# ---------------------------------------------------------------------------
+
+_NUMBERED_CITE_RE = re.compile(r"\[\d+(?:[,\s]\d+)*\]")
+_AUTHOR_YEAR_CITE_RE = re.compile(
+    r"(?:[A-Z][a-z]+(?:\s+et\s+al\.?)?\s*\(?\d{4}\)?)"
+    r"|(?:\([A-Z][a-z]+(?:\s+et\s+al\.?)?,?\s+\d{4}\))",
+)
+_CITE_STYLE_MIN = 5
+_CITE_STYLE_MINORITY_THRESHOLD = 0.10
+
+
+def validate_citation_style_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts that mix numbered and author-year citation styles.
+
+    Emits ``citation-style-inconsistency`` (minor) when both styles appear
+    and the minority style exceeds ``_CITE_STYLE_MINORITY_THRESHOLD``.
+    """
+    body_text = " ".join(
+        s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    )
+    n_numbered = len(_NUMBERED_CITE_RE.findall(body_text))
+    n_author_year = len(_AUTHOR_YEAR_CITE_RE.findall(body_text))
+    total = n_numbered + n_author_year
+
+    if total < _CITE_STYLE_MIN or n_numbered == 0 or n_author_year == 0:
+        return ValidationResult(
+            validator_name="citation_style_consistency", findings=[]
+        )
+
+    minority = min(n_numbered, n_author_year)
+    if minority / total <= _CITE_STYLE_MINORITY_THRESHOLD:
+        return ValidationResult(
+            validator_name="citation_style_consistency", findings=[]
+        )
+
+    dominant = "numbered [N]" if n_numbered >= n_author_year else "author-year"
+    other = "author-year" if dominant == "numbered [N]" else "numbered [N]"
+    return ValidationResult(
+        validator_name="citation_style_consistency",
+        findings=[
+            Finding(
+                code="citation-style-inconsistency",
+                severity="minor",
+                message=(
+                    f"Citation style mixes {dominant} "
+                    f"({max(n_numbered, n_author_year)}\u00d7) and {other} "
+                    f"({min(n_numbered, n_author_year)}\u00d7) — "
+                    "standardise to a single citation style."
+                ),
+                validator="citation_style_consistency",
+                location="manuscript body",
+                evidence=[
+                    f"numbered: {n_numbered}; author-year: {n_author_year}"
+                ],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 68 – Cross-reference integrity
+# ---------------------------------------------------------------------------
+
+_FIGURE_REF_RE = re.compile(r"\b[Ff]ig(?:ure)?s?\.?\s*(\d+)\b")
+_TABLE_REF_RE = re.compile(r"\b[Tt]ables?\.?\s*(\d+)\b")
+
+
+def validate_cross_reference_integrity(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag Figure/Table N references where N exceeds the known definition count.
+
+    Only fires when definitions are non-empty.
+    Emits ``cross-reference-out-of-range`` (minor).
+    """
+    findings: list[Finding] = []
+    body_text = " ".join(
+        s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    )
+
+    n_figs = len(parsed.figure_definitions)
+    if n_figs > 0:
+        refs = {int(m.group(1)) for m in _FIGURE_REF_RE.finditer(body_text)}
+        for ref_num in sorted(refs):
+            if ref_num > n_figs:
+                findings.append(
+                    Finding(
+                        code="cross-reference-out-of-range",
+                        severity="minor",
+                        message=(
+                            f"Figure {ref_num} is referenced but only {n_figs} "
+                            "figure definition(s) were found."
+                        ),
+                        validator="cross_reference_integrity",
+                        location="manuscript body",
+                        evidence=[
+                            f"referenced Figure {ref_num}; definitions: {n_figs}"
+                        ],
+                    )
+                )
+                if len(findings) >= _FINDINGS_PER_SECTION_CAP:
+                    break
+
+    n_tabs = len(parsed.table_definitions)
+    if n_tabs > 0 and len(findings) < _FINDINGS_PER_SECTION_CAP:
+        refs = {int(m.group(1)) for m in _TABLE_REF_RE.finditer(body_text)}
+        for ref_num in sorted(refs):
+            if ref_num > n_tabs:
+                findings.append(
+                    Finding(
+                        code="cross-reference-out-of-range",
+                        severity="minor",
+                        message=(
+                            f"Table {ref_num} is referenced but only {n_tabs} "
+                            "table definition(s) were found."
+                        ),
+                        validator="cross_reference_integrity",
+                        location="manuscript body",
+                        evidence=[
+                            f"referenced Table {ref_num}; definitions: {n_tabs}"
+                        ],
+                    )
+                )
+                if len(findings) >= _FINDINGS_PER_SECTION_CAP:
+                    break
+
+    return ValidationResult(
+        validator_name="cross_reference_integrity", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 69 – Decimal precision consistency
+# ---------------------------------------------------------------------------
+
+_PERCENT_VALUE_RE = re.compile(r"(\d+)(?:\.(\d+))?\s*%")
+_DECIMAL_MIN_VALUES = 4
+
+
+def validate_decimal_precision_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag sections that report percentages at inconsistent decimal precision.
+
+    Within each section, when the same integer base (e.g., 85) appears both
+    as ``85%`` and ``85.23%``, emits ``decimal-precision-inconsistency`` (minor).
+    Requires ≥``_DECIMAL_MIN_VALUES`` percentage values per section.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() in _SKIP_SECTIONS:
+            continue
+        matches = _PERCENT_VALUE_RE.findall(section.body)
+        if len(matches) < _DECIMAL_MIN_VALUES:
+            continue
+
+        int_parts: set[str] = set()
+        dec_parts: set[str] = set()
+        for int_part, frac_part in matches:
+            if frac_part:
+                dec_parts.add(int_part)
+            else:
+                int_parts.add(int_part)
+
+        overlap = int_parts & dec_parts
+        if overlap:
+            example = min(overlap)
+            findings.append(
+                Finding(
+                    code="decimal-precision-inconsistency",
+                    severity="minor",
+                    message=(
+                        f"'{section.title}' reports the same percentage value "
+                        f"(e.g. ~{example}%) with inconsistent decimal places — "
+                        "standardise precision throughout."
+                    ),
+                    validator="decimal_precision_consistency",
+                    location=f"section '{section.title}'",
+                    evidence=[
+                        f"integer ~{example}% appears with and without decimals"
+                    ],
+                )
+            )
+    return ValidationResult(
+        validator_name="decimal_precision_consistency", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 70 – Future-work balance in Discussion/Conclusion
+# ---------------------------------------------------------------------------
+
+_FUTURE_WORK_RE = re.compile(
+    r"\b(will\s+(?:explore|investigate|study|examine|extend|apply|test)|"
+    r"future\s+work|future\s+(?:research|studies?|directions?)|"
+    r"plan\s+to|intend\s+to|could\s+be\s+(?:extended|applied|improved|explored)|"
+    r"should\s+be\s+(?:investigated|studied|explored|extended)|"
+    r"leave[sd]?\s+(?:for|to)\s+future|promising\s+direction)\b",
+    re.IGNORECASE,
+)
+_FUTURE_WORK_THRESHOLD = 0.40
+_FUTURE_WORK_MIN_SENTENCES = 6
+_DISCUSSION_SECTIONS_FW = frozenset(
+    {
+        "discussion",
+        "conclusion",
+        "conclusions",
+        "concluding remarks",
+        "summary and conclusions",
+    }
+)
+
+
+def validate_future_work_balance(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag Discussion/Conclusion sections dominated by future-work language.
+
+    When >``_FUTURE_WORK_THRESHOLD`` of sentences contain future-work signals,
+    emits ``future-work-heavy`` (minor).
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() not in _DISCUSSION_SECTIONS_FW:
+            continue
+        body = section.body.strip()
+        if not body:
+            continue
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(body) if s.strip()]
+        if len(sentences) < _FUTURE_WORK_MIN_SENTENCES:
+            continue
+        fw_count = sum(1 for s in sentences if _FUTURE_WORK_RE.search(s))
+        ratio = fw_count / len(sentences)
+        if ratio > _FUTURE_WORK_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="future-work-heavy",
+                    severity="minor",
+                    message=(
+                        f"'{section.title}' has {fw_count}/{len(sentences)} sentences "
+                        f"({ratio:.0%}) focused on future work — "
+                        "the section should primarily synthesise current findings."
+                    ),
+                    validator="future_work_balance",
+                    location=f"section '{section.title}'",
+                    evidence=[
+                        f"future-work sentences: {fw_count}/{len(sentences)}"
+                    ],
+                )
+            )
+    return ValidationResult(validator_name="future_work_balance", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 71 – Null result acknowledgment
+# ---------------------------------------------------------------------------
+
+_NULL_RESULT_RE = re.compile(
+    r"\b(did\s+not\s+(?:find|show|demonstrate|confirm|support|improve|achieve)|"
+    r"fail(?:ed)?\s+to|no\s+significant|non[\s-]significant|null\s+hypothesis|"
+    r"no\s+(?:significant\s+)?(?:effect|difference|improvement|benefit)|"
+    r"not\s+statistically\s+significant|inconclusive|mixed\s+results?|"
+    r"negative\s+result[s]?|no\s+evidence\s+of)\b",
+    re.IGNORECASE,
+)
+_NULL_RESULT_SECTIONS = frozenset({"results", "discussion", "analysis", "evaluation"})
+_NULL_RESULT_MIN_PARAGRAPHS = 4
+
+
+def validate_null_result_acknowledgment(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers whose Results/Discussion contain no null/negative findings.
+
+    Emits ``no-negative-results-acknowledged`` (minor) as a soft flag when
+    the combined Results/Discussion body has ≥``_NULL_RESULT_MIN_PARAGRAPHS``
+    paragraphs but no null-result language.  Only fires for empirical papers.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="null_result_acknowledgment", findings=[]
+        )
+
+    relevant_text = ""
+    paragraph_count = 0
+    for section in parsed.sections:
+        if any(kw in section.title.lower() for kw in _NULL_RESULT_SECTIONS):
+            relevant_text += " " + section.body
+            paragraph_count += len(
+                [p for p in section.body.split("\n\n") if p.strip()]
+            )
+
+    if not relevant_text.strip() or paragraph_count < _NULL_RESULT_MIN_PARAGRAPHS:
+        return ValidationResult(
+            validator_name="null_result_acknowledgment", findings=[]
+        )
+
+    if _NULL_RESULT_RE.search(relevant_text):
+        return ValidationResult(
+            validator_name="null_result_acknowledgment", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="null_result_acknowledgment",
+        findings=[
+            Finding(
+                code="no-negative-results-acknowledged",
+                severity="minor",
+                message=(
+                    "Results/Discussion sections contain no acknowledgment of "
+                    "negative, null, or mixed findings — consider whether all "
+                    "outcomes are accurately represented."
+                ),
+                validator="null_result_acknowledgment",
+                location="Results/Discussion",
+                evidence=["no null/negative result language detected"],
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -3061,6 +3531,14 @@ def run_deterministic_validators(
         validate_statistical_test_reporting(parsed, classification),
         validate_effect_size_reporting(parsed, classification),
         validate_acknowledgments_presence(parsed, classification),
+        validate_conflict_of_interest(parsed, classification),
+        validate_data_availability(parsed, classification),
+        validate_ethics_statement(parsed),
+        validate_citation_style_consistency(parsed),
+        validate_cross_reference_integrity(parsed),
+        validate_decimal_precision_consistency(parsed),
+        validate_future_work_balance(parsed),
+        validate_null_result_acknowledgment(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

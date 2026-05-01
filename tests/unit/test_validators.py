@@ -2418,3 +2418,568 @@ def test_acknowledgments_skipped_few_refs() -> None:
     parsed, clf = _ack_manuscript([("Methods", "We ran experiments.")], n_bib=3)
     result = validate_acknowledgments_presence(parsed, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 64 – Conflict of interest disclosure
+# ---------------------------------------------------------------------------
+
+
+def _coi_manuscript(
+    sections: list[tuple[str, str]],
+    full_text: str = "",
+    n_bib: int = 8,
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import (
+        BibliographyEntry,
+        ParsedManuscript,
+        Section,
+    )
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    bib = [
+        BibliographyEntry(
+            key=f"r{i}", raw_text=f"Ref {i}.", year="2020", source="bibtex"
+        )
+        for i in range(n_bib)
+    ]
+    ms = ParsedManuscript(
+        manuscript_id="coi-test",
+        source_path="coi.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract text.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        bibliography_entries=bib,
+        full_text=full_text,
+    )
+    clf = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, clf
+
+
+def test_missing_coi_fires() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    parsed, clf = _coi_manuscript(
+        [("Methods", "We recruited participants from local clinics."),
+         ("Results", "We found a significant effect.")]
+    )
+    result = validate_conflict_of_interest(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-coi-statement" in codes
+
+
+def test_coi_present_in_section_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    parsed, clf = _coi_manuscript(
+        [("Methods", "We ran experiments."),
+         ("Conflict of Interest", "The authors declare no competing interests.")]
+    )
+    result = validate_conflict_of_interest(parsed, clf)
+    assert result.findings == []
+
+
+def test_coi_in_full_text_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    parsed, clf = _coi_manuscript(
+        [("Methods", "We ran experiments.")],
+        full_text="There are no conflicts of interest to declare.",
+    )
+    result = validate_conflict_of_interest(parsed, clf)
+    assert result.findings == []
+
+
+def test_coi_skipped_theory_paper() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    parsed, clf = _coi_manuscript(
+        [("Methods", "We ran experiments.")],
+        paper_type="math_stats_theory",
+    )
+    result = validate_conflict_of_interest(parsed, clf)
+    assert result.findings == []
+
+
+def test_coi_skipped_few_refs() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    parsed, clf = _coi_manuscript(
+        [("Methods", "We ran experiments.")],
+        n_bib=3,
+    )
+    result = validate_conflict_of_interest(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 65 – Data availability statement
+# ---------------------------------------------------------------------------
+
+
+def _data_avail_manuscript(
+    sections: list[tuple[str, str]],
+    full_text: str = "",
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="data-avail-test",
+        source_path="data.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full_text,
+    )
+    clf = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, clf
+
+
+def test_missing_data_availability_fires() -> None:
+    from manuscript_audit.validators.core import validate_data_availability
+
+    parsed, clf = _data_avail_manuscript(
+        [("Methods", "We collected data from hospitals."),
+         ("Results", "The analysis showed improvements.")]
+    )
+    result = validate_data_availability(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-data-availability" in codes
+
+
+def test_data_availability_zenodo_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_availability
+
+    parsed, clf = _data_avail_manuscript(
+        [("Methods", "Data are available on Zenodo at https://zenodo.org/123.")]
+    )
+    result = validate_data_availability(parsed, clf)
+    assert result.findings == []
+
+
+def test_data_availability_in_full_text_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_availability
+
+    parsed, clf = _data_avail_manuscript(
+        [("Methods", "We ran experiments.")],
+        full_text="Data availability: the dataset is available upon reasonable request.",
+    )
+    result = validate_data_availability(parsed, clf)
+    assert result.findings == []
+
+
+def test_data_availability_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_data_availability
+
+    parsed, clf = _data_avail_manuscript(
+        [("Methods", "We prove theorems.")],
+        paper_type="math_stats_theory",
+    )
+    result = validate_data_availability(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 66 – Ethics/IRB statement
+# ---------------------------------------------------------------------------
+
+
+def _ethics_manuscript(sections: list[tuple[str, str]], full_text: str = "") -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="ethics-test",
+        source_path="ethics.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full_text,
+    )
+
+
+def test_missing_ethics_human_study_fires() -> None:
+    from manuscript_audit.validators.core import validate_ethics_statement
+
+    parsed = _ethics_manuscript(
+        [("Methods", "Participants completed questionnaires about their health."),
+         ("Results", "Survey responses showed significant trends.")]
+    )
+    result = validate_ethics_statement(parsed)
+    codes = [f.code for f in result.findings]
+    assert "missing-ethics-statement" in codes
+
+
+def test_ethics_irb_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ethics_statement
+
+    parsed = _ethics_manuscript(
+        [("Methods",
+          "Participants completed questionnaires. "
+          "The study was approved by the Institutional Review Board.")]
+    )
+    result = validate_ethics_statement(parsed)
+    assert result.findings == []
+
+
+def test_ethics_animal_study_fires() -> None:
+    from manuscript_audit.validators.core import validate_ethics_statement
+
+    parsed = _ethics_manuscript(
+        [("Methods", "Mice were administered the drug at 10 mg/kg.")]
+    )
+    result = validate_ethics_statement(parsed)
+    codes = [f.code for f in result.findings]
+    assert "missing-ethics-statement" in codes
+
+
+def test_ethics_no_human_animal_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ethics_statement
+
+    parsed = _ethics_manuscript(
+        [("Methods", "We trained a neural network on benchmark datasets.")]
+    )
+    result = validate_ethics_statement(parsed)
+    assert result.findings == []
+
+
+def test_ethics_iacuc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ethics_statement
+
+    parsed = _ethics_manuscript(
+        [("Methods",
+          "Mice were used. All procedures were approved by the IACUC committee.")]
+    )
+    result = validate_ethics_statement(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 67 – Citation style consistency
+# ---------------------------------------------------------------------------
+
+
+def _cite_style_manuscript(body_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="cite-test",
+        source_path="cite.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Introduction", level=1, body=body_text)],
+        full_text=body_text,
+    )
+
+
+def test_mixed_citation_styles_fires() -> None:
+    from manuscript_audit.validators.core import validate_citation_style_consistency
+
+    # 4 numbered + 4 author-year = 8 total, well above 5 min; 50% each
+    body = (
+        "Regression is common [1][2][3][4]. "
+        "Smith 2020 showed gains. Jones 2018 confirmed it. "
+        "Brown 2019 extended this. Davis 2021 further verified."
+    )
+    parsed = _cite_style_manuscript(body)
+    result = validate_citation_style_consistency(parsed)
+    codes = [f.code for f in result.findings]
+    assert "citation-style-inconsistency" in codes
+
+
+def test_uniform_numbered_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_style_consistency
+
+    body = "As shown in [1], [2], [3], [4], [5], the method works."
+    parsed = _cite_style_manuscript(body)
+    result = validate_citation_style_consistency(parsed)
+    assert result.findings == []
+
+
+def test_few_citations_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_style_consistency
+
+    body = "As shown in [1], the method works."
+    parsed = _cite_style_manuscript(body)
+    result = validate_citation_style_consistency(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 68 – Cross-reference integrity
+# ---------------------------------------------------------------------------
+
+
+def _xref_manuscript(body_text: str, n_figs: int = 0, n_tabs: int = 0) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="xref-test",
+        source_path="xref.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=body_text)],
+        figure_definitions=[f"Caption {i}." for i in range(1, n_figs + 1)],
+        table_definitions=[f"Caption {i}." for i in range(1, n_tabs + 1)],
+        full_text=body_text,
+    )
+
+
+def test_figure_ref_out_of_range_fires() -> None:
+    from manuscript_audit.validators.core import validate_cross_reference_integrity
+
+    parsed = _xref_manuscript("See Figure 3 for details.", n_figs=2)
+    result = validate_cross_reference_integrity(parsed)
+    codes = [f.code for f in result.findings]
+    assert "cross-reference-out-of-range" in codes
+
+
+def test_figure_ref_in_range_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_reference_integrity
+
+    parsed = _xref_manuscript("See Figure 2 for details.", n_figs=3)
+    result = validate_cross_reference_integrity(parsed)
+    assert result.findings == []
+
+
+def test_table_ref_out_of_range_fires() -> None:
+    from manuscript_audit.validators.core import validate_cross_reference_integrity
+
+    parsed = _xref_manuscript("As shown in Table 5.", n_figs=0, n_tabs=2)
+    result = validate_cross_reference_integrity(parsed)
+    codes = [f.code for f in result.findings]
+    assert "cross-reference-out-of-range" in codes
+
+
+def test_no_definitions_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_reference_integrity
+
+    parsed = _xref_manuscript("See Figure 99 for the overview.", n_figs=0)
+    result = validate_cross_reference_integrity(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 69 – Decimal precision consistency
+# ---------------------------------------------------------------------------
+
+
+def _decimal_manuscript(body_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="decimal-test",
+        source_path="dec.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=body_text)],
+        full_text=body_text,
+    )
+
+
+def test_decimal_inconsistency_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_decimal_precision_consistency,
+    )
+
+    body = (
+        "Accuracy was 85%, recall was 90%, precision was 85.23%, "
+        "and F1 was 87.50%."
+    )
+    parsed = _decimal_manuscript(body)
+    result = validate_decimal_precision_consistency(parsed)
+    codes = [f.code for f in result.findings]
+    assert "decimal-precision-inconsistency" in codes
+
+
+def test_decimal_consistent_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_decimal_precision_consistency,
+    )
+
+    body = "Accuracy was 85.10%, recall was 90.20%, precision was 88.30%, F1 was 87.40%."
+    parsed = _decimal_manuscript(body)
+    result = validate_decimal_precision_consistency(parsed)
+    assert result.findings == []
+
+
+def test_decimal_too_few_values_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_decimal_precision_consistency,
+    )
+
+    body = "Accuracy was 85% and recall was 85.23%."
+    parsed = _decimal_manuscript(body)
+    result = validate_decimal_precision_consistency(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 70 – Future-work balance
+# ---------------------------------------------------------------------------
+
+
+def _future_work_manuscript(body_text: str, section_title: str = "Conclusion") -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="fw-test",
+        source_path="fw.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=section_title, level=1, body=body_text)],
+        full_text=body_text,
+    )
+
+
+def test_future_work_heavy_fires() -> None:
+    from manuscript_audit.validators.core import validate_future_work_balance
+
+    body = (
+        "We will explore new datasets. "
+        "Future work will investigate model compression. "
+        "We plan to apply this to clinical settings. "
+        "We intend to extend the framework. "
+        "Future research should investigate causal effects. "
+        "We will examine additional baselines in future studies. "
+        "We found good results overall."
+    )
+    parsed = _future_work_manuscript(body)
+    result = validate_future_work_balance(parsed)
+    codes = [f.code for f in result.findings]
+    assert "future-work-heavy" in codes
+
+
+def test_future_work_balanced_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_future_work_balance
+
+    body = (
+        "We demonstrated strong performance on the benchmark. "
+        "The approach reduces computation time by 30%. "
+        "Ablation studies confirmed the contribution of each component. "
+        "The results generalise across three datasets. "
+        "We validated on held-out test data. "
+        "Future work will extend this to video data."
+    )
+    parsed = _future_work_manuscript(body)
+    result = validate_future_work_balance(parsed)
+    assert result.findings == []
+
+
+def test_future_work_skips_non_discussion() -> None:
+    from manuscript_audit.validators.core import validate_future_work_balance
+
+    body = (
+        "We will explore new datasets. Future work will investigate this. "
+        "We plan to apply this. We intend to extend. Future research here. "
+        "Future directions are clear."
+    )
+    parsed = _future_work_manuscript(body, section_title="Introduction")
+    result = validate_future_work_balance(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 71 – Null result acknowledgment
+# ---------------------------------------------------------------------------
+
+
+def _null_result_manuscript(
+    sections: list[tuple[str, str]],
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    full = " ".join(b for _, b in sections)
+    ms = ParsedManuscript(
+        manuscript_id="null-test",
+        source_path="null.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full,
+    )
+    clf = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, clf
+
+
+def test_missing_null_result_fires() -> None:
+    from manuscript_audit.validators.core import validate_null_result_acknowledgment
+
+    results_body = (
+        "The model achieved 92% accuracy.\n\n"
+        "All experiments showed improvements.\n\n"
+        "Performance was consistently superior.\n\n"
+        "The method outperformed all baselines."
+    )
+    parsed, clf = _null_result_manuscript(
+        [("Results", results_body),
+         ("Discussion", "The results confirm our hypothesis.\n\n"
+          "These findings suggest strong generalization.\n\n"
+          "The approach is effective across domains.\n\n"
+          "The performance gains are robust.")]
+    )
+    result = validate_null_result_acknowledgment(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "no-negative-results-acknowledged" in codes
+
+
+def test_null_result_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_acknowledgment
+
+    results_body = (
+        "The model achieved 92% accuracy.\n\n"
+        "The method failed to improve on dataset B.\n\n"
+        "No significant difference was found on task C.\n\n"
+        "Performance was generally strong."
+    )
+    parsed, clf = _null_result_manuscript([("Results", results_body)])
+    result = validate_null_result_acknowledgment(parsed, clf)
+    assert result.findings == []
+
+
+def test_null_result_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_null_result_acknowledgment
+
+    results_body = (
+        "Theorem 1 holds.\n\nProof follows.\n\nCorollary applies.\n\nQED."
+    )
+    parsed, clf = _null_result_manuscript(
+        [("Results", results_body)],
+        paper_type="math_stats_theory",
+    )
+    result = validate_null_result_acknowledgment(parsed, clf)
+    assert result.findings == []
+
+
+def test_null_result_skipped_few_paragraphs() -> None:
+    from manuscript_audit.validators.core import validate_null_result_acknowledgment
+
+    parsed, clf = _null_result_manuscript(
+        [("Results", "The model achieved high accuracy. All tests passed.")]
+    )
+    result = validate_null_result_acknowledgment(parsed, clf)
+    assert result.findings == []
