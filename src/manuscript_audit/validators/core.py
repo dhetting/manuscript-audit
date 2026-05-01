@@ -737,6 +737,18 @@ def validate_unlabeled_equations(
     return ValidationResult(validator_name="unlabeled_equations", findings=findings)
 
 
+def _extract_trigger_sentence(para: str, *patterns: re.Pattern) -> str:  # type: ignore[type-arg]
+    """Return the first sentence in *para* that matches all *patterns*.
+
+    Falls back to a 120-character paragraph prefix if no sentence matches.
+    """
+    for sentence in _SENTENCE_SPLIT_RE.split(para):
+        sentence = sentence.strip()
+        if sentence and all(p.search(sentence) for p in patterns):
+            return sentence[:150]
+    return para[:120]
+
+
 def validate_citationless_quantitative_claims(parsed: ParsedManuscript) -> ValidationResult:
     """Flag paragraphs with a numeric metric + evaluative language but no citation."""
     findings: list[Finding] = []
@@ -748,6 +760,7 @@ def validate_citationless_quantitative_claims(parsed: ParsedManuscript) -> Valid
                 and EVALUATIVE_CONTEXT_RE.search(para)
                 and not CITATION_IN_TEXT_RE.search(para)
             ):
+                trigger = _extract_trigger_sentence(para, METRIC_RE, EVALUATIVE_CONTEXT_RE)
                 findings.append(
                     Finding(
                         code="citationless-quantitative-claim",
@@ -758,7 +771,7 @@ def validate_citationless_quantitative_claims(parsed: ParsedManuscript) -> Valid
                         ),
                         validator="citationless_quantitative_claims",
                         location=location,
-                        evidence=[para[:120]],
+                        evidence=[trigger],
                     )
                 )
 
@@ -781,6 +794,7 @@ def validate_citationless_comparative_claims(parsed: ParsedManuscript) -> Valida
     def _check_block(text: str, location: str) -> None:
         for para in _split_paragraphs(text):
             if COMPARATIVE_CLAIM_RE.search(para) and not CITATION_IN_TEXT_RE.search(para):
+                trigger = _extract_trigger_sentence(para, COMPARATIVE_CLAIM_RE)
                 findings.append(
                     Finding(
                         code="citationless-comparative-claim",
@@ -790,7 +804,7 @@ def validate_citationless_comparative_claims(parsed: ParsedManuscript) -> Valida
                         ),
                         validator="citationless_comparative_claims",
                         location=location,
-                        evidence=[para[:120]],
+                        evidence=[trigger],
                     )
                 )
 

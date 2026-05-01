@@ -712,3 +712,55 @@ def test_passive_voice_skips_short_sections() -> None:
     body = "Data was collected. Samples were processed. Results were analyzed."
     result = validate_passive_voice_density(_methods_manuscript(body))
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 27: sentence-level claim localization
+# ---------------------------------------------------------------------------
+
+
+def test_quantitative_claim_evidence_contains_trigger_sentence() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_citationless_quantitative_claims
+
+    # Paragraph with two sentences; only the second triggers the claim
+    body = (
+        "We describe our approach in this section.\n"
+        "Our model achieves 94% accuracy on the benchmark dataset."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="sent-loc",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Test",
+        full_text="",
+        sections=[Section(title="Results", level=2, body=body)],
+    )
+    result = validate_citationless_quantitative_claims(parsed)
+    assert result.findings, "Expected at least one finding"
+    evidence = result.findings[0].evidence
+    assert evidence, "Expected evidence to be populated"
+    assert "94%" in evidence[0], "Trigger sentence should appear in evidence"
+
+
+def test_comparative_claim_evidence_contains_trigger_sentence() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_citationless_comparative_claims
+
+    body = (
+        "This section summarizes our experimental results.\n"
+        "Our method outperforms all prior approaches on this task."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="comp-sent",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Test",
+        full_text="",
+        sections=[Section(title="Discussion", level=2, body=body)],
+    )
+    result = validate_citationless_comparative_claims(parsed)
+    assert result.findings, "Expected at least one finding"
+    evidence = result.findings[0].evidence
+    assert evidence
+    assert "outperforms" in evidence[0]
