@@ -4131,6 +4131,368 @@ def validate_abstract_tense(parsed: ParsedManuscript) -> ValidationResult:
     return ValidationResult(validator_name="abstract_tense", findings=[])
 
 
+# ---------------------------------------------------------------------------
+# Phase 87 – Claim strength escalation
+# ---------------------------------------------------------------------------
+
+_STRONG_CLAIM_RE = re.compile(
+    r"\b(proves?|demonstrates? conclusively|definitively shows?|"
+    r"irrefutably|beyond (any )?doubt|conclusive(ly)?|"
+    r"unambiguously (shows?|demonstrates?|proves?))\b",
+    re.IGNORECASE,
+)
+_CLAIM_STRENGTH_MIN_WORDS = 20
+
+
+def validate_claim_strength_escalation(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag overstrong claim language in body sections.
+
+    Emits ``overstrong-claim`` (major) when body sections use language like
+    "proves", "demonstrates conclusively", or "definitively shows" which
+    overclaims certainty unsupported by standard statistical results.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() in _SKIP_SECTIONS:
+            continue
+        body = section.body
+        if len(body.split()) < _CLAIM_STRENGTH_MIN_WORDS:
+            continue
+        match = _STRONG_CLAIM_RE.search(body)
+        if match:
+            findings.append(
+                Finding(
+                    code="overstrong-claim",
+                    severity="major",
+                    message=(
+                        f"Section '{section.title}' uses overstrong claim language "
+                        f"('{match.group()}') — statistical results should not be "
+                        "presented as definitive proof."
+                    ),
+                    validator="claim_strength_escalation",
+                    location=section.title,
+                    evidence=[match.group()],
+                )
+            )
+    return ValidationResult(
+        validator_name="claim_strength_escalation", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 88 – Sample size reporting
+# ---------------------------------------------------------------------------
+
+_SAMPLE_SIZE_RE = re.compile(
+    r"\b[Nn]\s*=\s*\d+|"
+    r"\b(sample size|n\s*=\s*\d+|participants?|subjects?|respondents?)\b.*\d+|"
+    r"\b\d+\s+(participants?|subjects?|respondents?|patients?|observations?)\b",
+    re.IGNORECASE,
+)
+_SAMPLE_SIZE_PAPER_TYPES = frozenset(
+    {
+        "empirical_research_paper",
+        "clinical_trial_report",
+        "survey_study",
+    }
+)
+
+
+def validate_sample_size_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers that lack explicit sample-size reporting.
+
+    Emits ``missing-sample-size`` (moderate) when an empirical paper has no
+    explicit N= or sample-size statement in Methods or Results sections.
+    """
+    if classification.paper_type not in _SAMPLE_SIZE_PAPER_TYPES:
+        return ValidationResult(validator_name="sample_size_reporting", findings=[])
+
+    methods_results_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"methods", "methodology", "results", "participants"}
+    )
+    if not methods_results_body:
+        return ValidationResult(validator_name="sample_size_reporting", findings=[])
+
+    if _SAMPLE_SIZE_RE.search(methods_results_body):
+        return ValidationResult(validator_name="sample_size_reporting", findings=[])
+
+    return ValidationResult(
+        validator_name="sample_size_reporting",
+        findings=[
+            Finding(
+                code="missing-sample-size",
+                severity="moderate",
+                message=(
+                    "Empirical manuscript does not report an explicit sample size "
+                    "(N=...) in Methods or Results — required for reproducibility."
+                ),
+                validator="sample_size_reporting",
+                location="Methods/Results",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 89 – Limitations section presence
+# ---------------------------------------------------------------------------
+
+_LIMITATIONS_TITLES = frozenset(
+    {"limitations", "limitation", "study limitations", "limitations and future work"}
+)
+_LIMITATIONS_INLINE_RE = re.compile(
+    r"\b(limitation|caveat|weakness|shortcoming|constraint)s?\b",
+    re.IGNORECASE,
+)
+_LIMITATIONS_PAPER_TYPES = frozenset(
+    {
+        "empirical_research_paper",
+        "clinical_trial_report",
+        "survey_study",
+        "systematic_review",
+        "meta_analysis",
+    }
+)
+
+
+def validate_limitations_section_presence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers without a Limitations section or inline discussion.
+
+    Emits ``missing-limitations-section`` (moderate) when an empirical paper
+    has no dedicated Limitations section AND no inline limitations discussion
+    in Discussion/Conclusion.
+    """
+    if classification.paper_type not in _LIMITATIONS_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="limitations_section_presence", findings=[]
+        )
+
+    has_dedicated = any(
+        s.title.lower() in _LIMITATIONS_TITLES for s in parsed.sections
+    )
+    if has_dedicated:
+        return ValidationResult(
+            validator_name="limitations_section_presence", findings=[]
+        )
+
+    discussion_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"discussion", "conclusion", "conclusions"}
+    )
+    if _LIMITATIONS_INLINE_RE.search(discussion_body):
+        return ValidationResult(
+            validator_name="limitations_section_presence", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="limitations_section_presence",
+        findings=[
+            Finding(
+                code="missing-limitations-section",
+                severity="moderate",
+                message=(
+                    "Empirical manuscript has no Limitations section and no inline "
+                    "limitations discussion in Discussion/Conclusion."
+                ),
+                validator="limitations_section_presence",
+                location="Discussion/Conclusion",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 90 – Author contribution statement
+# ---------------------------------------------------------------------------
+
+_CONTRIB_SECTION_RE = re.compile(
+    r"\b(author contributions?|contributions?|credit|CRediT)\b",
+    re.IGNORECASE,
+)
+_CONTRIB_KEYWORD_RE = re.compile(
+    r"\b(conceptuali[sz]ation|methodology|software|validation|formal analysis|"
+    r"investigation|resources|data curation|writing|visualization|supervision|"
+    r"funding acquisition|contributed equally)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_author_contribution_statement(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts that lack an author contribution statement.
+
+    Emits ``missing-author-contributions`` (minor) when no section or paragraph
+    contains CRediT-style author contribution language.
+    """
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _CONTRIB_SECTION_RE.search(combined) and _CONTRIB_KEYWORD_RE.search(combined):
+        return ValidationResult(
+            validator_name="author_contribution_statement", findings=[]
+        )
+
+    for section in parsed.sections:
+        if _CONTRIB_SECTION_RE.search(section.title):
+            return ValidationResult(
+                validator_name="author_contribution_statement", findings=[]
+            )
+
+    return ValidationResult(
+        validator_name="author_contribution_statement",
+        findings=[
+            Finding(
+                code="missing-author-contributions",
+                severity="minor",
+                message=(
+                    "No author contribution statement (CRediT or equivalent) detected. "
+                    "Most journals require explicit per-author contribution disclosure."
+                ),
+                validator="author_contribution_statement",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 91 – Preregistration mention
+# ---------------------------------------------------------------------------
+
+_PREREG_PAPER_TYPES = frozenset(
+    {
+        "empirical_research_paper",
+        "clinical_trial_report",
+        "registered_report",
+    }
+)
+_PREREG_RE = re.compile(
+    r"\b(preregistered?|pre-registered?|registered report|"
+    r"osf\.io|clinicaltrials\.gov|prospero|registration number|"
+    r"study protocol|protocol registration)\b",
+    re.IGNORECASE,
+)
+_RCT_RE = re.compile(
+    r"\b(randomized controlled trial|RCT|randomly assigned|random assignment|"
+    r"double.blind|placebo.controlled)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_preregistration_mention(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RCTs and registered-report types without a preregistration mention.
+
+    Emits ``missing-preregistration`` (moderate) when a clinical trial or
+    registered report lacks any preregistration or registry reference.
+    """
+    if classification.paper_type not in _PREREG_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="preregistration_mention", findings=[]
+        )
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    is_rct = classification.paper_type == "clinical_trial_report" or bool(
+        _RCT_RE.search(combined)
+    )
+    if not is_rct:
+        return ValidationResult(
+            validator_name="preregistration_mention", findings=[]
+        )
+
+    if _PREREG_RE.search(combined):
+        return ValidationResult(
+            validator_name="preregistration_mention", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="preregistration_mention",
+        findings=[
+            Finding(
+                code="missing-preregistration",
+                severity="moderate",
+                message=(
+                    "Clinical trial or RCT manuscript does not mention a "
+                    "preregistration or study registry. Reporting guidelines "
+                    "(CONSORT, PROSPERO) require registry citation."
+                ),
+                validator="preregistration_mention",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 92 – Reviewer response completeness
+# ---------------------------------------------------------------------------
+
+_REVIEWER_RESPONSE_RE = re.compile(
+    r"\b(response to reviewer|reviewer comment|point.by.point|"
+    r"we thank the reviewer|as the reviewer noted|"
+    r"reviewer \d+|comment \d+)\b",
+    re.IGNORECASE,
+)
+_REVISION_TITLE_RE = re.compile(
+    r"\b(revised?|revision|resubmission|response|rebuttal)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_reviewer_response_completeness(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag revision manuscripts that appear to lack a reviewer response.
+
+    Emits ``missing-reviewer-response`` (minor) when the title or abstract
+    signals a revision/resubmission but no reviewer-response language is found
+    anywhere in the manuscript.
+
+    Note: this fires only when the title or abstract explicitly marks the
+    document as a revision, so it targets cover letters or response documents
+    mistakenly submitted as the manuscript body.
+    """
+    title_is_revision = _REVISION_TITLE_RE.search(parsed.title or "")
+    abstract_is_revision = _REVISION_TITLE_RE.search(parsed.abstract or "")
+    if not (title_is_revision or abstract_is_revision):
+        return ValidationResult(
+            validator_name="reviewer_response_completeness", findings=[]
+        )
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _REVIEWER_RESPONSE_RE.search(combined):
+        return ValidationResult(
+            validator_name="reviewer_response_completeness", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="reviewer_response_completeness",
+        findings=[
+            Finding(
+                code="missing-reviewer-response",
+                severity="minor",
+                message=(
+                    "Manuscript title or abstract signals a revision/resubmission "
+                    "but no reviewer-response language was found. Confirm that a "
+                    "point-by-point response letter is included separately."
+                ),
+                validator="reviewer_response_completeness",
+                location="manuscript",
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -4211,6 +4573,12 @@ def run_deterministic_validators(
         validate_footnote_overuse(parsed),
         validate_abbreviation_list(parsed),
         validate_abstract_tense(parsed),
+        validate_claim_strength_escalation(parsed),
+        validate_sample_size_reporting(parsed, classification),
+        validate_limitations_section_presence(parsed, classification),
+        validate_author_contribution_statement(parsed),
+        validate_preregistration_mention(parsed, classification),
+        validate_reviewer_response_completeness(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

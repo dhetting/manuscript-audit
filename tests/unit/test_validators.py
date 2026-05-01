@@ -3763,3 +3763,368 @@ def test_abstract_too_short_for_tense_no_fire() -> None:
     parsed = _tense_manuscript(abstract)
     result = validate_abstract_tense(parsed)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 87 – Claim strength escalation
+# ---------------------------------------------------------------------------
+
+
+def _claim_strength_manuscript(section_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="cs-test",
+        source_path="cs.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Discussion", level=1, body=section_body)],
+        full_text=section_body,
+    )
+
+
+def test_overstrong_claim_fires() -> None:
+    from manuscript_audit.validators.core import validate_claim_strength_escalation
+
+    body = (
+        "The results prove that our approach is superior. "
+        "This definitively shows the method works better than all alternatives. "
+        "The evidence is conclusive and beyond any doubt."
+    )
+    parsed = _claim_strength_manuscript(body)
+    result = validate_claim_strength_escalation(parsed)
+    codes = [f.code for f in result.findings]
+    assert "overstrong-claim" in codes
+
+
+def test_normal_claim_language_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_claim_strength_escalation
+
+    body = (
+        "The results suggest that our approach performs better than the baseline. "
+        "These findings indicate a statistically significant improvement. "
+        "The evidence supports the hypothesis that the method is effective."
+    )
+    parsed = _claim_strength_manuscript(body)
+    result = validate_claim_strength_escalation(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 88 – Sample size reporting
+# ---------------------------------------------------------------------------
+
+
+def _sample_size_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_research_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="ss-test",
+        source_path="ss.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_missing_sample_size_fires() -> None:
+    from manuscript_audit.validators.core import validate_sample_size_reporting
+
+    body = (
+        "We conducted a randomized controlled experiment on participants. "
+        "Participants were assigned to one of two conditions. "
+        "Data were collected over six weeks."
+    )
+    ms, clf = _sample_size_manuscript(body)
+    result = validate_sample_size_reporting(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-sample-size" in codes
+
+
+def test_explicit_sample_size_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sample_size_reporting
+
+    body = (
+        "We recruited N = 120 participants for the study. "
+        "Participants were randomly assigned to treatment or control. "
+        "Data were collected over six weeks."
+    )
+    ms, clf = _sample_size_manuscript(body)
+    result = validate_sample_size_reporting(ms, clf)
+    assert result.findings == []
+
+
+def test_sample_size_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sample_size_reporting
+
+    body = "We present a new algorithm for graph traversal."
+    ms, clf = _sample_size_manuscript(body, paper_type="software_workflow_paper")
+    result = validate_sample_size_reporting(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 89 – Limitations section presence
+# ---------------------------------------------------------------------------
+
+
+def _limitations_presence_manuscript(
+    sections: list[tuple[str, str]],
+    paper_type: str = "empirical_research_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    full = " ".join(b for _, b in sections)
+    ms = ParsedManuscript(
+        manuscript_id="lim-test",
+        source_path="lim.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_missing_limitations_section_fires() -> None:
+    from manuscript_audit.validators.core import validate_limitations_section_presence
+
+    ms, clf = _limitations_presence_manuscript([
+        ("Methods", "We conducted an experiment with 50 subjects."),
+        ("Results", "The results showed significant improvement."),
+        ("Discussion", "The method is effective and generalizes well."),
+    ])
+    result = validate_limitations_section_presence(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-limitations-section" in codes
+
+
+def test_dedicated_limitations_section_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_limitations_section_presence
+
+    ms, clf = _limitations_presence_manuscript([
+        ("Methods", "We conducted an experiment with 50 subjects."),
+        ("Results", "The results showed significant improvement."),
+        ("Discussion", "The method is effective."),
+        ("Limitations", "The study is limited to English-language texts."),
+    ])
+    result = validate_limitations_section_presence(ms, clf)
+    assert result.findings == []
+
+
+def test_inline_limitations_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_limitations_section_presence
+
+    ms, clf = _limitations_presence_manuscript([
+        ("Methods", "We conducted an experiment."),
+        ("Results", "Significant improvement was observed."),
+        (
+            "Discussion",
+            "The study has several limitations including sample size constraints.",
+        ),
+    ])
+    result = validate_limitations_section_presence(ms, clf)
+    assert result.findings == []
+
+
+def test_limitations_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_limitations_section_presence
+
+    ms, clf = _limitations_presence_manuscript(
+        [("Methods", "We implemented an algorithm.")],
+        paper_type="software_workflow_paper",
+    )
+    result = validate_limitations_section_presence(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 90 – Author contribution statement
+# ---------------------------------------------------------------------------
+
+
+def _contrib_manuscript(full_text: str, sections: list[tuple[str, str]]) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="contrib-test",
+        source_path="contrib.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full_text,
+    )
+
+
+def test_missing_author_contributions_fires() -> None:
+    from manuscript_audit.validators.core import validate_author_contribution_statement
+
+    ms = _contrib_manuscript(
+        "We present a new algorithm for classification.",
+        [("Methods", "Algorithm was implemented."), ("Results", "Performance improved.")],
+    )
+    result = validate_author_contribution_statement(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-author-contributions" in codes
+
+
+def test_credit_statement_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_author_contribution_statement
+
+    contrib_text = (
+        "Author Contributions: J.S. contributed to conceptualization and methodology. "
+        "K.L. was responsible for data curation and formal analysis. "
+        "All authors reviewed the manuscript."
+    )
+    ms = _contrib_manuscript(
+        contrib_text,
+        [
+            ("Methods", "Algorithm was implemented."),
+            ("Author Contributions", contrib_text),
+        ],
+    )
+    result = validate_author_contribution_statement(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 91 – Preregistration mention
+# ---------------------------------------------------------------------------
+
+
+def _prereg_manuscript(
+    full_text: str,
+    paper_type: str = "clinical_trial_report",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="prereg-test",
+        source_path="prereg.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=full_text)],
+        full_text=full_text,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_rct_without_preregistration_fires() -> None:
+    from manuscript_audit.validators.core import validate_preregistration_mention
+
+    body = (
+        "We conducted a randomized controlled trial where participants were randomly "
+        "assigned to treatment or placebo groups in a double-blind design."
+    )
+    ms, clf = _prereg_manuscript(body)
+    result = validate_preregistration_mention(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-preregistration" in codes
+
+
+def test_rct_with_preregistration_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_preregistration_mention
+
+    body = (
+        "This randomized controlled trial was preregistered on ClinicalTrials.gov "
+        "(registration number NCT12345678). Participants were randomly assigned."
+    )
+    ms, clf = _prereg_manuscript(body)
+    result = validate_preregistration_mention(ms, clf)
+    assert result.findings == []
+
+
+def test_non_rct_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_preregistration_mention
+
+    body = "We developed a machine learning algorithm for text classification."
+    ms, clf = _prereg_manuscript(body, paper_type="software_workflow_paper")
+    result = validate_preregistration_mention(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 92 – Reviewer response completeness
+# ---------------------------------------------------------------------------
+
+
+def _revision_manuscript(title: str, abstract: str, full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="rev-resp-test",
+        source_path="rev_resp.md",
+        source_format="markdown",
+        title=title,
+        abstract=abstract,
+        full_text=full_text,
+    )
+
+
+def test_revision_without_reviewer_response_fires() -> None:
+    from manuscript_audit.validators.core import validate_reviewer_response_completeness
+
+    ms = _revision_manuscript(
+        title="Revised manuscript: A study of...",
+        abstract="This is a revised version of our manuscript.",
+        full_text="This is a revised version. We updated the methods section.",
+    )
+    result = validate_reviewer_response_completeness(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-reviewer-response" in codes
+
+
+def test_revision_with_reviewer_response_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reviewer_response_completeness
+
+    ms = _revision_manuscript(
+        title="Revised manuscript: A study of...",
+        abstract="This is a revised version of our manuscript.",
+        full_text=(
+            "This is a revised version. Response to reviewer 1: "
+            "We thank the reviewer for the insightful comment. "
+            "We have addressed the concern by expanding the methods section."
+        ),
+    )
+    result = validate_reviewer_response_completeness(ms)
+    assert result.findings == []
+
+
+def test_non_revision_manuscript_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reviewer_response_completeness
+
+    ms = _revision_manuscript(
+        title="A study of machine learning methods",
+        abstract="We present a new approach to classification.",
+        full_text="Methods were evaluated on standard benchmarks.",
+    )
+    result = validate_reviewer_response_completeness(ms)
+    assert result.findings == []
