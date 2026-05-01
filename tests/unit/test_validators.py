@@ -6043,3 +6043,259 @@ def test_few_pvalues_no_fire() -> None:
     result = validate_pvalue_notation_consistency(ms)
     # Only 2 occurrences total < threshold of 3, should not fire even if mixed
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 126 – validate_methods_section_presence
+# ---------------------------------------------------------------------------
+
+
+def _methods_presence_manuscript(
+    section_titles: list,
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="meth-pres-test",
+        source_path="meth.md",
+        source_format="markdown",
+        title="Test Study",
+        abstract="Abstract.",
+        full_text="",
+        sections=[
+            Section(title=t, level=1, body="body text.") for t in section_titles
+        ],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_missing_methods_fires() -> None:
+    from manuscript_audit.validators.core import validate_methods_section_presence
+
+    ms, clf = _methods_presence_manuscript(
+        ["Introduction", "Results", "Discussion"]
+    )
+    result = validate_methods_section_presence(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-methods-section" in codes
+
+
+def test_methods_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_methods_section_presence
+
+    ms, clf = _methods_presence_manuscript(
+        ["Introduction", "Methods", "Results", "Discussion"]
+    )
+    result = validate_methods_section_presence(ms, clf)
+    assert result.findings == []
+
+
+def test_methods_skips_non_empirical() -> None:
+    from manuscript_audit.validators.core import validate_methods_section_presence
+
+    ms, clf = _methods_presence_manuscript(
+        ["Introduction", "Results", "Discussion"],
+        paper_type="math_theory_paper",
+    )
+    result = validate_methods_section_presence(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 127 – validate_conclusion_section_presence
+# ---------------------------------------------------------------------------
+
+
+def _conclusion_presence_manuscript(section_titles: list) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="conc-pres-test",
+        source_path="conc.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[
+            Section(title=t, level=1, body="body text.") for t in section_titles
+        ],
+    )
+
+
+def test_missing_conclusion_fires() -> None:
+    from manuscript_audit.validators.core import validate_conclusion_section_presence
+
+    ms = _conclusion_presence_manuscript(
+        ["Introduction", "Methods", "Results", "Discussion"]
+    )
+    result = validate_conclusion_section_presence(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-conclusion-section" in codes
+
+
+def test_conclusion_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conclusion_section_presence
+
+    ms = _conclusion_presence_manuscript(
+        ["Introduction", "Methods", "Results", "Discussion", "Conclusion"]
+    )
+    result = validate_conclusion_section_presence(ms)
+    assert result.findings == []
+
+
+def test_short_manuscript_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conclusion_section_presence
+
+    ms = _conclusion_presence_manuscript(["Introduction", "Methods"])
+    result = validate_conclusion_section_presence(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 128 – validate_participant_demographics
+# ---------------------------------------------------------------------------
+
+
+def _demographics_manuscript(methods_body: str) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="demog-test",
+        source_path="demog.md",
+        source_format="markdown",
+        title="Test Study",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_demographics_fires_when_participants_no_details() -> None:
+    from manuscript_audit.validators.core import validate_participant_demographics
+
+    ms, clf = _demographics_manuscript(
+        "We recruited participants online. All participants completed the survey."
+    )
+    result = validate_participant_demographics(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-participant-demographics" in codes
+
+
+def test_demographics_passes_with_details() -> None:
+    from manuscript_audit.validators.core import validate_participant_demographics
+
+    ms, clf = _demographics_manuscript(
+        "We recruited 120 participants (60 female, mean age = 24.3 years). "
+        "All participants completed the survey online."
+    )
+    result = validate_participant_demographics(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 129 – validate_conflicting_acronym_definitions
+# ---------------------------------------------------------------------------
+
+
+def _conflicting_acronym_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="acr-test",
+        source_path="acr.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_duplicate_acronym_fires() -> None:
+    from manuscript_audit.validators.core import validate_conflicting_acronym_definitions
+
+    text = (
+        "We used Natural Language Processing (NLP) techniques. "
+        "Later, Neural Language Prediction (NLP) was evaluated. "
+        "The NLP pipeline showed improvements."
+    )
+    ms = _conflicting_acronym_manuscript(text)
+    result = validate_conflicting_acronym_definitions(ms)
+    codes = [f.code for f in result.findings]
+    assert "inconsistent-acronym-definition" in codes
+
+
+def test_consistent_acronym_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conflicting_acronym_definitions
+
+    text = (
+        "We used Natural Language Processing (NLP) techniques. "
+        "The NLP pipeline showed impressive results. "
+        "NLP methods were applied to the dataset."
+    )
+    ms = _conflicting_acronym_manuscript(text)
+    result = validate_conflicting_acronym_definitions(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 130 – validate_percentage_notation_consistency
+# ---------------------------------------------------------------------------
+
+
+def _percentage_manuscript(results_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="pct-test",
+        source_path="pct.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Results", level=1, body=results_body)],
+    )
+
+
+def test_inconsistent_percentage_fires() -> None:
+    from manuscript_audit.validators.core import validate_percentage_notation_consistency
+
+    ms = _percentage_manuscript(
+        "Accuracy was 85%. Recall was 90 percent. "
+        "Precision was 88 per cent. F1 was 87%."
+    )
+    result = validate_percentage_notation_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "inconsistent-percentage-notation" in codes
+
+
+def test_consistent_percentage_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_percentage_notation_consistency
+
+    ms = _percentage_manuscript(
+        "Accuracy was 85%. Recall was 90%. Precision was 88%. F1 was 87%."
+    )
+    result = validate_percentage_notation_consistency(ms)
+    assert result.findings == []
+
+
+def test_few_percentages_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_percentage_notation_consistency
+
+    ms = _percentage_manuscript("Accuracy was 85%. Recall was 90 percent.")
+    result = validate_percentage_notation_consistency(ms)
+    # Only 2 occurrences < threshold of 4
+    assert result.findings == []

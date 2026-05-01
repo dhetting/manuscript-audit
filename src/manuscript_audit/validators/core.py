@@ -6635,9 +6635,349 @@ def run_deterministic_validators(
         validate_funding_statement(parsed, classification),
         validate_discussion_section_presence(parsed, classification),
         validate_pvalue_notation_consistency(parsed),
+        validate_methods_section_presence(parsed, classification),
+        validate_conclusion_section_presence(parsed),
+        validate_participant_demographics(parsed, classification),
+        validate_conflicting_acronym_definitions(parsed),
+        validate_percentage_notation_consistency(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
     partial2 = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_critical_escalation(partial2))
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
+
+
+# ---------------------------------------------------------------------------
+# Phase 126 – Missing methods section in empirical papers
+# ---------------------------------------------------------------------------
+
+_METHODS_TITLES = frozenset(
+    {
+        "methods",
+        "methodology",
+        "experimental design",
+        "experimental setup",
+        "study design",
+        "participants",
+        "materials and methods",
+        "methods and materials",
+        "data collection",
+        "data and methods",
+    }
+)
+
+
+def validate_methods_section_presence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers without a Methods section.
+
+    Emits ``missing-methods-section`` (major) when an empirical paper
+    has no Methods or Methodology section.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="methods_section_presence", findings=[]
+        )
+
+    if len(parsed.sections) < 2:
+        return ValidationResult(
+            validator_name="methods_section_presence", findings=[]
+        )
+
+    has_methods = any(
+        s.title.lower() in _METHODS_TITLES for s in parsed.sections
+    )
+    if has_methods:
+        return ValidationResult(
+            validator_name="methods_section_presence", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="methods_section_presence",
+        findings=[
+            Finding(
+                code="missing-methods-section",
+                severity="major",
+                message=(
+                    "Empirical paper has no Methods or Methodology section. "
+                    "A clearly labeled Methods section is required for reproducibility."
+                ),
+                validator="methods_section_presence",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 127 – Missing conclusion section
+# ---------------------------------------------------------------------------
+
+_CONCLUSION_TITLES = frozenset(
+    {
+        "conclusion",
+        "conclusions",
+        "concluding remarks",
+        "summary",
+        "summary and conclusion",
+        "summary and conclusions",
+        "conclusion and future work",
+        "conclusions and future work",
+        "closing remarks",
+    }
+)
+
+
+def validate_conclusion_section_presence(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag papers without a Conclusion or Summary section.
+
+    Emits ``missing-conclusion-section`` (minor) when no conclusion or
+    summary section is found (requires ≥ 3 sections total).
+    """
+    if len(parsed.sections) < 3:
+        return ValidationResult(
+            validator_name="conclusion_section_presence", findings=[]
+        )
+
+    has_conclusion = any(
+        s.title.lower() in _CONCLUSION_TITLES for s in parsed.sections
+    )
+    if has_conclusion:
+        return ValidationResult(
+            validator_name="conclusion_section_presence", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="conclusion_section_presence",
+        findings=[
+            Finding(
+                code="missing-conclusion-section",
+                severity="minor",
+                message=(
+                    "No Conclusion or Summary section found. "
+                    "Papers should include a conclusion summarizing key contributions "
+                    "and implications."
+                ),
+                validator="conclusion_section_presence",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 128 – Participant demographics reporting
+# ---------------------------------------------------------------------------
+
+_DEMOGRAPHICS_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "clinical_trial_report",
+    }
+)
+_DEMOGRAPHICS_RE = re.compile(
+    r"\b(mean age|average age|age range|age:? \d|age \(years\)|"
+    r"female|male|women|men|gender|sex:|"
+    r"n = \d|sample of \d|N = \d|participants were|"
+    r"\d+ (participants|subjects|students|adults|children|patients)|"
+    r"demographics|demographic characteristics)\b",
+    re.IGNORECASE,
+)
+_DEMOGRAPHICS_PARTICIPANT_RE = re.compile(
+    r"\b(participants|subjects|respondents|sample|recruited|enrolled)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_participant_demographics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers reporting participants without demographic details.
+
+    Emits ``missing-participant-demographics`` (moderate) when a paper
+    mentions participants but provides no demographic information.
+    """
+    if classification.paper_type not in _DEMOGRAPHICS_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="participant_demographics", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in _METHODS_TITLES
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="participant_demographics", findings=[]
+        )
+
+    if not _DEMOGRAPHICS_PARTICIPANT_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="participant_demographics", findings=[]
+        )
+
+    if _DEMOGRAPHICS_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="participant_demographics", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="participant_demographics",
+        findings=[
+            Finding(
+                code="missing-participant-demographics",
+                severity="moderate",
+                message=(
+                    "Methods mentions participants but provides no demographic details "
+                    "(age, gender, sample size). Report basic demographics to enable "
+                    "generalizability assessment."
+                ),
+                validator="participant_demographics",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 129 – Conflicting acronym definitions
+# ---------------------------------------------------------------------------
+
+# Regex for conflicting acronym detection (separate from _ACRONYM_DEF_RE above)
+_CONFLICT_ACRONYM_RE = re.compile(
+    r"([A-Z]{2,6})\s*\(([^)]{5,60})\)|"  # ACRONYM (expansion)
+    r"([^(]{5,60})\s*\(([A-Z]{2,6})\)",   # expansion (ACRONYM)
+    re.MULTILINE,
+)
+
+
+def validate_conflicting_acronym_definitions(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag acronyms defined more than once with different expansions.
+
+    Emits ``inconsistent-acronym-definition`` (minor) when the same acronym
+    appears with two or more distinct expansions in the manuscript.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="conflicting_acronym_definitions", findings=[]
+        )
+
+    # Collect all (acronym, expansion) pairs
+    acronym_expansions: dict[str, set[str]] = {}
+    for match in _CONFLICT_ACRONYM_RE.finditer(full):
+        if match.group(1) and match.group(2):
+            acr = match.group(1).upper()
+            exp = match.group(2).strip().lower()
+        elif match.group(3) and match.group(4):
+            acr = match.group(4).upper()
+            exp = match.group(3).strip().lower()
+        else:
+            continue
+        if acr not in acronym_expansions:
+            acronym_expansions[acr] = set()
+        acronym_expansions[acr].add(exp)
+
+    conflicts = {
+        acr: exps
+        for acr, exps in acronym_expansions.items()
+        if len(exps) > 1
+    }
+    if not conflicts:
+        return ValidationResult(
+            validator_name="conflicting_acronym_definitions", findings=[]
+        )
+
+    evidence = [
+        f"{acr}: {' | '.join(sorted(exps))}"
+        for acr, exps in list(conflicts.items())[:3]
+    ]
+    return ValidationResult(
+        validator_name="conflicting_acronym_definitions",
+        findings=[
+            Finding(
+                code="inconsistent-acronym-definition",
+                severity="minor",
+                message=(
+                    f"Found {len(conflicts)} acronym(s) defined with inconsistent "
+                    "expansions. Each acronym should have exactly one definition."
+                ),
+                validator="conflicting_acronym_definitions",
+                location="manuscript",
+                evidence=evidence,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 130 – Uppercase percentage in Results
+# ---------------------------------------------------------------------------
+
+_PERCENT_FORMATS_RE = re.compile(
+    r"(\d+\s*%|\d+\s*percent|\d+\s*pct\.?|(\d+)\s*per cent)",
+    re.IGNORECASE,
+)
+_PERCENT_MIN_OCCURRENCES = 4
+
+
+def validate_percentage_notation_consistency(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts using mixed percentage notation formats.
+
+    Emits ``inconsistent-percentage-notation`` (minor) when a manuscript
+    mixes '50%', '50 percent', and '50 per cent' in Results or Methods.
+    """
+    target_sections = [
+        s for s in parsed.sections
+        if s.title.lower() in {"results", "methods", "methodology", "analysis"}
+    ]
+    if not target_sections:
+        return ValidationResult(
+            validator_name="percentage_notation_consistency", findings=[]
+        )
+
+    combined = " ".join(s.body for s in target_sections)
+    matches = _PERCENT_FORMATS_RE.findall(combined)
+    if len(matches) < _PERCENT_MIN_OCCURRENCES:
+        return ValidationResult(
+            validator_name="percentage_notation_consistency", findings=[]
+        )
+
+    # Classify: symbol (%), 'percent', 'per cent', 'pct'
+    has_symbol = bool(re.search(r"\d+\s*%", combined))
+    has_word = bool(re.search(r"\d+\s*percent\b", combined, re.IGNORECASE))
+    has_per_cent = bool(re.search(r"\d+\s*per cent\b", combined, re.IGNORECASE))
+
+    styles = sum([has_symbol, has_word, has_per_cent])
+    if styles < 2:
+        return ValidationResult(
+            validator_name="percentage_notation_consistency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="percentage_notation_consistency",
+        findings=[
+            Finding(
+                code="inconsistent-percentage-notation",
+                severity="minor",
+                message=(
+                    f"Results/Methods uses {styles} different percentage notation "
+                    "formats ('%', 'percent', 'per cent'). "
+                    "Use a consistent format throughout."
+                ),
+                validator="percentage_notation_consistency",
+                location="Results/Methods",
+            )
+        ],
+    )
