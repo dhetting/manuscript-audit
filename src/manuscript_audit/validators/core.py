@@ -2040,6 +2040,382 @@ def validate_reference_staleness(
     return ValidationResult(validator_name="reference_staleness", findings=[])
 
 
+# ---------------------------------------------------------------------------
+# Phase 47 – Terminology drift detector
+# ---------------------------------------------------------------------------
+
+_COMPOUND_TERM_RE = re.compile(
+    r"(?:[a-z]+-[a-z]+(?:-[a-z]+)*)"    # hyphenated: fine-tune, back-propagation
+    r"|(?:[a-z]+\s+[a-z]+(?:\s+[a-z]+)?)",  # spaced: fine tune, random forest
+    re.IGNORECASE,
+)
+# Minimum occurrences before we bother checking for drift
+_HYPHEN_TERM_RE = re.compile(r"\b([a-z]+-[a-z]+(?:-[a-z]+)*)\b", re.IGNORECASE)
+_DRIFT_MIN_OCCURRENCES = 3
+
+
+def _term_root(term: str) -> str:
+    """Normalise a compound term to a space-free lowercase root for comparison."""
+    return re.sub(r"[-\s]+", "", term.lower())
+
+
+def validate_terminology_drift(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag compound technical terms used in inconsistent spelling forms.
+
+    Scans all non-skipped sections for hyphenated compound terms.  For each
+    hyphenated term found with ≥ ``_DRIFT_MIN_OCCURRENCES`` occurrences, checks
+    whether the same root also appears in spaced form (e.g. "fine tuning" for
+    "fine-tuning").  Emits ``terminology-drift`` (minor) once per conflicting root.
+    """
+    from collections import Counter
+
+    # Step 1: collect all hyphenated compound terms
+    hyphen_counts: Counter[str] = Counter()
+    body_texts: list[str] = []
+    for section in parsed.sections:
+        if section.title.lower() in _SKIP_SECTIONS:
+            continue
+        body_texts.append(section.body)
+        for m in _HYPHEN_TERM_RE.finditer(section.body):
+            term = m.group(1).lower()
+            if len(term) < 6:
+                continue
+            # Require each component to be ≥ 3 chars (avoids e.g. "a-b")
+            parts = term.split("-")
+            if all(len(p) >= 3 for p in parts):
+                hyphen_counts[term] += 1
+
+    full_body = " ".join(body_texts).lower()
+
+    findings: list[Finding] = []
+    seen_roots: set[str] = set()
+    for hyphen_form, h_count in hyphen_counts.items():
+        root = _term_root(hyphen_form)
+        if root in seen_roots:
+            continue
+        # Build the spaced equivalent
+        spaced_form = hyphen_form.replace("-", " ")
+        # Count spaced occurrences via simple substring search (word-boundary safe)
+        spaced_count = len(re.findall(
+            r"(?<![a-z])" + re.escape(spaced_form) + r"(?![a-z])",
+            full_body,
+        ))
+        if spaced_count > 0:
+            total = h_count + spaced_count
+            if total >= _DRIFT_MIN_OCCURRENCES:
+                seen_roots.add(root)
+                findings.append(
+                    Finding(
+                        code="terminology-drift",
+                        severity="minor",
+                        message=(
+                            f"The term '{hyphen_form}' appears in both hyphenated and "
+                            f"spaced forms ('{hyphen_form}': {h_count}×, "
+                            f"'{spaced_form}': {spaced_count}×) — standardise to one form."
+                        ),
+                        validator="terminology_drift",
+                        location="manuscript body",
+                        evidence=[f"total occurrences: {total}"],
+                    )
+                )
+    return ValidationResult(validator_name="terminology_drift", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 48 – Introduction structure validator
+# ---------------------------------------------------------------------------
+
+_INTRO_MOTIVATION_RE = re.compile(
+    r"\b(challenge|problem|difficulty|obstacle|limitation|gap|need|lack|"
+    r"require[sd]?|critical|important|crucial|essential|motivat)\b",
+    re.IGNORECASE,
+)
+_INTRO_GAP_RE = re.compile(
+    r"\b(however|nevertheless|yet|but\b|despite|although|no\s+prior|"
+    r"limited\s+work|few\s+stud|no\s+exist|has\s+not\s+been|have\s+not\s+been|"
+    r"remains?\s+(?:unclear|open|unknown|unsolved|unexplored))\b",
+    re.IGNORECASE,
+)
+_INTRO_CONTRIBUTION_RE = re.compile(
+    r"\b(we\s+propose|we\s+present|we\s+introduce|we\s+develop|we\s+describe|"
+    r"this\s+paper\s+(?:presents?|proposes?|introduces?|describes?|develops?)|"
+    r"in\s+this\s+(?:work|paper|study|article))\b",
+    re.IGNORECASE,
+)
+_INTRO_MIN_WORDS = 100
+
+
+def validate_introduction_structure(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag introductions that are missing the standard motivation–gap–contribution arc.
+
+    Checks the introduction section for three rhetorical signals:
+    - **Motivation**: problem/challenge/need language
+    - **Gap**: contrastive or gap-pointing language (however, no prior work…)
+    - **Contribution**: explicit "we propose/present/introduce" statements
+
+    Emits ``missing-introduction-arc`` (minor) when 2 or more signals are absent.
+    Requires at least ``_INTRO_MIN_WORDS`` words to avoid false positives on stubs.
+    """
+    intro_body = ""
+    for section in parsed.sections:
+        if "introduction" in section.title.lower():
+            intro_body = section.body
+            break
+
+    if not intro_body or len(intro_body.split()) < _INTRO_MIN_WORDS:
+        return ValidationResult(validator_name="introduction_structure", findings=[])
+
+    missing = []
+    if not _INTRO_MOTIVATION_RE.search(intro_body):
+        missing.append("motivation (problem/need language)")
+    if not _INTRO_GAP_RE.search(intro_body):
+        missing.append("gap statement (however/no prior work)")
+    if not _INTRO_CONTRIBUTION_RE.search(intro_body):
+        missing.append("contribution statement (we propose/present)")
+
+    if len(missing) >= 2:
+        return ValidationResult(
+            validator_name="introduction_structure",
+            findings=[
+                Finding(
+                    code="missing-introduction-arc",
+                    severity="minor",
+                    message=(
+                        "Introduction is missing key rhetorical elements: "
+                        + "; ".join(missing)
+                        + "."
+                    ),
+                    validator="introduction_structure",
+                    location="Introduction",
+                    evidence=[f"absent arcs: {', '.join(missing)}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="introduction_structure", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 49 – Reproducibility checklist validator
+# ---------------------------------------------------------------------------
+
+_REPRO_DATASET_RE = re.compile(
+    r"\b(dataset|data\s+set|corpus|benchmark|training\s+data|test\s+set|"
+    r"evaluation\s+set|held[\s-]out)\b",
+    re.IGNORECASE,
+)
+_REPRO_CODE_RE = re.compile(
+    r"\b(github|gitlab|code\s+available|source\s+code|repository|repo|"
+    r"open[\s-]source|available\s+at|implementation|https?://)\b",
+    re.IGNORECASE,
+)
+_REPRO_SEED_RE = re.compile(
+    r"\b(random\s+seed|seed\s+=|numpy\.random|torch\.manual_seed|"
+    r"set_seed|reproducib|fixed\s+seed)\b",
+    re.IGNORECASE,
+)
+_REPRO_HYPERPARAMS_RE = re.compile(
+    r"\b(learning\s+rate|batch\s+size|epoch[s]?|hyperparame|tuning|"
+    r"grid\s+search|cross[\s-]validat|dropout|weight\s+decay)\b",
+    re.IGNORECASE,
+)
+_REPRO_PAPER_TYPES = frozenset({"empirical_paper", "software_workflow_paper"})
+
+
+def validate_reproducibility_checklist(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag missing reproducibility elements in empirical and software papers.
+
+    Scans the full manuscript text for evidence of:
+    - dataset/data source description
+    - code/repository availability
+    - random seed reporting
+    - hyperparameter reporting
+
+    Emits ``missing-reproducibility-element`` (minor) for each absent element.
+    Only fires for paper types in ``_REPRO_PAPER_TYPES``.
+    """
+    if classification.paper_type not in _REPRO_PAPER_TYPES:
+        return ValidationResult(validator_name="reproducibility_checklist", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+
+    checks = [
+        ("dataset description", _REPRO_DATASET_RE),
+        ("code/repository availability", _REPRO_CODE_RE),
+        ("random seed reporting", _REPRO_SEED_RE),
+        ("hyperparameter reporting", _REPRO_HYPERPARAMS_RE),
+    ]
+    findings: list[Finding] = []
+    for label, pattern in checks:
+        if not pattern.search(full):
+            findings.append(
+                Finding(
+                    code="missing-reproducibility-element",
+                    severity="minor",
+                    message=(
+                        f"No evidence of {label} found — "
+                        "include this for reproducibility."
+                    ),
+                    validator="reproducibility_checklist",
+                    location="manuscript body",
+                    evidence=[f"missing: {label}"],
+                )
+            )
+    return ValidationResult(validator_name="reproducibility_checklist", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 50 – Self-citation ratio validator
+# ---------------------------------------------------------------------------
+
+_SELF_CITE_MIN_ENTRIES = 8
+_SELF_CITE_THRESHOLD = 0.40  # fraction of entries with the most common last-name
+
+
+def _last_names_from_authors(authors: list[str]) -> list[str]:
+    """Extract last names from author strings ('Last, First' or 'First Last')."""
+    names = []
+    for author in authors:
+        author = author.strip()
+        if not author:
+            continue
+        if "," in author:
+            names.append(author.split(",")[0].strip().lower())
+        else:
+            parts = author.split()
+            if parts:
+                names.append(parts[-1].lower())
+    return names
+
+
+def validate_self_citation_ratio(parsed: ParsedManuscript) -> ValidationResult:
+    """Proxy check for self-citation bias in the bibliography.
+
+    Finds the last name that appears as an author in the highest fraction of
+    bibliography entries.  When that fraction exceeds ``_SELF_CITE_THRESHOLD``
+    and there are at least ``_SELF_CITE_MIN_ENTRIES`` entries with author data,
+    emits ``high-self-citation-ratio`` (minor).
+
+    This is a heuristic proxy: it cannot distinguish legitimate citations from
+    self-citations without knowing the submitting authors.
+    """
+    from collections import Counter
+
+    entries_with_authors = [
+        e for e in parsed.bibliography_entries if e.authors
+    ]
+    if len(entries_with_authors) < _SELF_CITE_MIN_ENTRIES:
+        return ValidationResult(validator_name="self_citation_ratio", findings=[])
+
+    # Count how many entries each last name appears in
+    name_entry_count: Counter[str] = Counter()
+    for entry in entries_with_authors:
+        entry_names = set(_last_names_from_authors(entry.authors))
+        for name in entry_names:
+            name_entry_count[name] += 1
+
+    if not name_entry_count:
+        return ValidationResult(validator_name="self_citation_ratio", findings=[])
+
+    top_name, top_count = name_entry_count.most_common(1)[0]
+    fraction = top_count / len(entries_with_authors)
+
+    if fraction > _SELF_CITE_THRESHOLD:
+        return ValidationResult(
+            validator_name="self_citation_ratio",
+            findings=[
+                Finding(
+                    code="high-self-citation-ratio",
+                    severity="minor",
+                    message=(
+                        f"Author last name '{top_name}' appears in "
+                        f"{top_count}/{len(entries_with_authors)} bibliography entries "
+                        f"({fraction:.0%}) — verify this is not excessive self-citation."
+                    ),
+                    validator="self_citation_ratio",
+                    location="bibliography",
+                    evidence=[
+                        f"'{top_name}' in {top_count}/{len(entries_with_authors)} entries"
+                    ],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="self_citation_ratio", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 51 – Conclusion scope validator
+# ---------------------------------------------------------------------------
+
+_CONCLUSION_NEW_CLAIM_RE = re.compile(
+    r"\b(we\s+(?:show|demonstrate|prove|find|establish|confirm)\s+that|"
+    r"our\s+(?:results?\s+show|analysis\s+shows?|experiments?\s+demonstrate))\b",
+    re.IGNORECASE,
+)
+_CONCLUSION_SECTIONS = frozenset(
+    {"conclusion", "conclusions", "concluding remarks", "summary and conclusions"}
+)
+
+
+def validate_conclusion_scope(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag new quantitative claims introduced only in the conclusion.
+
+    A conclusion should summarise findings already established in the body.
+    Emits ``conclusion-scope-creep`` (moderate) when the conclusion contains
+    ``METRIC_RE`` matches (percentages, fold-improvements, X× values) that do
+    not appear in the abstract or results sections.
+
+    Only fires when 2+ such novel metrics are present to reduce false positives
+    from legitimate recapping that restates approximate numbers.
+    """
+    conclusion_body = ""
+    for section in parsed.sections:
+        if section.title.lower() in _CONCLUSION_SECTIONS:
+            conclusion_body = section.body
+            break
+
+    if not conclusion_body:
+        return ValidationResult(validator_name="conclusion_scope", findings=[])
+
+    # Collect metrics that are in conclusion
+    conclusion_metrics = set(METRIC_RE.findall(conclusion_body))
+    if not conclusion_metrics:
+        return ValidationResult(validator_name="conclusion_scope", findings=[])
+
+    # Collect metrics from abstract + results sections
+    established_text = (parsed.abstract or "") + " "
+    for section in parsed.sections:
+        title_lower = section.title.lower()
+        if any(kw in title_lower for kw in ("result", "experiment", "evaluation", "analysis")):
+            established_text += section.body + " "
+
+    established_metrics = set(METRIC_RE.findall(established_text))
+    novel_metrics = conclusion_metrics - established_metrics
+
+    if len(novel_metrics) >= 2:
+        examples = sorted(novel_metrics)[:3]
+        return ValidationResult(
+            validator_name="conclusion_scope",
+            findings=[
+                Finding(
+                    code="conclusion-scope-creep",
+                    severity="moderate",
+                    message=(
+                        f"Conclusion introduces {len(novel_metrics)} quantitative claims "
+                        "not present in abstract or results — "
+                        "conclusions should summarise, not introduce new evidence."
+                    ),
+                    validator="conclusion_scope",
+                    location="Conclusion",
+                    evidence=[f"novel metrics: {', '.join(examples)}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="conclusion_scope", findings=[])
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -2087,6 +2463,11 @@ def run_deterministic_validators(
         validate_first_person_consistency(parsed),
         validate_caption_quality(parsed),
         validate_reference_staleness(parsed, classification),
+        validate_terminology_drift(parsed),
+        validate_introduction_structure(parsed),
+        validate_reproducibility_checklist(parsed, classification),
+        validate_self_citation_ratio(parsed),
+        validate_conclusion_scope(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

@@ -1680,3 +1680,273 @@ def test_stale_references_skipped_too_few_entries() -> None:
     parsed, clf = _staleness_manuscript(years)
     result = validate_reference_staleness(parsed, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 47 – terminology drift
+# ---------------------------------------------------------------------------
+
+def test_terminology_drift_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_terminology_drift
+
+    body_a = "We use fine-tuning to adapt the model. " * 3
+    body_b = "The fine tuning procedure is described below. " * 2
+    parsed = ParsedManuscript(
+        manuscript_id="drift-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Drift",
+        full_text="",
+        sections=[
+            Section(title="Methods", level=2, body=body_a),
+            Section(title="Results", level=2, body=body_b),
+        ],
+    )
+    result = validate_terminology_drift(parsed)
+    codes = [f.code for f in result.findings]
+    assert "terminology-drift" in codes
+
+
+def test_terminology_drift_consistent_no_fire() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_terminology_drift
+
+    body = "We use fine-tuning throughout. Fine-tuning is applied consistently. Fine-tuning works."
+    parsed = ParsedManuscript(
+        manuscript_id="drift-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Consistent",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_terminology_drift(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 48 – introduction structure
+# ---------------------------------------------------------------------------
+
+def test_intro_structure_fires_missing_arcs() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_introduction_structure
+
+    # Intro with no gap statement and no contribution statement
+    intro = (
+        "Machine learning is important for many tasks. "
+        "Many researchers have studied this topic. "
+        "Results show improvements across benchmarks. "
+        "The field continues to advance rapidly with new methods. "
+        "Several approaches have been proposed over the years. "
+        "Deep learning has shown strong performance on vision and language tasks. "
+        "This paper focuses on classification problems that arise in practice. "
+    ) * 3
+    parsed = ParsedManuscript(
+        manuscript_id="intro-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Intro test",
+        full_text="",
+        sections=[Section(title="Introduction", level=2, body=intro)],
+    )
+    result = validate_introduction_structure(parsed)
+    codes = [f.code for f in result.findings]
+    assert "missing-introduction-arc" in codes
+
+
+def test_intro_structure_passes_with_all_arcs() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_introduction_structure
+
+    intro = (
+        "A key challenge in NLP is handling long-range dependencies. "
+        "Despite many attempts, no prior work has solved this efficiently. "
+        "However, existing methods lack scalability for large corpora. "
+        "We propose a novel attention mechanism that addresses this gap. "
+        "In this paper, we present extensive experiments demonstrating the approach. "
+        "The method is evaluated on multiple benchmarks and achieves strong results. "
+        "Our contributions include a new model, dataset, and evaluation protocol. "
+        "We describe the implementation in detail for reproducibility purposes. "
+    ) * 2
+    parsed = ParsedManuscript(
+        manuscript_id="intro-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Intro OK",
+        full_text="",
+        sections=[Section(title="Introduction", level=2, body=intro)],
+    )
+    result = validate_introduction_structure(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 49 – reproducibility checklist
+# ---------------------------------------------------------------------------
+
+def _repro_manuscript(body: str, paper_type: str = "empirical_paper"):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="repro-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Repro",
+        full_text=body,
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_reproducibility_fires_for_missing_elements() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_checklist
+
+    # No dataset, no code, no seed, no hyperparams
+    body = "We performed analysis on collected samples and computed statistics."
+    parsed, clf = _repro_manuscript(body)
+    result = validate_reproducibility_checklist(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-reproducibility-element" in codes
+    assert len(result.findings) >= 2  # at least dataset and seed missing
+
+
+def test_reproducibility_skipped_for_theory() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_checklist
+
+    body = "We performed analysis on collected samples and computed statistics."
+    parsed, clf = _repro_manuscript(body, paper_type="math_stats_theory")
+    result = validate_reproducibility_checklist(parsed, clf)
+    assert result.findings == []
+
+
+def test_reproducibility_no_fire_when_present() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_checklist
+
+    body = (
+        "We used the MNIST dataset for training. "
+        "Code is available at https://github.com/example/repo. "
+        "We fixed the random seed to 42 for reproducibility. "
+        "The learning rate was set to 0.001 with batch size 32. "
+        "We ran for 100 epochs with dropout of 0.5. "
+    )
+    parsed, clf = _repro_manuscript(body)
+    result = validate_reproducibility_checklist(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 50 – self-citation ratio
+# ---------------------------------------------------------------------------
+
+def test_self_citation_fires() -> None:
+    from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
+    from manuscript_audit.validators.core import validate_self_citation_ratio
+
+    entries = []
+    for i in range(10):
+        authors = ["Smith, John", "Jones, Alice"] if i < 7 else ["Brown, Bob"]
+        entries.append(
+            BibliographyEntry(
+                key=f"ref{i}", raw_text=f"Ref {i}", year="2020",
+                authors=authors, source="bibtex",
+            )
+        )
+    parsed = ParsedManuscript(
+        manuscript_id="selfcite-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Self-cite",
+        full_text="",
+        bibliography_entries=entries,
+        sections=[],
+    )
+    result = validate_self_citation_ratio(parsed)
+    codes = [f.code for f in result.findings]
+    assert "high-self-citation-ratio" in codes
+
+
+def test_self_citation_no_fire_diverse_authors() -> None:
+    from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
+    from manuscript_audit.validators.core import validate_self_citation_ratio
+
+    names = ["Smith", "Jones", "Brown", "Davis", "Wilson", "Taylor", "Anderson", "Thomas"]
+    entries = [
+        BibliographyEntry(
+            key=f"ref{i}", raw_text=f"Ref {i}", year="2020",
+            authors=[f"{n}, A."], source="bibtex",
+        )
+        for i, n in enumerate(names)
+    ]
+    parsed = ParsedManuscript(
+        manuscript_id="selfcite-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Diverse",
+        full_text="",
+        bibliography_entries=entries,
+        sections=[],
+    )
+    result = validate_self_citation_ratio(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 51 – conclusion scope
+# ---------------------------------------------------------------------------
+
+def test_conclusion_scope_fires_on_novel_metrics() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_conclusion_scope
+
+    abstract = "We achieve 85% accuracy on the benchmark."
+    conclusion = (
+        "In this work we achieve 92% accuracy, 3x speedup, and 47% reduction in error. "
+        "Our results show 2.5x improvement over baseline with 18% cost reduction. "
+        "We demonstrate 99% precision on the held-out test set."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="conc-scope",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Conclusion scope",
+        full_text="",
+        abstract=abstract,
+        sections=[
+            Section(title="Results", level=2, body="Accuracy reached 85% on the benchmark."),
+            Section(title="Conclusion", level=2, body=conclusion),
+        ],
+    )
+    result = validate_conclusion_scope(parsed)
+    codes = [f.code for f in result.findings]
+    assert "conclusion-scope-creep" in codes
+
+
+def test_conclusion_scope_no_fire_when_metrics_established() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_conclusion_scope
+
+    abstract = "We achieve 85% accuracy and 3x speedup."
+    results_body = "Accuracy is 85%. Speedup is 3x over baseline. Error rate is 15%."
+    conclusion = "In summary, we achieve 85% accuracy and 3x speedup as shown in results."
+    parsed = ParsedManuscript(
+        manuscript_id="conc-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Conclusion OK",
+        full_text="",
+        abstract=abstract,
+        sections=[
+            Section(title="Results", level=2, body=results_body),
+            Section(title="Conclusion", level=2, body=conclusion),
+        ],
+    )
+    result = validate_conclusion_scope(parsed)
+    assert result.findings == []
