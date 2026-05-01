@@ -6284,6 +6284,239 @@ def validate_research_question_addressed(
     )
 
 
+
+# ---------------------------------------------------------------------------
+# Phase 122 – Citations in abstract
+# ---------------------------------------------------------------------------
+
+_ABSTRACT_CITATION_RE = re.compile(
+    r"(\[\d+\]|\(\w[^)]*,\s*\d{4}\w?\)|et al\.\s*,\s*\d{4}|"
+    r"\(\d{4}\)|\\cite\{|\[cite\])",
+    re.IGNORECASE,
+)
+
+
+def validate_citations_in_abstract(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag abstracts containing inline citations.
+
+    Emits ``citations-in-abstract`` (minor) when the abstract contains citation
+    markers. Most journals do not allow citations in abstracts.
+    """
+    abstract = parsed.abstract or ""
+    if not abstract:
+        return ValidationResult(
+            validator_name="citations_in_abstract", findings=[]
+        )
+
+    matches = _ABSTRACT_CITATION_RE.findall(abstract)
+    if not matches:
+        return ValidationResult(
+            validator_name="citations_in_abstract", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="citations_in_abstract",
+        findings=[
+            Finding(
+                code="citations-in-abstract",
+                severity="minor",
+                message=(
+                    f"Abstract contains {len(matches)} citation marker(s). "
+                    "Most journals prohibit citations in abstracts."
+                ),
+                validator="citations_in_abstract",
+                location="Abstract",
+                evidence=[str(m) for m in matches[:3]],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 123 – Missing funding / acknowledgment statement
+# ---------------------------------------------------------------------------
+
+_FUNDING_RE = re.compile(
+    r"\b(funded by|funding from|supported by|grant (number|no\.?)|"
+    r"award number|this (work|research|study) was (funded|supported)|"
+    r"acknowledgm|acknowledgements?|no funding|no financial support)\b",
+    re.IGNORECASE,
+)
+_FUNDING_SECTION_TITLES = frozenset(
+    {
+        "acknowledgment",
+        "acknowledgments",
+        "acknowledgement",
+        "acknowledgements",
+        "funding",
+        "financial support",
+        "funding sources",
+    }
+)
+
+
+def validate_funding_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag papers without a funding/acknowledgment statement.
+
+    Emits ``missing-funding-statement`` (minor) when no funding or
+    acknowledgment section/statement is found.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="funding_statement", findings=[]
+        )
+
+    has_section = any(
+        s.title.lower() in _FUNDING_SECTION_TITLES for s in parsed.sections
+    )
+    if has_section:
+        return ValidationResult(validator_name="funding_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _FUNDING_RE.search(full):
+        return ValidationResult(validator_name="funding_statement", findings=[])
+
+    return ValidationResult(
+        validator_name="funding_statement",
+        findings=[
+            Finding(
+                code="missing-funding-statement",
+                severity="minor",
+                message=(
+                    "No funding statement or acknowledgment section found. "
+                    "Most journals require a funding disclosure."
+                ),
+                validator="funding_statement",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 124 – Missing Discussion section in empirical papers
+# ---------------------------------------------------------------------------
+
+_DISCUSSION_TITLES = frozenset(
+    {"discussion", "discussion and conclusions", "discussion and conclusion",
+     "discussion and implications"}
+)
+
+
+def validate_discussion_section_presence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers without a Discussion section.
+
+    Emits ``missing-discussion-section`` (moderate) when an empirical paper
+    has Results but no Discussion section.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="discussion_section_presence", findings=[]
+        )
+
+    has_results = any(
+        s.title.lower() in {"results", "findings", "analysis"} for s in parsed.sections
+    )
+    if not has_results:
+        return ValidationResult(
+            validator_name="discussion_section_presence", findings=[]
+        )
+
+    has_discussion = any(
+        s.title.lower() in _DISCUSSION_TITLES for s in parsed.sections
+    )
+    if has_discussion:
+        return ValidationResult(
+            validator_name="discussion_section_presence", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="discussion_section_presence",
+        findings=[
+            Finding(
+                code="missing-discussion-section",
+                severity="moderate",
+                message=(
+                    "Empirical paper has a Results section but no Discussion section. "
+                    "Add a Discussion interpreting the results in context."
+                ),
+                validator="discussion_section_presence",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 125 – Inconsistent p-value notation
+# ---------------------------------------------------------------------------
+
+_PVAL_FORMATS_RE = [
+    re.compile(r"\bp\s*<\s*0\.\d+"),           # p < 0.05
+    re.compile(r"\bp\s*=\s*0\.\d+"),            # p = 0.05
+    re.compile(r"\bp\s*>\s*0\.\d+"),            # p > 0.05
+    re.compile(r"\bP\s*[<>=]\s*0\.\d+"),        # P-value capitalized
+    re.compile(r"\bp-value\s*[<>=]\s*0\.\d+"),  # p-value < 0.05
+]
+_PVAL_MIN_TOTAL = 3
+
+
+def validate_pvalue_notation_consistency(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag inconsistent p-value notation formats.
+
+    Emits ``inconsistent-pvalue-notation`` (minor) when the manuscript uses
+    multiple different p-value notation styles, requiring >=
+    ``_PVAL_MIN_TOTAL`` total p-value occurrences.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="pvalue_notation_consistency", findings=[]
+        )
+
+    found_styles: list[str] = []
+    for pat in _PVAL_FORMATS_RE:
+        if pat.search(full):
+            found_styles.append(pat.pattern)
+
+    if len(found_styles) < 2:
+        return ValidationResult(
+            validator_name="pvalue_notation_consistency", findings=[]
+        )
+
+    total = sum(len(pat.findall(full)) for pat in _PVAL_FORMATS_RE)
+    if total < _PVAL_MIN_TOTAL:
+        return ValidationResult(
+            validator_name="pvalue_notation_consistency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="pvalue_notation_consistency",
+        findings=[
+            Finding(
+                code="inconsistent-pvalue-notation",
+                severity="minor",
+                message=(
+                    f"Manuscript uses {len(found_styles)} different p-value notation "
+                    "styles. Use a consistent format throughout "
+                    "(e.g., always 'p < 0.05' in italics)."
+                ),
+                validator="pvalue_notation_consistency",
+                location="manuscript",
+                evidence=found_styles[:3],
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -6398,6 +6631,10 @@ def run_deterministic_validators(
         validate_overlong_sentences(parsed),
         validate_heading_capitalization_consistency(parsed),
         validate_research_question_addressed(parsed),
+        validate_citations_in_abstract(parsed),
+        validate_funding_statement(parsed, classification),
+        validate_discussion_section_presence(parsed, classification),
+        validate_pvalue_notation_consistency(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

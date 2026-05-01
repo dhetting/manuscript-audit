@@ -5757,3 +5757,289 @@ def test_rq_no_fire_when_no_research_question() -> None:
     )
     result = validate_research_question_addressed(ms)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 121 – validate_conflict_of_interest
+# ---------------------------------------------------------------------------
+
+
+def _coi_manuscript_simple(body: str, paper_type: str = "empirical_paper") -> tuple:
+    from manuscript_audit.schemas.artifacts import (
+        BibliographyEntry,
+        ParsedManuscript,
+        Section,
+    )
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    # Need >= 5 bibliography entries to trigger the existing COI validator
+    bib = [
+        BibliographyEntry(
+            key=f"ref{i}",
+            raw_text=f"Author {i} (202{i}). Title.",
+            source="markdown_reference_list",
+        )
+        for i in range(6)
+    ]
+    ms = ParsedManuscript(
+        manuscript_id="coi-test",
+        source_path="coi.md",
+        source_format="markdown",
+        title="Test Study",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=body)],
+        bibliography_entries=bib,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_coi_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    ms, clf = _coi_manuscript_simple("We used regression models. Sample size was 200.")
+    result = validate_conflict_of_interest(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-coi-statement" in codes
+
+
+def test_coi_passes_with_declaration() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    ms, clf = _coi_manuscript_simple(
+        "Methods text. The authors declare no competing interests."
+    )
+    result = validate_conflict_of_interest(ms, clf)
+    assert result.findings == []
+
+
+def test_coi_skips_non_empirical() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest
+
+    ms, clf = _coi_manuscript_simple("Literature review.", paper_type="literature_review")
+    result = validate_conflict_of_interest(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 122 – validate_citations_in_abstract
+# ---------------------------------------------------------------------------
+
+
+def _citations_abstract_ms(abstract: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="cite-abs-test",
+        source_path="cite.md",
+        source_format="markdown",
+        title="Test",
+        abstract=abstract,
+        full_text="",
+    )
+
+
+def test_citations_in_abstract_fires() -> None:
+    from manuscript_audit.validators.core import validate_citations_in_abstract
+
+    ms = _citations_abstract_ms(
+        "This paper extends Smith et al., 2020 and Jones (2019) to show effects."
+    )
+    result = validate_citations_in_abstract(ms)
+    codes = [f.code for f in result.findings]
+    assert "citations-in-abstract" in codes
+
+
+def test_clean_abstract_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citations_in_abstract
+
+    ms = _citations_abstract_ms(
+        "We present a new method for regression analysis with improved performance."
+    )
+    result = validate_citations_in_abstract(ms)
+    assert result.findings == []
+
+
+def test_no_abstract_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citations_in_abstract
+
+    ms = _citations_abstract_ms("")
+    result = validate_citations_in_abstract(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 123 – validate_funding_statement
+# ---------------------------------------------------------------------------
+
+
+def _funding_manuscript(body: str, paper_type: str = "empirical_paper") -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="fund-test",
+        source_path="fund.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_funding_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_funding_statement
+
+    ms, clf = _funding_manuscript("We collected data from 100 participants.")
+    result = validate_funding_statement(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-funding-statement" in codes
+
+
+def test_funding_passes_with_statement() -> None:
+    from manuscript_audit.validators.core import validate_funding_statement
+
+    ms, clf = _funding_manuscript(
+        "This work was supported by NSF grant number 123456."
+    )
+    result = validate_funding_statement(ms, clf)
+    assert result.findings == []
+
+
+def test_funding_skips_non_empirical() -> None:
+    from manuscript_audit.validators.core import validate_funding_statement
+
+    ms, clf = _funding_manuscript(
+        "We describe the software architecture.",
+        paper_type="math_theory_paper",
+    )
+    result = validate_funding_statement(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 124 – validate_discussion_section_presence
+# ---------------------------------------------------------------------------
+
+
+def _discussion_presence_manuscript(
+    sections: list,
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="disc-test",
+        source_path="disc.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[
+            Section(title=t, level=1, body=b) for t, b in sections
+        ],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_missing_discussion_fires() -> None:
+    from manuscript_audit.validators.core import validate_discussion_section_presence
+
+    ms, clf = _discussion_presence_manuscript([
+        ("Methods", "We used regression."),
+        ("Results", "We found a significant effect (p < 0.05)."),
+    ])
+    result = validate_discussion_section_presence(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-discussion-section" in codes
+
+
+def test_discussion_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_discussion_section_presence
+
+    ms, clf = _discussion_presence_manuscript([
+        ("Methods", "We used regression."),
+        ("Results", "We found a significant effect."),
+        ("Discussion", "Our results suggest that X causes Y."),
+    ])
+    result = validate_discussion_section_presence(ms, clf)
+    assert result.findings == []
+
+
+def test_discussion_skips_non_empirical() -> None:
+    from manuscript_audit.validators.core import validate_discussion_section_presence
+
+    ms, clf = _discussion_presence_manuscript(
+        [("Results", "Table 1 shows metrics.")],
+        paper_type="math_theory_paper",
+    )
+    result = validate_discussion_section_presence(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 125 – validate_pvalue_notation_consistency
+# ---------------------------------------------------------------------------
+
+
+def _pvalue_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="pval-test",
+        source_path="pval.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_inconsistent_pvalue_fires() -> None:
+    from manuscript_audit.validators.core import validate_pvalue_notation_consistency
+
+    ms = _pvalue_manuscript(
+        "Group A showed p < 0.05 improvement. "
+        "Group B showed P < 0.01 difference. "
+        "p-value < 0.001 for the interaction term."
+    )
+    result = validate_pvalue_notation_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "inconsistent-pvalue-notation" in codes
+
+
+def test_consistent_pvalue_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pvalue_notation_consistency
+
+    ms = _pvalue_manuscript(
+        "Group A showed p < 0.05. Group B showed p < 0.01. Interaction p < 0.001."
+    )
+    result = validate_pvalue_notation_consistency(ms)
+    assert result.findings == []
+
+
+def test_few_pvalues_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pvalue_notation_consistency
+
+    ms = _pvalue_manuscript("The effect was P < 0.05 and p < 0.01.")
+    result = validate_pvalue_notation_consistency(ms)
+    # Only 2 occurrences total < threshold of 3, should not fire even if mixed
+    assert result.findings == []
