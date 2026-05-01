@@ -1054,6 +1054,55 @@ def validate_critical_escalation(suite: ValidationSuiteResult) -> ValidationResu
     )
 
 
+# Passive voice density (methods sections).
+_METHODS_SECTION_RE = re.compile(r"\b(methods?|methodology|experimental\s+setup)\b", re.IGNORECASE)
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+_PASSIVE_VOICE_RE = re.compile(
+    r"\b(is|are|was|were|be|been|being)\s+\w+ed\b",
+    re.IGNORECASE,
+)
+PASSIVE_VOICE_THRESHOLD = 0.45  # fraction of sentences; flag above this
+
+
+def validate_passive_voice_density(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag Methods sections where the majority of sentences are passive constructions.
+
+    Scans sections matching _METHODS_SECTION_RE.  For each such section, splits
+    the body into sentences and counts those containing at least one passive
+    auxiliary + past-participle pattern.  If the passive fraction exceeds
+    PASSIVE_VOICE_THRESHOLD and there are at least 4 sentences, emits
+    ``high-passive-voice-density`` (minor).
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if not _METHODS_SECTION_RE.search(section.title):
+            continue
+        body = section.body.strip()
+        if not body:
+            continue
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(body) if s.strip()]
+        if len(sentences) < 4:
+            continue
+        passive_count = sum(1 for s in sentences if _PASSIVE_VOICE_RE.search(s))
+        ratio = passive_count / len(sentences)
+        if ratio > PASSIVE_VOICE_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="high-passive-voice-density",
+                    severity="minor",
+                    message=(
+                        f"{passive_count}/{len(sentences)} sentences "
+                        f"({ratio:.0%}) in the Methods section use passive voice — "
+                        "consider rewriting key steps in active voice for clarity."
+                    ),
+                    validator="passive_voice_density",
+                    location=f"section '{section.title}'",
+                    evidence=[f"passive fraction: {ratio:.2f}"],
+                )
+            )
+    return ValidationResult(validator_name="passive_voice_density", findings=findings)
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1085,6 +1134,7 @@ def run_deterministic_validators(
         validate_abstract_metric_coverage(parsed),
         validate_abstract_length(parsed),
         validate_section_body_completeness(parsed),
+        validate_passive_voice_density(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

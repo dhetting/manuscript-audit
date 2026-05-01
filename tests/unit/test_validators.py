@@ -631,3 +631,84 @@ def test_fatal_escalation_no_fire_with_neither() -> None:
     suite = _make_suite_with_codes("minor-citation-issue")
     result = validate_critical_escalation(suite)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 24: passive voice density validator
+# ---------------------------------------------------------------------------
+
+
+def _methods_manuscript(body: str):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="pv-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Passive voice test",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+
+
+def test_high_passive_voice_density_detected() -> None:
+    from manuscript_audit.validators.core import validate_passive_voice_density
+
+    # 5 passive sentences out of 6 total = 83% > 45% threshold
+    body = (
+        "The data was collected from participants. "
+        "Samples were processed using centrifugation. "
+        "Results were analyzed by two independent raters. "
+        "The protocol was approved by the ethics board. "
+        "Measurements were taken at three time points. "
+        "We then reviewed all outputs."  # active sentence
+    )
+    result = validate_passive_voice_density(_methods_manuscript(body))
+    codes = [f.code for f in result.findings]
+    assert "high-passive-voice-density" in codes
+    assert result.findings[0].severity == "minor"
+
+
+def test_low_passive_voice_density_not_flagged() -> None:
+    from manuscript_audit.validators.core import validate_passive_voice_density
+
+    # Mostly active voice: 1 passive out of 5 = 20% < 45%
+    body = (
+        "We collected data from fifty participants. "
+        "Our team processed the samples using centrifugation. "
+        "Two raters analyzed the transcripts independently. "
+        "The study ran from January to March. "
+        "The protocol was approved by the ethics board."  # one passive
+    )
+    result = validate_passive_voice_density(_methods_manuscript(body))
+    assert result.findings == []
+
+
+def test_passive_voice_skips_non_methods_section() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_passive_voice_density
+
+    body = (
+        "The data was collected. Samples were processed. "
+        "Results were analyzed. The protocol was approved. "
+        "Measurements were taken."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="non-methods",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Non-methods test",
+        full_text="",
+        sections=[Section(title="Introduction", level=2, body=body)],
+    )
+    result = validate_passive_voice_density(parsed)
+    assert result.findings == []
+
+
+def test_passive_voice_skips_short_sections() -> None:
+    from manuscript_audit.validators.core import validate_passive_voice_density
+
+    # Only 3 sentences — below minimum sentence count of 4
+    body = "Data was collected. Samples were processed. Results were analyzed."
+    result = validate_passive_voice_density(_methods_manuscript(body))
+    assert result.findings == []
