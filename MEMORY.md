@@ -391,12 +391,13 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 28 is closed. Next candidate phases:
-1. **Phase 29: Hedging language density** — flag excessive epistemic hedging in Discussion/Conclusion sections
-2. **Phase 29: Missing related work section** — empirical papers missing a Related Work section
-3. **Phase 29: Missing limitations coverage** — empirical papers with no limitations discussion
+Phase 35 is closed. Next candidate phases:
+1. **Phase 37: Citation cluster detector** — flag 5+ consecutive uncited sentences in Results/Discussion (empirical papers)
+2. **Phase 38: Power-word overuse** — flag excessive "novel", "significant", "unprecedented" in abstract/intro
+3. **Phase 39: Number format consistency** — flag digit vs comma-separated inconsistency within sections
+4. **Phase 40: Abstract keyword coverage** — flag when abstract technical terms don't appear in body
 
-## Phase 22–28 validated state
+## Phase 22–35 validated state
 
 All phases validated end-to-end from the live repo on 2026-05-01.
 
@@ -428,7 +429,36 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `validate_duplicate_claims(parsed)` → `duplicate-quantitative-claim` (minor)
 - Flags numeric patterns appearing verbatim in ≥2 non-abstract sections
 
-Current test count: **87 passing** (after phase 28)
+**Phase 30** (`ec49122`) — Hedging language density validator
+- `validate_hedging_density(parsed)` → `excessive-hedging-language` (minor)
+- Fires on Discussion/Conclusion with >25% hedged sentences (min 4 sentences)
+
+**Phase 31** (`ec49122`) — Missing related work section validator
+- `validate_related_work_coverage(parsed, classification)` → `missing-related-work-section` (moderate)
+- Fires for empirical/applied/software papers; skips theory papers
+
+**Phase 32** (`ec49122`) — Missing limitations coverage validator
+- `validate_limitations_coverage(parsed, classification)` → `missing-limitations-section` (moderate)
+- Accepts dedicated section OR inline limitations language in Discussion/Conclusion
+- `_EMPIRICAL_PAPER_TYPES = frozenset({"empirical_paper", "applied_stats_paper", "software_workflow_paper"})`
+
+**Phase 33** (`d495391`) — Acronym consistency validator
+- `validate_acronym_consistency(parsed)` → `acronym-used-before-definition` and `undefined-acronym` (both moderate)
+- `_ACRONYM_DEF_RE`, `_ACRONYM_USE_RE` (lookahead/lookbehind, not `\b` — Python `\b` does not work with `[A-Z]` char classes)
+- `_COMMON_ACRONYMS` exempts URL/PDF/API/ML/AI/NLP/etc.
+- Scans document in paragraph order tracking first-definition position
+
+**Phase 34** (`d495391`) — Methods tense consistency validator
+- `validate_methods_tense_consistency(parsed)` → `inconsistent-methods-tense` (minor)
+- `METHODS_TENSE_THRESHOLD = 0.35` — fires when >35% of tense-bearing sentences in Methods are present-tense
+- Requires ≥5 tense-bearing sentences to avoid false positives
+
+**Phase 35** (`d495391`) — Sentence length outlier validator
+- `validate_sentence_length_outliers(parsed)` → `overlong-sentence` (minor)
+- `SENTENCE_LENGTH_THRESHOLD = 60` words; `_FINDINGS_PER_SECTION_CAP = 3` per section
+- Golden updated: `latex_equivalence_report_summary.json` moderate count 9→10
+
+Current test count: **105 passing** (after phase 35)
 
 
 ## Bundle and handoff requirements
