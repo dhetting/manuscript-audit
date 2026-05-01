@@ -2735,6 +2735,271 @@ def validate_section_ordering(
     return ValidationResult(validator_name="section_ordering", findings=findings)
 
 
+# ---------------------------------------------------------------------------
+# Phase 59 – Author keyword coverage
+# ---------------------------------------------------------------------------
+
+_KEYWORDS_LINE_RE = re.compile(
+    r"(?:^|\n)\s*keywords?\s*[:—]\s*(.+)",
+    re.IGNORECASE,
+)
+_KEYWORD_SPLIT_RE = re.compile(r"[;,]")
+
+
+def validate_keyword_section_coverage(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag author-supplied keywords that do not appear in the manuscript body.
+
+    Extracts keywords from a 'Keywords:' line in the full text or from a
+    dedicated 'Keywords' section.  For each keyword, checks whether it appears
+    (case-insensitive) in the non-abstract body text.  Emits
+    ``missing-keyword-coverage`` (minor) for absent keywords, capped at 5.
+    """
+    raw_keywords: list[str] = []
+
+    # Try 'Keywords:' line in full_text or abstract
+    search_text = parsed.full_text or (parsed.abstract or "")
+    m = _KEYWORDS_LINE_RE.search(search_text)
+    if m:
+        raw_keywords = [k.strip() for k in _KEYWORD_SPLIT_RE.split(m.group(1)) if k.strip()]
+
+    # Fallback: dedicated Keywords section
+    if not raw_keywords:
+        for section in parsed.sections:
+            if "keyword" in section.title.lower():
+                raw_keywords = [
+                    k.strip() for k in _KEYWORD_SPLIT_RE.split(section.body) if k.strip()
+                ]
+                break
+
+    if not raw_keywords:
+        return ValidationResult(validator_name="keyword_section_coverage", findings=[])
+
+    body_text = " ".join(
+        s.body for s in parsed.sections
+        if s.title.lower() not in ("abstract", "keywords", "keyword")
+    ).lower()
+
+    findings: list[Finding] = []
+    for kw in raw_keywords:
+        if kw.lower() not in body_text:
+            findings.append(
+                Finding(
+                    code="missing-keyword-coverage",
+                    severity="minor",
+                    message=(
+                        f"Keyword '{kw}' is listed but does not appear in the manuscript "
+                        "body — ensure keywords reflect the actual content."
+                    ),
+                    validator="keyword_section_coverage",
+                    location="keywords",
+                    evidence=[f"missing keyword: '{kw}'"],
+                )
+            )
+            if len(findings) >= 5:
+                break
+    return ValidationResult(
+        validator_name="keyword_section_coverage", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 60 – Statistical test reporting validator
+# ---------------------------------------------------------------------------
+
+_STAT_TEST_RE = re.compile(
+    r"\b(t[\s-]test|anova|chi[\s-]square|mann[\s-]whitney|wilcoxon|"
+    r"kruskal[\s-]wallis|fisher['']?s?\s+exact|logistic\s+regression|"
+    r"linear\s+regression|pearson|spearman|kendall|mcnemar)\b",
+    re.IGNORECASE,
+)
+_PVALUE_RE = re.compile(
+    r"p\s*[<>=≤≥]\s*(?:0\.\d+|\.\d+)"   # p < 0.05, p = 0.001
+    r"|p[\s-]value",
+    re.IGNORECASE,
+)
+_STAT_TEST_SECTIONS = frozenset({"methods", "methodology", "results", "analysis"})
+
+
+def validate_statistical_test_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag statistical tests named but not accompanied by p-value reporting.
+
+    Scans Methods and Results sections of empirical/applied papers for
+    statistical test names.  If any test is found but no p-value pattern
+    appears anywhere in those sections, emits ``missing-p-value-report``
+    (moderate).
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="statistical_test_reporting", findings=[]
+        )
+
+    relevant_text = ""
+    for section in parsed.sections:
+        if any(kw in section.title.lower() for kw in _STAT_TEST_SECTIONS):
+            relevant_text += " " + section.body
+
+    if not relevant_text.strip():
+        return ValidationResult(
+            validator_name="statistical_test_reporting", findings=[]
+        )
+
+    found_test = _STAT_TEST_RE.search(relevant_text)
+    if not found_test:
+        return ValidationResult(
+            validator_name="statistical_test_reporting", findings=[]
+        )
+
+    if _PVALUE_RE.search(relevant_text):
+        return ValidationResult(
+            validator_name="statistical_test_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="statistical_test_reporting",
+        findings=[
+            Finding(
+                code="missing-p-value-report",
+                severity="moderate",
+                message=(
+                    f"Statistical test '{found_test.group(0)}' is named but no p-value "
+                    "reporting pattern was found — report p-values for all inferential tests."
+                ),
+                validator="statistical_test_reporting",
+                location="Methods/Results",
+                evidence=[f"test found: '{found_test.group(0)}'"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 61 – Effect size reporting validator
+# ---------------------------------------------------------------------------
+
+_EFFECT_SIZE_RE = re.compile(
+    r"\b(cohen['']?s?\s+d|cohen['']?s?\s+f|eta[\s-]squared|omega[\s-]squared|"
+    r"effect\s+size|r\s*=\s*\d|odds\s+ratio|hazard\s+ratio|risk\s+ratio|"
+    r"relative\s+risk|number\s+needed\s+to\s+treat|nnt\b|hedges['']?\s+g|"
+    r"glass['']?\s+delta|partial\s+eta)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_effect_size_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers that report p-values but omit effect sizes.
+
+    Effect sizes contextualise statistical significance.  When the manuscript
+    body contains p-value patterns but no effect size measure, emits
+    ``missing-effect-size`` (minor).  Only fires for empirical/applied papers.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="effect_size_reporting", findings=[])
+
+    body_text = " ".join(
+        s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    )
+
+    if not _PVALUE_RE.search(body_text):
+        return ValidationResult(validator_name="effect_size_reporting", findings=[])
+
+    if _EFFECT_SIZE_RE.search(body_text):
+        return ValidationResult(validator_name="effect_size_reporting", findings=[])
+
+    return ValidationResult(
+        validator_name="effect_size_reporting",
+        findings=[
+            Finding(
+                code="missing-effect-size",
+                severity="minor",
+                message=(
+                    "P-values are reported but no effect size measure was found — "
+                    "report effect sizes (Cohen's d, η², odds ratio, etc.) alongside "
+                    "p-values to contextualise statistical significance."
+                ),
+                validator="effect_size_reporting",
+                location="manuscript body",
+                evidence=["p-value found; effect size absent"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 62 – Acknowledgments presence validator
+# ---------------------------------------------------------------------------
+
+_ACKNOWLEDGMENT_SECTIONS = frozenset(
+    {"acknowledgments", "acknowledgements", "acknowledgment", "acknowledgement"}
+)
+_FUNDING_RE = re.compile(
+    r"\b(grant|funded\s+by|supported\s+by|funding|acknowledgment|acknowledgement|"
+    r"nsf|nih|erc|dfg|anr|nserc|epsrc|wellcome)\b",
+    re.IGNORECASE,
+)
+_ACKNOWLEDGMENT_MIN_ENTRIES = 5
+
+
+def validate_acknowledgments_presence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers with no acknowledgments or funding statement.
+
+    A missing acknowledgments section on a paper with substantial references
+    may indicate an oversight.  Emits ``missing-acknowledgments`` (minor) when:
+    - paper is empirical/applied/software,
+    - has ≥ ``_ACKNOWLEDGMENT_MIN_ENTRIES`` bibliography entries, and
+    - no Acknowledgments section exists AND no funding keyword appears in
+      the full text.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="acknowledgments_presence", findings=[]
+        )
+
+    if len(parsed.bibliography_entries) < _ACKNOWLEDGMENT_MIN_ENTRIES:
+        return ValidationResult(
+            validator_name="acknowledgments_presence", findings=[]
+        )
+
+    # Check for dedicated acknowledgments section
+    for section in parsed.sections:
+        if section.title.lower() in _ACKNOWLEDGMENT_SECTIONS:
+            return ValidationResult(
+                validator_name="acknowledgments_presence", findings=[]
+            )
+
+    # Check for funding keywords anywhere in the text
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _FUNDING_RE.search(full):
+        return ValidationResult(
+            validator_name="acknowledgments_presence", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="acknowledgments_presence",
+        findings=[
+            Finding(
+                code="missing-acknowledgments",
+                severity="minor",
+                message=(
+                    "No Acknowledgments section or funding statement was found — "
+                    "consider adding one to declare funding sources and conflicts of interest."
+                ),
+                validator="acknowledgments_presence",
+                location="manuscript structure",
+                evidence=["no acknowledgments section or funding keyword detected"],
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -2792,6 +3057,10 @@ def run_deterministic_validators(
         validate_url_format(parsed),
         validate_figure_table_balance(parsed, classification),
         validate_section_ordering(parsed, classification),
+        validate_keyword_section_coverage(parsed),
+        validate_statistical_test_reporting(parsed, classification),
+        validate_effect_size_reporting(parsed, classification),
+        validate_acknowledgments_presence(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

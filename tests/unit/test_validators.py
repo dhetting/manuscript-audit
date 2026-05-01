@@ -2215,3 +2215,206 @@ def test_section_ordering_skipped_theory() -> None:
     )
     result = validate_section_ordering(parsed, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 59 – author keyword coverage
+# ---------------------------------------------------------------------------
+
+def test_keyword_coverage_fires_for_absent_keyword() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_keyword_section_coverage
+
+    full_text = "Keywords: neural networks, optimization, convergence\n\nIntro text."
+    parsed = ParsedManuscript(
+        manuscript_id="kw-cov",
+        source_path="synthetic",
+        source_format="markdown",
+        title="KW cov",
+        full_text=full_text,
+        sections=[Section(title="Methods", level=2, body="We use neural networks to optimize.")],
+    )
+    result = validate_keyword_section_coverage(parsed)
+    codes = [f.code for f in result.findings]
+    assert "missing-keyword-coverage" in codes
+    assert any("convergence" in f.evidence[0] for f in result.findings)
+
+
+def test_keyword_coverage_no_fire_when_all_present() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_keyword_section_coverage
+
+    full_text = "Keywords: neural networks, optimization\n\nIntro text."
+    parsed = ParsedManuscript(
+        manuscript_id="kw-cov-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="KW cov ok",
+        full_text=full_text,
+        sections=[
+            Section(title="Methods", level=2, body="We use neural networks and optimization."),
+        ],
+    )
+    result = validate_keyword_section_coverage(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 60 – statistical test reporting
+# ---------------------------------------------------------------------------
+
+def _stat_manuscript(body: str, paper_type: str = "empirical_paper"):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="stat-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Stat",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_stat_reporting_fires_when_test_no_pvalue() -> None:
+    from manuscript_audit.validators.core import validate_statistical_test_reporting
+
+    body = "We used a t-test to compare groups. Differences were considered significant."
+    parsed, clf = _stat_manuscript(body)
+    result = validate_statistical_test_reporting(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-p-value-report" in codes
+
+
+def test_stat_reporting_no_fire_with_pvalue() -> None:
+    from manuscript_audit.validators.core import validate_statistical_test_reporting
+
+    body = "We used a t-test to compare groups (p < 0.05). Differences were significant."
+    parsed, clf = _stat_manuscript(body)
+    result = validate_statistical_test_reporting(parsed, clf)
+    assert result.findings == []
+
+
+def test_stat_reporting_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_statistical_test_reporting
+
+    body = "We used a t-test to compare groups."
+    parsed, clf = _stat_manuscript(body, paper_type="math_stats_theory")
+    result = validate_statistical_test_reporting(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 61 – effect size reporting
+# ---------------------------------------------------------------------------
+
+def test_effect_size_fires_pvalue_no_effect() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_reporting
+
+    body = "Group A differed from B (p < 0.01). The comparison was statistically significant."
+    parsed, clf = _stat_manuscript(body)
+    result = validate_effect_size_reporting(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-effect-size" in codes
+
+
+def test_effect_size_no_fire_when_reported() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_reporting
+
+    body = (
+        "Group A differed from B (p < 0.01). Cohen's d = 0.8 indicating large effect. "
+        "Results confirm the hypothesis."
+    )
+    parsed, clf = _stat_manuscript(body)
+    result = validate_effect_size_reporting(parsed, clf)
+    assert result.findings == []
+
+
+def test_effect_size_no_fire_no_pvalue() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_reporting
+
+    body = "We observed differences between groups in all conditions tested."
+    parsed, clf = _stat_manuscript(body)
+    result = validate_effect_size_reporting(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 62 – acknowledgments presence
+# ---------------------------------------------------------------------------
+
+def _ack_manuscript(
+    sections: list[tuple[str, str]],
+    full_text: str = "",
+    n_bib: int = 6,
+    paper_type: str = "empirical_paper",
+):
+    from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    entries = [
+        BibliographyEntry(key=f"r{i}", raw_text=f"Ref {i}", year="2020", source="bibtex")
+        for i in range(n_bib)
+    ]
+    parsed = ParsedManuscript(
+        manuscript_id="ack-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Ack",
+        full_text=full_text,
+        bibliography_entries=entries,
+        sections=[Section(title=t, level=2, body=b) for t, b in sections],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_missing_acknowledgments_fires() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgments_presence
+
+    parsed, clf = _ack_manuscript([("Methods", "We ran experiments."),
+                                    ("Results", "We found results.")])
+    result = validate_acknowledgments_presence(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-acknowledgments" in codes
+
+
+def test_acknowledgments_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgments_presence
+
+    parsed, clf = _ack_manuscript([
+        ("Methods", "We ran experiments."),
+        ("Acknowledgments", "This work was supported by NSF grant 12345."),
+    ])
+    result = validate_acknowledgments_presence(parsed, clf)
+    assert result.findings == []
+
+
+def test_acknowledgments_funding_in_text_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgments_presence
+
+    parsed, clf = _ack_manuscript(
+        [("Methods", "We ran experiments.")],
+        full_text="This research was funded by NSF.",
+    )
+    result = validate_acknowledgments_presence(parsed, clf)
+    assert result.findings == []
+
+
+def test_acknowledgments_skipped_few_refs() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgments_presence
+
+    parsed, clf = _ack_manuscript([("Methods", "We ran experiments.")], n_bib=3)
+    result = validate_acknowledgments_presence(parsed, clf)
+    assert result.findings == []
