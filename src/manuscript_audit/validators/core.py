@@ -6650,6 +6650,11 @@ def run_deterministic_validators(
         validate_imputation_sensitivity(parsed, classification),
         validate_computational_environment(parsed, classification),
         validate_table_captions(parsed),
+        validate_raw_data_description(parsed, classification),
+        validate_multiple_outcomes_correction(parsed, classification),
+        validate_replication_dataset(parsed, classification),
+        validate_appendix_reference_consistency(parsed),
+        validate_open_science_statement(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -7608,6 +7613,337 @@ def validate_table_captions(parsed: ParsedManuscript) -> ValidationResult:
                 validator="table_captions",
                 location="manuscript",
                 evidence=[str(r) for r in table_refs[:3]],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 141 – Raw data description completeness
+# ---------------------------------------------------------------------------
+
+_DATA_MENTION_RE = re.compile(
+    r"\b(?:dataset|data\s+set|database|survey\s+data|cohort\s+data|"
+    r"secondary\s+data|observational\s+data|administrative\s+data)\b",
+    re.IGNORECASE,
+)
+_DATA_FORMAT_RE = re.compile(
+    r"\b(?:csv|xlsx?|json|hdf5?|parquet|stata|spss|sas|netcdf|rdata|"
+    r"\.csv|\.xlsx?|\.json|\.hdf5?|\.parquet|open\s+access|"
+    r"available\s+at|doi\s*:|zenodo|figshare|osf\.io|dataverse)\b",
+    re.IGNORECASE,
+)
+_DATA_MIN_MENTIONS = 2
+
+
+def validate_raw_data_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts that mention datasets without format/source.
+
+    Emits ``missing-raw-data-description`` (moderate) when Methods references
+    datasets >= ``_DATA_MIN_MENTIONS`` times but includes no file-format or
+    repository/source details.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="raw_data_description", findings=[]
+        )
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="raw_data_description", findings=[]
+        )
+
+    data_mentions = _DATA_MENTION_RE.findall(methods_text)
+    if len(data_mentions) < _DATA_MIN_MENTIONS:
+        return ValidationResult(
+            validator_name="raw_data_description", findings=[]
+        )
+
+    if _DATA_FORMAT_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="raw_data_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="raw_data_description",
+        findings=[
+            Finding(
+                code="missing-raw-data-description",
+                severity="moderate",
+                message=(
+                    f"Methods section references datasets {len(data_mentions)} "
+                    "time(s) but includes no file format, repository, or source "
+                    "details for the raw data. "
+                    "Specify data format and access location."
+                ),
+                validator="raw_data_description",
+                location="Methods",
+                evidence=list(dict.fromkeys(data_mentions[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 142 – Multiple outcomes / multiple comparisons correction
+# ---------------------------------------------------------------------------
+
+_OUTCOME_VAR_RE = re.compile(
+    r"\b(?:outcome|dependent\s+variable|endpoint|measure|construct|subscale)\b",
+    re.IGNORECASE,
+)
+_CORRECTION_RE = re.compile(
+    r"\b(?:bonferroni|benjamini.{0,10}hochberg|false\s+discovery\s+rate|fdr|"
+    r"holm|tukey|familywise|family.wise|adjusted\s+p.valu|correction\s+for\s+"
+    r"multiple)\b",
+    re.IGNORECASE,
+)
+_OUTCOME_MIN_MENTIONS = 4
+
+
+def validate_multiple_outcomes_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts with multiple outcomes and no correction.
+
+    Emits ``missing-multiple-outcomes-correction`` (moderate) when Methods /
+    Results mentions >= ``_OUTCOME_MIN_MENTIONS`` outcome variables but no
+    multiple-comparisons correction is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="multiple_outcomes_correction", findings=[]
+        )
+    relevant_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title
+        and any(
+            k in s.title.lower() for k in ("method", "result", "statistic", "analys")
+        )
+    )
+    if not relevant_text:
+        return ValidationResult(
+            validator_name="multiple_outcomes_correction", findings=[]
+        )
+
+    outcome_mentions = _OUTCOME_VAR_RE.findall(relevant_text)
+    if len(outcome_mentions) < _OUTCOME_MIN_MENTIONS:
+        return ValidationResult(
+            validator_name="multiple_outcomes_correction", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _CORRECTION_RE.search(full):
+        return ValidationResult(
+            validator_name="multiple_outcomes_correction", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="multiple_outcomes_correction",
+        findings=[
+            Finding(
+                code="missing-multiple-outcomes-correction",
+                severity="moderate",
+                message=(
+                    f"Manuscript reports {len(outcome_mentions)} outcome/dependent-variable "
+                    "references but does not mention any multiple-comparisons correction "
+                    "(Bonferroni, FDR, Holm, etc.). "
+                    "Report or justify the correction strategy."
+                ),
+                validator="multiple_outcomes_correction",
+                location="Methods/Results",
+                evidence=list(dict.fromkeys(outcome_mentions[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 143 – Replication / validation dataset reporting
+# ---------------------------------------------------------------------------
+
+_REPLICATION_RE = re.compile(
+    r"\b(?:replicat(?:ion|ed)|validation\s+(?:dataset|cohort|sample|set)|"
+    r"hold.out|holdout|external\s+validation|test\s+(?:set|cohort|sample)|"
+    r"independent\s+(?:dataset|cohort|sample|replication))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_replication_dataset(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts lacking replication or validation dataset mention.
+
+    Emits ``missing-replication-dataset`` (moderate) when the paper is empirical
+    and the full text contains no mention of a replication or external validation
+    dataset/cohort.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="replication_dataset", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="replication_dataset", findings=[]
+        )
+
+    if _REPLICATION_RE.search(full):
+        return ValidationResult(
+            validator_name="replication_dataset", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="replication_dataset",
+        findings=[
+            Finding(
+                code="missing-replication-dataset",
+                severity="moderate",
+                message=(
+                    "Empirical manuscript does not mention a replication cohort, "
+                    "validation dataset, hold-out set, or external validation. "
+                    "Discuss generalizability and replication."
+                ),
+                validator="replication_dataset",
+                location="manuscript",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 144 – Appendix reference consistency
+# ---------------------------------------------------------------------------
+
+_APPENDIX_REF_RE = re.compile(
+    r"\b(?:appendix|supplementary\s+materials?|supplemental\s+materials?|"
+    r"online\s+supplement|see\s+appendix|appendix\s+[A-Z\d])\b",
+    re.IGNORECASE,
+)
+_APPENDIX_SECTION_RE = re.compile(
+    r"(?:^|\n)\s*(?:appendix|supplementary\s+materials?|supplemental\s+materials?)"
+    r"\s*(?:[A-Z\d:]|\n|$)",
+    re.IGNORECASE,
+)
+
+
+def validate_appendix_reference_consistency(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts referencing an appendix that is not present.
+
+    Emits ``missing-appendix-section`` (minor) when the text mentions an
+    appendix or supplementary materials but no appendix heading is found.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="appendix_reference_consistency", findings=[]
+        )
+
+    ref_matches = _APPENDIX_REF_RE.findall(full)
+    if not ref_matches:
+        return ValidationResult(
+            validator_name="appendix_reference_consistency", findings=[]
+        )
+
+    section_headings = [s.title or "" for s in parsed.sections]
+    has_appendix_section = any(
+        re.search(r"\bappendix\b|\bsupplementary\b|\bsupplemental\b", h, re.IGNORECASE)
+        for h in section_headings
+    )
+    if has_appendix_section:
+        return ValidationResult(
+            validator_name="appendix_reference_consistency", findings=[]
+        )
+
+    if _APPENDIX_SECTION_RE.search(full):
+        return ValidationResult(
+            validator_name="appendix_reference_consistency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="appendix_reference_consistency",
+        findings=[
+            Finding(
+                code="missing-appendix-section",
+                severity="minor",
+                message=(
+                    f"Manuscript references 'Appendix' or 'Supplementary Materials' "
+                    f"{len(ref_matches)} time(s) but no appendix section heading is present. "
+                    "Include the appendix or remove dangling references."
+                ),
+                validator="appendix_reference_consistency",
+                location="manuscript",
+                evidence=list(dict.fromkeys(ref_matches[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 145 – Open science / data availability statement
+# ---------------------------------------------------------------------------
+
+_OPEN_SCIENCE_RE = re.compile(
+    r"\b(?:data\s+availability|data\s+access(?:ibility)?|"
+    r"code\s+availability|materials?\s+availability|"
+    r"open\s+(?:data|code|science|access)|"
+    r"available\s+(?:on\s+request|upon\s+request|at\s+https?:|from\s+the\s+authors?)|"
+    r"data\s+sharing|github\.com|zenodo|osf\.io|figshare|dryad)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_open_science_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts lacking a data/code availability statement.
+
+    Emits ``missing-open-science-statement`` (minor) when no data-availability
+    or code-availability language is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="open_science_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="open_science_statement", findings=[]
+        )
+
+    if _OPEN_SCIENCE_RE.search(full):
+        return ValidationResult(
+            validator_name="open_science_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="open_science_statement",
+        findings=[
+            Finding(
+                code="missing-open-science-statement",
+                severity="minor",
+                message=(
+                    "Empirical manuscript lacks a data availability or code availability "
+                    "statement. Add a statement explaining whether data/code are available "
+                    "and how to access them."
+                ),
+                validator="open_science_statement",
+                location="manuscript",
+                evidence=[],
             )
         ],
     )

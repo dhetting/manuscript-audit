@@ -2,6 +2,8 @@ from pathlib import Path
 
 from manuscript_audit.parsers import parse_bibtex, parse_manuscript, parse_markdown_manuscript
 from manuscript_audit.routing.rules import classify_manuscript
+from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+from manuscript_audit.schemas.routing import ManuscriptClassification
 from manuscript_audit.validators import run_deterministic_validators
 from manuscript_audit.validators.core import (
     validate_bibliography_source_record_readiness,
@@ -6822,4 +6824,297 @@ def test_single_table_no_fire() -> None:
     ms = _table_captions_manuscript("Results in Table 1 show the means.")
     result = validate_table_captions(ms)
     # Only 1 table ref < threshold of 2
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 141 – Raw data description
+# ---------------------------------------------------------------------------
+
+
+def _raw_data_ms(methods_text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="raw-data-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=methods_text)],
+        full_text=methods_text,
+    )
+
+
+def _raw_data_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_raw_data_description_fires() -> None:
+    from manuscript_audit.validators.core import validate_raw_data_description
+
+    ms = _raw_data_ms(
+        "We used a large dataset from the registry. The dataset contains patient records. "
+        "The dataset was pre-processed before analysis."
+    )
+    result = validate_raw_data_description(ms, _raw_data_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-raw-data-description" in codes
+
+
+def test_raw_data_with_format_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_raw_data_description
+
+    ms = _raw_data_ms(
+        "We used a dataset from the registry (available at zenodo doi: 10.5281/zenodo.12345). "
+        "The dataset was stored as CSV files. The dataset was pre-processed."
+    )
+    result = validate_raw_data_description(ms, _raw_data_clf())
+    assert result.findings == []
+
+
+def test_raw_data_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_raw_data_description
+
+    ms = _raw_data_ms(
+        "We used a large dataset from the registry. The dataset contains records. "
+        "The dataset was pre-processed before analysis."
+    )
+    result = validate_raw_data_description(ms, _raw_data_clf("math_theory_paper"))
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 142 – Multiple outcomes / multiple comparisons correction
+# ---------------------------------------------------------------------------
+
+
+def _multi_outcome_ms(body: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="multi-outcome-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=body)],
+        full_text=body,
+    )
+
+
+def _multi_outcome_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_multiple_outcomes_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_multiple_outcomes_correction
+
+    ms = _multi_outcome_ms(
+        "The primary outcome measure was depression severity. The secondary outcome "
+        "was anxiety. A third outcome variable was quality of life. The fourth "
+        "outcome measure was functional impairment. We compared these outcomes "
+        "across groups."
+    )
+    result = validate_multiple_outcomes_correction(ms, _multi_outcome_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-multiple-outcomes-correction" in codes
+
+
+def test_multiple_outcomes_with_correction_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_outcomes_correction
+
+    ms = _multi_outcome_ms(
+        "The primary outcome measure was depression severity. The secondary outcome "
+        "was anxiety. A third outcome variable was quality of life. The fourth "
+        "outcome measure was functional impairment. We applied Bonferroni correction "
+        "for multiple comparisons."
+    )
+    result = validate_multiple_outcomes_correction(ms, _multi_outcome_clf())
+    assert result.findings == []
+
+
+def test_few_outcomes_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_outcomes_correction
+
+    ms = _multi_outcome_ms(
+        "The primary outcome was depression severity. The dependent variable was "
+        "measured at baseline."
+    )
+    result = validate_multiple_outcomes_correction(ms, _multi_outcome_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 143 – Replication dataset reporting
+# ---------------------------------------------------------------------------
+
+
+def _replication_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="replication-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _replication_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_replication_dataset_fires() -> None:
+    from manuscript_audit.validators.core import validate_replication_dataset
+
+    ms = _replication_ms(
+        "We collected data from 500 participants and trained a logistic regression model. "
+        "All participants were from a single hospital."
+    )
+    result = validate_replication_dataset(ms, _replication_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-replication-dataset" in codes
+
+
+def test_replication_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_replication_dataset
+
+    ms = _replication_ms(
+        "We trained the model on a discovery cohort and evaluated it on an independent "
+        "validation dataset of 200 participants from a different center."
+    )
+    result = validate_replication_dataset(ms, _replication_clf())
+    assert result.findings == []
+
+
+def test_replication_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_replication_dataset
+
+    ms = _replication_ms(
+        "We present a mathematical proof. No empirical data were collected."
+    )
+    result = validate_replication_dataset(ms, _replication_clf("math_theory_paper"))
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 144 – Appendix reference consistency
+# ---------------------------------------------------------------------------
+
+
+def _appendix_ms(text: str, has_appendix_section: bool = False) -> ParsedManuscript:
+    sections: list[Section] = [Section(title="Introduction", level=2, body=text)]
+    full = text
+    if has_appendix_section:
+        sections.append(Section(title="Appendix A", level=2, body="Supplementary tables."))
+        full = text + "\n\nAppendix A\nSupplementary tables."
+    return ParsedManuscript(
+        manuscript_id="appendix-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=sections,
+        full_text=full,
+    )
+
+
+def test_missing_appendix_section_fires() -> None:
+    from manuscript_audit.validators.core import validate_appendix_reference_consistency
+
+    ms = _appendix_ms(
+        "See Appendix for additional results. The supplementary materials include tables."
+    )
+    result = validate_appendix_reference_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-appendix-section" in codes
+
+
+def test_appendix_section_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_appendix_reference_consistency
+
+    ms = _appendix_ms(
+        "See Appendix for additional results.",
+        has_appendix_section=True,
+    )
+    result = validate_appendix_reference_consistency(ms)
+    assert result.findings == []
+
+
+def test_no_appendix_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_appendix_reference_consistency
+
+    ms = _appendix_ms("We analyzed the data using regression methods.")
+    result = validate_appendix_reference_consistency(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 145 – Open science / data availability statement
+# ---------------------------------------------------------------------------
+
+
+def _open_science_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="open-science-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _open_science_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_open_science_statement_fires() -> None:
+    from manuscript_audit.validators.core import validate_open_science_statement
+
+    ms = _open_science_ms(
+        "We collected survey data and analyzed it. All participants provided informed consent."
+    )
+    result = validate_open_science_statement(ms, _open_science_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-open-science-statement" in codes
+
+
+def test_data_availability_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_open_science_statement
+
+    ms = _open_science_ms(
+        "Data availability: The data are available upon request from the corresponding author."
+    )
+    result = validate_open_science_statement(ms, _open_science_clf())
+    assert result.findings == []
+
+
+def test_github_link_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_open_science_statement
+
+    ms = _open_science_ms(
+        "Code is available at github.com/user/repo."
+    )
+    result = validate_open_science_statement(ms, _open_science_clf())
+    assert result.findings == []
+
+
+def test_open_science_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_open_science_statement
+
+    ms = _open_science_ms(
+        "We present a theoretical framework without empirical data."
+    )
+    result = validate_open_science_statement(ms, _open_science_clf("math_theory_paper"))
     assert result.findings == []
