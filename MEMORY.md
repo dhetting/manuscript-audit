@@ -391,10 +391,45 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 21 is closed. Next candidate phases:
-1. **Phase 22: agent heuristic confidence scoring** — numeric confidence score (0–1) per agent finding based on signal count
-2. **Phase 22: claim escalation severity tiers** — fatal escalation when systemic claim gap + missing required section co-occur
-3. **Phase 22: manuscript readability / passive voice** — flag excessive passive voice or nominalization density in methods sections
+Phase 28 is closed. Next candidate phases:
+1. **Phase 29: Hedging language density** — flag excessive epistemic hedging in Discussion/Conclusion sections
+2. **Phase 29: Missing related work section** — empirical papers missing a Related Work section
+3. **Phase 29: Missing limitations coverage** — empirical papers with no limitations discussion
+
+## Phase 22–28 validated state
+
+All phases validated end-to-end from the live repo on 2026-05-01.
+
+**Phase 22** (`4dacc2d`) — Fatal escalation tier
+- `_FATAL_TRIGGER_CODES` frozenset: `{systemic-claim-evidence-gap, missing-required-section}`
+- `validate_critical_escalation(suite)`: emits `critical-structural-claim-failure` (fatal) when both trigger codes co-occur
+- Second partial→append step in `run_deterministic_validators()`
+
+**Phase 23** (`688b748`) — Fatal-first revision priorities
+- `_SEVERITY_RANK` dict in `synthesis.py`; stable sort on `(rank, msg)` tuples
+- Fatal findings always precede major within the same report section
+
+**Phase 24** (`0e4876d`) — Passive voice density validator
+- `validate_passive_voice_density(parsed)` → `high-passive-voice-density` (minor)
+- Fires on Methods/Methodology sections with >45% passive sentences (min 4 sentences)
+
+**Phase 25** (`7fe6844`) — Agent finding confidence scores
+- Added optional `confidence: float | None` field to `Finding` schema
+- `StructureContributionAgent`, `BibliographyMetadataAgent`, `MathProofsNotationAgent` emit calibrated scores
+
+**Phase 26** (`3fa9bda`) — Confidence in report output
+- `_format_finding_line()` appends `[conf: X%]` in agent finding lines when confidence is set
+
+**Phase 27** (`740712a`) — Sentence-level claim localization
+- `_extract_trigger_sentence(para, *patterns)` helper
+- Both citationless-claim validators surface the specific triggering sentence in `evidence[0]`
+
+**Phase 28** (`b8f52e3`) — Duplicate quantitative claim detection
+- `validate_duplicate_claims(parsed)` → `duplicate-quantitative-claim` (minor)
+- Flags numeric patterns appearing verbatim in ≥2 non-abstract sections
+
+Current test count: **87 passing** (after phase 28)
+
 
 ## Bundle and handoff requirements
 
