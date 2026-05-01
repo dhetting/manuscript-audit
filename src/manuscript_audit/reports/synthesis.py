@@ -6,16 +6,24 @@ from manuscript_audit.schemas.findings import (
     SourceRecordVerificationReport,
 )
 
+_SEVERITY_RANK: dict[str, int] = {"fatal": 0, "major": 1}
+
 
 def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
-    priorities: list[str] = []
+    prioritized: list[tuple[int, str]] = []
     for finding in report.validation_suite.all_findings:
-        if finding.severity in {"fatal", "major"}:
-            priorities.append(f"Address {finding.code}: {finding.message}")
+        if finding.severity in _SEVERITY_RANK:
+            prioritized.append(
+                (_SEVERITY_RANK[finding.severity], f"Address {finding.code}: {finding.message}")
+            )
     if report.agent_suite is not None:
         for finding in report.agent_suite.all_findings:
-            if finding.severity in {"fatal", "major"}:
-                priorities.append(f"Address {finding.code}: {finding.message}")
+            if finding.severity in _SEVERITY_RANK:
+                prioritized.append(
+                    (_SEVERITY_RANK[finding.severity], f"Address {finding.code}: {finding.message}")
+                )
+    prioritized.sort(key=lambda t: t[0])  # fatal (0) before major (1); stable within rank
+    priorities: list[str] = [msg for _, msg in prioritized]
     if report.bibliography_confidence_summary is not None:
         confidence = report.bibliography_confidence_summary
         if confidence.confidence_level == "critical":
@@ -58,13 +66,20 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
 
 
 def synthesize_revision_report(report: RevisionVerificationReport) -> RevisionVerificationReport:
-    priorities: list[str] = []
+    prioritized: list[tuple[int, str]] = []
     for item in report.new_findings:
-        if item.severity in {"fatal", "major"}:
-            priorities.append(f"Address new finding {item.code}: {item.message}")
+        if item.severity in _SEVERITY_RANK:
+            prioritized.append(
+                (_SEVERITY_RANK[item.severity], f"Address new finding {item.code}: {item.message}")
+            )
     for item in report.persistent_findings:
-        if item.severity in {"fatal", "major"}:
-            priorities.append(f"Persistent issue remains {item.code}: {item.message}")
+        if item.severity in _SEVERITY_RANK:
+            prioritized.append((
+                _SEVERITY_RANK[item.severity],
+                f"Persistent issue remains {item.code}: {item.message}",
+            ))
+    prioritized.sort(key=lambda t: t[0])
+    priorities: list[str] = [msg for _, msg in prioritized]
     if report.route_changed:
         priorities.append(
             "Routing changed between manuscript versions; review newly activated modules."
