@@ -127,6 +127,12 @@ def _render_table(title: str, entries: list) -> str:
     return "\n".join(lines)
 
 
+def _format_finding_line(finding) -> str:  # type: ignore[no-untyped-def]
+    """Render one finding line with optional confidence annotation."""
+    conf = f" [conf: {finding.confidence:.0%}]" if finding.confidence is not None else ""
+    return f"- [{finding.severity}] {finding.code}{conf}: {finding.message}"
+
+
 def _render_agent_results(report: FinalVettingReport) -> str:
     if report.agent_suite is None:
         return "## Routed module execution\n\nNo routed agent modules were executed in this run."
@@ -138,7 +144,7 @@ def _render_agent_results(report: FinalVettingReport) -> str:
         lines.append("")
         if result.findings:
             for finding in result.findings:
-                lines.append(f"- [{finding.severity}] {finding.code}: {finding.message}")
+                lines.append(_format_finding_line(finding))
         else:
             lines.append("- No structured findings.")
         lines.append("")

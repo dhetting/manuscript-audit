@@ -101,3 +101,39 @@ def test_empty_findings_gives_fallback_message() -> None:
     assert result.revision_priorities == [
         "No fatal or major deterministic findings in the current audit stack."
     ]
+
+
+# ---------------------------------------------------------------------------
+# Phase 26: confidence shown in agent finding lines
+# ---------------------------------------------------------------------------
+
+
+def test_finding_line_includes_confidence_when_set() -> None:
+    from manuscript_audit.reports.synthesis import _format_finding_line
+    from manuscript_audit.schemas.findings import Finding
+
+    finding = Finding(
+        code="thin-abstract",
+        severity="moderate",
+        message="Abstract is very short.",
+        validator="structure_contribution_agent",
+        confidence=0.80,
+    )
+    line = _format_finding_line(finding)
+    assert "[conf: 80%]" in line
+    assert "thin-abstract" in line
+
+
+def test_finding_line_omits_confidence_when_none() -> None:
+    from manuscript_audit.reports.synthesis import _format_finding_line
+    from manuscript_audit.schemas.findings import Finding
+
+    finding = Finding(
+        code="missing-required-section",
+        severity="major",
+        message="Methods section is missing.",
+        validator="required_sections",
+    )
+    line = _format_finding_line(finding)
+    assert "conf" not in line
+    assert "missing-required-section" in line
