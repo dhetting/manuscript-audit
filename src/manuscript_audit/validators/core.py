@@ -887,17 +887,30 @@ def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationRes
 
 
 def validate_abstract_length(parsed: ParsedManuscript) -> ValidationResult:
-    """Flag abstracts that exceed the typical journal word-count cap.
+    """Flag abstracts that are too short or exceed the typical journal word-count cap.
 
-    Does not duplicate the agent's thin-abstract check (< 30 words). Only flags
-    abstracts above ABSTRACT_OVERLONG_THRESHOLD as a minor issue since many
-    journals cap at 250-300 words.
+    Emits ``abstract-too-short`` (minor) when < 100 words, and
+    ``overlong-abstract`` (minor) when > ABSTRACT_OVERLONG_THRESHOLD words.
     """
     findings: list[Finding] = []
     if not parsed.abstract.strip():
         return ValidationResult(validator_name="abstract_length", findings=findings)
     n = _word_count(parsed.abstract)
-    if n > ABSTRACT_OVERLONG_THRESHOLD:
+    if n < 100:
+        findings.append(
+            Finding(
+                code="abstract-too-short",
+                severity="minor",
+                message=(
+                    f"Abstract has only {n} words; most journals require 150–300. "
+                    "Expand to cover background, methods, results, and conclusion."
+                ),
+                validator="abstract_length",
+                location="Abstract",
+                evidence=[f"{n} words"],
+            )
+        )
+    elif n > ABSTRACT_OVERLONG_THRESHOLD:
         findings.append(
             Finding(
                 code="overlong-abstract",
@@ -3470,6 +3483,306 @@ def validate_null_result_acknowledgment(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 73 – Hedging language density
+# ---------------------------------------------------------------------------
+
+_HEDGE_DENSITY_RE = re.compile(
+    r"\b(might\s+(?:be|suggest|indicate|show|explain|help|support)|"
+    r"could\s+(?:be|suggest|indicate|potentially|possibly)|"
+    r"possibly|perhaps|may\s+suggest|may\s+indicate|tentatively|preliminary|"
+    r"appears?\s+to|seems?\s+to|would\s+seem|arguably|"
+    r"to\s+some\s+extent)\b",
+    re.IGNORECASE,
+)
+_HEDGE_SECTIONS = frozenset(
+    {"abstract", "introduction", "conclusion", "conclusions",
+     "concluding remarks", "summary and conclusions"}
+)
+_HEDGE_COUNT_THRESHOLD = 4
+_HEDGE_MIN_WORDS = 50
+
+
+def validate_hedging_language(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag dense hedging language in abstract/introduction/conclusion sections.
+
+    Emits ``hedging-language-dense`` (minor) when total hedging phrase count
+    exceeds ``_HEDGE_COUNT_THRESHOLD`` in combined abstract + key section text
+    (≥``_HEDGE_MIN_WORDS`` words required).
+    """
+    text_parts: list[str] = []
+    if parsed.abstract:
+        text_parts.append(parsed.abstract)
+    for section in parsed.sections:
+        if section.title.lower() in _HEDGE_SECTIONS:
+            text_parts.append(section.body)
+
+    combined = " ".join(text_parts)
+    word_count = len(combined.split())
+    if word_count < _HEDGE_MIN_WORDS:
+        return ValidationResult(validator_name="hedging_language", findings=[])
+
+    hits = _HEDGE_DENSITY_RE.findall(combined)
+    if len(hits) <= _HEDGE_COUNT_THRESHOLD:
+        return ValidationResult(validator_name="hedging_language", findings=[])
+
+    return ValidationResult(
+        validator_name="hedging_language",
+        findings=[
+            Finding(
+                code="hedging-language-dense",
+                severity="minor",
+                message=(
+                    f"Abstract and key sections contain {len(hits)} hedging phrases "
+                    f"(e.g. '{hits[0]}') — strengthen claims or acknowledge "
+                    "limitations more directly."
+                ),
+                validator="hedging_language",
+                location="abstract/introduction/conclusion",
+                evidence=[f"hedging count: {len(hits)}"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 74 – Duplicate content between sections
+# ---------------------------------------------------------------------------
+
+_DUP_MIN_SENTENCES = 3
+_DUP_OVERLAP_THRESHOLD = 0.40
+_DUP_MAX_FINDINGS = 3
+
+
+def _sentence_tokens(text: str) -> list[frozenset[str]]:
+    """Split text into sentences; return each as a frozenset of lowercased words."""
+    return [
+        frozenset(s.lower().split())
+        for s in _SENTENCE_SPLIT_RE.split(text)
+        if len(s.split()) >= 5
+    ]
+
+
+def _jaccard(a: frozenset[str], b: frozenset[str]) -> float:
+    union = a | b
+    return len(a & b) / len(union) if union else 0.0
+
+
+def validate_duplicate_section_content(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag non-adjacent sections with high sentence-level Jaccard overlap.
+
+    Uses original section order to determine adjacency.  Emits
+    ``duplicate-section-content`` (minor) when sentence token overlap between
+    any non-adjacent pair exceeds ``_DUP_OVERLAP_THRESHOLD``.
+    Capped at ``_DUP_MAX_FINDINGS``.
+    """
+    # Keep original indices for adjacency checks
+    indexed = [
+        (orig_idx, s)
+        for orig_idx, s in enumerate(parsed.sections)
+        if s.title.lower() not in _SKIP_SECTIONS and len(s.body.split()) >= 40
+    ]
+    findings: list[Finding] = []
+
+    for ii, (orig_i, sec_a) in enumerate(indexed):
+        if len(findings) >= _DUP_MAX_FINDINGS:
+            break
+        sents_a = _sentence_tokens(sec_a.body)
+        if len(sents_a) < _DUP_MIN_SENTENCES:
+            continue
+        for jj, (orig_j, sec_b) in enumerate(indexed):
+            if jj <= ii:
+                continue
+            if orig_j <= orig_i + 1:  # adjacent in original order
+                continue
+            sents_b = _sentence_tokens(sec_b.body)
+            if len(sents_b) < _DUP_MIN_SENTENCES:
+                continue
+            max_sim = max(
+                (_jaccard(sa, sb) for sa in sents_a for sb in sents_b),
+                default=0.0,
+            )
+            if max_sim >= _DUP_OVERLAP_THRESHOLD:
+                findings.append(
+                    Finding(
+                        code="duplicate-section-content",
+                        severity="minor",
+                        message=(
+                            f"Sections '{sec_a.title}' and '{sec_b.title}' share "
+                            f"highly similar sentences ({max_sim:.0%} overlap) — "
+                            "review for unintentional repetition."
+                        ),
+                        validator="duplicate_section_content",
+                        location=(
+                            f"sections '{sec_a.title}' and '{sec_b.title}'"
+                        ),
+                        evidence=[f"max sentence Jaccard: {max_sim:.2f}"],
+                    )
+                )
+                if len(findings) >= _DUP_MAX_FINDINGS:
+                    break
+
+    return ValidationResult(
+        validator_name="duplicate_section_content", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 76 – Methods section depth
+# ---------------------------------------------------------------------------
+
+_METHODS_SECTIONS = frozenset(
+    {"methods", "method", "methodology", "materials and methods",
+     "experimental setup", "experimental design", "study design"}
+)
+_METHODS_MIN_WORDS = 150
+
+
+def validate_methods_depth(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag thin Methods sections (<``_METHODS_MIN_WORDS`` words) in empirical papers.
+
+    Emits ``thin-methods`` (moderate) when the first Methods-like section is
+    present but below the word count threshold.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="methods_depth", findings=[])
+
+    for section in parsed.sections:
+        if section.title.lower() in _METHODS_SECTIONS:
+            word_count = len(section.body.split())
+            if word_count < _METHODS_MIN_WORDS:
+                return ValidationResult(
+                    validator_name="methods_depth",
+                    findings=[
+                        Finding(
+                            code="thin-methods",
+                            severity="moderate",
+                            message=(
+                                f"Methods section '{section.title}' is only "
+                                f"{word_count} words — provide sufficient detail "
+                                "for reproducibility (target ≥150 words)."
+                            ),
+                            validator="methods_depth",
+                            location=f"section '{section.title}'",
+                            evidence=[f"word count: {word_count}"],
+                        )
+                    ],
+                )
+            break  # check first methods-like section only
+
+    return ValidationResult(validator_name="methods_depth", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 78 – List overuse in prose sections
+# ---------------------------------------------------------------------------
+
+_LIST_ITEM_RE = re.compile(r"^(?:\s*[-*\u2022]\s|\s*\d+[.)]\s)", re.MULTILINE)
+_LIST_OVERUSE_SECTIONS = frozenset(
+    {"introduction", "discussion", "conclusion", "conclusions",
+     "concluding remarks", "summary and conclusions"}
+)
+_LIST_OVERUSE_THRESHOLD = 0.50
+_LIST_OVERUSE_MIN_ITEMS = 6
+
+
+def validate_list_overuse(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag prose sections with excessive list item content.
+
+    Emits ``list-heavy-section`` (minor) when >``_LIST_OVERUSE_THRESHOLD`` of
+    body lines in an Introduction/Discussion/Conclusion section are list items
+    and there are ≥``_LIST_OVERUSE_MIN_ITEMS`` items.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() not in _LIST_OVERUSE_SECTIONS:
+            continue
+        body = section.body.strip()
+        lines = [ln for ln in body.splitlines() if ln.strip()]
+        if not lines:
+            continue
+        list_lines = _LIST_ITEM_RE.findall(body)
+        if len(list_lines) < _LIST_OVERUSE_MIN_ITEMS:
+            continue
+        ratio = len(list_lines) / len(lines)
+        if ratio > _LIST_OVERUSE_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="list-heavy-section",
+                    severity="minor",
+                    message=(
+                        f"'{section.title}' is {ratio:.0%} list items "
+                        f"({len(list_lines)} items) — prose sections should use "
+                        "paragraphs rather than lists to develop arguments."
+                    ),
+                    validator="list_overuse",
+                    location=f"section '{section.title}'",
+                    evidence=[
+                        f"list items: {len(list_lines)}/{len(lines)} lines"
+                    ],
+                )
+            )
+    return ValidationResult(validator_name="list_overuse", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 79 – Section length balance
+# ---------------------------------------------------------------------------
+
+_SECTION_BALANCE_THRESHOLD = 0.60
+
+
+def validate_section_balance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag when a single section dominates total body word count.
+
+    Emits ``section-length-imbalance`` (minor) when any section exceeds
+    ``_SECTION_BALANCE_THRESHOLD`` of total word count.  Requires ≥3
+    non-skipped sections and empirical/applied/software paper type.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="section_balance", findings=[])
+
+    major_sections = [
+        s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    ]
+    if len(major_sections) < 3:
+        return ValidationResult(validator_name="section_balance", findings=[])
+
+    section_words = [(s.title, len(s.body.split())) for s in major_sections]
+    total_words = sum(w for _, w in section_words)
+    if total_words == 0:
+        return ValidationResult(validator_name="section_balance", findings=[])
+
+    for title, count in section_words:
+        ratio = count / total_words
+        if ratio > _SECTION_BALANCE_THRESHOLD:
+            return ValidationResult(
+                validator_name="section_balance",
+                findings=[
+                    Finding(
+                        code="section-length-imbalance",
+                        severity="minor",
+                        message=(
+                            f"Section '{title}' accounts for {ratio:.0%} of total "
+                            "body word count — consider redistributing content "
+                            "for a more balanced structure."
+                        ),
+                        validator="section_balance",
+                        location=f"section '{title}'",
+                        evidence=[f"{count}/{total_words} words ({ratio:.0%})"],
+                    )
+                ],
+            )
+
+    return ValidationResult(validator_name="section_balance", findings=[])
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -3539,6 +3852,11 @@ def run_deterministic_validators(
         validate_decimal_precision_consistency(parsed),
         validate_future_work_balance(parsed),
         validate_null_result_acknowledgment(parsed, classification),
+        validate_hedging_language(parsed),
+        validate_duplicate_section_content(parsed),
+        validate_methods_depth(parsed, classification),
+        validate_list_overuse(parsed),
+        validate_section_balance(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

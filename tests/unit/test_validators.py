@@ -512,12 +512,14 @@ def test_normal_abstract_length_not_flagged() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript
     from manuscript_audit.validators.core import validate_abstract_length
 
+    # 150-word abstract — within normal range
+    sentence = "This study investigates the effect of X on Y in a controlled setting. "
     parsed = ParsedManuscript(
         manuscript_id="normal",
         source_path="synthetic",
         source_format="markdown",
         title="Normal abstract",
-        abstract="This study investigates the effect of X on Y in a controlled setting.",
+        abstract=sentence * 12,
         full_text="",
     )
     result = validate_abstract_length(parsed)
@@ -2982,4 +2984,445 @@ def test_null_result_skipped_few_paragraphs() -> None:
         [("Results", "The model achieved high accuracy. All tests passed.")]
     )
     result = validate_null_result_acknowledgment(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 73 – Hedging language density
+# ---------------------------------------------------------------------------
+
+
+def _hedge_manuscript(
+    abstract: str = "",
+    intro_body: str = "",
+    conclusion_body: str = "",
+) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    sections = []
+    if intro_body:
+        sections.append(Section(title="Introduction", level=1, body=intro_body))
+    if conclusion_body:
+        sections.append(Section(title="Conclusion", level=1, body=conclusion_body))
+    return ParsedManuscript(
+        manuscript_id="hedge-test",
+        source_path="hedge.md",
+        source_format="markdown",
+        title="Test",
+        abstract=abstract,
+        sections=sections,
+        full_text=(abstract + " " + intro_body + " " + conclusion_body).strip(),
+    )
+
+
+def test_hedging_dense_fires() -> None:
+    from manuscript_audit.validators.core import validate_hedging_language
+
+    abstract = (
+        "This study possibly suggests a new method for sequence classification. "
+        "The approach perhaps could be useful in certain clinical contexts. "
+        "Preliminary results may indicate a broad pattern in the data. "
+        "It seems to support the main hypothesis of the paper. "
+        "The model appears to explain some of the observed variance to some extent. "
+        "We believe the results would seem to generalise across domains."
+    )
+    parsed = _hedge_manuscript(abstract=abstract)
+    result = validate_hedging_language(parsed)
+    codes = [f.code for f in result.findings]
+    assert "hedging-language-dense" in codes
+
+
+def test_hedging_low_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hedging_language
+
+    abstract = (
+        "This study introduces a novel method for classification. "
+        "We demonstrate state-of-the-art results on three benchmarks. "
+        "The approach reduces inference time by 30%. "
+        "Our method outperforms existing baselines. "
+        "This work provides a framework for future research. "
+        "Perhaps this extends to other domains. "
+        "Results confirm the hypothesis."
+    )
+    parsed = _hedge_manuscript(abstract=abstract)
+    result = validate_hedging_language(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 74 – Duplicate section content
+# ---------------------------------------------------------------------------
+
+
+def _dup_manuscript(sections: list[tuple[str, str]]) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    full = " ".join(b for _, b in sections)
+    return ParsedManuscript(
+        manuscript_id="dup-test",
+        source_path="dup.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full,
+    )
+
+
+def test_duplicate_sections_fires() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_section_content
+
+    shared = (
+        "The model was trained on ImageNet data using SGD optimizer. "
+        "We applied data augmentation including random cropping and flipping. "
+        "Early stopping was used to prevent overfitting. "
+        "The learning rate was set to 0.001 with cosine annealing schedule. "
+    )
+    parsed = _dup_manuscript([
+        ("Introduction",
+         "We present a deep learning approach. " + shared +
+         "This paper makes three contributions."),
+        ("Methods",
+         "Standard methodology was used. We split data 80/20. "
+         "All hyperparameters were tuned via cross-validation. "
+         "Statistical significance was assessed using t-tests."),
+        ("Discussion",
+         "The results confirm our hypothesis. " + shared +
+         "Future work will extend this to other domains."),
+    ])
+    result = validate_duplicate_section_content(parsed)
+    codes = [f.code for f in result.findings]
+    assert "duplicate-section-content" in codes
+
+
+def test_no_duplication_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_section_content
+
+    parsed = _dup_manuscript([
+        ("Introduction",
+         "Neural networks have achieved remarkable results in vision. "
+         "We propose a novel architecture for sequence modeling. "
+         "This work addresses the problem of long-range dependencies. "
+         "Our contributions include a new attention mechanism."),
+        ("Methods",
+         "We train on 50000 samples using Adam optimizer. "
+         "The model uses 12 transformer layers with 768 hidden units. "
+         "Training takes 24 hours on 8 V100 GPUs."),
+        ("Discussion",
+         "Results show consistent improvements across all benchmarks. "
+         "Ablation studies reveal the importance of positional encoding. "
+         "The approach generalises to low-resource settings."),
+    ])
+    result = validate_duplicate_section_content(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 75 – Abstract length
+# ---------------------------------------------------------------------------
+
+
+def _abstract_manuscript(abstract: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="ablen-test",
+        source_path="ablen.md",
+        source_format="markdown",
+        title="Test",
+        abstract=abstract,
+        full_text=abstract,
+    )
+
+
+def test_abstract_too_short_fires() -> None:
+    from manuscript_audit.validators.core import validate_abstract_length
+
+    abstract = "This paper proposes a new algorithm for graph classification."
+    parsed = _abstract_manuscript(abstract)
+    result = validate_abstract_length(parsed)
+    codes = [f.code for f in result.findings]
+    assert "abstract-too-short" in codes
+
+
+def test_abstract_too_long_fires() -> None:
+    from manuscript_audit.validators.core import validate_abstract_length
+
+    # Generate 360-word abstract
+    sentence = "This study evaluates deep neural networks on large datasets. "
+    abstract = sentence * 40
+    parsed = _abstract_manuscript(abstract)
+    result = validate_abstract_length(parsed)
+    codes = [f.code for f in result.findings]
+    assert "overlong-abstract" in codes
+
+
+def test_abstract_normal_length_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_length
+
+    sentence = "This study presents a novel method for image segmentation. "
+    abstract = sentence * 22  # ~176 words — in range
+    parsed = _abstract_manuscript(abstract)
+    result = validate_abstract_length(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 76 – Methods depth
+# ---------------------------------------------------------------------------
+
+
+def _methods_depth_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="methods-test",
+        source_path="methods.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, clf
+
+
+def test_thin_methods_fires() -> None:
+    from manuscript_audit.validators.core import validate_methods_depth
+
+    parsed, clf = _methods_depth_manuscript(
+        "We collected data and ran a regression. Standard errors were reported."
+    )
+    result = validate_methods_depth(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "thin-methods" in codes
+
+
+def test_adequate_methods_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_methods_depth
+
+    body = "We collected survey data from 1200 participants across 5 sites. " * 15
+    parsed, clf = _methods_depth_manuscript(body)
+    result = validate_methods_depth(parsed, clf)
+    assert result.findings == []
+
+
+def test_methods_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_methods_depth
+
+    parsed, clf = _methods_depth_manuscript(
+        "We define the algorithm formally.", paper_type="math_stats_theory"
+    )
+    result = validate_methods_depth(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 77 – Passive voice ratio
+# ---------------------------------------------------------------------------
+
+
+def _passive_manuscript(methods_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="passive-test",
+        source_path="passive.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+
+
+def test_passive_dominant_fires() -> None:
+    from manuscript_audit.validators.core import validate_passive_voice_density
+
+    body = (
+        "The data was collected from hospitals. "
+        "Samples were processed overnight. "
+        "Results were recorded daily. "
+        "Statistical tests were performed. "
+        "Outliers were removed manually. "
+        "The model was trained on GPU. "
+        "Parameters were tuned extensively. "
+        "The experiment was repeated three times. "
+        "Findings were validated independently. "
+        "The protocol was approved by the board."
+    )
+    parsed = _passive_manuscript(body)
+    result = validate_passive_voice_density(parsed)
+    codes = [f.code for f in result.findings]
+    assert "high-passive-voice-density" in codes
+
+
+def test_mixed_voice_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_passive_voice_density
+
+    body = (
+        "We collected data from 200 participants. "
+        "Participants were randomly assigned to conditions. "
+        "We recorded responses using a digital device. "
+        "The intervention was administered over 4 weeks. "
+        "We analysed results using linear mixed models. "
+        "All models were fitted in R. "
+        "We report 95% confidence intervals. "
+        "Data are publicly available online."
+    )
+    parsed = _passive_manuscript(body)
+    result = validate_passive_voice_density(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 78 – List overuse
+# ---------------------------------------------------------------------------
+
+
+def _list_manuscript(section_body: str, section_title: str = "Discussion") -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="list-test",
+        source_path="list.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=section_title, level=1, body=section_body)],
+        full_text=section_body,
+    )
+
+
+def test_list_heavy_fires() -> None:
+    from manuscript_audit.validators.core import validate_list_overuse
+
+    body = (
+        "Our results show the following:\n"
+        "- The accuracy improved significantly\n"
+        "- The method is computationally efficient\n"
+        "- Generalisation to new domains was confirmed\n"
+        "- The approach is scalable\n"
+        "- Results are reproducible\n"
+        "- Performance exceeds baselines\n"
+        "Summary: this is a good result.\n"
+    )
+    parsed = _list_manuscript(body)
+    result = validate_list_overuse(parsed)
+    codes = [f.code for f in result.findings]
+    assert "list-heavy-section" in codes
+
+
+def test_list_sparse_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_list_overuse
+
+    body = (
+        "Our results demonstrate clear improvements across domains. "
+        "The proposed method achieves strong performance with low overhead. "
+        "Ablation studies confirm the contribution of each component:\n"
+        "- Attention module improves accuracy by 2%\n"
+        "- Data augmentation reduces overfitting\n"
+        "Overall the approach is well-supported by the evidence."
+    )
+    parsed = _list_manuscript(body)
+    result = validate_list_overuse(parsed)
+    assert result.findings == []
+
+
+def test_list_skips_methods_section() -> None:
+    from manuscript_audit.validators.core import validate_list_overuse
+
+    body = (
+        "- Step 1: collect data\n"
+        "- Step 2: preprocess\n"
+        "- Step 3: train model\n"
+        "- Step 4: evaluate\n"
+        "- Step 5: report results\n"
+        "- Step 6: validate\n"
+        "- Step 7: publish\n"
+    )
+    parsed = _list_manuscript(body, section_title="Methods")
+    result = validate_list_overuse(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 79 – Section balance
+# ---------------------------------------------------------------------------
+
+
+def _balance_manuscript(
+    sections: list[tuple[str, str]],
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    full = " ".join(b for _, b in sections)
+    ms = ParsedManuscript(
+        manuscript_id="balance-test",
+        source_path="balance.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full,
+    )
+    clf = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, clf
+
+
+def test_section_imbalance_fires() -> None:
+    from manuscript_audit.validators.core import validate_section_balance
+
+    big_body = "The results showed significant improvement. " * 50
+    parsed, clf = _balance_manuscript([
+        ("Introduction", "Brief intro. We propose a method."),
+        ("Methods", "We used linear regression."),
+        ("Results", big_body),
+        ("Discussion", "The findings are important."),
+    ])
+    result = validate_section_balance(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "section-length-imbalance" in codes
+
+
+def test_balanced_sections_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_section_balance
+
+    balanced_body = "The results showed improvement. " * 8
+    parsed, clf = _balance_manuscript([
+        ("Introduction", balanced_body),
+        ("Methods", balanced_body),
+        ("Results", balanced_body),
+        ("Discussion", balanced_body),
+    ])
+    result = validate_section_balance(parsed, clf)
+    assert result.findings == []
+
+
+def test_section_balance_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_section_balance
+
+    big_body = "We prove the theorem. " * 50
+    parsed, clf = _balance_manuscript(
+        [("Introduction", "Short intro."),
+         ("Proof", big_body),
+         ("Discussion", "Brief.")],
+        paper_type="math_stats_theory",
+    )
+    result = validate_section_balance(parsed, clf)
     assert result.findings == []
