@@ -391,14 +391,14 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 45 is closed. Next candidate phases:
-1. **Phase 47: Terminology drift** — flag same technical term spelled differently across sections
-2. **Phase 48: Introduction structure** — check motivation/gap/contribution arc in intro
-3. **Phase 49: Reproducibility checklist** — flag missing dataset/code/seed elements in empirical papers
-4. **Phase 50: Self-citation ratio** — proxy check for author bias in bibliography
-5. **Phase 51: Conclusion scope** — flag new quantitative claims introduced only in conclusion
+Phase 51 is closed. Next candidate phases:
+1. **Phase 53: Equation density** — math/theory papers with low equation density relative to section count
+2. **Phase 54: Abstract structure** — check method and result signals in abstract
+3. **Phase 55: URL format** — flag malformed URLs and missing access dates
+4. **Phase 56: Figure/table balance** — flag empirical papers with too few figures
+5. **Phase 57: Section ordering** — IMRaD order validation for empirical papers
 
-## Phase 22–45 validated state
+## Phase 22–51 validated state
 
 All phases validated end-to-end from the live repo on 2026-05-01.
 
@@ -500,7 +500,33 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - Requires ≥ 10 dated entries; theory papers exempt
 - `_CURRENT_YEAR` computed at module load via `datetime.date.today().year`
 
-Current test count: **128 passing** (after phase 45)
+**Phase 47** (`3e13012`) — Terminology drift detector
+- `validate_terminology_drift(parsed)` → `terminology-drift` (minor)
+- Scans for hyphenated compound terms; checks if spaced forms also appear
+- `_HYPHEN_TERM_RE`: requires ≥3-char components; spaced form checked via substring regex
+- Fires when both forms exist with combined ≥3 occurrences
+
+**Phase 48** (`3e13012`) — Introduction structure validator
+- `validate_introduction_structure(parsed)` → `missing-introduction-arc` (minor)
+- Checks motivation (`_INTRO_MOTIVATION_RE`), gap (`_INTRO_GAP_RE`), contribution (`_INTRO_CONTRIBUTION_RE`) signals
+- Fires when ≥2 arcs absent; requires ≥100 words in introduction
+
+**Phase 49** (`3e13012`) — Reproducibility checklist validator
+- `validate_reproducibility_checklist(parsed, classification)` → `missing-reproducibility-element` (minor)
+- Checks for dataset, code/repo, random seed, hyperparameter mentions
+- Only fires for `empirical_paper` / `software_workflow_paper`
+
+**Phase 50** (`3e13012`) — Self-citation ratio validator
+- `validate_self_citation_ratio(parsed)` → `high-self-citation-ratio` (minor)
+- Most-common author last name fraction across bibliography entries
+- Fires when >40% of entries share a last name; requires ≥8 entries with authors
+
+**Phase 51** (`3e13012`) — Conclusion scope validator
+- `validate_conclusion_scope(parsed)` → `conclusion-scope-creep` (moderate)
+- Finds quantitative metrics (METRIC_RE) in conclusion not in abstract/results
+- Fires when ≥2 novel metrics detected; uses `_CONCLUSION_SECTIONS` frozenset
+
+Current test count: **139 passing** (after phase 51)
 
 
 ## Bundle and handoff requirements
