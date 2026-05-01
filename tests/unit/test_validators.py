@@ -8011,3 +8011,276 @@ def test_few_control_mentions_no_fire() -> None:
     )
     result = validate_control_variable_justification(ms, _control_clf())
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 161 – Prospective vs. retrospective design consistency
+# ---------------------------------------------------------------------------
+
+
+def _prospective_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="prospective-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _prospective_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_retrospective_design_claim_fires() -> None:
+    from manuscript_audit.validators.core import validate_prospective_vs_retrospective
+
+    ms = _prospective_ms(
+        "We conducted a prospective study. Data were extracted from existing "
+        "administrative records that had been previously collected over 5 years."
+    )
+    result = validate_prospective_vs_retrospective(ms, _prospective_clf())
+    codes = [f.code for f in result.findings]
+    assert "retrospective-design-claim" in codes
+
+
+def test_true_prospective_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prospective_vs_retrospective
+
+    ms = _prospective_ms(
+        "We conducted a prospective cohort study. Participants were enrolled and "
+        "followed forward in time from January to December 2023."
+    )
+    result = validate_prospective_vs_retrospective(ms, _prospective_clf())
+    assert result.findings == []
+
+
+def test_no_prospective_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prospective_vs_retrospective
+
+    ms = _prospective_ms(
+        "We conducted a retrospective analysis of administrative records "
+        "covering a 5-year period."
+    )
+    result = validate_prospective_vs_retrospective(ms, _prospective_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 162 – CONSORT elements for RCTs
+# ---------------------------------------------------------------------------
+
+
+def _consort_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="consort-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _consort_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_consort_elements_fires() -> None:
+    from manuscript_audit.validators.core import validate_clinical_trial_consort
+
+    ms = _consort_ms(
+        "We conducted a randomized controlled trial comparing drug A vs placebo. "
+        "Participants were allocated to treatment group or control group."
+    )
+    result = validate_clinical_trial_consort(ms, _consort_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-consort-elements" in codes
+
+
+def test_consort_complete_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_clinical_trial_consort
+
+    ms = _consort_ms(
+        "We conducted a randomized controlled trial. A computer-generated randomization "
+        "sequence with allocation concealment via sealed envelopes was used. "
+        "The CONSORT flow diagram shows screened for eligibility: 250; allocated to "
+        "receive treatment: 125; allocated to control: 125."
+    )
+    result = validate_clinical_trial_consort(ms, _consort_clf())
+    assert result.findings == []
+
+
+def test_no_rct_design_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_clinical_trial_consort
+
+    ms = _consort_ms(
+        "We recruited 300 participants for a cross-sectional survey study."
+    )
+    result = validate_clinical_trial_consort(ms, _consort_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 163 – Ecological validity
+# ---------------------------------------------------------------------------
+
+
+def _ecological_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="ecological-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Discussion", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _ecological_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_ecological_validity_fires() -> None:
+    from manuscript_audit.validators.core import validate_ecological_validity
+
+    ms = _ecological_ms(
+        "We conducted a laboratory experiment examining attention. "
+        "Results have real-world applicability and practical implications "
+        "for educational settings."
+    )
+    result = validate_ecological_validity(ms, _ecological_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-ecological-validity" in codes
+
+
+def test_ecological_validity_discussed_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ecological_validity
+
+    ms = _ecological_ms(
+        "We conducted a laboratory experiment. Results have real-world applicability. "
+        "However, a limitation of ecological validity should be noted: the artificial "
+        "laboratory setting may not reflect naturalistic conditions."
+    )
+    result = validate_ecological_validity(ms, _ecological_clf())
+    assert result.findings == []
+
+
+def test_no_lab_study_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ecological_validity
+
+    ms = _ecological_ms(
+        "We surveyed participants in their homes about their daily habits."
+    )
+    result = validate_ecological_validity(ms, _ecological_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 164 – Non-peer-reviewed citations
+# ---------------------------------------------------------------------------
+
+
+def _media_citation_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="media-citation-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Introduction", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def test_non_peer_reviewed_citation_fires() -> None:
+    from manuscript_audit.validators.core import validate_media_source_citations
+
+    ms = _media_citation_ms(
+        "According to Wikipedia (wikipedia.org/wiki/Depression), depression affects "
+        "many people. A recent article in the New York Times (nytimes.com) reported "
+        "similar statistics."
+    )
+    result = validate_media_source_citations(ms)
+    codes = [f.code for f in result.findings]
+    assert "non-peer-reviewed-citation" in codes
+
+
+def test_peer_reviewed_citations_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_media_source_citations
+
+    ms = _media_citation_ms(
+        "Depression is a common mental health condition (Smith et al., 2020; "
+        "Jones & Brown, 2019). See doi:10.1001/jamapsych.2020.1234 for details."
+    )
+    result = validate_media_source_citations(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 165 – Competing model comparison
+# ---------------------------------------------------------------------------
+
+
+def _model_proposal_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="model-proposal-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Results", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _model_proposal_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_model_comparison_fires() -> None:
+    from manuscript_audit.validators.core import validate_competing_model_comparison
+
+    ms = _model_proposal_ms(
+        "We propose a novel method for predicting outcomes. Our model achieves "
+        "high accuracy on the test set. The proposed approach is computationally efficient."
+    )
+    result = validate_competing_model_comparison(ms, _model_proposal_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-model-comparison" in codes
+
+
+def test_model_comparison_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_competing_model_comparison
+
+    ms = _model_proposal_ms(
+        "We propose a novel method for predicting outcomes. Our model outperformed "
+        "baseline methods and compared favorably to existing approaches."
+    )
+    result = validate_competing_model_comparison(ms, _model_proposal_clf())
+    assert result.findings == []
+
+
+def test_no_model_proposal_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_competing_model_comparison
+
+    ms = _model_proposal_ms(
+        "We analyzed survey data using descriptive statistics and correlation analysis."
+    )
+    result = validate_competing_model_comparison(ms, _model_proposal_clf())
+    assert result.findings == []

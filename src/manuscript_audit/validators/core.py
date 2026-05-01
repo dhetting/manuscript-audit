@@ -6669,6 +6669,11 @@ def run_deterministic_validators(
         validate_sample_representativeness(parsed, classification),
         validate_variable_operationalization(parsed, classification),
         validate_control_variable_justification(parsed, classification),
+        validate_prospective_vs_retrospective(parsed, classification),
+        validate_clinical_trial_consort(parsed, classification),
+        validate_ecological_validity(parsed, classification),
+        validate_media_source_citations(parsed),
+        validate_competing_model_comparison(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -8947,6 +8952,360 @@ def validate_control_variable_justification(
                 validator="control_variable_justification",
                 location="Methods",
                 evidence=list(dict.fromkeys(control_matches[:3])),
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 161 – Prospective vs. retrospective design consistency
+# ---------------------------------------------------------------------------
+
+_PROSPECTIVE_CLAIM_RE = re.compile(
+    r"\b(?:prospective\s+(?:study|design|cohort|trial|analysis)|"
+    r"we\s+(?:prospectively|will\s+(?:recruit|enroll|collect))|"
+    r"ongoing\s+(?:study|cohort))\b",
+    re.IGNORECASE,
+)
+_RETROSPECTIVE_SIGNAL_RE = re.compile(
+    r"\b(?:retrospective(?:ly)?|medical\s+records?|chart\s+review|"
+    r"existing\s+database|existing\s+data|administrative\s+records?|"
+    r"previously\s+collected|data\s+(?:were\s+)?extracted\s+from|"
+    r"data\s+(?:were\s+)?retrieved\s+from)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_prospective_vs_retrospective(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag papers claiming prospective design with retrospective data language.
+
+    Emits ``retrospective-design-claim`` (minor) when the manuscript claims a
+    prospective design but uses language indicating retrospective data extraction.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="prospective_vs_retrospective", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="prospective_vs_retrospective", findings=[]
+        )
+
+    if not _PROSPECTIVE_CLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="prospective_vs_retrospective", findings=[]
+        )
+
+    if not _RETROSPECTIVE_SIGNAL_RE.search(full):
+        return ValidationResult(
+            validator_name="prospective_vs_retrospective", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="prospective_vs_retrospective",
+        findings=[
+            Finding(
+                code="retrospective-design-claim",
+                severity="minor",
+                message=(
+                    "Manuscript claims a prospective design but also uses language "
+                    "indicating retrospective data extraction (chart review, existing "
+                    "database, previously collected data). "
+                    "Clarify whether the design was truly prospective."
+                ),
+                validator="prospective_vs_retrospective",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 162 – CONSORT elements for RCTs
+# ---------------------------------------------------------------------------
+
+_CONSORT_ALLOCATION_RE = re.compile(
+    r"\b(?:random(?:iz|is)ation\s+(?:sequence|procedure)|"
+    r"allocation\s+(?:sequence|concealment|ratio)|"
+    r"concealment\s+of\s+(?:allocation|treatment)|"
+    r"sealed\s+(?:envelope|opaque)|"
+    r"computer.?generated\s+(?:random|sequence)|"
+    r"block\s+random(?:iz|is)ation)\b",
+    re.IGNORECASE,
+)
+_CONSORT_FLOW_RE = re.compile(
+    r"\b(?:CONSORT|flow\s+diagram|participant\s+flow|"
+    r"screened\s+for\s+eligibility|excluded\s+(?:at\s+)?(?:screening|baseline)|"
+    r"allocated\s+to\s+(?:receive|treatment|control|intervention))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_clinical_trial_consort(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RCT manuscripts missing CONSORT-required allocation/flow elements.
+
+    Emits ``missing-consort-elements`` (moderate) when a randomized controlled
+    trial is detected but allocation concealment and participant flow information
+    are not present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="clinical_trial_consort", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="clinical_trial_consort", findings=[]
+        )
+
+    if not _INTERVENTION_RE.search(full):
+        return ValidationResult(
+            validator_name="clinical_trial_consort", findings=[]
+        )
+
+    has_allocation = bool(_CONSORT_ALLOCATION_RE.search(full))
+    has_flow = bool(_CONSORT_FLOW_RE.search(full))
+    if has_allocation and has_flow:
+        return ValidationResult(
+            validator_name="clinical_trial_consort", findings=[]
+        )
+
+    missing = []
+    if not has_allocation:
+        missing.append("allocation concealment")
+    if not has_flow:
+        missing.append("participant flow / CONSORT diagram")
+
+    return ValidationResult(
+        validator_name="clinical_trial_consort",
+        findings=[
+            Finding(
+                code="missing-consort-elements",
+                severity="moderate",
+                message=(
+                    f"Randomized controlled trial detected but CONSORT-required "
+                    f"elements are missing: {', '.join(missing)}. "
+                    "Report randomization sequence, allocation concealment, and "
+                    "participant flow per CONSORT guidelines."
+                ),
+                validator="clinical_trial_consort",
+                location="Methods",
+                evidence=missing,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 163 – Ecological validity discussion
+# ---------------------------------------------------------------------------
+
+_LAB_STUDY_RE = re.compile(
+    r"\b(?:laboratory\s+(?:study|experiment|setting|task)|"
+    r"experimental\s+(?:lab|laboratory)|"
+    r"controlled\s+(?:lab|laboratory)\s+(?:setting|environment|condition)|"
+    r"lab(?:oratory)?.?based\s+(?:study|experiment))\b",
+    re.IGNORECASE,
+)
+_REAL_WORLD_CLAIM_RE = re.compile(
+    r"\b(?:real.?world\s+(?:applicability|relevance|implications?|settings?)|"
+    r"practical\s+implications?|translates?\s+to\s+(?:practice|the\s+real\s+world)|"
+    r"(?:generaliz|applicable)\s+to\s+(?:real|naturalistic|everyday|field))\b",
+    re.IGNORECASE,
+)
+_ECOLOGICAL_VALIDITY_RE = re.compile(
+    r"\b(?:ecological\s+validity|external\s+validity|naturalistic\s+(?:setting|context)|"
+    r"lab(?:oratory)?\s+(?:setting\s+may\s+not|limitation)|"
+    r"artificial\s+(?:setting|condition)|mundane\s+realism)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ecological_validity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag lab studies claiming real-world applicability without ecological validity caveat.
+
+    Emits ``missing-ecological-validity`` (minor) when a lab study claims
+    real-world relevance but does not discuss ecological validity limitations.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="ecological_validity", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="ecological_validity", findings=[]
+        )
+
+    if not _LAB_STUDY_RE.search(full):
+        return ValidationResult(
+            validator_name="ecological_validity", findings=[]
+        )
+
+    if not _REAL_WORLD_CLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="ecological_validity", findings=[]
+        )
+
+    if _ECOLOGICAL_VALIDITY_RE.search(full):
+        return ValidationResult(
+            validator_name="ecological_validity", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="ecological_validity",
+        findings=[
+            Finding(
+                code="missing-ecological-validity",
+                severity="minor",
+                message=(
+                    "Laboratory study with real-world applicability claims detected "
+                    "but no ecological validity limitation is discussed. "
+                    "Address whether lab findings generalize to naturalistic settings."
+                ),
+                validator="ecological_validity",
+                location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 164 – Non-peer-reviewed / grey literature citations
+# ---------------------------------------------------------------------------
+
+_GREY_CITATION_RE = re.compile(
+    r"\b(?:wikipedia\.org|wikipeida|"
+    r"(?:www\.|https?://)?(?:bbc\.com|cnn\.com|nytimes\.com|"
+    r"theguardian\.com|huffpost\.com|buzzfeed\.com|"
+    r"medium\.com|substack\.com|blogspot\.com|wordpress\.com)|"
+    r"press\s+release|newspaper\s+article|blog\s+post|"
+    r"personal\s+communication|(?:retrieved\s+from\s+)?(?:twitter|facebook|"
+    r"instagram|reddit|tiktok)\.com)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_media_source_citations(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts citing non-peer-reviewed or grey literature sources.
+
+    Emits ``non-peer-reviewed-citation`` (minor) when Wikipedia, news outlets,
+    blogs, or social media are cited.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="media_source_citations", findings=[]
+        )
+
+    matches = _GREY_CITATION_RE.findall(full)
+    if not matches:
+        return ValidationResult(
+            validator_name="media_source_citations", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="media_source_citations",
+        findings=[
+            Finding(
+                code="non-peer-reviewed-citation",
+                severity="minor",
+                message=(
+                    f"Manuscript contains {len(matches)} reference(s) to non-peer-reviewed "
+                    "or grey literature sources (Wikipedia, news outlets, blogs, social media). "
+                    "Replace with peer-reviewed primary sources."
+                ),
+                validator="media_source_citations",
+                location="manuscript",
+                evidence=list(dict.fromkeys(matches[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 165 – Competing model comparison
+# ---------------------------------------------------------------------------
+
+_MODEL_PROPOSAL_RE = re.compile(
+    r"\b(?:we\s+propose(?:d)?\s+(?:a\s+)?(?:model|framework|approach)|"
+    r"proposed\s+(?:model|framework|method|approach)|"
+    r"our\s+(?:model|framework|approach|method)|"
+    r"novel\s+(?:model|framework|method|approach)|"
+    r"new\s+(?:model|framework|method|algorithm))\b",
+    re.IGNORECASE,
+)
+_MODEL_COMPARISON_RE = re.compile(
+    r"\b(?:compar(?:ed|ing)\s+(?:against|to|with)\s+(?:baseline|existing|"
+    r"alternative|competing|prior)|"
+    r"baseline\s+(?:model|method|approach|comparison)|"
+    r"outperform(?:s|ed)?|benchmark(?:ed|ing)?|"
+    r"compared\s+to\s+(?:\d+|several|multiple|three|two|four|five)\s+"
+    r"(?:baseline|alternative|existing))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_competing_model_comparison(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts proposing a model without comparing against alternatives.
+
+    Emits ``missing-model-comparison`` (moderate) when a novel model, framework,
+    or method is proposed but no comparison against existing baselines is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="competing_model_comparison", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="competing_model_comparison", findings=[]
+        )
+
+    if not _MODEL_PROPOSAL_RE.search(full):
+        return ValidationResult(
+            validator_name="competing_model_comparison", findings=[]
+        )
+
+    if _MODEL_COMPARISON_RE.search(full):
+        return ValidationResult(
+            validator_name="competing_model_comparison", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="competing_model_comparison",
+        findings=[
+            Finding(
+                code="missing-model-comparison",
+                severity="moderate",
+                message=(
+                    "Novel model, method, or framework proposed but no comparison "
+                    "against existing or alternative baseline approaches is reported. "
+                    "Compare the proposed approach to at least one relevant baseline."
+                ),
+                validator="competing_model_comparison",
+                location="Results/Discussion",
+                evidence=[],
             )
         ],
     )
