@@ -569,3 +569,65 @@ def test_substantial_section_not_flagged() -> None:
     )
     result = validate_section_body_completeness(parsed)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 22: fatal escalation tier (critical-structural-claim-failure)
+# ---------------------------------------------------------------------------
+
+
+def _make_suite_with_codes(*codes: str):
+    """Build a minimal ValidationSuiteResult containing one finding per code."""
+    from manuscript_audit.schemas.findings import Finding, ValidationResult, ValidationSuiteResult
+
+    results = [
+        ValidationResult(
+            validator_name=f"synthetic_{code}",
+            findings=[
+                Finding(
+                    code=code,
+                    severity="major",
+                    message=f"Synthetic finding for {code}",
+                    validator=f"synthetic_{code}",
+                )
+            ],
+        )
+        for code in codes
+    ]
+    return ValidationSuiteResult(validator_version="test", results=results)
+
+
+def test_fatal_escalation_fires_when_both_conditions_met() -> None:
+    from manuscript_audit.validators.core import validate_critical_escalation
+
+    suite = _make_suite_with_codes(
+        "systemic-claim-evidence-gap", "missing-required-section"
+    )
+    result = validate_critical_escalation(suite)
+    codes = [f.code for f in result.findings]
+    assert "critical-structural-claim-failure" in codes
+    assert result.findings[0].severity == "fatal"
+
+
+def test_fatal_escalation_no_fire_without_claim_gap() -> None:
+    from manuscript_audit.validators.core import validate_critical_escalation
+
+    suite = _make_suite_with_codes("missing-required-section")
+    result = validate_critical_escalation(suite)
+    assert result.findings == []
+
+
+def test_fatal_escalation_no_fire_without_missing_section() -> None:
+    from manuscript_audit.validators.core import validate_critical_escalation
+
+    suite = _make_suite_with_codes("systemic-claim-evidence-gap")
+    result = validate_critical_escalation(suite)
+    assert result.findings == []
+
+
+def test_fatal_escalation_no_fire_with_neither() -> None:
+    from manuscript_audit.validators.core import validate_critical_escalation
+
+    suite = _make_suite_with_codes("minor-citation-issue")
+    result = validate_critical_escalation(suite)
+    assert result.findings == []

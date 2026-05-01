@@ -60,6 +60,11 @@ _CLAIM_GROUNDING_CODES = frozenset(
 )
 CLAIM_EVIDENCE_GAP_THRESHOLD = 3  # findings needed to trigger major escalation
 
+# Codes that represent structurally critical co-occurrences for fatal escalation.
+_FATAL_TRIGGER_CODES = frozenset(
+    {"systemic-claim-evidence-gap", "missing-required-section"}
+)
+
 # Notation ordering: shared regexes used by both validators and agents.
 NOTATION_SECTION_RE = re.compile(
     r"\b(notation|preliminaries|definitions?|background|setup)\b",
@@ -1010,6 +1015,45 @@ def validate_claim_evidence_escalation(suite: ValidationSuiteResult) -> Validati
     )
 
 
+def validate_critical_escalation(suite: ValidationSuiteResult) -> ValidationResult:
+    """Escalate to fatal when systemic claim gap and missing required sections co-occur.
+
+    A manuscript that both lacks required structural sections AND exhibits
+    systemic claim-evidence gaps represents a critical structural failure that
+    cannot be remediated with minor revisions.  Emits a single fatal finding
+    to surface this combination prominently in revision priorities.
+    """
+    present_codes = {f.code for f in suite.all_findings}
+    findings: list[Finding] = []
+    if _FATAL_TRIGGER_CODES.issubset(present_codes):
+        missing_sections = [
+            f for f in suite.all_findings if f.code == "missing-required-section"
+        ]
+        section_names = [
+            (f.location or "unknown") for f in missing_sections
+        ]
+        findings.append(
+            Finding(
+                code="critical-structural-claim-failure",
+                severity="fatal",
+                message=(
+                    "Systemic claim-evidence gap combined with missing required "
+                    f"section(s) ({', '.join(section_names)}) — the manuscript has "
+                    "fundamental structural and evidentiary deficiencies that require "
+                    "substantial revision before peer review."
+                ),
+                validator="critical_escalation",
+                evidence=[
+                    f"Missing section(s): {', '.join(section_names)}",
+                    "Systemic claim-evidence gap already detected (major)",
+                ],
+            )
+        )
+    return ValidationResult(
+        validator_name="critical_escalation", findings=findings
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1044,4 +1088,6 @@ def run_deterministic_validators(
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
+    partial2 = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
+    results.append(validate_critical_escalation(partial2))
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
