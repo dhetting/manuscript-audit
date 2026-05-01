@@ -10194,3 +10194,330 @@ def test_software_non_empirical_no_fire() -> None:
     )
     result = validate_software_version_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 196 – validate_ethics_approval_statement
+# ---------------------------------------------------------------------------
+
+
+def _ethics_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="eth-1",
+        source_path="eth.md",
+        source_format="markdown",
+        title="Ethics Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_human_subjects_no_ethics_fires() -> None:
+    from manuscript_audit.validators.core import validate_ethics_approval_statement
+
+    ms, cl = _ethics_ms(
+        "A total of 200 participants completed the study. "
+        "Subjects were recruited from the community."
+    )
+    result = validate_ethics_approval_statement(ms, cl)
+    assert any(f.code == "missing-ethics-approval" for f in result.findings)
+
+
+def test_human_subjects_with_irb_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ethics_approval_statement
+
+    ms, cl = _ethics_ms(
+        "A total of 200 participants completed the study. "
+        "The IRB of the University approved this protocol. "
+        "All participants provided informed consent."
+    )
+    result = validate_ethics_approval_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_human_subjects_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ethics_approval_statement
+
+    ms, cl = _ethics_ms(
+        "Data were extracted from publicly available administrative records."
+    )
+    result = validate_ethics_approval_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_ethics_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ethics_approval_statement
+
+    ms, cl = _ethics_ms(
+        "The theoretical participants in this model require no consent.",
+        "math_theory_paper",
+    )
+    result = validate_ethics_approval_statement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 197 – validate_prisma_reporting
+# ---------------------------------------------------------------------------
+
+
+def _sys_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="sys-1",
+        source_path="sys.md",
+        source_format="markdown",
+        title="Systematic Review",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_systematic_review_no_prisma_fires() -> None:
+    from manuscript_audit.validators.core import validate_prisma_reporting
+
+    ms, cl = _sys_ms(
+        "A systematic review was conducted. PubMed was searched for relevant studies. "
+        "A total of 28 studies were identified and eligible studies were included."
+    )
+    result = validate_prisma_reporting(ms, cl)
+    assert any(f.code == "missing-prisma-elements" for f in result.findings)
+
+
+def test_systematic_review_with_prisma_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prisma_reporting
+
+    ms, cl = _sys_ms(
+        "A systematic review was conducted following PRISMA guidelines. "
+        "PubMed was searched. A flow diagram depicting the screening process "
+        "is included. Inclusion and exclusion criteria were applied."
+    )
+    result = validate_prisma_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_non_systematic_review_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prisma_reporting
+
+    ms, cl = _sys_ms(
+        "This cross-sectional study used survey data from 300 adults."
+    )
+    result = validate_prisma_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_prisma_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prisma_reporting
+
+    ms, cl = _sys_ms(
+        "A systematic review of the theoretical literature was conducted.",
+        "math_theory_paper",
+    )
+    result = validate_prisma_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 198 – validate_mediation_analysis_transparency
+# ---------------------------------------------------------------------------
+
+
+def _med_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="med-1",
+        source_path="med.md",
+        source_format="markdown",
+        title="Mediation Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_mediation_no_bootstrap_fires() -> None:
+    from manuscript_audit.validators.core import validate_mediation_analysis_transparency
+
+    ms, cl = _med_ms(
+        "Mediation analysis revealed that anxiety mediated the relationship between "
+        "stress and depression. The indirect effect was significant."
+    )
+    result = validate_mediation_analysis_transparency(ms, cl)
+    assert any(f.code == "missing-mediation-bootstrap" for f in result.findings)
+
+
+def test_mediation_with_bootstrap_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediation_analysis_transparency
+
+    ms, cl = _med_ms(
+        "Mediation analysis using Hayes PROCESS macro with bootstrapping (5000 samples) "
+        "revealed a significant indirect effect (95% CI [0.12, 0.48])."
+    )
+    result = validate_mediation_analysis_transparency(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mediation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediation_analysis_transparency
+
+    ms, cl = _med_ms(
+        "Main effects of stress and social support were both significant."
+    )
+    result = validate_mediation_analysis_transparency(ms, cl)
+    assert result.findings == []
+
+
+def test_mediation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediation_analysis_transparency
+
+    ms, cl = _med_ms(
+        "Mediation effects are analyzed theoretically in this paper.",
+        "math_theory_paper",
+    )
+    result = validate_mediation_analysis_transparency(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 199 – validate_latent_variable_model_fit
+# ---------------------------------------------------------------------------
+
+
+def _cfa_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="cfa-1",
+        source_path="cfa.md",
+        source_format="markdown",
+        title="CFA Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_cfa_no_fit_indices_fires() -> None:
+    from manuscript_audit.validators.core import validate_latent_variable_model_fit
+
+    ms, cl = _cfa_ms(
+        "Confirmatory factor analysis (CFA) was conducted to examine the factor "
+        "structure. The measurement model was tested using SEM."
+    )
+    result = validate_latent_variable_model_fit(ms, cl)
+    assert any(f.code == "missing-model-fit-indices" for f in result.findings)
+
+
+def test_cfa_with_fit_indices_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_latent_variable_model_fit
+
+    ms, cl = _cfa_ms(
+        "Confirmatory factor analysis showed good model fit (CFI = 0.96, "
+        "RMSEA = 0.048, SRMR = 0.05). The measurement model was tested using SEM."
+    )
+    result = validate_latent_variable_model_fit(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cfa_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_latent_variable_model_fit
+
+    ms, cl = _cfa_ms(
+        "Multiple regression analysis was used to predict the outcome."
+    )
+    result = validate_latent_variable_model_fit(ms, cl)
+    assert result.findings == []
+
+
+def test_cfa_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_latent_variable_model_fit
+
+    ms, cl = _cfa_ms(
+        "CFA model fit indices are analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_latent_variable_model_fit(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 200 – validate_pilot_study_disclosure
+# ---------------------------------------------------------------------------
+
+
+def _pilot_disc_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="pd-1",
+        source_path="pd.md",
+        source_format="markdown",
+        title="Pilot Disclosure Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_pilot_based_size_no_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_disclosure
+
+    ms, cl = _pilot_disc_ms(
+        "Sample size was based on a pilot study that estimated the effect size. "
+        "The effect size from pilot results informed the power calculation."
+    )
+    result = validate_pilot_study_disclosure(ms, cl)
+    assert any(f.code == "undisclosed-pilot-study" for f in result.findings)
+
+
+def test_pilot_based_size_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_disclosure
+
+    ms, cl = _pilot_disc_ms(
+        "Sample size was based on a pilot study (pilot study was published; "
+        "see Appendix A for pilot data). The effect size from pilot results "
+        "informed the a priori power analysis."
+    )
+    result = validate_pilot_study_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pilot_size_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_disclosure
+
+    ms, cl = _pilot_disc_ms(
+        "Sample size was determined using G*Power with 80% power and alpha=.05."
+    )
+    result = validate_pilot_study_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_pilot_disclosure_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_disclosure
+
+    ms, cl = _pilot_disc_ms(
+        "Sample size was based on a pilot study for this simulation.",
+        "math_theory_paper",
+    )
+    result = validate_pilot_study_disclosure(ms, cl)
+    assert result.findings == []

@@ -6704,6 +6704,11 @@ def run_deterministic_validators(
         validate_randomization_procedure(parsed, classification),
         validate_generalizability_caveat(parsed, classification),
         validate_software_version_reporting(parsed, classification),
+        validate_ethics_approval_statement(parsed, classification),
+        validate_prisma_reporting(parsed, classification),
+        validate_mediation_analysis_transparency(parsed, classification),
+        validate_latent_variable_model_fit(parsed, classification),
+        validate_pilot_study_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -11443,6 +11448,355 @@ def validate_software_version_reporting(
                     "for reproducibility."
                 ),
                 validator="software_version_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 196 – IRB / ethics approval statement
+# ---------------------------------------------------------------------------
+
+_HUMAN_SUBJECTS_RE = re.compile(
+    r"\b(?:participants?|subjects?|respondents?|human\s+(?:subjects?|participants?))\b",
+    re.IGNORECASE,
+)
+_ETHICS_APPROVAL_RE = re.compile(
+    r"\b(?:IRB|institutional\s+review\s+board|ethics\s+(?:committee|board|approval)|"
+    r"ethical\s+approval|Helsinki|informed\s+consent|"
+    r"approved?\s+by\s+(?:the\s+)?(?:IRB|university|institution)|"
+    r"exempt\s+(?:from|under)\s+(?:IRB|review)|"
+    r"HIPAA|protocol\s+approval|data\s+use\s+agreement)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ethics_approval_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies involving human subjects without ethics approval.
+
+    Emits ``missing-ethics-approval`` (major) when human participants are
+    mentioned but no IRB, ethics approval, or informed consent statement appears.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="ethics_approval_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="ethics_approval_statement", findings=[]
+        )
+
+    if not _HUMAN_SUBJECTS_RE.search(full):
+        return ValidationResult(
+            validator_name="ethics_approval_statement", findings=[]
+        )
+
+    if _ETHICS_APPROVAL_RE.search(full):
+        return ValidationResult(
+            validator_name="ethics_approval_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="ethics_approval_statement",
+        findings=[
+            Finding(
+                code="missing-ethics-approval",
+                severity="major",
+                message=(
+                    "Human participants are mentioned but no IRB approval, ethics "
+                    "committee review, or informed consent statement is present. "
+                    "Add an ethics approval statement or informed consent disclosure."
+                ),
+                validator="ethics_approval_statement",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 197 – Incomplete PRISMA reporting (systematic review)
+# ---------------------------------------------------------------------------
+
+_SYSTEMATIC_REVIEW_RE = re.compile(
+    r"\b(?:systematic\s+review|literature\s+(?:search|review)\s+"
+    r"(?:was\s+)?conducted\s+(?:in|using|via)|"
+    r"(?:PubMed|Medline|PsycINFO|EMBASE|Cochrane|Web\s+of\s+Science)\s+"
+    r"(?:was|were)\s+searched?|"
+    r"search\s+strategy\s+(?:was|included)|"
+    r"eligible\s+studies?\s+were\s+(?:identified?|included?))\b",
+    re.IGNORECASE,
+)
+_PRISMA_ELEMENTS_RE = re.compile(
+    r"\b(?:PRISMA|preferred\s+reporting\s+items|"
+    r"flow\s+diagram|screening\s+(?:process|criteria)|"
+    r"inclusion\s+(?:and\s+)?exclusion\s+criteria|"
+    r"inter.?rater\s+(?:reliability|agreement)\s+(?:for\s+)?(?:screening|coding)|"
+    r"QUORUM|MOOSE)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_prisma_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag systematic reviews that omit PRISMA or screening transparency.
+
+    Emits ``missing-prisma-elements`` (moderate) when a systematic review is
+    detected but key PRISMA elements (flow diagram, screening criteria,
+    inter-rater reliability) are absent.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="prisma_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="prisma_reporting", findings=[]
+        )
+
+    if not _SYSTEMATIC_REVIEW_RE.search(full):
+        return ValidationResult(
+            validator_name="prisma_reporting", findings=[]
+        )
+
+    if _PRISMA_ELEMENTS_RE.search(full):
+        return ValidationResult(
+            validator_name="prisma_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="prisma_reporting",
+        findings=[
+            Finding(
+                code="missing-prisma-elements",
+                severity="moderate",
+                message=(
+                    "Systematic review or database search detected but key PRISMA "
+                    "elements (flow diagram, screening criteria, inter-rater reliability) "
+                    "are absent. Follow PRISMA guidelines for systematic reviews."
+                ),
+                validator="prisma_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 198 – Mediation analysis transparency
+# ---------------------------------------------------------------------------
+
+_MEDIATION_RE = re.compile(
+    r"\b(?:mediat(?:ed?|ing|ion|or)\s+(?:effect|relationship|analysis|model)|"
+    r"indirect\s+effect|mediating\s+variable|"
+    r"Baron\s+and\s+Kenny|causal\s+chain|"
+    r"through\s+(?:the\s+)?(?:mediator|indirect\s+path))\b",
+    re.IGNORECASE,
+)
+_MEDIATION_METHOD_RE = re.compile(
+    r"\b(?:bootstrapping|bootstrap|PROCESS\s+macro|"
+    r"Hayes\s+(?:PROCESS|mediation)|Sobel\s+test|"
+    r"confidence\s+interval\s+for\s+(?:the\s+)?indirect|"
+    r"indirect\s+effect\s+(?:CI|95\s*%))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mediation_analysis_transparency(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag mediation analyses that omit appropriate inferential methods.
+
+    Emits ``missing-mediation-bootstrap`` (moderate) when mediation is
+    claimed but no bootstrapping, Sobel test, or CI for indirect effect
+    is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="mediation_analysis_transparency", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="mediation_analysis_transparency", findings=[]
+        )
+
+    if not _MEDIATION_RE.search(full):
+        return ValidationResult(
+            validator_name="mediation_analysis_transparency", findings=[]
+        )
+
+    if _MEDIATION_METHOD_RE.search(full):
+        return ValidationResult(
+            validator_name="mediation_analysis_transparency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="mediation_analysis_transparency",
+        findings=[
+            Finding(
+                code="missing-mediation-bootstrap",
+                severity="moderate",
+                message=(
+                    "Mediation analysis detected but no bootstrapping (PROCESS macro, "
+                    "Hayes) or CI for indirect effect is reported. "
+                    "Use bootstrapped confidence intervals for mediation testing."
+                ),
+                validator="mediation_analysis_transparency",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 199 – Construct validity evidence (latent variable models)
+# ---------------------------------------------------------------------------
+
+_LATENT_VARIABLE_RE = re.compile(
+    r"\b(?:confirmatory\s+factor\s+analysis|CFA\b|structural\s+equation\s+model|"
+    r"SEM\b|latent\s+(?:variable|factor|construct|class)|"
+    r"factor\s+structure|measurement\s+model|"
+    r"exploratory\s+factor\s+analysis|EFA\b)\b",
+    re.IGNORECASE,
+)
+_MODEL_FIT_RE = re.compile(
+    r"\b(?:CFI\s*(?:=|>|<|\s*\d)|RMSEA\s*(?:=|<|\s*\d)|TLI\s*(?:=|>|<|\s*\d)|"
+    r"SRMR\s*(?:=|<|\s*\d)|chi.?square\s+(?:fit|goodness)|"
+    r"model\s+fit\s+(?:was|indices?)|"
+    r"(?:good|adequate|acceptable|poor)\s+model\s+fit|"
+    r"factor\s+loadings?|"
+    r"standardized\s+(?:loading|path\s+coefficient))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_latent_variable_model_fit(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag CFA/SEM analyses that omit model fit indices.
+
+    Emits ``missing-model-fit-indices`` (moderate) when CFA or SEM is used
+    but no model fit indices (CFI, RMSEA, TLI, SRMR) are reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="latent_variable_model_fit", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="latent_variable_model_fit", findings=[]
+        )
+
+    if not _LATENT_VARIABLE_RE.search(full):
+        return ValidationResult(
+            validator_name="latent_variable_model_fit", findings=[]
+        )
+
+    if _MODEL_FIT_RE.search(full):
+        return ValidationResult(
+            validator_name="latent_variable_model_fit", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="latent_variable_model_fit",
+        findings=[
+            Finding(
+                code="missing-model-fit-indices",
+                severity="moderate",
+                message=(
+                    "CFA or SEM analysis detected but no model fit indices "
+                    "(CFI, RMSEA, TLI, SRMR) are reported. "
+                    "Report fit indices to evaluate measurement model quality."
+                ),
+                validator="latent_variable_model_fit",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 200 – Undisclosed pilot / feasibility study used for sample sizing
+# ---------------------------------------------------------------------------
+
+_PILOT_SIZE_RE = re.compile(
+    r"\b(?:based\s+on\s+(?:a\s+)?pilot|pilot\s+(?:study|data|results?|test)\s+"
+    r"(?:informed?|guided?|determined?|provided?)|"
+    r"effect\s+size\s+(?:from|based\s+on|estimated?\s+from)\s+"
+    r"(?:a\s+)?(?:pilot|previous|prior|preliminary))\b",
+    re.IGNORECASE,
+)
+_PILOT_DISCLOSURE_RE = re.compile(
+    r"\b(?:pilot\s+study\s+(?:was\s+)?(?:conducted?|published?|registered?|"
+    r"reported?|described?|documented?)|"
+    r"see\s+(?:supplemental|supplementary|Appendix|Table\s+S)|"
+    r"pilot\s+data\s+(?:are|were)\s+(?:available|reported?|provided?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_pilot_study_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag undisclosed pilot studies used to determine sample size.
+
+    Emits ``undisclosed-pilot-study`` (minor) when a pilot study is used to
+    inform sample size but the pilot data or reference is not disclosed.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="pilot_study_disclosure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="pilot_study_disclosure", findings=[]
+        )
+
+    if not _PILOT_SIZE_RE.search(full):
+        return ValidationResult(
+            validator_name="pilot_study_disclosure", findings=[]
+        )
+
+    if _PILOT_DISCLOSURE_RE.search(full):
+        return ValidationResult(
+            validator_name="pilot_study_disclosure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="pilot_study_disclosure",
+        findings=[
+            Finding(
+                code="undisclosed-pilot-study",
+                severity="minor",
+                message=(
+                    "A pilot study is cited as the basis for sample size but the "
+                    "pilot data, effect size, or reference is not disclosed. "
+                    "Describe the pilot study or cite the source of the effect size estimate."
+                ),
+                validator="pilot_study_disclosure",
                 location="Methods",
                 evidence=[],
             )
