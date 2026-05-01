@@ -5469,6 +5469,295 @@ def validate_regression_variance_explanation(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 108 – Normality assumption check
+# ---------------------------------------------------------------------------
+
+_PARAMETRIC_TEST_RE = re.compile(
+    r"\b(t-test|ANOVA|ANCOVA|MANOVA|Pearson correlation|"
+    r"linear regression|paired t|independent samples t|"
+    r"one-way ANOVA|two-way ANOVA|repeated measures ANOVA)\b",
+    re.IGNORECASE,
+)
+_NORMALITY_CHECK_RE = re.compile(
+    r"\b(Shapiro.Wilk|Kolmogorov.Smirnov|Anderson.Darling|"
+    r"normality test|normally distributed|normal distribution "
+    r"(was|were) (confirmed|assumed|verified|assessed)|"
+    r"QQ.plot|histogram|distribution (was|were) (checked|assessed|examined)|"
+    r"non-parametric|nonparametric|Wilcoxon|Mann.Whitney|Kruskal.Wallis)\b",
+    re.IGNORECASE,
+)
+_NORMALITY_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "survey_study",
+        "clinical_trial_report",
+    }
+)
+
+
+def validate_normality_assumption(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag parametric tests without normality checking.
+
+    Emits ``missing-normality-check`` (moderate) when Methods/Results sections
+    report parametric tests (t-test, ANOVA) without any normality assessment.
+    """
+    if classification.paper_type not in _NORMALITY_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="normality_assumption", findings=[]
+        )
+
+    combined = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"methods", "methodology", "results", "statistical analysis"}
+    )
+    if not combined:
+        return ValidationResult(validator_name="normality_assumption", findings=[])
+
+    if not _PARAMETRIC_TEST_RE.search(combined):
+        return ValidationResult(validator_name="normality_assumption", findings=[])
+
+    if _NORMALITY_CHECK_RE.search(combined):
+        return ValidationResult(validator_name="normality_assumption", findings=[])
+
+    return ValidationResult(
+        validator_name="normality_assumption",
+        findings=[
+            Finding(
+                code="missing-normality-check",
+                severity="moderate",
+                message=(
+                    "Parametric tests (t-test, ANOVA) used without reporting "
+                    "normality assumption checks. Include normality test results "
+                    "or justify the assumption."
+                ),
+                validator="normality_assumption",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 109 – Attrition / dropout reporting
+# ---------------------------------------------------------------------------
+
+_LONGITUDINAL_RE = re.compile(
+    r"\b(longitudinal|follow-up|follow up|repeated measures|"
+    r"time point|wave \d|panel (study|data)|"
+    r"cohort study|prospective (study|cohort)|"
+    r"baseline and (follow|post)|"
+    r"months? (later|after)|years? (later|after))\b",
+    re.IGNORECASE,
+)
+_ATTRITION_RE = re.compile(
+    r"\b(attrition|dropout|drop.out|lost to follow.up|"
+    r"missing data|incomplete (data|cases|responses)|"
+    r"participants? (who|that) (withdrew|dropped|did not complete|were lost)|"
+    r"retention rate|completion rate|"
+    r"CONSORT|STROBE|PRISMA)\b",
+    re.IGNORECASE,
+)
+_ATTRITION_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "clinical_trial_report",
+        "survey_study",
+    }
+)
+
+
+def validate_attrition_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag longitudinal studies without attrition or dropout reporting.
+
+    Emits ``missing-attrition-report`` (moderate) when Methods/Results indicate
+    a longitudinal design but no attrition/dropout information is provided.
+    """
+    if classification.paper_type not in _ATTRITION_PAPER_TYPES:
+        return ValidationResult(validator_name="attrition_reporting", findings=[])
+
+    combined = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {
+            "methods",
+            "methodology",
+            "participants",
+            "results",
+            "sample",
+        }
+    )
+    if not combined:
+        return ValidationResult(validator_name="attrition_reporting", findings=[])
+
+    if not _LONGITUDINAL_RE.search(combined):
+        return ValidationResult(validator_name="attrition_reporting", findings=[])
+
+    if _ATTRITION_RE.search(combined):
+        return ValidationResult(validator_name="attrition_reporting", findings=[])
+
+    return ValidationResult(
+        validator_name="attrition_reporting",
+        findings=[
+            Finding(
+                code="missing-attrition-report",
+                severity="moderate",
+                message=(
+                    "Longitudinal study design detected but no attrition or "
+                    "dropout reporting found. Document participant retention "
+                    "and missing data handling."
+                ),
+                validator="attrition_reporting",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 110 – Generalizability overclaim
+# ---------------------------------------------------------------------------
+
+_GENERALIZE_CLAIM_RE = re.compile(
+    r"\b(generali[sz](es?|ability|able) to (all|any|every|the general|broader|"
+    r"the wider|the whole)|universally applicable|applies? to all|"
+    r"valid for all populations|applicable in all contexts)\b",
+    re.IGNORECASE,
+)
+_GENERALIZE_HEDGE_RE = re.compile(
+    r"\b(may generali[sz]|might apply|could be extended|"
+    r"further (research|study|investigation) (is needed|needed|required)|"
+    r"limited (to|by) (our|this|the) (sample|context|population)|"
+    r"external validity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_generalizability_overclaim(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag overgeneralized claims without appropriate hedging.
+
+    Emits ``generalizability-overclaim`` (major) when the manuscript claims
+    universal generalizability without qualifying language about sample
+    limitations.
+    """
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not _GENERALIZE_CLAIM_RE.search(combined):
+        return ValidationResult(
+            validator_name="generalizability_overclaim", findings=[]
+        )
+    if _GENERALIZE_HEDGE_RE.search(combined):
+        return ValidationResult(
+            validator_name="generalizability_overclaim", findings=[]
+        )
+
+    match = _GENERALIZE_CLAIM_RE.search(combined)
+    return ValidationResult(
+        validator_name="generalizability_overclaim",
+        findings=[
+            Finding(
+                code="generalizability-overclaim",
+                severity="major",
+                message=(
+                    "Manuscript claims broad generalizability "
+                    f"('{match.group() if match else ''}') "
+                    "without appropriate qualification. "
+                    "Scope claims to actual sample characteristics."
+                ),
+                validator="generalizability_overclaim",
+                location="manuscript",
+                evidence=[match.group() if match else ""],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 111 – Missing interrater reliability
+# ---------------------------------------------------------------------------
+
+_CODING_RE = re.compile(
+    r"\b(coded?|coding|coders?|annotated?|annotation|raters?|rating|"
+    r"human (judges?|evaluators?)|manual (coding|annotation|rating|labeling)|"
+    r"inter-?rater|content analysis)\b",
+    re.IGNORECASE,
+)
+_IRR_RE = re.compile(
+    r"\b(inter-?rater (reliability|agreement)|Cohen'?s kappa|kappa\s*=|"
+    r"Fleiss'? kappa|ICC|intraclass correlation|"
+    r"percent agreement|Krippendorff'?s alpha|"
+    r"reliability coefficient|reliability (was|were) (assessed|checked|computed))\b",
+    re.IGNORECASE,
+)
+_IRR_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "survey_study",
+        "systematic_review",
+    }
+)
+
+
+def validate_interrater_reliability(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag coded/annotated data without interrater reliability reporting.
+
+    Emits ``missing-interrater-reliability`` (moderate) when Methods describe
+    human coding or rating without reporting interrater reliability statistics.
+    """
+    if classification.paper_type not in _IRR_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="interrater_reliability", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"methods", "methodology", "coding", "procedure"}
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="interrater_reliability", findings=[]
+        )
+
+    if not _CODING_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="interrater_reliability", findings=[]
+        )
+
+    if _IRR_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="interrater_reliability", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="interrater_reliability",
+        findings=[
+            Finding(
+                code="missing-interrater-reliability",
+                severity="moderate",
+                message=(
+                    "Human coding or rating described in Methods without reporting "
+                    "interrater reliability (Cohen's kappa, ICC, percent agreement). "
+                    "Reliability of coding must be documented."
+                ),
+                validator="interrater_reliability",
+                location="Methods",
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -5570,6 +5859,10 @@ def run_deterministic_validators(
         validate_measurement_scale_reporting(parsed, classification),
         validate_sem_fit_indices(parsed, classification),
         validate_regression_variance_explanation(parsed, classification),
+        validate_normality_assumption(parsed, classification),
+        validate_attrition_reporting(parsed, classification),
+        validate_generalizability_overclaim(parsed),
+        validate_interrater_reliability(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

@@ -5004,3 +5004,250 @@ def test_regression_with_r_squared_no_fire() -> None:
     ms, clf = _regression_manuscript(body)
     result = validate_regression_variance_explanation(ms, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 108 – Normality assumption check
+# ---------------------------------------------------------------------------
+
+
+def _normality_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="norm-test",
+        source_path="norm.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_parametric_without_normality_fires() -> None:
+    from manuscript_audit.validators.core import validate_normality_assumption
+
+    body = (
+        "Group differences were analyzed using independent samples t-test. "
+        "Post-hoc comparisons used one-way ANOVA with Bonferroni correction."
+    )
+    ms, clf = _normality_manuscript(body)
+    result = validate_normality_assumption(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-normality-check" in codes
+
+
+def test_parametric_with_shapiro_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_normality_assumption
+
+    body = (
+        "Normality was confirmed using the Shapiro-Wilk test for all variables. "
+        "Group differences were analyzed using independent samples t-test."
+    )
+    ms, clf = _normality_manuscript(body)
+    result = validate_normality_assumption(ms, clf)
+    assert result.findings == []
+
+
+def test_nonparametric_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_normality_assumption
+
+    body = (
+        "We used the Wilcoxon signed-rank test as a nonparametric alternative. "
+        "Mann-Whitney U tests compared the distributions."
+    )
+    ms, clf = _normality_manuscript(body)
+    result = validate_normality_assumption(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 109 – Attrition reporting
+# ---------------------------------------------------------------------------
+
+
+def _attrition_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="attr-test",
+        source_path="attr.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_longitudinal_without_attrition_fires() -> None:
+    from manuscript_audit.validators.core import validate_attrition_reporting
+
+    body = (
+        "Participants completed assessments at baseline and 6-month follow-up. "
+        "The longitudinal design allowed tracking of changes over time."
+    )
+    ms, clf = _attrition_manuscript(body)
+    result = validate_attrition_reporting(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-attrition-report" in codes
+
+
+def test_longitudinal_with_attrition_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attrition_reporting
+
+    body = (
+        "Participants completed assessments at baseline and 6-month follow-up. "
+        "Attrition was 12%: 15 participants dropped out due to time constraints. "
+        "Missing data were handled using multiple imputation."
+    )
+    ms, clf = _attrition_manuscript(body)
+    result = validate_attrition_reporting(ms, clf)
+    assert result.findings == []
+
+
+def test_cross_sectional_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attrition_reporting
+
+    body = "Participants completed a one-time survey about their work habits."
+    ms, clf = _attrition_manuscript(body)
+    result = validate_attrition_reporting(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 110 – Generalizability overclaim
+# ---------------------------------------------------------------------------
+
+
+def _generalize_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="gen-test",
+        source_path="gen.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_generalizability_overclaim_fires() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_overclaim
+
+    text = (
+        "The method generalizes to all clinical populations and "
+        "is universally applicable across all contexts and settings."
+    )
+    ms = _generalize_manuscript(text)
+    result = validate_generalizability_overclaim(ms)
+    codes = [f.code for f in result.findings]
+    assert "generalizability-overclaim" in codes
+
+
+def test_hedged_generalizability_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_overclaim
+
+    text = (
+        "The method generalizes to all clinical populations. "
+        "However, further research is needed to confirm external validity. "
+        "The study is limited by our specific sample characteristics."
+    )
+    ms = _generalize_manuscript(text)
+    result = validate_generalizability_overclaim(ms)
+    assert result.findings == []
+
+
+def test_no_generalizability_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_overclaim
+
+    text = "The method improved accuracy on the held-out test set."
+    ms = _generalize_manuscript(text)
+    result = validate_generalizability_overclaim(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 111 – Interrater reliability
+# ---------------------------------------------------------------------------
+
+
+def _irr_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="irr-test",
+        source_path="irr.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_coding_without_irr_fires() -> None:
+    from manuscript_audit.validators.core import validate_interrater_reliability
+
+    body = (
+        "Two independent raters coded all transcripts for themes. "
+        "Disagreements were resolved by discussion until consensus was reached."
+    )
+    ms, clf = _irr_manuscript(body)
+    result = validate_interrater_reliability(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-interrater-reliability" in codes
+
+
+def test_coding_with_kappa_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrater_reliability
+
+    body = (
+        "Two independent coders rated all transcripts. "
+        "Inter-rater reliability was acceptable (Cohen's kappa = 0.82). "
+        "Disagreements were resolved through discussion."
+    )
+    ms, clf = _irr_manuscript(body)
+    result = validate_interrater_reliability(ms, clf)
+    assert result.findings == []
+
+
+def test_no_coding_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrater_reliability
+
+    body = "We analyzed questionnaire responses using structural equation modeling."
+    ms, clf = _irr_manuscript(body)
+    result = validate_interrater_reliability(ms, clf)
+    assert result.findings == []
