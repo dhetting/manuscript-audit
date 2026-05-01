@@ -6699,6 +6699,11 @@ def run_deterministic_validators(
         validate_multiple_comparison_correction(parsed, classification),
         validate_publication_bias_statement(parsed, classification),
         validate_degrees_of_freedom_reporting(parsed, classification),
+        validate_power_analysis_reporting(parsed, classification),
+        validate_demographic_description(parsed, classification),
+        validate_randomization_procedure(parsed, classification),
+        validate_generalizability_caveat(parsed, classification),
+        validate_software_version_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -11080,6 +11085,365 @@ def validate_degrees_of_freedom_reporting(
                 ),
                 validator="degrees_of_freedom_reporting",
                 location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 191 – Missing power analysis or justification
+# ---------------------------------------------------------------------------
+
+_POWER_ANALYSIS_JUSTIFY_RE = re.compile(
+    r"\b(?:power\s+analysis|statistical\s+power|a\s+priori\s+(?:power|sample\s+size)|"
+    r"G\*Power|G\.Power|GPower|"
+    r"sample\s+size\s+(?:was\s+)?(?:determined|calculated|estimated|justified)\s+"
+    r"(?:using|based\s+on|via|from)|"
+    r"powered\s+to\s+detect|"
+    r"80\s*%\s*power|90\s*%\s*power|"
+    r"post.?hoc\s+power)\b",
+    re.IGNORECASE,
+)
+_POWER_SAMPLE_TRIGGER_RE = re.compile(
+    r"\b(?:sample\s+size\s+(?:of|was|=|n\s*=)\s*\d+|"
+    r"n\s*=\s*\d+\s+(?:participants?|subjects?|individuals?|patients?)|"
+    r"\d+\s+(?:participants?|subjects?|adults?|patients?)\s+(?:were|was)\s+"
+    r"(?:enrolled?|recruited?|included?|studied))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_power_analysis_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies that don't justify sample size with power analysis.
+
+    Emits ``missing-power-analysis`` (moderate) when a sample size is reported
+    but no a priori or post-hoc power analysis justification is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="power_analysis_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="power_analysis_reporting", findings=[]
+        )
+
+    if not _POWER_SAMPLE_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="power_analysis_reporting", findings=[]
+        )
+
+    if _POWER_ANALYSIS_JUSTIFY_RE.search(full):
+        return ValidationResult(
+            validator_name="power_analysis_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="power_analysis_reporting",
+        findings=[
+            Finding(
+                code="missing-power-analysis",
+                severity="moderate",
+                message=(
+                    "Sample size is reported but no power analysis or sample size "
+                    "justification is provided. "
+                    "Report an a priori power analysis or justify the sample size."
+                ),
+                validator="power_analysis_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 192 – Incomplete demographic description
+# ---------------------------------------------------------------------------
+
+_DEMOGRAPHIC_TRIGGERS = frozenset(
+    {"empirical_paper", "applied_stats_paper", "software_workflow_paper"}
+)
+_DEMOGRAPHIC_RE = re.compile(
+    r"\b(?:participants?|subjects?|respondents?|sample)\b",
+    re.IGNORECASE,
+)
+_DEMOGRAPHIC_DETAIL_RE = re.compile(
+    r"\b(?:(?:mean\s+)?age\s*(?:=|was|M\s*=)|"
+    r"(?:male|female|men|women)\s+(?:participants?|\d+\s*%|were)|"
+    r"\d+\s*%\s*(?:male|female|men|women)|"
+    r"(?:White|Black|Hispanic|Asian|multiracial|race|ethnicity)\s*"
+    r"(?:\(|\d+\s*%)|"
+    r"education(?:al\s+level)?\s*(?:=|M\s*=|was))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_demographic_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies with participants but no demographics reported.
+
+    Emits ``missing-demographic-description`` (minor) when participants are
+    mentioned but no demographic details (age, gender, education, race) appear.
+    """
+    if classification.paper_type not in _DEMOGRAPHIC_TRIGGERS:
+        return ValidationResult(
+            validator_name="demographic_description", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="demographic_description", findings=[]
+        )
+
+    if not _DEMOGRAPHIC_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="demographic_description", findings=[]
+        )
+
+    if _DEMOGRAPHIC_DETAIL_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="demographic_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="demographic_description",
+        findings=[
+            Finding(
+                code="missing-demographic-description",
+                severity="minor",
+                message=(
+                    "Participants are mentioned but no demographic details "
+                    "(age, gender, education, race/ethnicity) are reported. "
+                    "Describe sample demographics to allow assessment of generalizability."
+                ),
+                validator="demographic_description",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 193 – Randomization procedure transparency
+# ---------------------------------------------------------------------------
+
+_RANDOM_ASSIGN_RE = re.compile(
+    r"\b(?:randomly\s+assigned?|random\s+assignment|randomized?\s+(?:to|into)|"
+    r"group\s+assignment\s+(?:was\s+)?(?:random|conducted\s+randomly)|"
+    r"allocation\s+was\s+(?:random|randomized?))\b",
+    re.IGNORECASE,
+)
+_RANDOMIZATION_METHOD_RE = re.compile(
+    r"\b(?:random\s+number\s+(?:generator|table|sequence)|"
+    r"computer.?generated\s+randomization|block\s+randomization|"
+    r"stratified\s+randomization|simple\s+randomization|"
+    r"sealed\s+envelopes?|central\s+randomization|"
+    r"allocation\s+(?:sequence|concealment)|CONSORT)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_randomization_procedure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RCTs with randomization claims but no randomization method.
+
+    Emits ``missing-randomization-procedure`` (moderate) when random assignment
+    is mentioned but the randomization method is not described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="randomization_procedure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="randomization_procedure", findings=[]
+        )
+
+    if not _RANDOM_ASSIGN_RE.search(full):
+        return ValidationResult(
+            validator_name="randomization_procedure", findings=[]
+        )
+
+    if _RANDOMIZATION_METHOD_RE.search(full):
+        return ValidationResult(
+            validator_name="randomization_procedure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="randomization_procedure",
+        findings=[
+            Finding(
+                code="missing-randomization-procedure",
+                severity="moderate",
+                message=(
+                    "Random assignment is mentioned but the randomization procedure "
+                    "(e.g., random number generator, block randomization, allocation "
+                    "concealment) is not described. "
+                    "Report the randomization method for reproducibility."
+                ),
+                validator="randomization_procedure",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 194 – Generalizability / external validity caveat
+# ---------------------------------------------------------------------------
+
+_STRONG_GENERALIZE_RE = re.compile(
+    r"\b(?:(?:these\s+)?results?\s+(?:can\s+be|are)\s+generalized?\s+"
+    r"(?:to\s+|across\s+)?(?:all|any|most|the\s+general\s+population)|"
+    r"findings?\s+(?:apply|are\s+applicable)\s+to\s+(?:all|any|broader)|"
+    r"broadly\s+applicable|universally\s+applicable|"
+    r"applies?\s+to\s+(?:all|any)\s+(?:populations?|contexts?|settings?))\b",
+    re.IGNORECASE,
+)
+_GENERALIZABILITY_CAVEAT_RE = re.compile(
+    r"\b(?:limitations?\s+(?:of|include|in)\s+"
+    r"(?:this\s+)?(?:study|sample|generalizability)|"
+    r"may\s+not\s+generalize|limited\s+generalizability|"
+    r"should\s+be\s+(?:cautiously\s+)?(?:generalized?|interpreted)|"
+    r"(?:specific|restricted)\s+(?:sample|population|context)|"
+    r"caution\s+(?:in\s+)?generaliz|external\s+validity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_generalizability_caveat(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag overly strong generalizability claims without appropriate caveats.
+
+    Emits ``overclaimed-generalizability`` (moderate) when results are
+    described as broadly/universally applicable without any caveat.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="generalizability_caveat", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="generalizability_caveat", findings=[]
+        )
+
+    if not _STRONG_GENERALIZE_RE.search(full):
+        return ValidationResult(
+            validator_name="generalizability_caveat", findings=[]
+        )
+
+    if _GENERALIZABILITY_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="generalizability_caveat", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="generalizability_caveat",
+        findings=[
+            Finding(
+                code="overclaimed-generalizability",
+                severity="moderate",
+                message=(
+                    "Results are described as broadly or universally generalizable "
+                    "without appropriate caveats about study limitations. "
+                    "Discuss constraints on generalizability based on sample, setting, "
+                    "and design."
+                ),
+                validator="generalizability_caveat",
+                location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 195 – Missing software/tools version reporting
+# ---------------------------------------------------------------------------
+
+_SOFTWARE_CITE_RE = re.compile(
+    r"\b(?:R\s+(?:version\s+\d|v\d)|Python\s+(?:version\s+\d|v\d|\d\.\d)|"
+    r"SPSS\s+(?:version\s+\d|v\d|\d+)|SAS\s+(?:version\s+\d|v\d|\d+)|"
+    r"Stata\s+(?:version\s+\d|v\d|\d+)|MATLAB\s+(?:version|R\d{4})|"
+    r"Mplus\s+(?:version\s+\d|v\d|\d+)|"
+    r"jamovi\s+(?:version\s+\d|v\d|\d+)|"
+    r"JASP\s+(?:version\s+\d|v\d|\d+))\b",
+    re.IGNORECASE,
+)
+_SOFTWARE_USE_RE = re.compile(
+    r"\b(?:analysis(?:es)?\s+(?:were|was)\s+(?:conducted?|performed?|run|done)\s+"
+    r"(?:in|using|with)\s+(?:R|Python|SPSS|SAS|Stata|MATLAB|Mplus|jamovi|JASP)|"
+    r"(?:R|Python|SPSS|SAS|Stata|MATLAB|Mplus|jamovi|JASP)\s+"
+    r"(?:was|were)\s+used\s+(?:for|to)|"
+    r"all\s+analyses?\s+(?:used|using)\s+(?:R|Python|SPSS|SAS|Stata))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_software_version_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts that name software without version numbers.
+
+    Emits ``missing-software-version`` (minor) when statistical software is
+    named as the analysis tool but no version number is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="software_version_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="software_version_reporting", findings=[]
+        )
+
+    if not _SOFTWARE_USE_RE.search(full):
+        return ValidationResult(
+            validator_name="software_version_reporting", findings=[]
+        )
+
+    if _SOFTWARE_CITE_RE.search(full):
+        return ValidationResult(
+            validator_name="software_version_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="software_version_reporting",
+        findings=[
+            Finding(
+                code="missing-software-version",
+                severity="minor",
+                message=(
+                    "Statistical software is named but no version number is reported. "
+                    "Cite the software version (e.g., R version 4.3.2, SPSS version 29) "
+                    "for reproducibility."
+                ),
+                validator="software_version_reporting",
+                location="Methods",
                 evidence=[],
             )
         ],

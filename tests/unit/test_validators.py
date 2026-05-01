@@ -9869,3 +9869,328 @@ def test_df_non_empirical_no_fire() -> None:
     )
     result = validate_degrees_of_freedom_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 191 – validate_power_analysis_reporting
+# ---------------------------------------------------------------------------
+
+
+def _power_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="pow-1",
+        source_path="pow.md",
+        source_format="markdown",
+        title="Power Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_sample_size_no_power_fires() -> None:
+    from manuscript_audit.validators.core import validate_power_analysis_reporting
+
+    ms, cl = _power_ms(
+        "A total of 120 participants were recruited for this study. "
+        "n=120 adults completed the survey."
+    )
+    result = validate_power_analysis_reporting(ms, cl)
+    assert any(f.code == "missing-power-analysis" for f in result.findings)
+
+
+def test_sample_size_with_power_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_power_analysis_reporting
+
+    ms, cl = _power_ms(
+        "A total of n=120 participants were recruited. "
+        "Sample size was determined using a priori power analysis (G*Power) "
+        "with 80% power to detect a medium effect."
+    )
+    result = validate_power_analysis_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sample_size_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_power_analysis_reporting
+
+    ms, cl = _power_ms(
+        "Data were collected from the national registry over a 5-year period."
+    )
+    result = validate_power_analysis_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_power_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_power_analysis_reporting
+
+    ms, cl = _power_ms(
+        "A sample of n=50 was used in the theoretical illustration.",
+        "math_theory_paper",
+    )
+    result = validate_power_analysis_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 192 – validate_demographic_description
+# ---------------------------------------------------------------------------
+
+
+def _demog_ms(methods_body: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="dem-1",
+        source_path="dem.md",
+        source_format="markdown",
+        title="Demographic Study",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=methods_body)],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_participants_no_demographics_fires() -> None:
+    from manuscript_audit.validators.core import validate_demographic_description
+
+    ms, cl = _demog_ms(
+        "Participants were recruited from the university community. "
+        "A total of 150 participants completed the study."
+    )
+    result = validate_demographic_description(ms, cl)
+    assert any(f.code == "missing-demographic-description" for f in result.findings)
+
+
+def test_participants_with_demographics_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_demographic_description
+
+    ms, cl = _demog_ms(
+        "Participants were 150 adults (mean age = 32.4 years, 62% female). "
+        "The sample was recruited from the university community."
+    )
+    result = validate_demographic_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_participants_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_demographic_description
+
+    ms, cl = _demog_ms(
+        "Data were extracted from the national census database for analysis."
+    )
+    result = validate_demographic_description(ms, cl)
+    assert result.findings == []
+
+
+def test_demographics_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_demographic_description
+
+    ms, cl = _demog_ms(
+        "The participants in this theoretical example were 50 adults.",
+        "math_theory_paper",
+    )
+    result = validate_demographic_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 193 – validate_randomization_procedure
+# ---------------------------------------------------------------------------
+
+
+def _rand_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="rand-1",
+        source_path="rand.md",
+        source_format="markdown",
+        title="Randomization Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_random_assign_no_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_randomization_procedure
+
+    ms, cl = _rand_ms(
+        "Participants were randomly assigned to one of two conditions. "
+        "Group assignment was random."
+    )
+    result = validate_randomization_procedure(ms, cl)
+    assert any(f.code == "missing-randomization-procedure" for f in result.findings)
+
+
+def test_random_assign_with_method_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_randomization_procedure
+
+    ms, cl = _rand_ms(
+        "Participants were randomly assigned using computer-generated randomization. "
+        "Block randomization with allocation concealment was used."
+    )
+    result = validate_randomization_procedure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_randomization_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_randomization_procedure
+
+    ms, cl = _rand_ms(
+        "This observational study followed participants without any assignment."
+    )
+    result = validate_randomization_procedure(ms, cl)
+    assert result.findings == []
+
+
+def test_randomization_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_randomization_procedure
+
+    ms, cl = _rand_ms(
+        "Participants were randomly assigned in this theoretical simulation.",
+        "math_theory_paper",
+    )
+    result = validate_randomization_procedure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 194 – validate_generalizability_caveat
+# ---------------------------------------------------------------------------
+
+
+def _gen_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="gen-1",
+        source_path="gen.md",
+        source_format="markdown",
+        title="Generalizability Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_strong_generalize_no_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_caveat
+
+    ms, cl = _gen_ms(
+        "These results can be generalized to all populations of adults. "
+        "The findings are broadly applicable."
+    )
+    result = validate_generalizability_caveat(ms, cl)
+    assert any(f.code == "overclaimed-generalizability" for f in result.findings)
+
+
+def test_generalize_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_caveat
+
+    ms, cl = _gen_ms(
+        "These results can be generalized to the general population with caution. "
+        "Limitations of this study include the restricted sample."
+    )
+    result = validate_generalizability_caveat(ms, cl)
+    assert result.findings == []
+
+
+def test_no_strong_generalize_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_caveat
+
+    ms, cl = _gen_ms(
+        "Results should be interpreted cautiously given the sample characteristics."
+    )
+    result = validate_generalizability_caveat(ms, cl)
+    assert result.findings == []
+
+
+def test_generalize_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generalizability_caveat
+
+    ms, cl = _gen_ms(
+        "Results can be generalized to all cases in this mathematical proof.",
+        "math_theory_paper",
+    )
+    result = validate_generalizability_caveat(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 195 – validate_software_version_reporting
+# ---------------------------------------------------------------------------
+
+
+def _sw_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="sw-1",
+        source_path="sw.md",
+        source_format="markdown",
+        title="Software Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_software_no_version_fires() -> None:
+    from manuscript_audit.validators.core import validate_software_version_reporting
+
+    ms, cl = _sw_ms(
+        "All analyses were conducted in R. "
+        "Python was used for data preprocessing."
+    )
+    result = validate_software_version_reporting(ms, cl)
+    assert any(f.code == "missing-software-version" for f in result.findings)
+
+
+def test_software_version_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_software_version_reporting
+
+    ms, cl = _sw_ms(
+        "All analyses were conducted in R version 4.3.2. "
+        "Python 3.11 was used for data preprocessing."
+    )
+    result = validate_software_version_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_software_use_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_software_version_reporting
+
+    ms, cl = _sw_ms(
+        "Descriptive statistics are presented in Table 1."
+    )
+    result = validate_software_version_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_software_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_software_version_reporting
+
+    ms, cl = _sw_ms(
+        "All analyses were conducted in R for the theoretical example.",
+        "math_theory_paper",
+    )
+    result = validate_software_version_reporting(ms, cl)
+    assert result.findings == []
