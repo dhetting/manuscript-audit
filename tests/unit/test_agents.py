@@ -56,3 +56,47 @@ def test_bibliography_agent_consumes_source_verification_results() -> None:
     codes = {finding.code for finding in bibliography_result.findings}
     assert "source-record-metadata-mismatch" in codes
     assert "bibliography-confidence-low" in codes
+
+
+# ---------------------------------------------------------------------------
+# Phase 15: MathProofsNotationAgent
+# ---------------------------------------------------------------------------
+
+
+def test_math_proofs_notation_agent_emits_missing_notation_section() -> None:
+    from manuscript_audit.agents.modules import MathProofsNotationAgent
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.findings import ValidationSuiteResult
+    from manuscript_audit.schemas.routing import ApplicabilityDecision, ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="theory-no-notation-sec",
+        source_path="synthetic",
+        source_format="latex",
+        title="A Convergence Theorem",
+        full_text="We prove that the algorithm converges.",
+        equation_blocks=[r"x_{n+1} = f(x_n)"],
+        sections=[
+            Section(title="Introduction", level=1, body="We study convergence."),
+            Section(title="Proof", level=1, body="By induction."),
+            Section(title="Conclusion", level=1, body="We showed convergence."),
+        ],
+    )
+    classification = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="theory_paper",
+        evidence_types=["theorem_or_proof"],
+        claim_types=["theoretical"],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    applicability = ApplicabilityDecision(
+        name="math_proofs_and_notation",
+        applicable=True,
+        rationale="Theory paper",
+    )
+    validation_suite = ValidationSuiteResult(validator_version="test", results=[])
+    agent = MathProofsNotationAgent()
+    result = agent.run(parsed, classification, validation_suite, applicability)
+    codes = {f.code for f in result.findings}
+    assert "missing-notation-section" in codes

@@ -3,6 +3,7 @@ from __future__ import annotations
 from manuscript_audit.agents.modules import (
     AIRiskAuditAgent,
     BibliographyMetadataAgent,
+    MathProofsNotationAgent,
     ReproducibilityAuditAgent,
     ResultsConsistencyAgent,
     StatisticalValidityAgent,
@@ -28,6 +29,7 @@ def _agent_for_module(module_name: str):
         "results_figures_tables_consistency": ResultsConsistencyAgent(),
         "reproducibility_and_computational_audit": ReproducibilityAuditAgent(),
         "ai_generated_manuscript_risk_audit": AIRiskAuditAgent(),
+        "math_proofs_and_notation": MathProofsNotationAgent(),
     }
     return registry.get(module_name, StubRoutedAgent(module_name))
 

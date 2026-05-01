@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 
+from manuscript_audit.parsers import extract_notation_summary
 from manuscript_audit.schemas.artifacts import (
     BibliographyConfidenceSummary,
     ParsedManuscript,
@@ -375,6 +376,63 @@ class AIRiskAuditAgent(BaseHeuristicAgent):
                     evidence=matches,
                 )
             )
+        return findings
+
+
+NOTATION_SECTION_RE = re.compile(
+    r"\b(notation|preliminaries|definitions?|background|setup)\b",
+    re.IGNORECASE,
+)
+
+
+class MathProofsNotationAgent(BaseHeuristicAgent):
+    """Audit notation definition coverage and structural completeness for theory papers."""
+
+    name = "math_proofs_notation_agent"
+    module_name = "math_proofs_and_notation"
+
+    def _build_findings(
+        self,
+        parsed: ParsedManuscript,
+        classification: ManuscriptClassification,
+        validation_suite: ValidationSuiteResult,
+        source_verifications: list[SourceRecordVerification] | None = None,
+        bibliography_confidence_summary: BibliographyConfidenceSummary | None = None,
+    ) -> list[Finding]:
+        findings: list[Finding] = []
+        notation_summary = extract_notation_summary(parsed)
+
+        total = notation_summary.equation_symbol_count
+        n_undefined = len(notation_summary.undefined_symbols)
+        if total >= 3 and n_undefined / total > 0.5:
+            findings.append(
+                Finding(
+                    code="low-notation-definition-coverage",
+                    severity="moderate",
+                    message=(
+                        f"{n_undefined} of {total} equation symbols lack textual "
+                        "definition hints (>50%)."
+                    ),
+                    validator=self.name,
+                    evidence=notation_summary.undefined_symbols[:5],
+                )
+            )
+
+        if parsed.equation_blocks:
+            section_titles = {s.title for s in parsed.sections}
+            if not any(NOTATION_SECTION_RE.search(t) for t in section_titles):
+                findings.append(
+                    Finding(
+                        code="missing-notation-section",
+                        severity="moderate",
+                        message=(
+                            "Theory paper has equation blocks but no dedicated notation, "
+                            "preliminaries, or definitions section."
+                        ),
+                        validator=self.name,
+                    )
+                )
+
         return findings
 
 

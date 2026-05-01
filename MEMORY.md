@@ -193,12 +193,44 @@ Known limitations (acceptable for MVP):
 - Does not exempt metrics from cited prior-work sentences in the abstract
 - Restricted to `%`, `fold`, `x`-factor forms only
 
+## Phase 15 validated state
+
+Phase 15 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 15 added:
+- One new deterministic validator: `validate_unlabeled_equations(parsed, classification)` in `validators/core.py`
+  - Only applies to LaTeX theory papers (`paper_type == "theory_paper"`)
+  - Flags each equation block lacking `\label{}` as `equation-missing-label` (minor)
+  - Accepts `classification` parameter (like `validate_claim_section_alignment`) — does not fire on empirical/software papers
+- New concrete agent: `MathProofsNotationAgent` in `agents/modules.py`
+  - Replaces `StubRoutedAgent` for the `math_proofs_and_notation` module
+  - Calls `extract_notation_summary(parsed)` internally (does not modify agent runner signature)
+  - Finding 1: `low-notation-definition-coverage` (moderate) — when >50% of ≥3 equation symbols lack textual definition hints
+  - Finding 2: `missing-notation-section` (moderate) — when manuscript has equation blocks but no notation/preliminaries/definitions/background/setup section
+- Registered in `agents/runner.py`: `"math_proofs_and_notation": MathProofsNotationAgent()`
+- New constant `NOTATION_SECTION_RE` in `agents/modules.py`
+- Import of `extract_notation_summary` added to `agents/modules.py`
+- 4 new unit tests in `test_validators.py` (unlabeled detected, labeled skipped, non-theory skipped)
+- 1 new unit test in `test_agents.py` (agent emits `missing-notation-section`)
+- 54 total tests pass (up from 50)
+- Golden test for `latex_equivalence.tex` still `{'moderate': 4, 'minor': 1}` (software paper, validator scoped to theory papers)
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 54 passed
+- `pixi run audit-standard tests/fixtures/manuscripts/software_equivalence_manuscript.md --output-dir <out> --registry-fixture tests/fixtures/registries/source_registry_fixture.json` → clean
+- `pixi run verify-sources tests/fixtures/manuscripts/bibliography_metadata.tex --output-dir <out> --registry-fixture tests/fixtures/registries/source_registry_fixture.json` → clean
+
+Known limitations (acceptable for MVP):
+- `missing-notation-section` fires for all theory papers with equations — does not check if definitions are already embedded inline
+- `low-notation-definition-coverage` uses `extract_notation_summary` which relies on regex-based definition hint detection (`X denotes`, `let X be`, `where X is` patterns)
+
 ## Current immediate next task
 
-Phase 14 is closed. Next candidate phases:
-1. **Phase 15: notation and equation audit hardening** — agent-assisted detection of undefined symbols, inconsistent notation across sections, and missing equation labels
-2. **Phase 15: claim severity escalation** — if multiple citationless or unsupported claims are detected, escalate to major severity in revision priorities and surface a summary finding
-3. **Phase 15: revision verification coverage** — extend `verify-revision` to track phase-13/14 finding codes across revisions
+Phase 15 is closed. Next candidate phases:
+1. **Phase 16: claim severity escalation** — if multiple citationless or unsupported claims are detected, escalate to major severity in revision priorities and surface a summary finding
+2. **Phase 16: revision verification coverage** — extend `verify-revision` to track phase-13/14/15 finding codes across revisions
+3. **Phase 16: notation cross-section consistency** — flag symbols defined in one section but used inconsistently in others
 
 ## Bundle and handoff requirements
 

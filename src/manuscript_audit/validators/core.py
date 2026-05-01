@@ -670,6 +670,36 @@ def validate_notation_section_alignment(parsed: ParsedManuscript) -> ValidationR
     )
 
 
+def validate_unlabeled_equations(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag unlabeled LaTeX equation blocks in theory papers.
+
+    Only applies to LaTeX theory papers where equations are primary contributions
+    and cross-referencing is expected. Skips empirical and software manuscripts.
+    """
+    findings: list[Finding] = []
+    if parsed.source_format != "latex" or classification.paper_type != "theory_paper":
+        return ValidationResult(validator_name="unlabeled_equations", findings=findings)
+    for i, block in enumerate(parsed.equation_blocks, start=1):
+        if r"\label{" not in block:
+            findings.append(
+                Finding(
+                    code="equation-missing-label",
+                    severity="minor",
+                    message=(
+                        f"Equation block {i} has no \\label{{}} and cannot be "
+                        "cross-referenced."
+                    ),
+                    validator="unlabeled_equations",
+                    location=f"equation {i}",
+                    evidence=[block[:80]],
+                )
+            )
+    return ValidationResult(validator_name="unlabeled_equations", findings=findings)
+
+
 def validate_citationless_quantitative_claims(parsed: ParsedManuscript) -> ValidationResult:
     """Flag paragraphs with a numeric metric + evaluative language but no citation."""
     findings: list[Finding] = []
@@ -828,6 +858,7 @@ def run_deterministic_validators(
         validate_equation_notation_coverage(parsed),
         validate_notation_section_alignment(parsed),
         validate_claim_section_alignment(parsed, classification),
+        validate_unlabeled_equations(parsed, classification),
         validate_citationless_quantitative_claims(parsed),
         validate_citationless_comparative_claims(parsed),
         validate_abstract_metric_coverage(parsed),

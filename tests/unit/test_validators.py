@@ -211,3 +211,86 @@ def test_abstract_metric_coverage_skips_without_support_sections() -> None:
     result = validate_abstract_metric_coverage(parsed)
     assert result.findings == []
 
+
+# ---------------------------------------------------------------------------
+# Phase 15: unlabeled-equation validator
+# ---------------------------------------------------------------------------
+
+
+def test_unlabeled_equation_in_theory_paper_detected() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_unlabeled_equations
+
+    parsed = ParsedManuscript(
+        manuscript_id="unlabeled-theory",
+        source_path="synthetic",
+        source_format="latex",
+        title="A Theorem",
+        full_text="",
+        equation_blocks=["a + b = c", r"x = y \label{eq:y}"],
+    )
+    classification = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="theory_paper",
+        evidence_types=[],
+        claim_types=[],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    result = validate_unlabeled_equations(parsed, classification)
+    codes = [f.code for f in result.findings]
+    assert "equation-missing-label" in codes
+    # Only the first block (without \label) should be flagged
+    assert len(result.findings) == 1
+
+
+def test_labeled_equation_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_unlabeled_equations
+
+    parsed = ParsedManuscript(
+        manuscript_id="labeled-theory",
+        source_path="synthetic",
+        source_format="latex",
+        title="A Theorem",
+        full_text="",
+        equation_blocks=[r"a + b = c \label{eq:sum}", r"x = y \label{eq:y}"],
+    )
+    classification = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="theory_paper",
+        evidence_types=[],
+        claim_types=[],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    result = validate_unlabeled_equations(parsed, classification)
+    assert result.findings == []
+
+
+def test_unlabeled_equation_skipped_for_non_theory() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_unlabeled_equations
+
+    parsed = ParsedManuscript(
+        manuscript_id="empirical-latex",
+        source_path="synthetic",
+        source_format="latex",
+        title="An Experiment",
+        full_text="",
+        equation_blocks=["a + b = c"],  # no \label, but not a theory paper
+    )
+    classification = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type="applied_stats_paper",
+        evidence_types=[],
+        claim_types=[],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    result = validate_unlabeled_equations(parsed, classification)
+    assert result.findings == []
+
