@@ -391,14 +391,13 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 71 is closed. Next candidate phases:
-1. **Phase 73: Hedging language** — flag dense use of hedging words in abstract/intro/conclusion
-2. **Phase 74: Duplicate section content** — Jaccard sentence overlap across sections
-3. **Phase 75: Abstract length** — flag too-short (<100 words) or too-long (>350 words)
-4. **Phase 76: Methods word count** — flag thin Methods (<150 words) in empirical papers
-5. **Phase 77: Passive voice ratio** — flag Methods dominated by passive voice (>70%)
-6. **Phase 78: List overuse** — flag prose sections with >50% list items
-7. **Phase 79: Section balance** — flag single section >60% of total word count
+Phase 79 is closed. Next candidate phases:
+1. **Phase 81: Related work recency** — flag related work where >50% of citations are >8 years old
+2. **Phase 82: Introduction length** — flag introduction >25% of total body word count
+3. **Phase 83: Unquantified comparisons** — flag "much better", "significantly faster" without numbers
+4. **Phase 84: Footnote overuse** — flag >8 footnotes as footnote-heavy
+5. **Phase 85: Abbreviation list** — flag abbreviations listed but not used in body
+6. **Phase 86: Abstract tense** — flag mixing of past and present tense in abstract
 
 ## Phase 22–62 validated state
 
@@ -551,39 +550,39 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `_imrad_key()` maps Introduction/Method/Result/Discussion to slots 0-3
 - Flags adjacent inversions; only fires for empirical/applied papers
 
-**Phase 64** (`d5802cc`) — Conflict of interest disclosure
-- `validate_conflict_of_interest(parsed, classification)` → `missing-coi-statement` (minor)
-- Fires for empirical/applied/software papers with ≥5 bib entries and no COI language
+**Phase 73** (`c370572`) — Hedging language density
+- `validate_hedging_language(parsed)` → `hedging-language-dense` (minor)
+- `_HEDGE_DENSITY_RE` counts hedging phrases in abstract+intro+conclusion; fires when >4
+- Required ≥50 words combined; note: `_HEDGE_RE` already exists for per-section check
 
-**Phase 65** (`d5802cc`) — Data availability statement
-- `validate_data_availability(parsed, classification)` → `missing-data-availability` (minor)
-- Fires for empirical/software papers; scans for zenodo, figshare, osf.io, etc.
+**Phase 74** (`c370572`) — Duplicate section content
+- `validate_duplicate_section_content(parsed)` → `duplicate-section-content` (minor)
+- Jaccard sentence-level overlap (frozenset of lowercased tokens)
+- Non-adjacency based on original section indices (not filtered list position)
+- Threshold: 0.40 max pairwise Jaccard; cap 3 findings
 
-**Phase 66** (`d5802cc`) — Ethics/IRB statement
-- `validate_ethics_statement(parsed)` → `missing-ethics-statement` (moderate)
-- Detects human-subject or animal-study keywords; fires when no ethics approval language found
+**Phase 75** (`c370572`) — Abstract length (extended existing)
+- Extended `validate_abstract_length(parsed)` to also flag `abstract-too-short` (minor) when <100 words
+- Existing function only checked overlong; now bidirectional
 
-**Phase 67** (`d5802cc`) — Citation style consistency
-- `validate_citation_style_consistency(parsed)` → `citation-style-inconsistency` (minor)
-- Fires when numbered [N] and author-year styles mix and minority >10% of total
+**Phase 76** (`c370572`) — Methods section depth
+- `validate_methods_depth(parsed, classification)` → `thin-methods` (moderate)
+- `_METHODS_SECTIONS` frozenset (different from existing `_METHODS_SECTION_RE` regex)
+- Fires when Methods section body <150 words; empirical/applied/software only
 
-**Phase 68** (`d5802cc`) — Cross-reference integrity
-- `validate_cross_reference_integrity(parsed)` → `cross-reference-out-of-range` (minor)
-- Checks Figure/Table N references against figure_definitions/table_definitions counts
+**Phase 77** (`c370572`) — Passive voice ratio (retired)
+- Retired: covered by existing `validate_passive_voice_density` (threshold 45%, min 4 sentences)
+- New tests redirect to `validate_passive_voice_density` with `high-passive-voice-density` code
 
-**Phase 69** (`d5802cc`) — Decimal precision consistency
-- `validate_decimal_precision_consistency(parsed)` → `decimal-precision-inconsistency` (minor)
-- Flags same integer base appearing with and without decimal places in same section
+**Phase 78** (`c370572`) — List overuse
+- `validate_list_overuse(parsed)` → `list-heavy-section` (minor)
+- Fires when >50% of lines in Introduction/Discussion/Conclusion are list items and ≥6 items
 
-**Phase 70** (`d5802cc`) — Future-work balance
-- `validate_future_work_balance(parsed)` → `future-work-heavy` (minor)
-- Fires when >40% of Discussion/Conclusion sentences contain future-work signals
+**Phase 79** (`c370572`) — Section balance
+- `validate_section_balance(parsed, classification)` → `section-length-imbalance` (minor)
+- Fires when any section >60% of total body word count; requires ≥3 non-skipped sections
 
-**Phase 71** (`d5802cc`) — Null result acknowledgment
-- `validate_null_result_acknowledgment(parsed, classification)` → `no-negative-results-acknowledged` (minor)
-- Fires for empirical papers with ≥4 result paragraphs but no null/negative language
-
-Current test count: **195 passing** (after phase 71)
+Current test count: **213 passing** (after phase 79)
 
 
 ## Bundle and handoff requirements
