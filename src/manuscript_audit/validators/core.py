@@ -4493,6 +4493,342 @@ def validate_reviewer_response_completeness(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 93 – Novelty overclaiming
+# ---------------------------------------------------------------------------
+
+_NOVELTY_CLAIM_RE = re.compile(
+    r"\b(first ever|first time|first (to |in )(show|demonstrate|present|propose|apply)|"
+    r"never (been|before)|unprecedented|ground.breaking|pioneering)\b",
+    re.IGNORECASE,
+)
+_NOVELTY_CONTRAST_RE = re.compile(
+    r"\b(prior (work|studies|approaches)|previous (methods|work|studies)|"
+    r"existing (methods|approaches|literature)|unlike (previous|prior)|"
+    r"compared (to|with) (prior|previous|existing))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_novelty_overclaim(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag novelty overclaiming without contrasting prior work.
+
+    Emits ``novelty-overclaim`` (major) when the manuscript claims to be the
+    "first ever" or "unprecedented" without any citation-backed contrast
+    against prior work.
+    """
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not _NOVELTY_CLAIM_RE.search(combined):
+        return ValidationResult(validator_name="novelty_overclaim", findings=[])
+    if _NOVELTY_CONTRAST_RE.search(combined):
+        return ValidationResult(validator_name="novelty_overclaim", findings=[])
+
+    match = _NOVELTY_CLAIM_RE.search(combined)
+    return ValidationResult(
+        validator_name="novelty_overclaim",
+        findings=[
+            Finding(
+                code="novelty-overclaim",
+                severity="major",
+                message=(
+                    f"Manuscript claims novelty ('{match.group() if match else ''}') "
+                    "without contrasting prior work. Contextualize the contribution "
+                    "against existing approaches."
+                ),
+                validator="novelty_overclaim",
+                location="manuscript",
+                evidence=[match.group() if match else ""],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 94 – Figure/table minimum for empirical papers
+# ---------------------------------------------------------------------------
+
+_FIG_TABLE_PAPER_TYPES = frozenset(
+    {
+        "empirical_research_paper",
+        "clinical_trial_report",
+        "survey_study",
+        "systematic_review",
+        "meta_analysis",
+    }
+)
+_FIG_TABLE_RE = re.compile(
+    r"\b(Figure|Fig\.|Table|Supplementary (Figure|Table))\s*\d+\b",
+    re.IGNORECASE,
+)
+
+
+def validate_figure_table_minimum(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers with no figures or tables.
+
+    Emits ``no-figures-or-tables`` (moderate) when an empirical paper references
+    no figures or tables anywhere in the body.
+    """
+    if classification.paper_type not in _FIG_TABLE_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="figure_table_minimum", findings=[]
+        )
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _FIG_TABLE_RE.search(combined):
+        return ValidationResult(
+            validator_name="figure_table_minimum", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="figure_table_minimum",
+        findings=[
+            Finding(
+                code="no-figures-or-tables",
+                severity="moderate",
+                message=(
+                    "Empirical manuscript contains no figure or table references. "
+                    "Results should be supported by visual summaries."
+                ),
+                validator="figure_table_minimum",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 95 – Multiple comparisons correction
+# ---------------------------------------------------------------------------
+
+_MULTIPLE_TEST_RE = re.compile(
+    r"\b(multiple (comparison|test|hypothesis|outcome|endpoint)s?|"
+    r"several (statistical )?tests?|"
+    r"family.wise|familywise|FWER)\b",
+    re.IGNORECASE,
+)
+_CORRECTION_RE = re.compile(
+    r"\b(Bonferroni|Holm|Benjamini.Hochberg|BH correction|FDR|"
+    r"false discovery rate|adjusted p.value|correction for multiple|"
+    r"multiple.comparison correction|alpha correction|"
+    r"p.value adjustment)\b",
+    re.IGNORECASE,
+)
+_MULTI_TEST_PAPER_TYPES = frozenset(
+    {
+        "empirical_research_paper",
+        "clinical_trial_report",
+        "survey_study",
+    }
+)
+
+
+def validate_multiple_comparisons_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers reporting multiple tests without correction mention.
+
+    Emits ``missing-multiple-comparisons-correction`` (moderate) when the
+    Methods/Results sections mention multiple statistical tests but contain no
+    multiple-comparison correction language.
+    """
+    if classification.paper_type not in _MULTI_TEST_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="multiple_comparisons_correction", findings=[]
+        )
+
+    combined = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"methods", "methodology", "results", "statistics"}
+    )
+    if not combined:
+        return ValidationResult(
+            validator_name="multiple_comparisons_correction", findings=[]
+        )
+
+    if not _MULTIPLE_TEST_RE.search(combined):
+        return ValidationResult(
+            validator_name="multiple_comparisons_correction", findings=[]
+        )
+
+    if _CORRECTION_RE.search(combined):
+        return ValidationResult(
+            validator_name="multiple_comparisons_correction", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="multiple_comparisons_correction",
+        findings=[
+            Finding(
+                code="missing-multiple-comparisons-correction",
+                severity="moderate",
+                message=(
+                    "Manuscript reports multiple statistical tests without mentioning "
+                    "a multiple-comparison correction (e.g., Bonferroni, FDR). "
+                    "Type I error inflation should be addressed."
+                ),
+                validator="multiple_comparisons_correction",
+                location="Methods/Results",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 96 – Supplementary material mention without indication
+# ---------------------------------------------------------------------------
+
+_SUPPL_REF_RE = re.compile(
+    r"\b(supplementary|supplemental)\s+(material|data|figure|table|file|appendix)s?\b",
+    re.IGNORECASE,
+)
+_SUPPL_AVAIL_RE = re.compile(
+    r"\b(supplementary (material|data|files?) (is|are) available|"
+    r"see online supplementary|available (online|at|via)|"
+    r"Supplementary (Material|Data) S\d+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_supplementary_material_indication(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts that reference supplementary material without availability info.
+
+    Emits ``unindicated-supplementary-material`` (minor) when body text
+    references supplementary data/figures/tables but provides no availability
+    statement.
+    """
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not _SUPPL_REF_RE.search(combined):
+        return ValidationResult(
+            validator_name="supplementary_material_indication", findings=[]
+        )
+    if _SUPPL_AVAIL_RE.search(combined):
+        return ValidationResult(
+            validator_name="supplementary_material_indication", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="supplementary_material_indication",
+        findings=[
+            Finding(
+                code="unindicated-supplementary-material",
+                severity="minor",
+                message=(
+                    "Manuscript references supplementary material but provides no "
+                    "availability statement. Add a data/supplementary availability note."
+                ),
+                validator="supplementary_material_indication",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 97 – Conclusion scope creep
+# ---------------------------------------------------------------------------
+
+_CONCLUSION_TITLES = frozenset(
+    {"conclusion", "conclusions", "concluding remarks", "summary and conclusions"}
+)
+_CONCLUSION_NEW_CLAIM_RE = re.compile(
+    r"\b(furthermore|additionally|in addition|also|moreover|"
+    r"we (also|additionally|furthermore) (show|demonstrate|find|found|showed))\b",
+    re.IGNORECASE,
+)
+_CONCLUSION_MIN_WORDS = 30
+
+
+def validate_conclusion_scope_creep(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag conclusion sections that may introduce new claims.
+
+    Emits ``conclusion-scope-creep`` (minor) when the Conclusion section
+    contains language patterns that typically signal new claims being
+    introduced (rather than summarizing established findings).
+    Requires ≥ ``_CONCLUSION_MIN_WORDS`` words in the conclusion body.
+    """
+    conclusions = [
+        s
+        for s in parsed.sections
+        if s.title.lower() in _CONCLUSION_TITLES
+    ]
+    findings: list[Finding] = []
+    for section in conclusions:
+        body = section.body
+        if len(body.split()) < _CONCLUSION_MIN_WORDS:
+            continue
+        if _CONCLUSION_NEW_CLAIM_RE.search(body):
+            match = _CONCLUSION_NEW_CLAIM_RE.search(body)
+            findings.append(
+                Finding(
+                    code="conclusion-scope-creep",
+                    severity="minor",
+                    message=(
+                        "Conclusion section may introduce new claims or analysis "
+                        f"('{match.group() if match else ''}') — conclusions should "
+                        "summarize established findings only."
+                    ),
+                    validator="conclusion_scope_creep",
+                    location=section.title,
+                    evidence=[match.group() if match else ""],
+                )
+            )
+    return ValidationResult(
+        validator_name="conclusion_scope_creep", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 98 – Discussion-Results alignment
+# ---------------------------------------------------------------------------
+
+_RESULTS_QUANTITATIVE_RE = re.compile(r"\b\d+(\.\d+)?(%|fold|×|x)\b|\bp\s*[<=>]\s*\d")
+_DISCUSSION_INTERPRETS_RE = re.compile(
+    r"\b(these results|our findings|the results|this suggests|we interpret|"
+    r"this indicates|the data suggest|these findings)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_discussion_results_alignment(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag Discussion sections that lack any reference back to Results.
+
+    Emits ``discussion-lacks-results-reference`` (moderate) when a Discussion
+    section is present but contains no interpretive references to results.
+    Requires ≥50 words in the Discussion.
+    """
+    discussion_sections = [
+        s for s in parsed.sections if s.title.lower() == "discussion"
+    ]
+    findings: list[Finding] = []
+    for section in discussion_sections:
+        body = section.body
+        if len(body.split()) < 50:
+            continue
+        if not _DISCUSSION_INTERPRETS_RE.search(body):
+            findings.append(
+                Finding(
+                    code="discussion-lacks-results-reference",
+                    severity="moderate",
+                    message=(
+                        "Discussion section does not appear to reference or interpret "
+                        "the Results — ensure key findings are addressed explicitly."
+                    ),
+                    validator="discussion_results_alignment",
+                    location=section.title,
+                )
+            )
+    return ValidationResult(
+        validator_name="discussion_results_alignment", findings=findings
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -4579,6 +4915,12 @@ def run_deterministic_validators(
         validate_author_contribution_statement(parsed),
         validate_preregistration_mention(parsed, classification),
         validate_reviewer_response_completeness(parsed),
+        validate_novelty_overclaim(parsed),
+        validate_figure_table_minimum(parsed, classification),
+        validate_multiple_comparisons_correction(parsed, classification),
+        validate_supplementary_material_indication(parsed),
+        validate_conclusion_scope_creep(parsed),
+        validate_discussion_results_alignment(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

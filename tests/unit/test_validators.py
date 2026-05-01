@@ -4128,3 +4128,338 @@ def test_non_revision_manuscript_no_fire() -> None:
     )
     result = validate_reviewer_response_completeness(ms)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 93 – Novelty overclaiming
+# ---------------------------------------------------------------------------
+
+
+def _novelty_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="novelty-test",
+        source_path="novelty.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_novelty_overclaim_fires() -> None:
+    from manuscript_audit.validators.core import validate_novelty_overclaim
+
+    text = (
+        "This is the first ever method to achieve this result. "
+        "The approach is unprecedented in the literature."
+    )
+    ms = _novelty_manuscript(text)
+    result = validate_novelty_overclaim(ms)
+    codes = [f.code for f in result.findings]
+    assert "novelty-overclaim" in codes
+
+
+def test_novelty_with_contrast_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_novelty_overclaim
+
+    text = (
+        "Unlike previous methods, our approach achieves state-of-the-art results. "
+        "Compared to prior work, we improve accuracy by 5%. "
+        "This is the first to demonstrate the approach at this scale."
+    )
+    ms = _novelty_manuscript(text)
+    result = validate_novelty_overclaim(ms)
+    assert result.findings == []
+
+
+def test_no_novelty_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_novelty_overclaim
+
+    text = (
+        "We present a new method for classification. "
+        "The method improves on baseline approaches by 5%."
+    )
+    ms = _novelty_manuscript(text)
+    result = validate_novelty_overclaim(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 94 – Figure/table minimum
+# ---------------------------------------------------------------------------
+
+
+def _fig_table_manuscript(
+    full_text: str,
+    paper_type: str = "empirical_research_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="ft-test",
+        source_path="ft.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_no_figures_tables_empirical_fires() -> None:
+    from manuscript_audit.validators.core import validate_figure_table_minimum
+
+    text = (
+        "We conducted a study of 120 participants. "
+        "Results showed significant improvement. "
+        "The method outperforms the baseline."
+    )
+    ms, clf = _fig_table_manuscript(text)
+    result = validate_figure_table_minimum(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "no-figures-or-tables" in codes
+
+
+def test_figure_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_table_minimum
+
+    text = "See Figure 1 for the results. Table 1 summarizes the parameters."
+    ms, clf = _fig_table_manuscript(text)
+    result = validate_figure_table_minimum(ms, clf)
+    assert result.findings == []
+
+
+def test_non_empirical_no_fig_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_table_minimum
+
+    text = "We present a new algorithm."
+    ms, clf = _fig_table_manuscript(text, paper_type="software_workflow_paper")
+    result = validate_figure_table_minimum(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 95 – Multiple comparisons correction
+# ---------------------------------------------------------------------------
+
+
+def _multi_test_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_research_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="mt-test",
+        source_path="mt.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_multiple_tests_without_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_correction
+
+    body = (
+        "We performed multiple comparisons across all outcome measures. "
+        "Several statistical tests were conducted for each primary endpoint."
+    )
+    ms, clf = _multi_test_manuscript(body)
+    result = validate_multiple_comparisons_correction(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-multiple-comparisons-correction" in codes
+
+
+def test_multiple_tests_with_bonferroni_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_correction
+
+    body = (
+        "We performed multiple comparisons with Bonferroni correction "
+        "to control the family-wise error rate."
+    )
+    ms, clf = _multi_test_manuscript(body)
+    result = validate_multiple_comparisons_correction(ms, clf)
+    assert result.findings == []
+
+
+def test_single_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_correction
+
+    body = "We performed a paired t-test to compare the two groups."
+    ms, clf = _multi_test_manuscript(body)
+    result = validate_multiple_comparisons_correction(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 96 – Supplementary material indication
+# ---------------------------------------------------------------------------
+
+
+def _suppl_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="suppl-test",
+        source_path="suppl.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_suppl_reference_without_availability_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_supplementary_material_indication,
+    )
+
+    text = (
+        "See supplementary data for additional results. "
+        "Supplementary figures show the complete analysis."
+    )
+    ms = _suppl_manuscript(text)
+    result = validate_supplementary_material_indication(ms)
+    codes = [f.code for f in result.findings]
+    assert "unindicated-supplementary-material" in codes
+
+
+def test_suppl_with_availability_statement_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_supplementary_material_indication,
+    )
+
+    text = (
+        "Supplementary material is available online at the journal website. "
+        "See online supplementary figures for additional analysis."
+    )
+    ms = _suppl_manuscript(text)
+    result = validate_supplementary_material_indication(ms)
+    assert result.findings == []
+
+
+def test_no_suppl_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_supplementary_material_indication,
+    )
+
+    text = "We present the full analysis in the main text."
+    ms = _suppl_manuscript(text)
+    result = validate_supplementary_material_indication(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 97 – Conclusion scope creep
+# ---------------------------------------------------------------------------
+
+
+def _conclusion_manuscript(conclusion_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="conc-test",
+        source_path="conc.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Conclusions", level=1, body=conclusion_body)],
+        full_text=conclusion_body,
+    )
+
+
+def test_conclusion_scope_creep_fires() -> None:
+    from manuscript_audit.validators.core import validate_conclusion_scope_creep
+
+    body = (
+        "In conclusion, the method performs well on all benchmarks. "
+        "Furthermore, we also show that the approach generalizes to new domains "
+        "not previously examined. Additionally, we find that the training time "
+        "is significantly reduced compared to baseline methods. Moreover, future "
+        "directions include applying this method to additional tasks."
+    )
+    ms = _conclusion_manuscript(body)
+    result = validate_conclusion_scope_creep(ms)
+    codes = [f.code for f in result.findings]
+    assert "conclusion-scope-creep" in codes
+
+
+def test_summary_conclusion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conclusion_scope_creep
+
+    body = (
+        "In summary, we presented a new method for text classification. "
+        "The approach achieves state-of-the-art results on standard benchmarks. "
+        "The main contributions include a novel architecture and training procedure."
+    )
+    ms = _conclusion_manuscript(body)
+    result = validate_conclusion_scope_creep(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 98 – Discussion-Results alignment
+# ---------------------------------------------------------------------------
+
+
+def _discussion_manuscript(discussion_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="disc-test",
+        source_path="disc.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Discussion", level=1, body=discussion_body)],
+        full_text=discussion_body,
+    )
+
+
+def test_discussion_without_results_reference_fires() -> None:
+    from manuscript_audit.validators.core import validate_discussion_results_alignment
+
+    body = (
+        "The method is interesting and could be applied to many domains. "
+        "Future directions include extending the approach to new modalities. "
+        "The technique has broad implications for the field of machine learning "
+        "and could influence how researchers approach similar problems in the future. "
+        "The computational efficiency is noteworthy and worth examining further. "
+        "These properties make it an attractive candidate for large-scale deployment."
+    )
+    ms = _discussion_manuscript(body)
+    result = validate_discussion_results_alignment(ms)
+    codes = [f.code for f in result.findings]
+    assert "discussion-lacks-results-reference" in codes
+
+
+def test_discussion_with_results_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_discussion_results_alignment
+
+    body = (
+        "These results demonstrate that the method is effective. "
+        "Our findings suggest that the approach generalizes well. "
+        "The data suggest that performance improvements are consistent across domains. "
+        "We interpret the accuracy gains as evidence of better feature representation."
+    )
+    ms = _discussion_manuscript(body)
+    result = validate_discussion_results_alignment(ms)
+    assert result.findings == []
