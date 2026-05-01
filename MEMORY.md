@@ -606,15 +606,40 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `validate_abstract_tense(parsed)` → `abstract-tense-mixed` (minor)
 - Flags abstracts mixing past and present tense verb forms
 
-Current test count: **228 passing** (after phase 86)
+**Phase 87** (`a02aea2`) — MEMORY.md sync (phases 80–86)
 
-Phase 86 is closed. Next candidate phases:
-1. **Phase 87: Claim strength escalation** — "proves", "demonstrates conclusively" without evidence → major
-2. **Phase 88: Sample size reporting** — empirical papers without explicit N mentioned → moderate
-3. **Phase 89: Limitation section presence** — no Limitations section in empirical papers → moderate
-4. **Phase 90: Author contribution statement** — check for CRediT/author contribution disclosure
-5. **Phase 91: Preregistration mention** — flag registered reports or RCTs without preregistration note
-6. **Phase 92: Response to reviewers completeness** — revision manuscripts without systematic reviewer response
+**Phases 87–92** (`1402062`) — Six validators
+- Phase 87: `validate_claim_strength_escalation` → `overstrong-claim` (major) — flags "proves", "definitively shows", etc.
+- Phase 88: `validate_sample_size_reporting` → `missing-sample-size` (moderate) — empirical papers only
+- Phase 89: `validate_limitations_section_presence` → `missing-limitations-section` (moderate) — empirical papers only
+- Phase 90: `validate_author_contribution_statement` → `missing-author-contributions` (minor)
+- Phase 91: `validate_preregistration_mention` → `missing-preregistration` (moderate) — clinical/RCT papers only
+- Phase 92: `validate_reviewer_response_completeness` → `missing-reviewer-response` (minor) — revision manuscripts only
+- **Critical**: All paper-type frozensets use `"empirical_paper"`, `"applied_stats_paper"` — NOT `"empirical_research_paper"`
+
+**Phases 93–98** (`25c120a`) — Six validators
+- Phase 93: `validate_novelty_overclaim` → `novelty-overclaim` (major)
+- Phase 94: `validate_figure_table_minimum` → `no-figures-or-tables` (moderate) — empirical only
+- Phase 95: `validate_multiple_comparisons_correction` → `missing-multiple-comparisons-correction` (moderate)
+- Phase 96: `validate_supplementary_material_indication` → `unindicated-supplementary-material` (minor)
+- Phase 97: `validate_conclusion_scope_creep` → `conclusion-scope-creep` (minor) — requires ≥30 words
+- Phase 98: `validate_discussion_results_alignment` → `discussion-lacks-results-reference` (moderate) — requires ≥50 words
+
+**Phases 99–102** (`ebbfb86`) — Four validators
+- Phase 99: `validate_open_data_statement` → `missing-open-data-statement` (minor) — empirical only
+- Phase 100: `validate_redundant_phrases` → `redundant-phrases` (minor) — fires at ≥3 redundant phrases
+- Phase 101: `validate_abstract_quantitative_results` → `abstract-no-quantitative-result` (moderate) — requires ≥50 word abstract, empirical only
+- Phase 102: `validate_confidence_interval_reporting` → `missing-confidence-intervals` (moderate) — effect sizes without CIs, empirical only
+
+Current test count: **272 passing** (after phase 102)
+
+Phase 102 is closed. Next candidate phases:
+1. **Phase 103: Inconsistent variable notation** — same concept referred to by multiple names/symbols
+2. **Phase 104: Regression discontinuity assumptions** — RD designs without bandwidth/continuity checks
+3. **Phase 105: Survey instrument validity** — survey studies without reliability/validity reporting
+4. **Phase 106: Measurement invariance** — multi-group comparisons without invariance testing
+5. **Phase 107: Bayesian prior justification** — Bayesian analyses without prior justification
+6. **Phase 108: Code/software version pinning** — software papers without pinned dependency versions
 
 
 ## Bundle and handoff requirements
