@@ -4708,3 +4708,299 @@ def test_non_empirical_no_ci_no_fire() -> None:
     ms, clf = _ci_manuscript(body, paper_type="software_workflow_paper")
     result = validate_confidence_interval_reporting(ms, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 103 – Bayesian prior justification
+# ---------------------------------------------------------------------------
+
+
+def _bayesian_manuscript(
+    methods_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="bayes-test",
+        source_path="bayes.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_bayesian_without_prior_fires() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_prior_justification
+
+    body = (
+        "We used a Bayesian hierarchical model implemented in Stan. "
+        "Posterior distributions were estimated using MCMC sampling with NUTS. "
+        "Credible intervals were computed from 4000 posterior samples."
+    )
+    ms, clf = _bayesian_manuscript(body)
+    result = validate_bayesian_prior_justification(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-prior-justification" in codes
+
+
+def test_bayesian_with_prior_justification_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_prior_justification
+
+    body = (
+        "We used a Bayesian hierarchical model. Weakly informative priors "
+        "were specified following Gelman et al. (2017). "
+        "The normal prior (mu=0, sigma=2.5) was chosen based on prior sensitivity analysis."
+    )
+    ms, clf = _bayesian_manuscript(body)
+    result = validate_bayesian_prior_justification(ms, clf)
+    assert result.findings == []
+
+
+def test_non_bayesian_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_prior_justification
+
+    body = "We conducted a paired t-test comparing the two groups."
+    ms, clf = _bayesian_manuscript(body)
+    result = validate_bayesian_prior_justification(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 104 – Software version pinning
+# ---------------------------------------------------------------------------
+
+
+def _software_version_manuscript(
+    methods_body: str,
+    paper_type: str = "software_workflow_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="sv-test",
+        source_path="sv.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_software_without_version_fires() -> None:
+    from manuscript_audit.validators.core import validate_software_version_pinning
+
+    body = (
+        "Analysis was performed using Python with numpy and pandas. "
+        "Machine learning models were implemented in scikit-learn."
+    )
+    ms, clf = _software_version_manuscript(body)
+    result = validate_software_version_pinning(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-software-versions" in codes
+
+
+def test_software_with_version_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_software_version_pinning
+
+    body = (
+        "Analysis was performed using Python 3.11.2 with numpy (version 1.24.3) "
+        "and pandas (version 2.0.1). "
+        "Models were trained using scikit-learn version 1.2.2."
+    )
+    ms, clf = _software_version_manuscript(body)
+    result = validate_software_version_pinning(ms, clf)
+    assert result.findings == []
+
+
+def test_no_software_mentioned_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_software_version_pinning
+
+    body = "We conducted interviews with 30 participants using a semi-structured protocol."
+    ms, clf = _software_version_manuscript(body, paper_type="empirical_paper")
+    result = validate_software_version_pinning(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 105 – Measurement scale reporting
+# ---------------------------------------------------------------------------
+
+
+def _scale_manuscript(
+    methods_body: str,
+    paper_type: str = "survey_study",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="scale-test",
+        source_path="scale.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+        full_text=methods_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_scale_without_reliability_fires() -> None:
+    from manuscript_audit.validators.core import validate_measurement_scale_reporting
+
+    body = (
+        "Participants completed a 20-item Likert scale measuring burnout. "
+        "The questionnaire was adapted from the Maslach Burnout Inventory. "
+        "Items were rated on a 7-point scale from 1 (strongly disagree) to 7 (strongly agree)."
+    )
+    ms, clf = _scale_manuscript(body)
+    result = validate_measurement_scale_reporting(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-scale-reliability" in codes
+
+
+def test_scale_with_cronbach_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_scale_reporting
+
+    body = (
+        "Participants completed a 20-item Likert scale. "
+        "Internal consistency was excellent (Cronbach alpha = 0.91). "
+        "Reliability confirmed adequate validity."
+    )
+    ms, clf = _scale_manuscript(body)
+    result = validate_measurement_scale_reporting(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 106 – SEM fit indices
+# ---------------------------------------------------------------------------
+
+
+def _sem_manuscript(
+    results_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="sem-test",
+        source_path="sem.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=results_body)],
+        full_text=results_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_sem_without_fit_indices_fires() -> None:
+    from manuscript_audit.validators.core import validate_sem_fit_indices
+
+    body = (
+        "We specified a structural equation model with three latent variables. "
+        "The CFA model showed acceptable fit with significant factor loadings. "
+        "All paths were statistically significant at p < 0.05."
+    )
+    ms, clf = _sem_manuscript(body)
+    result = validate_sem_fit_indices(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-sem-fit-indices" in codes
+
+
+def test_sem_with_fit_indices_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sem_fit_indices
+
+    body = (
+        "The CFA model showed excellent fit: CFI = 0.97, TLI = 0.96, "
+        "RMSEA = 0.042 (90% CI: 0.031, 0.053), SRMR = 0.048."
+    )
+    ms, clf = _sem_manuscript(body)
+    result = validate_sem_fit_indices(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 107 – Regression variance explanation
+# ---------------------------------------------------------------------------
+
+
+def _regression_manuscript(
+    results_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="reg-test",
+        source_path="reg.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=results_body)],
+        full_text=results_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_regression_without_r_squared_fires() -> None:
+    from manuscript_audit.validators.core import validate_regression_variance_explanation
+
+    body = (
+        "Multiple linear regression showed that age significantly predicted "
+        "burnout (beta = 0.23, p < 0.001). Gender was also a significant "
+        "predictor (beta = -0.18, p = 0.004)."
+    )
+    ms, clf = _regression_manuscript(body)
+    result = validate_regression_variance_explanation(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-variance-explained" in codes
+
+
+def test_regression_with_r_squared_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_variance_explanation
+
+    body = (
+        "Multiple linear regression explained 34% of the variance in burnout "
+        "(R-squared = 0.34, F(3, 116) = 19.8, p < 0.001). "
+        "Age was a significant predictor (beta = 0.23, p < 0.001)."
+    )
+    ms, clf = _regression_manuscript(body)
+    result = validate_regression_variance_explanation(ms, clf)
+    assert result.findings == []

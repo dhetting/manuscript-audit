@@ -5084,6 +5084,391 @@ def validate_confidence_interval_reporting(
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 103 – Bayesian prior justification
+# ---------------------------------------------------------------------------
+
+_BAYESIAN_RE = re.compile(
+    r"\b(Bayesian|MCMC|Markov chain Monte Carlo|posterior|prior distribution|"
+    r"likelihood function|credible interval|Bayes factor|"
+    r"Stan|JAGS|PyMC|brms|NUTS sampler)\b",
+    re.IGNORECASE,
+)
+_PRIOR_JUSTIFY_RE = re.compile(
+    r"\b(prior (was|were|is|are) (chosen|selected|set|specified|derived)|"
+    r"weakly informative|non-informative|uninformative|"
+    r"half-Cauchy|half-Normal|normal prior|"
+    r"prior choice|prior specification|elicited prior|"
+    r"sensitivity (analysis|to prior|of prior))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_bayesian_prior_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Bayesian analyses without prior justification.
+
+    Emits ``missing-prior-justification`` (moderate) when Bayesian methods
+    are mentioned in Methods/Results but no prior specification or justification
+    is provided.  Only fires for empirical paper types.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="bayesian_prior_justification", findings=[]
+        )
+
+    combined = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"methods", "methodology", "statistical analysis", "analysis"}
+    )
+    if not combined:
+        return ValidationResult(
+            validator_name="bayesian_prior_justification", findings=[]
+        )
+
+    if not _BAYESIAN_RE.search(combined):
+        return ValidationResult(
+            validator_name="bayesian_prior_justification", findings=[]
+        )
+
+    if _PRIOR_JUSTIFY_RE.search(combined):
+        return ValidationResult(
+            validator_name="bayesian_prior_justification", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="bayesian_prior_justification",
+        findings=[
+            Finding(
+                code="missing-prior-justification",
+                severity="moderate",
+                message=(
+                    "Bayesian analysis detected but no prior specification or "
+                    "justification found in Methods. "
+                    "Prior choices must be explicitly stated and defended."
+                ),
+                validator="bayesian_prior_justification",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 104 – Software/code version pinning
+# ---------------------------------------------------------------------------
+
+_SOFTWARE_CITATION_RE = re.compile(
+    r"\b(R version|Python \d|numpy|pandas|scikit-learn|tensorflow|pytorch|"
+    r"SPSS|SAS|Stata|MATLAB|Julia \d|Mplus|lavaan|lme4|"
+    r"package version|version \d+\.\d+)\b",
+    re.IGNORECASE,
+)
+_VERSION_PINNED_RE = re.compile(
+    r"\b(version \d+\.\d+[\.\d]*|v\d+\.\d+|"
+    r"R \d+\.\d+\.\d+|Python \d+\.\d+(\.\d+)?)\b",
+    re.IGNORECASE,
+)
+_VERSION_PAPER_TYPES = frozenset(
+    {
+        "software_workflow_paper",
+        "empirical_paper",
+        "applied_stats_paper",
+    }
+)
+
+
+def validate_software_version_pinning(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag software papers that name packages without version numbers.
+
+    Emits ``missing-software-versions`` (minor) when Methods sections name
+    software tools/packages without pinned version numbers.
+    """
+    if classification.paper_type not in _VERSION_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="software_version_pinning", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"methods", "methodology", "implementation", "software"}
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="software_version_pinning", findings=[]
+        )
+
+    if not _SOFTWARE_CITATION_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="software_version_pinning", findings=[]
+        )
+
+    if _VERSION_PINNED_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="software_version_pinning", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="software_version_pinning",
+        findings=[
+            Finding(
+                code="missing-software-versions",
+                severity="minor",
+                message=(
+                    "Methods section names software packages without version numbers. "
+                    "Pin exact versions for computational reproducibility."
+                ),
+                validator="software_version_pinning",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 105 – Measurement scale reporting
+# ---------------------------------------------------------------------------
+
+_SCALE_MENTION_RE = re.compile(
+    r"\b(Likert|scale|questionnaire|survey instrument|rating scale|"
+    r"self-reported|self-report|psychometric|inventory)\b",
+    re.IGNORECASE,
+)
+_RELIABILITY_RE = re.compile(
+    r"\b(Cronbach|alpha\s*=\s*0\.\d+|coefficient alpha|"
+    r"internal consistency|test-retest|inter-rater|"
+    r"reliability|validity|confirmatory factor|CFA|"
+    r"McDonald'?s omega|omega\s*=)\b",
+    re.IGNORECASE,
+)
+_SCALE_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "survey_study",
+        "clinical_trial_report",
+    }
+)
+
+
+def validate_measurement_scale_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers that use scales without reliability reporting.
+
+    Emits ``missing-scale-reliability`` (moderate) when Methods sections
+    mention Likert scales or survey instruments without reporting reliability
+    statistics (Cronbach's alpha, omega, etc.).
+    """
+    if classification.paper_type not in _SCALE_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="measurement_scale_reporting", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {
+            "methods",
+            "methodology",
+            "measures",
+            "instruments",
+            "participants",
+        }
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="measurement_scale_reporting", findings=[]
+        )
+
+    if not _SCALE_MENTION_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="measurement_scale_reporting", findings=[]
+        )
+
+    if _RELIABILITY_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="measurement_scale_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="measurement_scale_reporting",
+        findings=[
+            Finding(
+                code="missing-scale-reliability",
+                severity="moderate",
+                message=(
+                    "Methods describe survey scales or Likert instruments without "
+                    "reporting reliability (e.g., Cronbach's alpha). "
+                    "Measurement reliability must be documented."
+                ),
+                validator="measurement_scale_reporting",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 106 – Missing model fit indices
+# ---------------------------------------------------------------------------
+
+_SEM_RE = re.compile(
+    r"\b(structural equation model|SEM|path model|CFA|EFA|"
+    r"latent variable|confirmatory factor analysis|"
+    r"exploratory factor analysis)\b",
+    re.IGNORECASE,
+)
+_FIT_INDEX_RE = re.compile(
+    r"\b(CFI|TLI|RMSEA|SRMR|NFI|GFI|AGFI|"
+    r"comparative fit|Tucker-Lewis|root mean square|"
+    r"model fit|fit statistics|fit indices)\b",
+    re.IGNORECASE,
+)
+_SEM_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "survey_study",
+    }
+)
+
+
+def validate_sem_fit_indices(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag SEM analyses without model fit indices.
+
+    Emits ``missing-sem-fit-indices`` (moderate) when Results sections contain
+    SEM or CFA language without reporting standard fit indices (CFI, RMSEA, etc.).
+    """
+    if classification.paper_type not in _SEM_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="sem_fit_indices", findings=[]
+        )
+
+    results_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"results", "analysis", "findings"}
+    )
+    if not results_body:
+        return ValidationResult(
+            validator_name="sem_fit_indices", findings=[]
+        )
+
+    if not _SEM_RE.search(results_body):
+        return ValidationResult(
+            validator_name="sem_fit_indices", findings=[]
+        )
+
+    if _FIT_INDEX_RE.search(results_body):
+        return ValidationResult(
+            validator_name="sem_fit_indices", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="sem_fit_indices",
+        findings=[
+            Finding(
+                code="missing-sem-fit-indices",
+                severity="moderate",
+                message=(
+                    "Structural equation model or CFA detected but no fit indices "
+                    "(CFI, TLI, RMSEA, SRMR) reported. "
+                    "Model fit must be assessed and reported."
+                ),
+                validator="sem_fit_indices",
+                location="Results",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 107 – Missing variance explanation
+# ---------------------------------------------------------------------------
+
+_REGRESSION_RE = re.compile(
+    r"\b(regress(ion|ed)|linear model|GLM|generalized linear|"
+    r"logistic regression|OLS|least squares|lm\(|glm\()\b",
+    re.IGNORECASE,
+)
+_R_SQUARED_RE = re.compile(
+    r"\b(R.squared|R2\s*=|adjusted R|variance explained|"
+    r"explained variance|proportion of variance|"
+    r"R\^2\s*=\s*0\.\d+|r2\s*=\s*0\.\d+)\b",
+    re.IGNORECASE,
+)
+_REGRESSION_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "survey_study",
+    }
+)
+
+
+def validate_regression_variance_explanation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression analyses without R-squared or variance explanation.
+
+    Emits ``missing-variance-explained`` (moderate) when Results sections
+    describe regression models without reporting variance explained (R²).
+    """
+    if classification.paper_type not in _REGRESSION_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="regression_variance_explanation", findings=[]
+        )
+
+    results_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"results", "analysis", "findings", "statistical analysis"}
+    )
+    if not results_body:
+        return ValidationResult(
+            validator_name="regression_variance_explanation", findings=[]
+        )
+
+    if not _REGRESSION_RE.search(results_body):
+        return ValidationResult(
+            validator_name="regression_variance_explanation", findings=[]
+        )
+
+    if _R_SQUARED_RE.search(results_body):
+        return ValidationResult(
+            validator_name="regression_variance_explanation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="regression_variance_explanation",
+        findings=[
+            Finding(
+                code="missing-variance-explained",
+                severity="moderate",
+                message=(
+                    "Regression analysis detected but no R-squared or variance "
+                    "explained reported. Include variance accounted for by the model."
+                ),
+                validator="regression_variance_explanation",
+                location="Results",
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -5180,6 +5565,11 @@ def run_deterministic_validators(
         validate_redundant_phrases(parsed),
         validate_abstract_quantitative_results(parsed, classification),
         validate_confidence_interval_reporting(parsed, classification),
+        validate_bayesian_prior_justification(parsed, classification),
+        validate_software_version_pinning(parsed, classification),
+        validate_measurement_scale_reporting(parsed, classification),
+        validate_sem_fit_indices(parsed, classification),
+        validate_regression_variance_explanation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
