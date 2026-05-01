@@ -359,12 +359,42 @@ Known limitations (acceptable for MVP):
 - Uses section title matching only — does not track symbol occurrences across section bodies
 - A paper could have all sections correctly ordered but still use symbols before defining them inline; this validator does not catch that
 
+## Phase 21 validated state
+
+Phase 21 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 21 added:
+- New constants in `validators/core.py`:
+  - `ABSTRACT_OVERLONG_THRESHOLD = 350` (words)
+  - `SECTION_THIN_THRESHOLD = 30` (words)
+  - `_SUBSTANTIAL_SECTION_RE`: matches methods, results, discussion, experiments, analysis, evaluation, conclusions
+  - `_word_count(text)`: helper returning `len(text.split())`
+- New deterministic validator `validate_abstract_length(parsed)`:
+  - Flags `overlong-abstract` (minor) when `parsed.abstract` > 350 words
+  - Skips empty abstracts
+  - Does NOT duplicate the agent's `thin-abstract` check (< 30 words)
+- New deterministic validator `validate_section_body_completeness(parsed)`:
+  - Scans sections matching `_SUBSTANTIAL_SECTION_RE` (Methods, Results, Discussion, etc.)
+  - Flags `underdeveloped-section` (moderate) when body word count < 30
+  - Location: `section '<title>'`, evidence: `<N> words`
+- Wired both into `run_deterministic_validators()` at the end of the pre-escalation list
+- Updated golden file: `latex_equivalence_report_summary.json` → `{moderate: 7, minor: 1}` (was 4, now +3 for thin Methods, Results, Discussion sections in the fixture — correct behavior, the fixture IS a minimal test file)
+- 4 new unit tests; 66 total tests pass (up from 62)
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 66 passed
+
+Known limitations (acceptable for MVP):
+- `_word_count` counts raw tokens; LaTeX commands (e.g., `\cite{...}`) inflate the count slightly
+- `_SUBSTANTIAL_SECTION_RE` uses section title matching only; renamed sections (e.g., "Empirical Findings") are not caught
+
 ## Current immediate next task
 
-Phase 20 is closed. Next candidate phases:
-1. **Phase 21: agent heuristic confidence scoring** — attach a numeric confidence score (0–1) to each agent finding based on signal strength
-2. **Phase 21: manuscript length/density metrics** — add abstract word count and section-length validators
-3. **Phase 21: claim escalation severity tiers** — differentiate major vs fatal escalation based on finding combination (e.g., systemic claim gap + missing required section = fatal)
+Phase 21 is closed. Next candidate phases:
+1. **Phase 22: agent heuristic confidence scoring** — numeric confidence score (0–1) per agent finding based on signal count
+2. **Phase 22: claim escalation severity tiers** — fatal escalation when systemic claim gap + missing required section co-occur
+3. **Phase 22: manuscript readability / passive voice** — flag excessive passive voice or nominalization density in methods sections
 
 ## Bundle and handoff requirements
 

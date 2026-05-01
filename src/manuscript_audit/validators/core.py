@@ -70,6 +70,18 @@ PROOF_CONTENT_SECTION_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Length/density thresholds.
+ABSTRACT_OVERLONG_THRESHOLD = 350   # words above which abstract is flagged
+SECTION_THIN_THRESHOLD = 30         # words below which a content section is flagged
+_SUBSTANTIAL_SECTION_RE = re.compile(
+    r"\b(methods?|results?|discussion|experiments?|analysis|evaluation|conclusions?)\b",
+    re.IGNORECASE,
+)
+
+
+def _word_count(text: str) -> int:
+    return len(text.split())
+
 
 def _split_paragraphs(text: str) -> list[str]:
     """Split text into non-empty paragraphs on blank lines."""
@@ -854,6 +866,66 @@ def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationRes
     return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
 
 
+def validate_abstract_length(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag abstracts that exceed the typical journal word-count cap.
+
+    Does not duplicate the agent's thin-abstract check (< 30 words). Only flags
+    abstracts above ABSTRACT_OVERLONG_THRESHOLD as a minor issue since many
+    journals cap at 250-300 words.
+    """
+    findings: list[Finding] = []
+    if not parsed.abstract.strip():
+        return ValidationResult(validator_name="abstract_length", findings=findings)
+    n = _word_count(parsed.abstract)
+    if n > ABSTRACT_OVERLONG_THRESHOLD:
+        findings.append(
+            Finding(
+                code="overlong-abstract",
+                severity="minor",
+                message=(
+                    f"Abstract has {n} words; many journals cap at 250–300. "
+                    "Consider condensing."
+                ),
+                validator="abstract_length",
+                location="Abstract",
+                evidence=[f"{n} words"],
+            )
+        )
+    return ValidationResult(validator_name="abstract_length", findings=findings)
+
+
+def validate_section_body_completeness(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag content sections whose body is below the minimum substantive threshold.
+
+    Applies to sections whose titles match expected heavy-content patterns
+    (Methods, Results, Discussion, Experiments, Analysis, Evaluation, Conclusions).
+    A body with fewer than SECTION_THIN_THRESHOLD words is unlikely to contain
+    meaningful content and is probably a placeholder or stub.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if not _SUBSTANTIAL_SECTION_RE.search(section.title):
+            continue
+        n = _word_count(section.body)
+        if n < SECTION_THIN_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="underdeveloped-section",
+                    severity="moderate",
+                    message=(
+                        f"Section '{section.title}' has only {n} words; "
+                        f"substantive sections should exceed {SECTION_THIN_THRESHOLD}."
+                    ),
+                    validator="section_body_completeness",
+                    location=f"section '{section.title}'",
+                    evidence=[f"{n} words"],
+                )
+            )
+    return ValidationResult(
+        validator_name="section_body_completeness", findings=findings
+    )
+
+
 def validate_notation_section_ordering(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -967,6 +1039,8 @@ def run_deterministic_validators(
         validate_citationless_quantitative_claims(parsed),
         validate_citationless_comparative_claims(parsed),
         validate_abstract_metric_coverage(parsed),
+        validate_abstract_length(parsed),
+        validate_section_body_completeness(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

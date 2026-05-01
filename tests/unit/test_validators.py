@@ -482,3 +482,90 @@ def test_notation_ordering_via_fixture() -> None:
     suite = run_deterministic_validators(parsed, classification)
     codes = {f.code for f in suite.all_findings}
     assert "notation-section-out-of-order" in codes
+
+
+# ---------------------------------------------------------------------------
+# Phase 21: abstract length and section body completeness validators
+# ---------------------------------------------------------------------------
+
+
+def test_overlong_abstract_detected() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_abstract_length
+
+    long_abstract = " ".join(["word"] * 360)
+    parsed = ParsedManuscript(
+        manuscript_id="overlong",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Overlong abstract test",
+        abstract=long_abstract,
+        full_text="",
+    )
+    result = validate_abstract_length(parsed)
+    codes = [f.code for f in result.findings]
+    assert "overlong-abstract" in codes
+    assert result.findings[0].severity == "minor"
+
+
+def test_normal_abstract_length_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_abstract_length
+
+    parsed = ParsedManuscript(
+        manuscript_id="normal",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Normal abstract",
+        abstract="This study investigates the effect of X on Y in a controlled setting.",
+        full_text="",
+    )
+    result = validate_abstract_length(parsed)
+    assert result.findings == []
+
+
+def test_underdeveloped_section_detected() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_section_body_completeness
+
+    parsed = ParsedManuscript(
+        manuscript_id="thin-sections",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Thin sections test",
+        full_text="",
+        sections=[
+            Section(title="Methods", level=2, body="We used gradient descent."),
+            Section(title="Results", level=2, body="See Table 1."),
+            Section(title="Discussion", level=2, body=(
+                "These results suggest a meaningful improvement over the baseline "
+                "approach. The method generalizes well across multiple conditions "
+                "and demonstrates robustness to parameter variations in repeated "
+                "experiments, confirming the reliability of our approach."
+            )),
+        ],
+    )
+    result = validate_section_body_completeness(parsed)
+    flagged = {f.location for f in result.findings}
+    assert "section 'Methods'" in flagged
+    assert "section 'Results'" in flagged
+    assert "section 'Discussion'" not in flagged
+
+
+def test_substantial_section_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_section_body_completeness
+
+    body = "This is a well-developed methods section with sufficient detail. " * 5
+    parsed = ParsedManuscript(
+        manuscript_id="full-sections",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Full sections test",
+        full_text="",
+        sections=[
+            Section(title="Methods", level=2, body=body),
+        ],
+    )
+    result = validate_section_body_completeness(parsed)
+    assert result.findings == []
