@@ -237,6 +237,20 @@ def render_markdown_report(report: FinalVettingReport) -> str:
 
 
 def render_revision_verification_report(report: RevisionVerificationReport) -> str:
+    from collections import Counter
+
+    def _code_counts(refs: list) -> Counter:
+        return Counter(ref.code for ref in refs)
+
+    def _render_code_summary(label: str, refs: list) -> str:
+        n = len(refs)
+        if not refs:
+            return f"{label} ({n}): none"
+        lines = [f"{label} ({n}):"]
+        for code, count in sorted(_code_counts(refs).items()):
+            lines.append(f"  {count}× {code}")
+        return "\n".join(lines)
+
     def _render_refs(title: str, refs: list) -> str:
         lines = [f"## {title}", ""]
         if not refs:
@@ -249,6 +263,13 @@ def render_revision_verification_report(report: RevisionVerificationReport) -> s
                 )
         return "\n".join(lines)
 
+    code_summary = "\n".join(
+        [
+            _render_code_summary("Resolved", report.resolved_findings),
+            _render_code_summary("Persistent", report.persistent_findings),
+            _render_code_summary("Introduced", report.new_findings),
+        ]
+    )
     priorities = "\n".join(f"- {item}" for item in report.revision_priorities)
     return (
         f"# Revision verification report\n\n"
@@ -257,6 +278,7 @@ def render_revision_verification_report(report: RevisionVerificationReport) -> s
         f"**New manuscript ID:** {report.new_manuscript_id}\n\n"
         f"**Route changed:** {'yes' if report.route_changed else 'no'}\n\n"
         f"## Revision priorities\n\n{priorities}\n\n"
+        f"## Finding code summary\n\n{code_summary}\n\n"
         f"{_render_refs('Resolved findings', report.resolved_findings)}\n\n"
         f"{_render_refs('Persistent findings', report.persistent_findings)}\n\n"
         f"{_render_refs('New findings', report.new_findings)}\n"

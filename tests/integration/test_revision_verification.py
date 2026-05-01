@@ -25,6 +25,9 @@ def test_revision_verification_writes_structured_artifacts(tmp_path: Path) -> No
     payload = json.loads((output_dir / "reports" / "revision_verification_report.json").read_text())
     assert payload["new_manuscript_id"] == report.new_manuscript_id
 
+    md = (output_dir / "reports" / "revision_verification_report.md").read_text()
+    assert "## Finding code summary" in md
+
     connection = duckdb.connect(str(db_path))
     revision_count = connection.execute("SELECT COUNT(*) FROM revision_links").fetchone()[0]
     report_count = connection.execute("SELECT COUNT(*) FROM report_artifacts").fetchone()[0]
@@ -55,3 +58,12 @@ def test_phase13_to_16_finding_codes_resolve_after_revision(tmp_path: Path) -> N
     assert "citationless-quantitative-claim" not in persistent_codes
     assert "citationless-comparative-claim" not in persistent_codes
     assert "systemic-claim-evidence-gap" not in persistent_codes
+
+    md = (output_dir / "reports" / "revision_verification_report.md").read_text()
+    assert "## Finding code summary" in md
+    assert "citationless-quantitative-claim" in md
+    assert "systemic-claim-evidence-gap" in md
+    # Resolved counts should appear before the detailed sections
+    summary_pos = md.index("## Finding code summary")
+    resolved_detail_pos = md.index("## Resolved findings")
+    assert summary_pos < resolved_detail_pos

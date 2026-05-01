@@ -298,12 +298,47 @@ Validated commands:
 - `pixi run test` → 58 passed
 - `pixi run audit-standard ... --output-dir <out>` → summary lines appear as expected
 
+## Phase 19 validated state
+
+Phase 19 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 19 added:
+- Updated `render_revision_verification_report` in `reports/synthesis.py`:
+  - Added `## Finding code summary` section between revision priorities and the detailed finding lists
+  - Three count blocks: `Resolved (N)`, `Persistent (N)`, `Introduced (N)` each listing `count× code` lines sorted alphabetically
+  - "none" displayed when a category is empty
+  - Uses `collections.Counter` on `ref.code` — no schema changes
+- Added assertions in both revision integration tests:
+  - `test_revision_verification_writes_structured_artifacts`: checks `## Finding code summary` appears in generated Markdown
+  - `test_phase13_to_16_finding_codes_resolve_after_revision`: checks code names appear in summary and that summary section precedes the detailed sections
+- 58 tests pass (count unchanged — updated tests, no new tests)
+
+Example output:
+```
+## Finding code summary
+
+Resolved (6):
+  1× abstract-metric-unsupported
+  1× citationless-comparative-claim
+  2× citationless-quantitative-claim
+  1× systemic-claim-evidence-gap
+Persistent (5):
+  ...
+Introduced (4):
+  ...
+```
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 58 passed
+- `pixi run verify-revision old.md new.md --output-dir <out>` → summary section appears correctly in `.md` report
+
 ## Current immediate next task
 
-Phase 18 is closed. Next candidate phases:
-1. **Phase 19: notation cross-section consistency** — flag symbols used in one section but defined only in a later section (requires order-aware scan of sections)
-2. **Phase 19: revision finding-code coverage report** — per-code resolve/persist/introduce counts in the revision verification Markdown report
-3. **Phase 19: agent heuristic confidence scoring** — attach a numeric confidence score to each agent finding based on signal strength
+Phase 19 is closed. Next candidate phases:
+1. **Phase 20: notation cross-section consistency** — flag symbols used in one section but defined only in a later section (order-aware scan, theory papers)
+2. **Phase 20: agent heuristic confidence scoring** — attach a numeric confidence score (0–1) to each agent finding based on signal strength
+3. **Phase 20: manuscript word count and density metrics** — add length/density validators (abstract word count, section length ratios)
 
 ## Bundle and handoff requirements
 
