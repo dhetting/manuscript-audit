@@ -6660,6 +6660,11 @@ def run_deterministic_validators(
         validate_floor_ceiling_effects(parsed, classification),
         validate_negative_result_framing(parsed),
         validate_abstract_results_consistency(parsed),
+        validate_measurement_invariance(parsed, classification),
+        validate_effect_size_confidence_intervals(parsed, classification),
+        validate_preregistration_statement(parsed, classification),
+        validate_cross_validation_reporting(parsed, classification),
+        validate_sensitivity_analysis_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -8294,6 +8299,353 @@ def validate_abstract_results_consistency(
                     f"abstract claims: {len(abstract_claims)}",
                     f"results claims: {len(results_claims)}",
                 ],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 151 – Measurement invariance testing
+# ---------------------------------------------------------------------------
+
+_COMPARATIVE_GROUP_RE = re.compile(
+    r"\b(?:comparison\s+(?:between|across)\s+groups?|"
+    r"group\s+(?:differences?|comparison)|"
+    r"between.group\s+(?:differences?|comparison)|"
+    r"(?:male|female|gender|age)\s+(?:group|subgroup|comparison)|"
+    r"(?:compared|comparing)\s+(?:groups?|samples?|populations?))\b",
+    re.IGNORECASE,
+)
+_INVARIANCE_RE = re.compile(
+    r"\b(?:measurement\s+invariance|factorial\s+invariance|"
+    r"configural\s+(?:model|invariance)|metric\s+invariance|"
+    r"scalar\s+invariance|partial\s+invariance|"
+    r"differential\s+item\s+functioning|DIF)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_measurement_invariance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag comparative studies lacking measurement invariance testing.
+
+    Emits ``missing-measurement-invariance`` (moderate) when group comparisons
+    are made on latent constructs or scale scores but measurement invariance
+    is not tested or mentioned.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="measurement_invariance", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="measurement_invariance", findings=[]
+        )
+
+    has_comparison = bool(_COMPARATIVE_GROUP_RE.search(full))
+    has_scale = bool(_SCALE_MEASURE_RE.search(full))
+    if not (has_comparison and has_scale):
+        return ValidationResult(
+            validator_name="measurement_invariance", findings=[]
+        )
+
+    if _INVARIANCE_RE.search(full):
+        return ValidationResult(
+            validator_name="measurement_invariance", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="measurement_invariance",
+        findings=[
+            Finding(
+                code="missing-measurement-invariance",
+                severity="moderate",
+                message=(
+                    "Group comparisons on scale measures detected but measurement "
+                    "invariance (configural, metric, scalar) is not tested or mentioned. "
+                    "Test or justify the assumption of measurement equivalence across groups."
+                ),
+                validator="measurement_invariance",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 152 – Effect size confidence intervals
+# ---------------------------------------------------------------------------
+
+_EFFECT_SIZE_RE = re.compile(
+    r"\b(?:Cohen(?:'s)?\s+[dDgG]|Hedge(?:'s)?\s+[gG]|odds\s+ratio|"
+    r"risk\s+ratio|relative\s+risk|hazard\s+ratio|"
+    r"eta.?squared|partial\s+eta.?squared|omega.?squared|"
+    r"Cramer(?:'s)?\s+V|phi\s+coefficient|"
+    r"\bES\s*=|effect\s+size\s*=|effect\s+size\s+of)\b",
+    re.IGNORECASE,
+)
+_EFFECT_CI_RE = re.compile(
+    r"\b(?:95\s*%\s*CI|confidence\s+interval|CI\s*[=:]\s*[\[\(]|"
+    r"\[\s*\d+\.\d+\s*,\s*\d+\.\d+\s*\])\b",
+    re.IGNORECASE,
+)
+
+
+def validate_effect_size_confidence_intervals(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts reporting effect sizes without confidence intervals.
+
+    Emits ``missing-effect-size-ci`` (moderate) when effect sizes are
+    reported but no confidence intervals are present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="effect_size_confidence_intervals", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="effect_size_confidence_intervals", findings=[]
+        )
+
+    effect_matches = _EFFECT_SIZE_RE.findall(full)
+    if len(effect_matches) < 2:
+        return ValidationResult(
+            validator_name="effect_size_confidence_intervals", findings=[]
+        )
+
+    if _EFFECT_CI_RE.search(full):
+        return ValidationResult(
+            validator_name="effect_size_confidence_intervals", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="effect_size_confidence_intervals",
+        findings=[
+            Finding(
+                code="missing-effect-size-ci",
+                severity="moderate",
+                message=(
+                    f"Manuscript reports {len(effect_matches)} effect size(s) but "
+                    "no confidence intervals are present. "
+                    "Report 95% CIs for all effect size estimates."
+                ),
+                validator="effect_size_confidence_intervals",
+                location="Results",
+                evidence=list(dict.fromkeys(effect_matches[:3])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 153 – Preregistration statement
+# ---------------------------------------------------------------------------
+
+_PREREGISTERED_RE = re.compile(
+    r"\b(?:preregist(?:ered|ration|er)|pre.regist(?:ered|ration|er)|"
+    r"registered\s+(?:report|study|trial)|"
+    r"(?:clinicaltrials\.gov|osf\.io|aspredicted\.org|anzctr\.org|"
+    r"isrctn(?:\.com)?|drks\.de|umin\.ac\.jp))\b",
+    re.IGNORECASE,
+)
+_CONFIRMATORY_RE = re.compile(
+    r"\b(?:hypothesis.?(?:driven|testing|test)|confirmatory\s+(?:study|analysis|test)|"
+    r"a\s+priori\s+hypothesis|we\s+predicted\s+that|we\s+hypothesized\s+that)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_preregistration_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag confirmatory/RCT studies without preregistration mention.
+
+    Emits ``missing-preregistration`` (minor) when a confirmatory or
+    hypothesis-driven study is detected but no preregistration is mentioned.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="preregistration_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="preregistration_statement", findings=[]
+        )
+
+    is_rct = bool(_INTERVENTION_RE.search(full))
+    is_confirmatory = bool(_CONFIRMATORY_RE.search(full))
+    if not (is_rct or is_confirmatory):
+        return ValidationResult(
+            validator_name="preregistration_statement", findings=[]
+        )
+
+    if _PREREGISTERED_RE.search(full):
+        return ValidationResult(
+            validator_name="preregistration_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="preregistration_statement",
+        findings=[
+            Finding(
+                code="missing-preregistration",
+                severity="minor",
+                message=(
+                    "Confirmatory or controlled-trial study detected but no "
+                    "preregistration is mentioned. "
+                    "Report whether the study was preregistered and provide the "
+                    "registry URL if applicable."
+                ),
+                validator="preregistration_statement",
+                location="manuscript",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 154 – Cross-validation reporting for ML/prediction models
+# ---------------------------------------------------------------------------
+
+_ML_MODEL_RE = re.compile(
+    r"\b(?:machine\s+learning|deep\s+learning|neural\s+network|"
+    r"random\s+forest|gradient\s+boosting|XGBoost|support\s+vector|"
+    r"prediction\s+model|predictive\s+model|classification\s+model|"
+    r"logistic\s+regression\s+model|linear\s+regression\s+model)\b",
+    re.IGNORECASE,
+)
+_CROSS_VALIDATION_RE = re.compile(
+    r"\b(?:cross.?validation|k.?fold|leave.one.out|LOOCV|"
+    r"train(?:ing)?\s*/\s*test\s+split|held.out\s+(?:set|data)|"
+    r"\d+.fold\s+cross|bootstrap\s+validation)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cross_validation_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML/prediction studies lacking cross-validation reporting.
+
+    Emits ``missing-cross-validation`` (moderate) when machine learning or
+    predictive models are described but cross-validation is not mentioned.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="cross_validation_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="cross_validation_reporting", findings=[]
+        )
+
+    if not _ML_MODEL_RE.search(full):
+        return ValidationResult(
+            validator_name="cross_validation_reporting", findings=[]
+        )
+
+    if _CROSS_VALIDATION_RE.search(full):
+        return ValidationResult(
+            validator_name="cross_validation_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="cross_validation_reporting",
+        findings=[
+            Finding(
+                code="missing-cross-validation",
+                severity="moderate",
+                message=(
+                    "Machine learning or prediction model detected but no "
+                    "cross-validation procedure is described. "
+                    "Report the validation strategy (k-fold CV, hold-out set, etc.)."
+                ),
+                validator="cross_validation_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 155 – Sensitivity analysis reporting
+# ---------------------------------------------------------------------------
+
+_PRIMARY_ANALYSIS_RE = re.compile(
+    r"\b(?:primary\s+(?:analysis|outcome|endpoint|model)|"
+    r"main\s+(?:analysis|result|finding)|"
+    r"our\s+(?:main|primary)\s+(?:analysis|model))\b",
+    re.IGNORECASE,
+)
+_SENSITIVITY_RE = re.compile(
+    r"\b(?:sensitivity\s+analysis|robust(?:ness)?\s+check|"
+    r"robustness\s+analysis|sensitivity\s+check|"
+    r"alternative\s+(?:specification|model|analysis)|"
+    r"we\s+(?:also\s+ran|conducted\s+additional|repeated\s+the\s+analysis))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sensitivity_analysis_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts with primary analyses but no sensitivity analysis.
+
+    Emits ``missing-sensitivity-analysis`` (moderate) when a primary analysis
+    is described but no sensitivity or robustness check is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="sensitivity_analysis_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="sensitivity_analysis_reporting", findings=[]
+        )
+
+    if not _PRIMARY_ANALYSIS_RE.search(full):
+        return ValidationResult(
+            validator_name="sensitivity_analysis_reporting", findings=[]
+        )
+
+    if _SENSITIVITY_RE.search(full):
+        return ValidationResult(
+            validator_name="sensitivity_analysis_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="sensitivity_analysis_reporting",
+        findings=[
+            Finding(
+                code="missing-sensitivity-analysis",
+                severity="moderate",
+                message=(
+                    "Primary analysis detected but no sensitivity or robustness "
+                    "analysis is reported. "
+                    "Add sensitivity analyses to test the stability of main findings."
+                ),
+                validator="sensitivity_analysis_reporting",
+                location="Methods/Results",
+                evidence=[],
             )
         ],
     )

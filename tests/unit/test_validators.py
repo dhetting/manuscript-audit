@@ -7430,3 +7430,293 @@ def test_abstract_consistency_no_abstract_no_fire() -> None:
     )
     result = validate_abstract_results_consistency(ms)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 151 – Measurement invariance
+# ---------------------------------------------------------------------------
+
+
+def _invariance_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="invariance-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _invariance_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_measurement_invariance_fires() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance
+
+    ms = _invariance_ms(
+        "We compared groups on a Likert scale measuring wellbeing. "
+        "Comparison between groups showed significant differences. "
+        "The questionnaire was administered to both samples."
+    )
+    result = validate_measurement_invariance(ms, _invariance_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-measurement-invariance" in codes
+
+
+def test_measurement_invariance_tested_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance
+
+    ms = _invariance_ms(
+        "We compared groups on a Likert scale. Comparison between groups "
+        "was preceded by a test of measurement invariance. Scalar invariance "
+        "was supported (CFI difference < 0.01)."
+    )
+    result = validate_measurement_invariance(ms, _invariance_clf())
+    assert result.findings == []
+
+
+def test_no_group_comparison_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance
+
+    ms = _invariance_ms(
+        "We administered a Likert scale to all participants and analyzed "
+        "the relationship between scores and outcomes."
+    )
+    result = validate_measurement_invariance(ms, _invariance_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 152 – Effect size confidence intervals
+# ---------------------------------------------------------------------------
+
+
+def _es_ci_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="es-ci-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Results", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _es_ci_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_effect_size_ci_fires() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_confidence_intervals
+
+    ms = _es_ci_ms(
+        "The effect size was Cohen's d = 0.45. "
+        "For the secondary outcome, Cohen's d = 0.32."
+    )
+    result = validate_effect_size_confidence_intervals(ms, _es_ci_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-effect-size-ci" in codes
+
+
+def test_effect_size_ci_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_confidence_intervals
+
+    ms = _es_ci_ms(
+        "The effect size was Cohen's d = 0.45 (95% CI [0.21, 0.69]). "
+        "For the secondary outcome, Cohen's d = 0.32."
+    )
+    result = validate_effect_size_confidence_intervals(ms, _es_ci_clf())
+    assert result.findings == []
+
+
+def test_no_effect_size_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_confidence_intervals
+
+    ms = _es_ci_ms(
+        "The mean score in the treatment group was 4.2 (SD = 0.8)."
+    )
+    result = validate_effect_size_confidence_intervals(ms, _es_ci_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 153 – Preregistration statement
+# ---------------------------------------------------------------------------
+
+
+def _prereg_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="prereg-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _prereg_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_preregistration_fires() -> None:
+    from manuscript_audit.validators.core import validate_preregistration_statement
+
+    ms = _prereg_ms(
+        "We conducted a randomized controlled trial. We hypothesized that the "
+        "intervention would improve outcomes significantly. Participants were "
+        "allocated to treatment group or control group."
+    )
+    result = validate_preregistration_statement(ms, _prereg_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-preregistration" in codes
+
+
+def test_preregistered_study_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_preregistration_statement
+
+    ms = _prereg_ms(
+        "This randomized controlled trial was preregistered at ClinicalTrials.gov "
+        "(NCT12345678). We hypothesized that the intervention would improve outcomes."
+    )
+    result = validate_preregistration_statement(ms, _prereg_clf())
+    assert result.findings == []
+
+
+def test_exploratory_study_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_preregistration_statement
+
+    ms = _prereg_ms(
+        "We conducted an exploratory survey study examining associations between "
+        "lifestyle factors and health outcomes."
+    )
+    result = validate_preregistration_statement(ms, _prereg_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 154 – Cross-validation reporting
+# ---------------------------------------------------------------------------
+
+
+def _cv_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="cv-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _cv_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_cross_validation_fires() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_reporting
+
+    ms = _cv_ms(
+        "We trained a random forest model on the full dataset. "
+        "The model achieved high accuracy in predicting the outcome."
+    )
+    result = validate_cross_validation_reporting(ms, _cv_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-cross-validation" in codes
+
+
+def test_cross_validation_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_reporting
+
+    ms = _cv_ms(
+        "We trained a random forest model using 10-fold cross-validation. "
+        "Performance was evaluated on the held-out fold."
+    )
+    result = validate_cross_validation_reporting(ms, _cv_clf())
+    assert result.findings == []
+
+
+def test_no_ml_model_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_reporting
+
+    ms = _cv_ms(
+        "We compared group means using ANOVA and post-hoc tests."
+    )
+    result = validate_cross_validation_reporting(ms, _cv_clf())
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 155 – Sensitivity analysis reporting
+# ---------------------------------------------------------------------------
+
+
+def _sensitivity_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="sensitivity-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="T",
+        sections=[Section(title="Methods", level=2, body=text)],
+        full_text=text,
+    )
+
+
+def _sensitivity_clf(paper_type: str = "empirical_paper") -> ManuscriptClassification:
+    return ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+
+
+def test_missing_sensitivity_analysis_fires() -> None:
+    from manuscript_audit.validators.core import validate_sensitivity_analysis_reporting
+
+    ms = _sensitivity_ms(
+        "The primary analysis used a generalized linear model. "
+        "Our primary outcome was depression severity at 12 weeks."
+    )
+    result = validate_sensitivity_analysis_reporting(ms, _sensitivity_clf())
+    codes = [f.code for f in result.findings]
+    assert "missing-sensitivity-analysis" in codes
+
+
+def test_sensitivity_analysis_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sensitivity_analysis_reporting
+
+    ms = _sensitivity_ms(
+        "The primary analysis used a generalized linear model. "
+        "As a robustness check, we repeated the analysis excluding outliers."
+    )
+    result = validate_sensitivity_analysis_reporting(ms, _sensitivity_clf())
+    assert result.findings == []
+
+
+def test_no_primary_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sensitivity_analysis_reporting
+
+    ms = _sensitivity_ms(
+        "We described the frequency distributions and basic statistics."
+    )
+    result = validate_sensitivity_analysis_reporting(ms, _sensitivity_clf())
+    assert result.findings == []
