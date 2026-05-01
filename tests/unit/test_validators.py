@@ -294,3 +294,82 @@ def test_unlabeled_equation_skipped_for_non_theory() -> None:
     result = validate_unlabeled_equations(parsed, classification)
     assert result.findings == []
 
+
+
+# ---------------------------------------------------------------------------
+# Phase 16: claim evidence escalation
+# ---------------------------------------------------------------------------
+
+
+def test_claim_evidence_gap_escalates_at_threshold() -> None:
+    from manuscript_audit.schemas.findings import Finding, ValidationResult, ValidationSuiteResult
+    from manuscript_audit.validators.core import validate_claim_evidence_escalation
+
+    findings = [
+        Finding(
+            code="citationless-quantitative-claim",
+            severity="moderate",
+            message="Paragraph has unsupported metric.",
+            validator="citationless_quantitative",
+        ),
+        Finding(
+            code="citationless-comparative-claim",
+            severity="moderate",
+            message="Paragraph has unsupported comparison.",
+            validator="citationless_comparative",
+        ),
+        Finding(
+            code="abstract-metric-unsupported",
+            severity="moderate",
+            message="90% not found in results.",
+            validator="abstract_metric_coverage",
+        ),
+    ]
+    suite = ValidationSuiteResult(
+        validator_version="test",
+        results=[ValidationResult(validator_name="test_v", findings=findings)],
+    )
+    result = validate_claim_evidence_escalation(suite)
+    codes = {f.code for f in result.findings}
+    assert "systemic-claim-evidence-gap" in codes
+    assert result.findings[0].severity == "major"
+
+
+def test_below_threshold_does_not_escalate() -> None:
+    from manuscript_audit.schemas.findings import Finding, ValidationResult, ValidationSuiteResult
+    from manuscript_audit.validators.core import validate_claim_evidence_escalation
+
+    findings = [
+        Finding(
+            code="citationless-quantitative-claim",
+            severity="moderate",
+            message="Paragraph has unsupported metric.",
+            validator="citationless_quantitative",
+        ),
+        Finding(
+            code="citationless-comparative-claim",
+            severity="moderate",
+            message="Paragraph has unsupported comparison.",
+            validator="citationless_comparative",
+        ),
+    ]
+    suite = ValidationSuiteResult(
+        validator_version="test",
+        results=[ValidationResult(validator_name="test_v", findings=findings)],
+    )
+    result = validate_claim_evidence_escalation(suite)
+    assert result.findings == []
+
+
+def test_claim_grounding_fixture_triggers_escalation() -> None:
+    from pathlib import Path
+
+    from manuscript_audit.parsers import parse_manuscript
+    from manuscript_audit.routing.rules import classify_manuscript
+    from manuscript_audit.validators import run_deterministic_validators
+
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/claim_grounding.md"))
+    classification = classify_manuscript(parsed)
+    suite = run_deterministic_validators(parsed, classification)
+    major_codes = {f.code for f in suite.all_findings if f.severity == "major"}
+    assert "systemic-claim-evidence-gap" in major_codes

@@ -50,6 +50,16 @@ COMPARATIVE_CLAIM_RE = re.compile(
 )
 _SKIP_SECTIONS = {"references", "bibliography", "abstract"}
 
+# Escalation: codes that count toward systemic claim-evidence gap.
+_CLAIM_GROUNDING_CODES = frozenset(
+    {
+        "citationless-quantitative-claim",
+        "citationless-comparative-claim",
+        "abstract-metric-unsupported",
+    }
+)
+CLAIM_EVIDENCE_GAP_THRESHOLD = 3  # findings needed to trigger major escalation
+
 
 def _split_paragraphs(text: str) -> list[str]:
     """Split text into non-empty paragraphs on blank lines."""
@@ -834,6 +844,35 @@ def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationRes
     return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
 
 
+def validate_claim_evidence_escalation(suite: ValidationSuiteResult) -> ValidationResult:
+    """Escalate to major when multiple citationless/unsupported claim findings accumulate.
+
+    Counts findings with codes in _CLAIM_GROUNDING_CODES across the full suite.
+    When the total meets or exceeds CLAIM_EVIDENCE_GAP_THRESHOLD, emits a single
+    major-severity finding to surface the systemic pattern in revision priorities.
+    """
+    matched = [f for f in suite.all_findings if f.code in _CLAIM_GROUNDING_CODES]
+    findings: list[Finding] = []
+    if len(matched) >= CLAIM_EVIDENCE_GAP_THRESHOLD:
+        codes_summary = ", ".join(sorted({f.code for f in matched}))
+        findings.append(
+            Finding(
+                code="systemic-claim-evidence-gap",
+                severity="major",
+                message=(
+                    f"{len(matched)} claim-grounding issues detected "
+                    f"({codes_summary}) — systematic citation or evidence gaps "
+                    "require revision before submission."
+                ),
+                validator="claim_evidence_escalation",
+                evidence=[f.message[:80] for f in matched[:3]],
+            )
+        )
+    return ValidationResult(
+        validator_name="claim_evidence_escalation", findings=findings
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -863,4 +902,6 @@ def run_deterministic_validators(
         validate_citationless_comparative_claims(parsed),
         validate_abstract_metric_coverage(parsed),
     ]
+    partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
+    results.append(validate_claim_evidence_escalation(partial))
     return ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)

@@ -225,12 +225,37 @@ Known limitations (acceptable for MVP):
 - `missing-notation-section` fires for all theory papers with equations — does not check if definitions are already embedded inline
 - `low-notation-definition-coverage` uses `extract_notation_summary` which relies on regex-based definition hint detection (`X denotes`, `let X be`, `where X is` patterns)
 
+## Phase 16 validated state
+
+Phase 16 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 16 added:
+- New constants in `validators/core.py`: `_CLAIM_GROUNDING_CODES` (frozenset of three finding codes), `CLAIM_EVIDENCE_GAP_THRESHOLD = 3`
+- New meta-validator: `validate_claim_evidence_escalation(suite: ValidationSuiteResult) -> ValidationResult`
+  - Takes the full `ValidationSuiteResult` as input (runs after individual claim validators)
+  - Counts findings with codes in `_CLAIM_GROUNDING_CODES`: `citationless-quantitative-claim`, `citationless-comparative-claim`, `abstract-metric-unsupported`
+  - When count ≥ 3: emits `systemic-claim-evidence-gap` (major) surfacing the count and code summary
+  - Wired into `run_deterministic_validators()` via a two-step partial→append pattern (partial suite built first, meta-validator appended last)
+- The `major` severity causes the finding to flow into revision priorities automatically (report synthesis already escalates `major`/`fatal`)
+- 3 new unit tests: threshold-met, below-threshold, and end-to-end via `claim_grounding.md` fixture
+- 57 total tests pass (up from 54)
+- Golden test for `latex_equivalence.tex` still `{'moderate': 4, 'minor': 1}` (zero claim-grounding findings on that fixture)
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 57 passed
+- `pixi run audit-standard tests/fixtures/manuscripts/claim_grounding.md --output-dir <out>` → `systemic-claim-evidence-gap` appears in `findings/deterministic_validators.json` and in `reports/final_vetting_report.{json,md}` revision priorities
+
+Known limitations (acceptable for MVP):
+- Does not de-duplicate across multiple manuscript passes (each full validator run is independent)
+- Threshold of 3 is a fixed constant — not adaptive to manuscript length or section count
+
 ## Current immediate next task
 
-Phase 15 is closed. Next candidate phases:
-1. **Phase 16: claim severity escalation** — if multiple citationless or unsupported claims are detected, escalate to major severity in revision priorities and surface a summary finding
-2. **Phase 16: revision verification coverage** — extend `verify-revision` to track phase-13/14/15 finding codes across revisions
-3. **Phase 16: notation cross-section consistency** — flag symbols defined in one section but used inconsistently in others
+Phase 16 is closed. Next candidate phases:
+1. **Phase 17: revision verification coverage** — extend `verify-revision` to track phase-13/14/15/16 finding codes across revisions
+2. **Phase 17: notation cross-section consistency** — flag symbols used in one section but defined only in a later section
+3. **Phase 17: structured severity summary in CLI output** — print a grouped severity/count table to stdout on audit completion
 
 ## Bundle and handoff requirements
 
