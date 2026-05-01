@@ -817,3 +817,208 @@ def test_duplicate_claim_skips_abstract_section() -> None:
     # Abstract is in _SKIP_SECTIONS; only Results matches, so no duplicate
     result = validate_duplicate_claims(parsed)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 30: Hedging language density validator
+# ---------------------------------------------------------------------------
+
+
+def _discussion_manuscript(body: str):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="hedge-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Hedging test",
+        full_text="",
+        sections=[Section(title="Discussion", level=2, body=body)],
+    )
+
+
+def test_excessive_hedging_detected() -> None:
+    from manuscript_audit.validators.core import validate_hedging_density
+
+    # 5 out of 6 sentences hedged = 83% > 25%
+    body = (
+        "Our results may suggest a modest improvement. "
+        "This could be due to increased regularization. "
+        "Perhaps the model benefits from larger context windows. "
+        "It is possible that the gain diminishes at scale. "
+        "The effect might not generalize to other domains. "
+        "We observed a consistent trend across runs."  # no hedge
+    )
+    result = validate_hedging_density(_discussion_manuscript(body))
+    codes = [f.code for f in result.findings]
+    assert "excessive-hedging-language" in codes
+    assert result.findings[0].severity == "minor"
+
+
+def test_low_hedging_density_not_flagged() -> None:
+    from manuscript_audit.validators.core import validate_hedging_density
+
+    body = (
+        "Our method outperforms the baseline on all benchmarks. "
+        "The improvement is statistically significant at p < 0.01. "
+        "These results confirm our hypothesis about regularization. "
+        "The model may generalize to related tasks. "  # one hedge
+        "Future experiments will explore additional domains."
+    )
+    result = validate_hedging_density(_discussion_manuscript(body))
+    assert result.findings == []
+
+
+def test_hedging_skips_methods_section() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_hedging_density
+
+    body = (
+        "We may preprocess data with normalisation. "
+        "This could reduce variance. "
+        "Perhaps dropout improves generalisation here. "
+        "It is possible to tune the learning rate. "
+        "Results might vary by seed."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="methods-hedge",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Methods hedge",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_hedging_density(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 31: Missing related work section validator
+# ---------------------------------------------------------------------------
+
+
+def _classification(paper_type: str = "empirical_paper"):
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    return ManuscriptClassification(
+        paper_type=paper_type, pathway="data_science", recommended_stack="maximal"
+    )
+
+
+def test_missing_related_work_flagged_for_empirical_paper() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_related_work_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="no-rw",
+        source_path="synthetic",
+        source_format="markdown",
+        title="No related work",
+        full_text="",
+        sections=[
+            Section(title="Introduction", level=2, body="We study X."),
+            Section(title="Methods", level=2, body="We use Y."),
+            Section(title="Results", level=2, body="We find Z."),
+        ],
+    )
+    result = validate_related_work_coverage(parsed, _classification("empirical_paper"))
+    codes = [f.code for f in result.findings]
+    assert "missing-related-work-section" in codes
+
+
+def test_related_work_present_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_related_work_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="has-rw",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Has related work",
+        full_text="",
+        sections=[
+            Section(title="Related Work", level=2, body="Prior studies show ..."),
+        ],
+    )
+    result = validate_related_work_coverage(parsed, _classification())
+    assert result.findings == []
+
+
+def test_related_work_skipped_for_theory_paper() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_related_work_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="theory",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Theory paper",
+        full_text="",
+    )
+    result = validate_related_work_coverage(parsed, _classification("theory_paper"))
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 32: Missing limitations section validator
+# ---------------------------------------------------------------------------
+
+
+def test_missing_limitations_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_limitations_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="no-lim",
+        source_path="synthetic",
+        source_format="markdown",
+        title="No limitations",
+        full_text="",
+        sections=[
+            Section(title="Results", level=2, body="We achieved good results."),
+            Section(title="Discussion", level=2, body="Our approach works well."),
+        ],
+    )
+    result = validate_limitations_coverage(parsed, _classification())
+    codes = [f.code for f in result.findings]
+    assert "missing-limitations-section" in codes
+
+
+def test_limitations_in_discussion_body_accepted() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_limitations_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="lim-in-disc",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Limitations in discussion",
+        full_text="",
+        sections=[
+            Section(
+                title="Discussion",
+                level=2,
+                body="Our method has a clear limitation: it requires large datasets.",
+            )
+        ],
+    )
+    result = validate_limitations_coverage(parsed, _classification())
+    assert result.findings == []
+
+
+def test_dedicated_limitations_section_accepted() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_limitations_coverage
+
+    parsed = ParsedManuscript(
+        manuscript_id="has-lim-section",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Has limitations section",
+        full_text="",
+        sections=[
+            Section(title="Limitations", level=2, body="We note several constraints."),
+        ],
+    )
+    result = validate_limitations_coverage(parsed, _classification())
+    assert result.findings == []

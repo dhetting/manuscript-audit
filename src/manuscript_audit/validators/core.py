@@ -1172,6 +1172,158 @@ def validate_duplicate_claims(parsed: ParsedManuscript) -> ValidationResult:
     return ValidationResult(validator_name="duplicate_claims", findings=findings)
 
 
+# ---------------------------------------------------------------------------
+# Hedging language density
+# ---------------------------------------------------------------------------
+_HEDGING_SECTION_RE = re.compile(
+    r"\b(discussion|conclusions?|future\s+work|implications?|limitations?)\b",
+    re.IGNORECASE,
+)
+_HEDGE_RE = re.compile(
+    r"\b(may|might|could|perhaps|possibly|potentially|appears?\s+to|seems?\s+to|"
+    r"suggests?\s+that|indicates?\s+that|it\s+is\s+possible|it\s+is\s+likely|"
+    r"tend\s+to|somewhat|arguably|presumably)\b",
+    re.IGNORECASE,
+)
+HEDGING_THRESHOLD = 0.25  # fraction of sentences; flag above this
+
+
+def validate_hedging_density(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag Discussion/Conclusion sections with excessive epistemic hedging.
+
+    Scans sections matching ``_HEDGING_SECTION_RE``.  If more than
+    ``HEDGING_THRESHOLD`` of sentences contain at least one hedge phrase,
+    emits ``excessive-hedging-language`` (minor).  Requires ≥4 sentences to
+    avoid false positives on short sections.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if not _HEDGING_SECTION_RE.search(section.title):
+            continue
+        body = section.body.strip()
+        if not body:
+            continue
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(body) if s.strip()]
+        if len(sentences) < 4:
+            continue
+        hedged = sum(1 for s in sentences if _HEDGE_RE.search(s))
+        ratio = hedged / len(sentences)
+        if ratio > HEDGING_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="excessive-hedging-language",
+                    severity="minor",
+                    message=(
+                        f"{hedged}/{len(sentences)} sentences ({ratio:.0%}) in "
+                        f"'{section.title}' contain epistemic hedges — consider "
+                        "strengthening assertions where evidence supports it."
+                    ),
+                    validator="hedging_density",
+                    location=f"section '{section.title}'",
+                    evidence=[f"hedge fraction: {ratio:.2f}"],
+                )
+            )
+    return ValidationResult(validator_name="hedging_density", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Missing related work section
+# ---------------------------------------------------------------------------
+_RELATED_WORK_RE = re.compile(
+    r"\b(related\s+work|background|prior\s+work|literature\s+review|"
+    r"previous\s+work|related\s+studies|survey)\b",
+    re.IGNORECASE,
+)
+_EMPIRICAL_PAPER_TYPES = frozenset(
+    {"empirical_paper", "applied_stats_paper", "software_workflow_paper"}
+)
+
+
+def validate_related_work_coverage(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers that lack a Related Work or Background section.
+
+    A missing related-work section is a common desk-rejection trigger.  Only
+    fires for paper types in ``_EMPIRICAL_PAPER_TYPES`` (theory papers often
+    integrate prior work into the Introduction).
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="related_work_coverage", findings=[])
+    has_related_work = any(
+        _RELATED_WORK_RE.search(section.title) for section in parsed.sections
+    )
+    if has_related_work:
+        return ValidationResult(validator_name="related_work_coverage", findings=[])
+    return ValidationResult(
+        validator_name="related_work_coverage",
+        findings=[
+            Finding(
+                code="missing-related-work-section",
+                severity="moderate",
+                message=(
+                    "No dedicated Related Work, Background, or Literature Review "
+                    "section was detected — reviewers routinely flag this omission."
+                ),
+                validator="related_work_coverage",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Missing limitations coverage
+# ---------------------------------------------------------------------------
+_LIMITATIONS_RE = re.compile(
+    r"\b(limitation|limitations|future\s+work|shortcoming|caveat|constraint|"
+    r"scope\s+of|cannot\s+generalize|not\s+generali[sz])\b",
+    re.IGNORECASE,
+)
+_LIMITATIONS_SECTION_RE = re.compile(
+    r"\b(limitation|limitations|future\s+work|threats\s+to\s+validity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_limitations_coverage(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers with no limitations or future-work discussion.
+
+    Checks both for a dedicated limitations section and for limitation language
+    in Discussion/Conclusion bodies.  Only fires for empirical paper types.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="limitations_coverage", findings=[])
+
+    # Accept a dedicated section.
+    if any(_LIMITATIONS_SECTION_RE.search(s.title) for s in parsed.sections):
+        return ValidationResult(validator_name="limitations_coverage", findings=[])
+
+    # Accept limitation language embedded in discussion/conclusion bodies.
+    for section in parsed.sections:
+        if re.search(r"\b(discussion|conclusion)\b", section.title, re.IGNORECASE):
+            if _LIMITATIONS_RE.search(section.body):
+                return ValidationResult(validator_name="limitations_coverage", findings=[])
+
+    return ValidationResult(
+        validator_name="limitations_coverage",
+        findings=[
+            Finding(
+                code="missing-limitations-section",
+                severity="moderate",
+                message=(
+                    "No limitations, caveats, or future-work discussion was detected — "
+                    "omitting this weakens the manuscript's scholarly contribution."
+                ),
+                validator="limitations_coverage",
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1205,6 +1357,9 @@ def run_deterministic_validators(
         validate_section_body_completeness(parsed),
         validate_passive_voice_density(parsed),
         validate_duplicate_claims(parsed),
+        validate_hedging_density(parsed),
+        validate_related_work_coverage(parsed, classification),
+        validate_limitations_coverage(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
