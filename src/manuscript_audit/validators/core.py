@@ -6694,6 +6694,11 @@ def run_deterministic_validators(
         validate_multicollinearity_reporting(parsed, classification),
         validate_control_group_description(parsed, classification),
         validate_heteroscedasticity_testing(parsed, classification),
+        validate_interaction_effect_interpretation(parsed, classification),
+        validate_post_hoc_framing(parsed, classification),
+        validate_multiple_comparison_correction(parsed, classification),
+        validate_publication_bias_statement(parsed, classification),
+        validate_degrees_of_freedom_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -10726,6 +10731,355 @@ def validate_heteroscedasticity_testing(
                 ),
                 validator="heteroscedasticity_testing",
                 location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 186 – Missing interaction effect interpretation
+# ---------------------------------------------------------------------------
+
+_INTERACTION_TERM_RE = re.compile(
+    r"\b(?:interaction\s+(?:effect|term|between|of)|"
+    r"moderating\s+effect|moderation\s+analysis|"
+    r"two.?way\s+interaction|three.?way\s+interaction|"
+    r"interaction\s+was\s+(?:significant|found|detected|observed)|"
+    r"A\s*[×x\*]\s*B\s+interaction)\b",
+    re.IGNORECASE,
+)
+_INTERACTION_INTERPRET_RE = re.compile(
+    r"\b(?:simple\s+(?:slope|effect)|spotlight\s+analysis|"
+    r"follow.?up\s+(?:analysis|test|probing)|"
+    r"decomposed?\s+(?:the\s+)?interaction|"
+    r"probing\s+(?:the\s+)?interaction|"
+    r"Johnson.?Neyman|Floodlight\s+analysis|"
+    r"at\s+(?:high|low)\s+levels?\s+of|"
+    r"when\s+\w+\s+(?:is|was)\s+(?:high|low))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_interaction_effect_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies that report interactions without probing/decomposing.
+
+    Emits ``missing-interaction-probing`` (moderate) when a significant
+    interaction is reported but no simple slopes, spotlight, or region-of-
+    significance analysis is presented.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="interaction_effect_interpretation", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="interaction_effect_interpretation", findings=[]
+        )
+
+    if not _INTERACTION_TERM_RE.search(full):
+        return ValidationResult(
+            validator_name="interaction_effect_interpretation", findings=[]
+        )
+
+    if _INTERACTION_INTERPRET_RE.search(full):
+        return ValidationResult(
+            validator_name="interaction_effect_interpretation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="interaction_effect_interpretation",
+        findings=[
+            Finding(
+                code="missing-interaction-probing",
+                severity="moderate",
+                message=(
+                    "Interaction effect detected but no follow-up probing (simple slopes, "
+                    "spotlight analysis, Johnson-Neyman) is reported. "
+                    "Decompose significant interactions to aid interpretation."
+                ),
+                validator="interaction_effect_interpretation",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 187 – Hypothesis pre-registration vs. post-hoc framing
+# ---------------------------------------------------------------------------
+
+_POST_HOC_EXPLORE_RE = re.compile(
+    r"\b(?:post.?hoc\s+(?:analysis|comparison|test|exploration)|"
+    r"exploratory\s+(?:analysis|investigation|finding)|"
+    r"additional\s+analyses?\s+(?:revealed?|showed?|found)|"
+    r"we\s+(?:also\s+)?(?:explored?|examined?|investigated?)\s+"
+    r"(?:whether|if|the\s+(?:relationship|association|effect))\b|"
+    r"unexpected\s+(?:finding|result|association))\b",
+    re.IGNORECASE,
+)
+_POST_HOC_LABEL_RE = re.compile(
+    r"\b(?:labeled?\s+(?:as\s+)?(?:exploratory|post.?hoc)|"
+    r"exploratory\s+and\s+(?:should\s+be|not)\s+(?:considered?|interpreted?)|"
+    r"post.?hoc\s+and\s+(?:should\s+be|must\s+be)\s+(?:considered?|interpreted?)|"
+    r"confirmed?\s+in\s+future\s+(?:studies?|research)|"
+    r"hypothesis.?generating|preliminary\s+and\s+exploratory)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_post_hoc_framing(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag post-hoc analyses not labelled as exploratory.
+
+    Emits ``post-hoc-not-labelled`` (moderate) when post-hoc or exploratory
+    analyses are conducted but not explicitly disclosed as such.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="post_hoc_framing", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="post_hoc_framing", findings=[]
+        )
+
+    if not _POST_HOC_EXPLORE_RE.search(full):
+        return ValidationResult(
+            validator_name="post_hoc_framing", findings=[]
+        )
+
+    if _POST_HOC_LABEL_RE.search(full):
+        return ValidationResult(
+            validator_name="post_hoc_framing", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="post_hoc_framing",
+        findings=[
+            Finding(
+                code="post-hoc-not-labelled",
+                severity="moderate",
+                message=(
+                    "Post-hoc or exploratory analyses detected but not explicitly "
+                    "labelled as exploratory or hypothesis-generating. "
+                    "Clearly distinguish confirmatory from exploratory findings."
+                ),
+                validator="post_hoc_framing",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 188 – Multiple comparison correction
+# ---------------------------------------------------------------------------
+
+_MULTIPLE_TESTS_RE = re.compile(
+    r"\b(?:multiple\s+(?:comparisons?|tests?)|"
+    r"we\s+(?:conducted?|performed?|ran?)\s+"
+    r"(?:\d+|several|multiple|numerous)\s+(?:tests?|comparisons?|analyses?)|"
+    r"family.?wise\s+error|type\s+I\s+error\s+(?:inflation|rate)\b)\b",
+    re.IGNORECASE,
+)
+_CORRECTION_RE = re.compile(
+    r"\b(?:Bonferroni|Holm|Benjamini.Hochberg|BH\s+correction|FDR\s+correction|"
+    r"false\s+discovery\s+rate|family.?wise\s+error\s+(?:rate\s+)?correction|"
+    r"adjusted\s+alpha|Sidak|Tukey|Scheffe|corrected?\s+for\s+multiple\s+comparisons?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multiple_comparison_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies with multiple comparisons that omit correction procedures.
+
+    Emits ``missing-multiple-comparison-correction`` (moderate) when multiple
+    tests are mentioned but no correction procedure is applied or justified.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="multiple_comparison_correction", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="multiple_comparison_correction", findings=[]
+        )
+
+    if not _MULTIPLE_TESTS_RE.search(full):
+        return ValidationResult(
+            validator_name="multiple_comparison_correction", findings=[]
+        )
+
+    if _CORRECTION_RE.search(full):
+        return ValidationResult(
+            validator_name="multiple_comparison_correction", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="multiple_comparison_correction",
+        findings=[
+            Finding(
+                code="missing-multiple-comparison-correction",
+                severity="moderate",
+                message=(
+                    "Multiple comparisons or tests detected but no correction procedure "
+                    "(Bonferroni, Holm, FDR/BH) is applied or discussed. "
+                    "Apply or justify omission of a correction for multiple comparisons."
+                ),
+                validator="multiple_comparison_correction",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 189 – Publication bias statement (meta-analyses)
+# ---------------------------------------------------------------------------
+
+_META_ANALYSIS_RE = re.compile(
+    r"\b(?:meta.?analysis|systematic\s+review\s+(?:and\s+)?meta.?analysis|"
+    r"pooled\s+(?:effect\s+size|estimate)|"
+    r"random.?effects?\s+model|fixed.?effects?\s+model|"
+    r"summary\s+(?:effect\s+size|estimate)|forest\s+plot)\b",
+    re.IGNORECASE,
+)
+_PUBLICATION_BIAS_RE = re.compile(
+    r"\b(?:publication\s+bias|funnel\s+plot|Egger.s\s+test|"
+    r"Begg.s\s+test|trim.?and.?fill|fail.?safe\s+N|"
+    r"Rosenthal.s\s+fail.?safe|selection\s+bias\s+(?:in\s+)?(?:the\s+)?literature|"
+    r"small.?study\s+effects?|reporting\s+bias)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_publication_bias_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag meta-analyses that omit publication bias assessment.
+
+    Emits ``missing-publication-bias-statement`` (major) when meta-analytic
+    methods are detected but no publication bias assessment is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="publication_bias_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="publication_bias_statement", findings=[]
+        )
+
+    if not _META_ANALYSIS_RE.search(full):
+        return ValidationResult(
+            validator_name="publication_bias_statement", findings=[]
+        )
+
+    if _PUBLICATION_BIAS_RE.search(full):
+        return ValidationResult(
+            validator_name="publication_bias_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="publication_bias_statement",
+        findings=[
+            Finding(
+                code="missing-publication-bias-statement",
+                severity="major",
+                message=(
+                    "Meta-analysis detected but no publication bias assessment "
+                    "(funnel plot, Egger's test, trim-and-fill, fail-safe N) is reported. "
+                    "Assess and report publication bias in all meta-analyses."
+                ),
+                validator="publication_bias_statement",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 190 – Missing degrees of freedom
+# ---------------------------------------------------------------------------
+
+_INFERENTIAL_STAT_RE = re.compile(
+    r"\b(?:t\s*\(|F\s*\(|chi.?square\s*\(|χ²?\s*\(|"
+    r"z\s*=\s*\d|t\s*=\s*[\d\-]|F\s*=\s*[\d\-])",
+    re.IGNORECASE,
+)
+_DF_PRESENT_RE = re.compile(
+    r"(?:df\s*=\s*\d|d\.f\.\s*=\s*\d|degrees?\s+of\s+freedom\s*=\s*\d|"
+    r"t\s*\(\s*\d+\s*\)|F\s*\(\s*\d+\s*,\s*\d+\s*\)|"
+    r"chi.?square\s*\(\s*\d+\s*\)|χ²?\s*\(\s*\d+\s*\))",
+    re.IGNORECASE,
+)
+
+
+def validate_degrees_of_freedom_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers reporting statistics without degrees of freedom.
+
+    Emits ``missing-degrees-of-freedom`` (minor) when t, F, or chi-square
+    statistics are referenced but no degrees of freedom are shown.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="degrees_of_freedom_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="degrees_of_freedom_reporting", findings=[]
+        )
+
+    if not _INFERENTIAL_STAT_RE.search(full):
+        return ValidationResult(
+            validator_name="degrees_of_freedom_reporting", findings=[]
+        )
+
+    if _DF_PRESENT_RE.search(full):
+        return ValidationResult(
+            validator_name="degrees_of_freedom_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="degrees_of_freedom_reporting",
+        findings=[
+            Finding(
+                code="missing-degrees-of-freedom",
+                severity="minor",
+                message=(
+                    "Statistical test results (t, F, chi-square) detected but no "
+                    "degrees of freedom are reported. "
+                    "Report degrees of freedom with all inferential statistics, "
+                    "e.g., t(df)=value or F(df1,df2)=value."
+                ),
+                validator="degrees_of_freedom_reporting",
+                location="Results",
                 evidence=[],
             )
         ],

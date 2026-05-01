@@ -9530,3 +9530,342 @@ def test_hetero_non_empirical_no_fire() -> None:
     )
     result = validate_heteroscedasticity_testing(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 186 – validate_interaction_effect_interpretation
+# ---------------------------------------------------------------------------
+
+
+def _inter_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="inter-1",
+        source_path="inter.md",
+        source_format="markdown",
+        title="Interaction Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_interaction_no_probing_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_interaction_effect_interpretation,
+    )
+
+    ms, cl = _inter_ms(
+        "A significant two-way interaction was found between stress and support "
+        "(F(1,98)=7.4, p=.008). The interaction effect was significant."
+    )
+    result = validate_interaction_effect_interpretation(ms, cl)
+    assert any(f.code == "missing-interaction-probing" for f in result.findings)
+
+
+def test_interaction_with_simple_slopes_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_interaction_effect_interpretation,
+    )
+
+    ms, cl = _inter_ms(
+        "A significant interaction was found (F=7.4). "
+        "Simple slope analysis revealed that at high levels of support, "
+        "stress was not related to depression."
+    )
+    result = validate_interaction_effect_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_interaction_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_interaction_effect_interpretation,
+    )
+
+    ms, cl = _inter_ms(
+        "Main effects of stress and social support were both significant. "
+        "No interaction terms were included."
+    )
+    result = validate_interaction_effect_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_interaction_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_interaction_effect_interpretation,
+    )
+
+    ms, cl = _inter_ms(
+        "Interaction effects in regression are discussed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_interaction_effect_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 187 – validate_post_hoc_framing
+# ---------------------------------------------------------------------------
+
+
+def _posthoc_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="ph-1",
+        source_path="ph.md",
+        source_format="markdown",
+        title="Post-hoc Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_post_hoc_not_labelled_fires() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_framing
+
+    ms, cl = _posthoc_ms(
+        "Additional analyses revealed a significant association between "
+        "age and outcome. We also explored whether education moderated this effect."
+    )
+    result = validate_post_hoc_framing(ms, cl)
+    assert any(f.code == "post-hoc-not-labelled" for f in result.findings)
+
+
+def test_post_hoc_labelled_exploratory_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_framing
+
+    ms, cl = _posthoc_ms(
+        "Additional exploratory analyses revealed associations. "
+        "These results are exploratory and should be considered hypothesis-generating. "
+        "They must be confirmed in future studies."
+    )
+    result = validate_post_hoc_framing(ms, cl)
+    assert result.findings == []
+
+
+def test_no_post_hoc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_framing
+
+    ms, cl = _posthoc_ms(
+        "The primary hypotheses were supported. "
+        "Results are consistent with theoretical predictions."
+    )
+    result = validate_post_hoc_framing(ms, cl)
+    assert result.findings == []
+
+
+def test_post_hoc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_framing
+
+    ms, cl = _posthoc_ms(
+        "We also explored additional properties of the model theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_post_hoc_framing(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 188 – validate_multiple_comparison_correction
+# ---------------------------------------------------------------------------
+
+
+def _mcc_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="mcc-1",
+        source_path="mcc.md",
+        source_format="markdown",
+        title="Multiple Comparisons Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_multiple_comparisons_no_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc_ms(
+        "We conducted 12 tests comparing group differences across all outcomes. "
+        "Multiple comparisons were made across all outcome variables."
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert any(f.code == "missing-multiple-comparison-correction" for f in result.findings)
+
+
+def test_multiple_comparisons_with_bonferroni_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc_ms(
+        "Multiple comparisons were addressed using Bonferroni correction. "
+        "The adjusted alpha was set at .004 (= .05/12)."
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_single_comparison_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc_ms(
+        "We tested a single primary hypothesis using an independent t-test."
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_mcc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc_ms(
+        "Multiple comparisons are analyzed theoretically.", "math_theory_paper"
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 189 – validate_publication_bias_statement
+# ---------------------------------------------------------------------------
+
+
+def _meta_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="meta-1",
+        source_path="meta.md",
+        source_format="markdown",
+        title="Meta-Analysis",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_meta_analysis_no_pub_bias_fires() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_statement
+
+    ms, cl = _meta_ms(
+        "This meta-analysis pooled effect sizes from 28 studies using a "
+        "random-effects model. The forest plot showed consistent effects."
+    )
+    result = validate_publication_bias_statement(ms, cl)
+    assert any(
+        f.code == "missing-publication-bias-statement" for f in result.findings
+    )
+
+
+def test_meta_analysis_with_funnel_plot_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_statement
+
+    ms, cl = _meta_ms(
+        "This meta-analysis used a random-effects model. "
+        "Publication bias was assessed using a funnel plot and Egger's test, "
+        "which showed no evidence of bias (p=.42)."
+    )
+    result = validate_publication_bias_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_non_meta_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_statement
+
+    ms, cl = _meta_ms(
+        "This experimental study used a between-subjects design."
+    )
+    result = validate_publication_bias_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_meta_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_statement
+
+    ms, cl = _meta_ms(
+        "The meta-analysis framework is analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_publication_bias_statement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 190 – validate_degrees_of_freedom_reporting
+# ---------------------------------------------------------------------------
+
+
+def _df_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="df-1",
+        source_path="df.md",
+        source_format="markdown",
+        title="Degrees of Freedom Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_stats_no_df_fires() -> None:
+    from manuscript_audit.validators.core import validate_degrees_of_freedom_reporting
+
+    ms, cl = _df_ms(
+        "The t-test revealed a significant difference (t = 3.45, p < .001). "
+        "An F = 12.4, p=.001 was also found."
+    )
+    result = validate_degrees_of_freedom_reporting(ms, cl)
+    assert any(f.code == "missing-degrees-of-freedom" for f in result.findings)
+
+
+def test_stats_with_df_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_degrees_of_freedom_reporting
+
+    ms, cl = _df_ms(
+        "The t-test revealed a significant difference (t(98) = 3.45, p < .001). "
+        "ANOVA yielded F(2, 147) = 12.4, p=.001."
+    )
+    result = validate_degrees_of_freedom_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_stat_tests_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_degrees_of_freedom_reporting
+
+    ms, cl = _df_ms(
+        "Descriptive statistics are presented in Table 1. "
+        "Means and standard deviations are reported."
+    )
+    result = validate_degrees_of_freedom_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_df_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_degrees_of_freedom_reporting
+
+    ms, cl = _df_ms(
+        "Degrees of freedom in t-tests are analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_degrees_of_freedom_reporting(ms, cl)
+    assert result.findings == []
