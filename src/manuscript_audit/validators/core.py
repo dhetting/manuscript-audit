@@ -6684,6 +6684,11 @@ def run_deterministic_validators(
         validate_figure_axes_labeling(parsed),
         validate_duplicate_reporting(parsed),
         validate_response_rate_reporting(parsed, classification),
+        validate_longitudinal_attrition_bias(parsed, classification),
+        validate_continuous_variable_dichotomization(parsed, classification),
+        validate_outcome_measure_validation(parsed, classification),
+        validate_outlier_handling_disclosure(parsed, classification),
+        validate_main_effect_confidence_interval(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -10013,6 +10018,352 @@ def validate_response_rate_reporting(
                 ),
                 validator="response_rate_reporting",
                 location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 176 – Longitudinal attrition bias
+# ---------------------------------------------------------------------------
+
+_LONGITUDINAL_DESIGN_RE = re.compile(
+    r"\b(?:longitudinal|follow.?up\s+(?:study|assessment|visit)|"
+    r"prospective\s+(?:cohort|study)|"
+    r"repeated.?measures?|panel\s+(?:data|study)|"
+    r"wave\s+\d+|wave\s+one|wave\s+two)\b",
+    re.IGNORECASE,
+)
+_ATTRITION_BIAS_RE = re.compile(
+    r"\b(?:attrition\s+(?:bias|analysis|rate|pattern)|"
+    r"loss.to.follow.?up\s+(?:analysis|bias|pattern)|"
+    r"missing\s+(?:at\s+random|not\s+at\s+random|completely\s+at\s+random)|"
+    r"MCAR|MAR\b|MNAR\b|"
+    r"(?:dropouts?|non.?completers?)\s+(?:did\s+not\s+differ|were\s+similar)|"
+    r"Little['']s\s+test|Little.s\s+MCAR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_longitudinal_attrition_bias(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag longitudinal empirical studies that ignore attrition bias.
+
+    Emits ``missing-attrition-bias-analysis`` (moderate) when longitudinal
+    design is detected but no dropout or missing-data pattern analysis is
+    reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="longitudinal_attrition_bias", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="longitudinal_attrition_bias", findings=[]
+        )
+
+    if not _LONGITUDINAL_DESIGN_RE.search(full):
+        return ValidationResult(
+            validator_name="longitudinal_attrition_bias", findings=[]
+        )
+
+    if _ATTRITION_BIAS_RE.search(full):
+        return ValidationResult(
+            validator_name="longitudinal_attrition_bias", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="longitudinal_attrition_bias",
+        findings=[
+            Finding(
+                code="missing-attrition-bias-analysis",
+                severity="moderate",
+                message=(
+                    "Longitudinal study design detected but no attrition bias analysis "
+                    "or missing-data mechanism (MCAR/MAR/MNAR) is reported. "
+                    "Analyze and report patterns of participant dropout."
+                ),
+                validator="longitudinal_attrition_bias",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 177 – Dichotomization of continuous variables
+# ---------------------------------------------------------------------------
+
+_CONTINUOUS_DICHOTOMIZE_RE = re.compile(
+    r"\b(?:dichotomiz(?:ed?|ing|ation)|binariz(?:ed?|ing)|"
+    r"median\s+split|split\s+(?:at|by)\s+the\s+median|"
+    r"cut.?point|cutoff\s+score|above\s+and\s+below\s+(?:the\s+)?median|"
+    r"high(?:er)?\s+(?:vs?\.?|versus)\s+low(?:er)?\s+(?:group|score))\b",
+    re.IGNORECASE,
+)
+_DICHOTOMIZE_JUSTIFY_RE = re.compile(
+    r"\b(?:clinical\s+cut.?(?:off|point)|diagnostic\s+threshold|"
+    r"validated\s+(?:cutoff|threshold)|established\s+cut.?(?:off|point)|"
+    r"justified\s+(?:the\s+)?(?:cutoff|split|dichotomization)|"
+    r"prior\s+(?:research|studies?)\s+(?:supports?|used|established))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_continuous_variable_dichotomization(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag unjustified dichotomization of continuous variables.
+
+    Emits ``unjustified-dichotomization`` (moderate) when median splits or
+    arbitrary cutoffs are applied without clinical or validated justification.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="continuous_variable_dichotomization", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="continuous_variable_dichotomization", findings=[]
+        )
+
+    if not _CONTINUOUS_DICHOTOMIZE_RE.search(full):
+        return ValidationResult(
+            validator_name="continuous_variable_dichotomization", findings=[]
+        )
+
+    if _DICHOTOMIZE_JUSTIFY_RE.search(full):
+        return ValidationResult(
+            validator_name="continuous_variable_dichotomization", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="continuous_variable_dichotomization",
+        findings=[
+            Finding(
+                code="unjustified-dichotomization",
+                severity="moderate",
+                message=(
+                    "Dichotomization or median split of a continuous variable detected "
+                    "without clinical, validated, or theoretically justified cutoff. "
+                    "Justify the cutpoint or retain the continuous variable."
+                ),
+                validator="continuous_variable_dichotomization",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 178 – Outcome measure validation
+# ---------------------------------------------------------------------------
+
+_OUTCOME_MEASURE_RE = re.compile(
+    r"\b(?:(?:primary|secondary|main|outcome)\s+(?:measure|outcome|variable)|"
+    r"(?:scale|instrument|questionnaire|inventory|index)\s+"
+    r"(?:was\s+used|used\s+to\s+measure|assessed|measured))\b",
+    re.IGNORECASE,
+)
+_MEASURE_VALIDITY_RE = re.compile(
+    r"\b(?:valid(?:ated?|ity)|reliability|Cronbach|internal\s+consistency|"
+    r"test.?retest|inter.?rater|convergent\s+validity|discriminant\s+validity|"
+    r"psychometric(?:ally)?|standardized\s+(?:instrument|measure|scale)|"
+    r"normed\s+(?:instrument|measure|sample))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_outcome_measure_validation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies that omit psychometric evidence for measures.
+
+    Emits ``missing-measure-validity`` (moderate) when outcome measures are
+    described but no psychometric validity or reliability evidence is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="outcome_measure_validation", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="outcome_measure_validation", findings=[]
+        )
+
+    if not _OUTCOME_MEASURE_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="outcome_measure_validation", findings=[]
+        )
+
+    if _MEASURE_VALIDITY_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="outcome_measure_validation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="outcome_measure_validation",
+        findings=[
+            Finding(
+                code="missing-measure-validity",
+                severity="moderate",
+                message=(
+                    "Outcome measure or instrument mentioned in Methods but no "
+                    "psychometric validity or reliability evidence is provided. "
+                    "Report validated properties (Cronbach's alpha, test-retest reliability, etc.)."
+                ),
+                validator="outcome_measure_validation",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 179 – Outlier handling disclosure
+# ---------------------------------------------------------------------------
+
+_OUTLIER_MENTION_RE = re.compile(
+    r"\b(?:outliers?|extreme\s+(?:values?|observations?|scores?|cases?)|"
+    r"influential\s+(?:observations?|cases?|points?)|"
+    r"Cook.s\s+distance|leverage\s+(?:points?|values?)|"
+    r"Mahalanobis|Grubbs|Rosner\s+test)\b",
+    re.IGNORECASE,
+)
+_OUTLIER_HANDLING_RE = re.compile(
+    r"\b(?:outliers?\s+(?:were|wer)\s+(?:removed?|excluded?|retained?|winsorized?|"
+    r"replaced?|handled?|identified?|screened?|inspected?)|"
+    r"(?:removed?|excluded?|retained?|winsorized?)\s+outliers?|"
+    r"(?:no|zero)\s+outliers?\s+(?:were|wer)|"
+    r"sensitivity\s+analysis\s+(?:with|excluding|including))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_outlier_handling_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical studies that mention outliers without disclosing handling.
+
+    Emits ``missing-outlier-handling`` (minor) when outliers are mentioned
+    but no explicit handling decision (removal, retention, winsorization) is stated.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="outlier_handling_disclosure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="outlier_handling_disclosure", findings=[]
+        )
+
+    if not _OUTLIER_MENTION_RE.search(full):
+        return ValidationResult(
+            validator_name="outlier_handling_disclosure", findings=[]
+        )
+
+    if _OUTLIER_HANDLING_RE.search(full):
+        return ValidationResult(
+            validator_name="outlier_handling_disclosure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="outlier_handling_disclosure",
+        findings=[
+            Finding(
+                code="missing-outlier-handling",
+                severity="minor",
+                message=(
+                    "Outliers are mentioned but no explicit outlier-handling decision "
+                    "(removal, retention, winsorization) is disclosed. "
+                    "State the outlier criterion and how outliers were treated."
+                ),
+                validator="outlier_handling_disclosure",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 180 – Missing confidence interval for main effect
+# ---------------------------------------------------------------------------
+
+_MAIN_EFFECT_RE = re.compile(
+    r"\b(?:main\s+effect|primary\s+(?:outcome|result|finding|effect)|"
+    r"key\s+(?:finding|result)|overall\s+effect|"
+    r"primary\s+analysis\s+(?:showed?|indicated?|revealed?|found))\b",
+    re.IGNORECASE,
+)
+_CI_PRESENT_RE = re.compile(
+    r"\b(?:95\s*%\s*(?:CI|confidence\s+interval)|"
+    r"confidence\s+interval|CI\s*[:=\[(\{]|\[\s*\d|\(\s*\d\s*\.\s*\d|"
+    r"CI\s+was\s+\[?\d|CI\s*=\s*\[?\d)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_main_effect_confidence_interval(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts that report main effects without CIs.
+
+    Emits ``missing-main-effect-ci`` (moderate) when primary/main effects are
+    mentioned but no confidence interval is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="main_effect_confidence_interval", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="main_effect_confidence_interval", findings=[]
+        )
+
+    if not _MAIN_EFFECT_RE.search(full):
+        return ValidationResult(
+            validator_name="main_effect_confidence_interval", findings=[]
+        )
+
+    if _CI_PRESENT_RE.search(full):
+        return ValidationResult(
+            validator_name="main_effect_confidence_interval", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="main_effect_confidence_interval",
+        findings=[
+            Finding(
+                code="missing-main-effect-ci",
+                severity="moderate",
+                message=(
+                    "Primary or main effect described but no confidence interval is "
+                    "reported. Provide 95% CIs for all main effects."
+                ),
+                validator="main_effect_confidence_interval",
+                location="Results",
                 evidence=[],
             )
         ],

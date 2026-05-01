@@ -8864,3 +8864,343 @@ def test_survey_non_empirical_no_fire() -> None:
     )
     result = validate_response_rate_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 176 – validate_longitudinal_attrition_bias
+# ---------------------------------------------------------------------------
+
+
+def _long_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="long-1",
+        source_path="long.md",
+        source_format="markdown",
+        title="Longitudinal Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_longitudinal_no_attrition_fires() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_attrition_bias
+
+    ms, cl = _long_ms(
+        "This longitudinal cohort study tracked participants over 5 years. "
+        "Follow-up assessments were conducted at 12, 24, and 60 months."
+    )
+    result = validate_longitudinal_attrition_bias(ms, cl)
+    assert any(f.code == "missing-attrition-bias-analysis" for f in result.findings)
+
+
+def test_longitudinal_with_attrition_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_attrition_bias
+
+    ms, cl = _long_ms(
+        "In this longitudinal study, attrition bias analysis revealed "
+        "that dropouts did not differ from completers on key variables. "
+        "Data were missing at random (MAR)."
+    )
+    result = validate_longitudinal_attrition_bias(ms, cl)
+    assert result.findings == []
+
+
+def test_non_longitudinal_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_attrition_bias
+
+    ms, cl = _long_ms(
+        "This cross-sectional study measured all variables at one time point."
+    )
+    result = validate_longitudinal_attrition_bias(ms, cl)
+    assert result.findings == []
+
+
+def test_longitudinal_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_attrition_bias
+
+    ms, cl = _long_ms(
+        "The longitudinal growth model was analyzed.", "math_theory_paper"
+    )
+    result = validate_longitudinal_attrition_bias(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 177 – validate_continuous_variable_dichotomization
+# ---------------------------------------------------------------------------
+
+
+def _dichot_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="dichot-1",
+        source_path="dichot.md",
+        source_format="markdown",
+        title="Dichotomization Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_median_split_no_justification_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continuous_variable_dichotomization,
+    )
+
+    ms, cl = _dichot_ms(
+        "Depression scores were dichotomized using a median split to create "
+        "high vs. low groups for subsequent analysis."
+    )
+    result = validate_continuous_variable_dichotomization(ms, cl)
+    assert any(f.code == "unjustified-dichotomization" for f in result.findings)
+
+
+def test_dichotomize_clinical_cutoff_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continuous_variable_dichotomization,
+    )
+
+    ms, cl = _dichot_ms(
+        "Scores were dichotomized using the clinically validated cutoff of >=10 "
+        "established by prior research for this diagnostic threshold."
+    )
+    result = validate_continuous_variable_dichotomization(ms, cl)
+    assert result.findings == []
+
+
+def test_no_dichotomization_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continuous_variable_dichotomization,
+    )
+
+    ms, cl = _dichot_ms(
+        "Depression scores were retained as continuous variables in all regression models."
+    )
+    result = validate_continuous_variable_dichotomization(ms, cl)
+    assert result.findings == []
+
+
+def test_dichotomize_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continuous_variable_dichotomization,
+    )
+
+    ms, cl = _dichot_ms(
+        "We dichotomized the variable for the theoretical illustration.",
+        "math_theory_paper",
+    )
+    result = validate_continuous_variable_dichotomization(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 178 – validate_outcome_measure_validation
+# ---------------------------------------------------------------------------
+
+
+def _measure_ms(methods_body: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="meas-1",
+        source_path="meas.md",
+        source_format="markdown",
+        title="Outcome Measure Study",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=methods_body)],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_outcome_no_validity_fires() -> None:
+    from manuscript_audit.validators.core import validate_outcome_measure_validation
+
+    ms, cl = _measure_ms(
+        "The primary outcome measure was the PHQ-9 scale used to assess depression."
+    )
+    result = validate_outcome_measure_validation(ms, cl)
+    assert any(f.code == "missing-measure-validity" for f in result.findings)
+
+
+def test_outcome_with_validity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outcome_measure_validation
+
+    ms, cl = _measure_ms(
+        "The PHQ-9 was used as the primary outcome measure. "
+        "This validated scale has demonstrated high internal consistency "
+        "(Cronbach alpha = 0.89) and good test-retest reliability."
+    )
+    result = validate_outcome_measure_validation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_measure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outcome_measure_validation
+
+    ms, cl = _measure_ms(
+        "Participants completed a 30-minute behavioral task. No scales were used."
+    )
+    result = validate_outcome_measure_validation(ms, cl)
+    assert result.findings == []
+
+
+def test_measure_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outcome_measure_validation
+
+    ms, cl = _measure_ms(
+        "The primary outcome measure was derived from the theoretical model.",
+        "math_theory_paper",
+    )
+    result = validate_outcome_measure_validation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 179 – validate_outlier_handling_disclosure
+# ---------------------------------------------------------------------------
+
+
+def _outlier_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="out-1",
+        source_path="out.md",
+        source_format="markdown",
+        title="Outlier Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_outlier_no_handling_fires() -> None:
+    from manuscript_audit.validators.core import validate_outlier_handling_disclosure
+
+    ms, cl = _outlier_ms(
+        "Data screening revealed several outliers in the performance scores. "
+        "These were noted but the analysis proceeded as planned."
+    )
+    result = validate_outlier_handling_disclosure(ms, cl)
+    assert any(f.code == "missing-outlier-handling" for f in result.findings)
+
+
+def test_outlier_removal_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outlier_handling_disclosure
+
+    ms, cl = _outlier_ms(
+        "Three outliers were removed based on z-scores > 3.0. "
+        "Outliers were identified and removed prior to the main analysis."
+    )
+    result = validate_outlier_handling_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_outlier_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outlier_handling_disclosure
+
+    ms, cl = _outlier_ms(
+        "All data points were retained for the analysis. "
+        "Descriptive statistics were inspected before the main analysis."
+    )
+    result = validate_outlier_handling_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_outlier_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outlier_handling_disclosure
+
+    ms, cl = _outlier_ms(
+        "Outlier detection algorithms are described theoretically.", "math_theory_paper"
+    )
+    result = validate_outlier_handling_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 180 – validate_main_effect_confidence_interval
+# ---------------------------------------------------------------------------
+
+
+def _main_effect_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="me-1",
+        source_path="me.md",
+        source_format="markdown",
+        title="Main Effect Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_main_effect_no_ci_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_main_effect_confidence_interval,
+    )
+
+    ms, cl = _main_effect_ms(
+        "The main effect of condition was significant (F(1,98)=12.3, p=.001). "
+        "The primary outcome showed improved scores in the treatment group."
+    )
+    result = validate_main_effect_confidence_interval(ms, cl)
+    assert any(f.code == "missing-main-effect-ci" for f in result.findings)
+
+
+def test_main_effect_with_ci_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_main_effect_confidence_interval,
+    )
+
+    ms, cl = _main_effect_ms(
+        "The main effect of condition was significant (F=12.3, p=.001, "
+        "95% CI [0.15, 0.45]). Confidence intervals are provided for all effects."
+    )
+    result = validate_main_effect_confidence_interval(ms, cl)
+    assert result.findings == []
+
+
+def test_no_main_effect_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_main_effect_confidence_interval,
+    )
+
+    ms, cl = _main_effect_ms(
+        "Exploratory analyses revealed associations between variables."
+    )
+    result = validate_main_effect_confidence_interval(ms, cl)
+    assert result.findings == []
+
+
+def test_main_effect_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_main_effect_confidence_interval,
+    )
+
+    ms, cl = _main_effect_ms(
+        "The main effect in this theoretical model is derived analytically.",
+        "math_theory_paper",
+    )
+    result = validate_main_effect_confidence_interval(ms, cl)
+    assert result.findings == []
