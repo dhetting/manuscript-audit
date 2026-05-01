@@ -4191,7 +4191,8 @@ _SAMPLE_SIZE_RE = re.compile(
 )
 _SAMPLE_SIZE_PAPER_TYPES = frozenset(
     {
-        "empirical_research_paper",
+        "empirical_paper",
+        "applied_stats_paper",
         "clinical_trial_report",
         "survey_study",
     }
@@ -4251,7 +4252,8 @@ _LIMITATIONS_INLINE_RE = re.compile(
 )
 _LIMITATIONS_PAPER_TYPES = frozenset(
     {
-        "empirical_research_paper",
+        "empirical_paper",
+        "applied_stats_paper",
         "clinical_trial_report",
         "survey_study",
         "systematic_review",
@@ -4369,7 +4371,8 @@ def validate_author_contribution_statement(
 
 _PREREG_PAPER_TYPES = frozenset(
     {
-        "empirical_research_paper",
+        "empirical_paper",
+        "applied_stats_paper",
         "clinical_trial_report",
         "registered_report",
     }
@@ -4549,7 +4552,8 @@ def validate_novelty_overclaim(parsed: ParsedManuscript) -> ValidationResult:
 
 _FIG_TABLE_PAPER_TYPES = frozenset(
     {
-        "empirical_research_paper",
+        "empirical_paper",
+        "applied_stats_paper",
         "clinical_trial_report",
         "survey_study",
         "systematic_review",
@@ -4618,7 +4622,8 @@ _CORRECTION_RE = re.compile(
 )
 _MULTI_TEST_PAPER_TYPES = frozenset(
     {
-        "empirical_research_paper",
+        "empirical_paper",
+        "applied_stats_paper",
         "clinical_trial_report",
         "survey_study",
     }
@@ -4829,6 +4834,256 @@ def validate_discussion_results_alignment(parsed: ParsedManuscript) -> Validatio
     )
 
 
+# ---------------------------------------------------------------------------
+# Phase 99 – Open access / data sharing statement
+# ---------------------------------------------------------------------------
+
+_DATA_SHARING_RE = re.compile(
+    r"\b(data (availability|sharing|access) statement|"
+    r"open (access|data)|openly available|"
+    r"data are (available|deposited|archived)|"
+    r"code (is|are) available|github\.com|zenodo|osf\.io|figshare|dryad)\b",
+    re.IGNORECASE,
+)
+_DATA_SHARING_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "clinical_trial_report",
+        "survey_study",
+        "meta_analysis",
+    }
+)
+
+
+def validate_open_data_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers without an open-data or data-sharing statement.
+
+    Emits ``missing-open-data-statement`` (minor) when an empirical paper
+    contains no data availability statement or repository link.
+    """
+    if classification.paper_type not in _DATA_SHARING_PAPER_TYPES:
+        return ValidationResult(validator_name="open_data_statement", findings=[])
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _DATA_SHARING_RE.search(combined):
+        return ValidationResult(validator_name="open_data_statement", findings=[])
+
+    return ValidationResult(
+        validator_name="open_data_statement",
+        findings=[
+            Finding(
+                code="missing-open-data-statement",
+                severity="minor",
+                message=(
+                    "Empirical manuscript lacks a data availability or data-sharing "
+                    "statement. Most journals require a statement even when data "
+                    "are not publicly shared."
+                ),
+                validator="open_data_statement",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 100 – Redundant phrase detection
+# ---------------------------------------------------------------------------
+
+_REDUNDANT_PHRASES = [
+    "due to the fact that",
+    "in order to",
+    "it is important to note that",
+    "it should be noted that",
+    "at this point in time",
+    "in the event that",
+    "for the purpose of",
+    "in spite of the fact that",
+    "with regard to",
+    "in the near future",
+    "a large number of",
+    "the question as to whether",
+    "whether or not",
+    "on a daily basis",
+    "in close proximity to",
+]
+_REDUNDANT_PHRASE_RE = re.compile(
+    "|".join(re.escape(p) for p in _REDUNDANT_PHRASES),
+    re.IGNORECASE,
+)
+_REDUNDANT_PHRASE_THRESHOLD = 3
+
+
+def validate_redundant_phrases(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts with excessive use of redundant verbose phrases.
+
+    Emits ``redundant-phrases`` (minor) when ≥ ``_REDUNDANT_PHRASE_THRESHOLD``
+    redundant phrases are detected in the manuscript body.
+    """
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    matches = _REDUNDANT_PHRASE_RE.findall(combined)
+    if len(matches) < _REDUNDANT_PHRASE_THRESHOLD:
+        return ValidationResult(validator_name="redundant_phrases", findings=[])
+
+    unique = list({m.lower() for m in matches})[:5]
+    return ValidationResult(
+        validator_name="redundant_phrases",
+        findings=[
+            Finding(
+                code="redundant-phrases",
+                severity="minor",
+                message=(
+                    f"Manuscript contains {len(matches)} redundant verbose phrases "
+                    "(e.g., 'in order to', 'due to the fact that'). "
+                    "Replace with concise equivalents for clarity."
+                ),
+                validator="redundant_phrases",
+                location="manuscript",
+                evidence=unique,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 101 – Abstract quantitative result gap
+# ---------------------------------------------------------------------------
+
+_ABSTRACT_QUANT_RE = re.compile(
+    r"\b\d+(\.\d+)?(%|fold|×|x|\s*pp\b)|"
+    r"\bp\s*[<=>]\s*0\.\d+|"
+    r"\b(accuracy|AUC|F1|RMSE|MAE|R2|R\^2|precision|recall|sensitivity|specificity)"
+    r"\s*(of|=|:)?\s*\d",
+    re.IGNORECASE,
+)
+_ABSTRACT_MIN_WORDS_QUANT = 50
+
+
+def validate_abstract_quantitative_results(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical abstracts that lack any quantitative result.
+
+    Emits ``abstract-no-quantitative-result`` (moderate) when an empirical
+    paper's abstract (≥ ``_ABSTRACT_MIN_WORDS_QUANT`` words) reports no
+    numerical results.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="abstract_quantitative_results", findings=[]
+        )
+
+    abstract = parsed.abstract or ""
+    if len(abstract.split()) < _ABSTRACT_MIN_WORDS_QUANT:
+        return ValidationResult(
+            validator_name="abstract_quantitative_results", findings=[]
+        )
+
+    if _ABSTRACT_QUANT_RE.search(abstract):
+        return ValidationResult(
+            validator_name="abstract_quantitative_results", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="abstract_quantitative_results",
+        findings=[
+            Finding(
+                code="abstract-no-quantitative-result",
+                severity="moderate",
+                message=(
+                    "Abstract of empirical paper reports no quantitative result "
+                    "(no percentages, p-values, or metric values). "
+                    "Key numerical outcomes should appear in the abstract."
+                ),
+                validator="abstract_quantitative_results",
+                location="abstract",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 102 – Missing confidence intervals
+# ---------------------------------------------------------------------------
+
+_EFFECT_SIZE_RESULT_RE = re.compile(
+    r"\b(Cohen'?s\s+[dDfg]|odds ratio|OR|hazard ratio|HR|"
+    r"risk ratio|relative risk|RR|"
+    r"mean difference|standardized mean|"
+    r"correlation\s+coefficient|r\s*=\s*\d)\b",
+    re.IGNORECASE,
+)
+_CI_PRESENT_RE = re.compile(
+    r"\b(95%\s+CI|confidence interval|CI\s*[:\[]\s*\d|"
+    r"\[\s*\d.*\d\s*\]|\(\s*\d+\.\d+\s*,\s*\d+\.\d+\s*\))\b",
+    re.IGNORECASE,
+)
+_CI_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "clinical_trial_report",
+        "meta_analysis",
+    }
+)
+
+
+def validate_confidence_interval_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers that report effect sizes without confidence intervals.
+
+    Emits ``missing-confidence-intervals`` (moderate) when Results sections
+    contain effect size language but no confidence interval notation.
+    """
+    if classification.paper_type not in _CI_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="confidence_interval_reporting", findings=[]
+        )
+
+    results_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"results", "analysis", "findings"}
+    )
+    if not results_body:
+        return ValidationResult(
+            validator_name="confidence_interval_reporting", findings=[]
+        )
+
+    if not _EFFECT_SIZE_RESULT_RE.search(results_body):
+        return ValidationResult(
+            validator_name="confidence_interval_reporting", findings=[]
+        )
+
+    if _CI_PRESENT_RE.search(results_body):
+        return ValidationResult(
+            validator_name="confidence_interval_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="confidence_interval_reporting",
+        findings=[
+            Finding(
+                code="missing-confidence-intervals",
+                severity="moderate",
+                message=(
+                    "Results report effect sizes without confidence intervals. "
+                    "Report 95% CIs alongside all effect size estimates."
+                ),
+                validator="confidence_interval_reporting",
+                location="Results",
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -4921,6 +5176,10 @@ def run_deterministic_validators(
         validate_supplementary_material_indication(parsed),
         validate_conclusion_scope_creep(parsed),
         validate_discussion_results_alignment(parsed),
+        validate_open_data_statement(parsed, classification),
+        validate_redundant_phrases(parsed),
+        validate_abstract_quantitative_results(parsed, classification),
+        validate_confidence_interval_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

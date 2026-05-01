@@ -3818,7 +3818,7 @@ def test_normal_claim_language_no_fire() -> None:
 
 def _sample_size_manuscript(
     methods_body: str,
-    paper_type: str = "empirical_research_paper",
+    paper_type: str = "empirical_paper",
 ) -> tuple[object, object]:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -3883,7 +3883,7 @@ def test_sample_size_non_empirical_no_fire() -> None:
 
 def _limitations_presence_manuscript(
     sections: list[tuple[str, str]],
-    paper_type: str = "empirical_research_paper",
+    paper_type: str = "empirical_paper",
 ) -> tuple[object, object]:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -4193,7 +4193,7 @@ def test_no_novelty_claim_no_fire() -> None:
 
 def _fig_table_manuscript(
     full_text: str,
-    paper_type: str = "empirical_research_paper",
+    paper_type: str = "empirical_paper",
 ) -> tuple[object, object]:
     from manuscript_audit.schemas.artifacts import ParsedManuscript
     from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -4253,7 +4253,7 @@ def test_non_empirical_no_fig_no_fire() -> None:
 
 def _multi_test_manuscript(
     methods_body: str,
-    paper_type: str = "empirical_research_paper",
+    paper_type: str = "empirical_paper",
 ) -> tuple[object, object]:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -4462,4 +4462,249 @@ def test_discussion_with_results_reference_no_fire() -> None:
     )
     ms = _discussion_manuscript(body)
     result = validate_discussion_results_alignment(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 99 – Open data statement
+# ---------------------------------------------------------------------------
+
+
+def _open_data_manuscript(
+    full_text: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="od-test",
+        source_path="od.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_missing_open_data_statement_fires() -> None:
+    from manuscript_audit.validators.core import validate_open_data_statement
+
+    text = (
+        "We conducted a randomized controlled experiment with 120 participants. "
+        "All procedures were approved by the ethics board."
+    )
+    ms, clf = _open_data_manuscript(text)
+    result = validate_open_data_statement(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-open-data-statement" in codes
+
+
+def test_data_availability_statement_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_open_data_statement
+
+    text = (
+        "Data availability statement: The data are available at zenodo.org. "
+        "All code is available on github.com/example/repo."
+    )
+    ms, clf = _open_data_manuscript(text)
+    result = validate_open_data_statement(ms, clf)
+    assert result.findings == []
+
+
+def test_non_empirical_no_open_data_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_open_data_statement
+
+    text = "We present a new algorithm for graph traversal."
+    ms, clf = _open_data_manuscript(text, paper_type="software_workflow_paper")
+    result = validate_open_data_statement(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 100 – Redundant phrases
+# ---------------------------------------------------------------------------
+
+
+def _redundant_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="red-test",
+        source_path="red.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_redundant_phrases_fires() -> None:
+    from manuscript_audit.validators.core import validate_redundant_phrases
+
+    text = (
+        "Due to the fact that the results were significant, in order to "
+        "confirm our hypothesis, it is important to note that the approach "
+        "succeeded. Furthermore, with regard to the limitations, it should "
+        "be noted that the sample was small."
+    )
+    ms = _redundant_manuscript(text)
+    result = validate_redundant_phrases(ms)
+    codes = [f.code for f in result.findings]
+    assert "redundant-phrases" in codes
+
+
+def test_concise_text_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_redundant_phrases
+
+    text = (
+        "Results were significant. To confirm our hypothesis we ran additional tests. "
+        "Note that the sample was small."
+    )
+    ms = _redundant_manuscript(text)
+    result = validate_redundant_phrases(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 101 – Abstract quantitative results
+# ---------------------------------------------------------------------------
+
+
+def _abstract_quant_manuscript(
+    abstract: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="aq-test",
+        source_path="aq.md",
+        source_format="markdown",
+        title="Test",
+        abstract=abstract,
+        full_text=abstract,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_abstract_no_quantitative_result_fires() -> None:
+    from manuscript_audit.validators.core import validate_abstract_quantitative_results
+
+    abstract = (
+        "This paper presents a novel deep learning approach for image classification. "
+        "We evaluate the method on standard benchmarks and demonstrate improved "
+        "performance compared to prior methods. The approach is scalable and achieves "
+        "state-of-the-art results while maintaining computational efficiency. "
+        "These findings have important implications for practical deployment "
+        "in real-world systems across multiple domains and application scenarios."
+    )
+    ms, clf = _abstract_quant_manuscript(abstract)
+    result = validate_abstract_quantitative_results(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "abstract-no-quantitative-result" in codes
+
+
+def test_abstract_with_quantitative_result_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_quantitative_results
+
+    abstract = (
+        "This paper presents a deep learning approach for image classification. "
+        "We evaluate the method on ImageNet and achieve 92.3% top-1 accuracy, "
+        "representing a 3.5% improvement over the prior state-of-the-art. "
+        "The approach achieves these results with 40% lower computational cost "
+        "compared to comparable architectures with similar capacity."
+    )
+    ms, clf = _abstract_quant_manuscript(abstract)
+    result = validate_abstract_quantitative_results(ms, clf)
+    assert result.findings == []
+
+
+def test_non_empirical_abstract_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_quantitative_results
+
+    abstract = (
+        "We present a new open-source workflow tool for reproducible manuscript "
+        "vetting. The tool provides deterministic validators and structured "
+        "artifact outputs for academic manuscripts."
+    )
+    ms, clf = _abstract_quant_manuscript(
+        abstract, paper_type="software_workflow_paper"
+    )
+    result = validate_abstract_quantitative_results(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 102 – Missing confidence intervals
+# ---------------------------------------------------------------------------
+
+
+def _ci_manuscript(
+    results_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple[object, object]:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="ci-test",
+        source_path="ci.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=results_body)],
+        full_text=results_body,
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_effect_size_without_ci_fires() -> None:
+    from manuscript_audit.validators.core import validate_confidence_interval_reporting
+
+    body = (
+        "The intervention showed a significant effect (Cohen's d = 0.72, p < 0.001). "
+        "The odds ratio was 2.4, indicating elevated risk in the treatment group."
+    )
+    ms, clf = _ci_manuscript(body)
+    result = validate_confidence_interval_reporting(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-confidence-intervals" in codes
+
+
+def test_effect_size_with_ci_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_confidence_interval_reporting
+
+    body = (
+        "The effect was significant (Cohen's d = 0.72, 95% CI [0.45, 0.99]). "
+        "The odds ratio was 2.4 (CI: 1.8, 3.2)."
+    )
+    ms, clf = _ci_manuscript(body)
+    result = validate_confidence_interval_reporting(ms, clf)
+    assert result.findings == []
+
+
+def test_non_empirical_no_ci_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_confidence_interval_reporting
+
+    body = "The algorithm runs in O(n log n) time."
+    ms, clf = _ci_manuscript(body, paper_type="software_workflow_paper")
+    result = validate_confidence_interval_reporting(ms, clf)
     assert result.findings == []
