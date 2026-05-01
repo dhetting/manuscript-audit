@@ -3783,6 +3783,354 @@ def validate_section_balance(
     return ValidationResult(validator_name="section_balance", findings=[])
 
 
+# ---------------------------------------------------------------------------
+# Phase 81 – Related work recency
+# ---------------------------------------------------------------------------
+
+_RELATED_WORK_TITLES = frozenset(
+    {"related work", "related works", "background", "prior work",
+     "literature review", "previous work", "related studies", "survey"}
+)
+_YEAR_IN_BIB_RE = re.compile(r"\b(?:19|20)\d{2}\b")
+_RELATED_WORK_MIN_CITATIONS = 5
+_RELATED_WORK_STALE_THRESHOLD = 0.50
+_RELATED_WORK_STALE_YEARS = 8
+
+
+def validate_related_work_recency(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Related Work sections dominated by outdated citations.
+
+    Finds citations in the Related Work section body, extracts years, and
+    flags ``related-work-stale`` (minor) when >``_RELATED_WORK_STALE_THRESHOLD``
+    of dated citations are >``_RELATED_WORK_STALE_YEARS`` years old.
+
+    Requires ≥``_RELATED_WORK_MIN_CITATIONS`` dated citations and
+    empirical/applied paper type.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="related_work_recency", findings=[])
+
+    current_year = datetime.datetime.now().year
+
+    for section in parsed.sections:
+        if section.title.lower() not in _RELATED_WORK_TITLES:
+            continue
+        years = [int(y) for y in _YEAR_IN_BIB_RE.findall(section.body)]
+        if len(years) < _RELATED_WORK_MIN_CITATIONS:
+            continue
+        stale = sum(1 for y in years if current_year - y > _RELATED_WORK_STALE_YEARS)
+        ratio = stale / len(years)
+        if ratio > _RELATED_WORK_STALE_THRESHOLD:
+            return ValidationResult(
+                validator_name="related_work_recency",
+                findings=[
+                    Finding(
+                        code="related-work-stale",
+                        severity="minor",
+                        message=(
+                            f"Related Work section has {stale}/{len(years)} citations "
+                            f"({ratio:.0%}) older than {_RELATED_WORK_STALE_YEARS} years — "
+                            "update the survey to include recent work."
+                        ),
+                        validator="related_work_recency",
+                        location=f"section '{section.title}'",
+                        evidence=[f"stale citations: {stale}/{len(years)}"],
+                    )
+                ],
+            )
+
+    return ValidationResult(validator_name="related_work_recency", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 82 – Introduction length balance
+# ---------------------------------------------------------------------------
+
+_INTRO_SECTIONS = frozenset({"introduction", "intro"})
+_INTRO_LENGTH_THRESHOLD = 0.25
+_INTRO_MIN_SECTIONS = 4
+_INTRO_MIN_TOTAL_WORDS = 300
+
+
+def validate_introduction_length(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag overlong introduction sections.
+
+    Emits ``introduction-too-long`` (minor) when the Introduction exceeds
+    ``_INTRO_LENGTH_THRESHOLD`` of total body word count.  Requires ≥
+    ``_INTRO_MIN_SECTIONS`` non-skipped sections.
+    """
+    major_sections = [
+        s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    ]
+    if len(major_sections) < _INTRO_MIN_SECTIONS:
+        return ValidationResult(validator_name="introduction_length", findings=[])
+
+    total_words = sum(len(s.body.split()) for s in major_sections)
+    if total_words < _INTRO_MIN_TOTAL_WORDS:
+        return ValidationResult(validator_name="introduction_length", findings=[])
+
+    for section in major_sections:
+        if section.title.lower() not in _INTRO_SECTIONS:
+            continue
+        intro_words = len(section.body.split())
+        ratio = intro_words / total_words
+        if ratio > _INTRO_LENGTH_THRESHOLD:
+            return ValidationResult(
+                validator_name="introduction_length",
+                findings=[
+                    Finding(
+                        code="introduction-too-long",
+                        severity="minor",
+                        message=(
+                            f"Introduction accounts for {ratio:.0%} of body word count "
+                            f"({intro_words}/{total_words} words) — "
+                            "trim to improve balance with Methods and Results."
+                        ),
+                        validator="introduction_length",
+                        location="Introduction",
+                        evidence=[f"{intro_words}/{total_words} words ({ratio:.0%})"],
+                    )
+                ],
+            )
+
+    return ValidationResult(validator_name="introduction_length", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 83 – Unquantified comparative claims
+# ---------------------------------------------------------------------------
+
+_UNQUANTIFIED_CLAIM_RE = re.compile(
+    r"\b(significantly\s+(?:better|faster|improved|higher|lower|greater|worse)|"
+    r"much\s+(?:better|faster|higher|lower|greater|worse|more\s+\w+)|"
+    r"greatly\s+(?:improved|increased|reduced|enhanced|better)|"
+    r"considerably\s+(?:better|faster|higher|lower|greater)|"
+    r"substantially\s+(?:better|faster|higher|lower|greater|improved)|"
+    r"far\s+(?:better|faster|higher|lower|greater)|"
+    r"remarkably\s+(?:better|faster|higher|lower|improved))\b",
+    re.IGNORECASE,
+)
+_NUMERIC_NEARBY_RE = re.compile(r"\d")
+_UNQUANTIFIED_NEARBY_CHARS = 40
+_UNQUANTIFIED_MAX_FINDINGS = 4
+
+
+def validate_unquantified_comparisons(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag comparative claims not backed by nearby numeric evidence.
+
+    For each match of ``_UNQUANTIFIED_CLAIM_RE``, checks if a digit appears
+    within ``_UNQUANTIFIED_NEARBY_CHARS`` characters before or after the match.
+    Emits ``unquantified-comparison`` (minor) per unsupported match; capped at
+    ``_UNQUANTIFIED_MAX_FINDINGS``.
+    """
+    findings: list[Finding] = []
+    body_text = " ".join(
+        s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    )
+
+    for match in _UNQUANTIFIED_CLAIM_RE.finditer(body_text):
+        start = max(0, match.start() - _UNQUANTIFIED_NEARBY_CHARS)
+        end = min(len(body_text), match.end() + _UNQUANTIFIED_NEARBY_CHARS)
+        context = body_text[start:end]
+        if not _NUMERIC_NEARBY_RE.search(context):
+            findings.append(
+                Finding(
+                    code="unquantified-comparison",
+                    severity="minor",
+                    message=(
+                        f"Comparative claim '{match.group()}' is not supported by "
+                        "nearby numeric evidence — add a specific measurement."
+                    ),
+                    validator="unquantified_comparisons",
+                    location="manuscript body",
+                    evidence=[f"claim: '{match.group()}'"],
+                )
+            )
+            if len(findings) >= _UNQUANTIFIED_MAX_FINDINGS:
+                break
+
+    return ValidationResult(
+        validator_name="unquantified_comparisons", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 84 – Footnote overuse
+# ---------------------------------------------------------------------------
+
+_FOOTNOTE_RE = re.compile(
+    r"(?:\\\s*footnote\s*\{|^\s*\[\^\d+\]:)",
+    re.MULTILINE,
+)
+_FOOTNOTE_THRESHOLD = 8
+
+
+def validate_footnote_overuse(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts with an excessive number of footnotes.
+
+    Detects LaTeX ``\\footnote{`` and Markdown ``[^N]:`` patterns.
+    Emits ``footnote-heavy`` (minor) when count exceeds
+    ``_FOOTNOTE_THRESHOLD``.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    count = len(_FOOTNOTE_RE.findall(full))
+    if count <= _FOOTNOTE_THRESHOLD:
+        return ValidationResult(validator_name="footnote_overuse", findings=[])
+
+    return ValidationResult(
+        validator_name="footnote_overuse",
+        findings=[
+            Finding(
+                code="footnote-heavy",
+                severity="minor",
+                message=(
+                    f"Manuscript contains {count} footnotes — "
+                    "excessive footnotes can interrupt reading flow; "
+                    "integrate key content into the main text."
+                ),
+                validator="footnote_overuse",
+                location="manuscript body",
+                evidence=[f"footnote count: {count}"],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 85 – Abbreviation list consistency
+# ---------------------------------------------------------------------------
+
+_ABBREV_SECTION_RE = re.compile(
+    r"\b(abbreviation[s]?|list\s+of\s+abbreviation[s]?|acronym[s]?)\b",
+    re.IGNORECASE,
+)
+_ABBREV_ENTRY_RE = re.compile(
+    r"^\s*([A-Z]{2,8})\s*[:\-–—]\s*.+$",
+    re.MULTILINE,
+)
+_ABBREV_MAX_FINDINGS = 5
+
+
+def validate_abbreviation_list(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag abbreviations declared in an abbreviations section but absent from body.
+
+    When a dedicated abbreviations section exists, extracts each abbreviation
+    and checks it appears in the manuscript body.  Emits ``unused-abbreviation``
+    (minor) per entry not found; capped at ``_ABBREV_MAX_FINDINGS``.
+    """
+    abbrev_section = None
+    for section in parsed.sections:
+        if _ABBREV_SECTION_RE.search(section.title):
+            abbrev_section = section
+            break
+
+    if abbrev_section is None:
+        return ValidationResult(validator_name="abbreviation_list", findings=[])
+
+    body_text = " ".join(
+        s.body for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS
+        and not _ABBREV_SECTION_RE.search(s.title)
+    )
+
+    abbrevs = _ABBREV_ENTRY_RE.findall(abbrev_section.body)
+    if not abbrevs:
+        return ValidationResult(validator_name="abbreviation_list", findings=[])
+
+    findings: list[Finding] = []
+    for abbrev in abbrevs:
+        if abbrev not in body_text:
+            findings.append(
+                Finding(
+                    code="unused-abbreviation",
+                    severity="minor",
+                    message=(
+                        f"Abbreviation '{abbrev}' is declared in the abbreviations "
+                        "list but not found in the manuscript body."
+                    ),
+                    validator="abbreviation_list",
+                    location=f"section '{abbrev_section.title}'",
+                    evidence=[f"abbreviation: {abbrev}"],
+                )
+            )
+            if len(findings) >= _ABBREV_MAX_FINDINGS:
+                break
+
+    return ValidationResult(
+        validator_name="abbreviation_list", findings=findings
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 86 – Abstract tense consistency
+# ---------------------------------------------------------------------------
+
+_ABSTRACT_PAST_RE = re.compile(
+    r"\b(was|were|found|showed|demonstrated|observed|revealed|confirmed|"
+    r"indicated|reported|measured|collected|conducted|performed|achieved|"
+    r"obtained|compared|evaluated)\b",
+    re.IGNORECASE,
+)
+_ABSTRACT_PRESENT_RE = re.compile(
+    r"\b(is|are|show[s]?|demonstrate[s]?|suggest[s]?|indicate[s]?|"
+    r"provide[s]?|offer[s]?|present[s]?|address[es]?|address|introduce[s]?)\b",
+    re.IGNORECASE,
+)
+_ABSTRACT_TENSE_MIN_SENTENCES = 5
+_ABSTRACT_TENSE_THRESHOLD = 0.20
+
+
+def validate_abstract_tense(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag abstracts that mix past-results and present-claims tenses inconsistently.
+
+    When both past-tense (was, found, showed) and present-tense (is, shows)
+    signals each exceed ``_ABSTRACT_TENSE_THRESHOLD`` of abstract sentences,
+    emits ``abstract-tense-mixed`` (minor).  Requires ≥
+    ``_ABSTRACT_TENSE_MIN_SENTENCES`` sentences.
+    """
+    abstract = parsed.abstract.strip()
+    if not abstract:
+        return ValidationResult(validator_name="abstract_tense", findings=[])
+
+    sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(abstract) if s.strip()]
+    if len(sentences) < _ABSTRACT_TENSE_MIN_SENTENCES:
+        return ValidationResult(validator_name="abstract_tense", findings=[])
+
+    past_count = sum(1 for s in sentences if _ABSTRACT_PAST_RE.search(s))
+    present_count = sum(1 for s in sentences if _ABSTRACT_PRESENT_RE.search(s))
+    n = len(sentences)
+
+    if (
+        past_count / n > _ABSTRACT_TENSE_THRESHOLD
+        and present_count / n > _ABSTRACT_TENSE_THRESHOLD
+    ):
+        return ValidationResult(
+            validator_name="abstract_tense",
+            findings=[
+                Finding(
+                    code="abstract-tense-mixed",
+                    severity="minor",
+                    message=(
+                        f"Abstract mixes past tense ({past_count}/{n} sentences) and "
+                        f"present tense ({present_count}/{n} sentences) — "
+                        "maintain consistent tense (past for reported results, "
+                        "present for general claims)."
+                    ),
+                    validator="abstract_tense",
+                    location="abstract",
+                    evidence=[
+                        f"past: {past_count}/{n}; present: {present_count}/{n}"
+                    ],
+                )
+            ],
+        )
+
+    return ValidationResult(validator_name="abstract_tense", findings=[])
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -3857,6 +4205,12 @@ def run_deterministic_validators(
         validate_methods_depth(parsed, classification),
         validate_list_overuse(parsed),
         validate_section_balance(parsed, classification),
+        validate_related_work_recency(parsed, classification),
+        validate_introduction_length(parsed),
+        validate_unquantified_comparisons(parsed),
+        validate_footnote_overuse(parsed),
+        validate_abbreviation_list(parsed),
+        validate_abstract_tense(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

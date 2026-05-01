@@ -3426,3 +3426,340 @@ def test_section_balance_skipped_theory() -> None:
     )
     result = validate_section_balance(parsed, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 81 – Related work recency
+# ---------------------------------------------------------------------------
+
+
+def _related_work_manuscript(
+    rw_body: str,
+    paper_type: str = "empirical_paper",
+) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="rw-test",
+        source_path="rw.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Related Work", level=1, body=rw_body)],
+        full_text=rw_body,
+    )
+    clf = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, clf
+
+
+def test_related_work_stale_fires() -> None:
+    from manuscript_audit.validators.core import validate_related_work_recency
+
+    # 7 old citations (2005-2012) and 1 recent — >50% stale
+    body = (
+        "Smith 2005 proposed the first method. Jones 2007 extended it. "
+        "Brown 2009 introduced a variant. Davis 2010 showed limitations. "
+        "Wilson 2011 proposed improvements. Taylor 2012 benchmarked results. "
+        "Anderson 2013 reviewed the field. Chen 2023 provided recent work."
+    )
+    parsed, clf = _related_work_manuscript(body)
+    result = validate_related_work_recency(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "related-work-stale" in codes
+
+
+def test_related_work_recent_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_related_work_recency
+
+    body = (
+        "Smith 2019 proposed the method. Jones 2020 extended it. "
+        "Brown 2021 introduced improvements. Davis 2022 benchmarked. "
+        "Wilson 2023 reviewed the field. Taylor 2023 showed recent results."
+    )
+    parsed, clf = _related_work_manuscript(body)
+    result = validate_related_work_recency(parsed, clf)
+    assert result.findings == []
+
+
+def test_related_work_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_related_work_recency
+
+    body = "Smith 2000. Jones 2001. Brown 2002. Davis 2003. Wilson 2004. Taylor 2005."
+    parsed, clf = _related_work_manuscript(body, paper_type="math_stats_theory")
+    result = validate_related_work_recency(parsed, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 82 – Introduction length balance
+# ---------------------------------------------------------------------------
+
+
+def _intro_length_manuscript(
+    sections: list[tuple[str, str]],
+) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    full = " ".join(b for _, b in sections)
+    return ParsedManuscript(
+        manuscript_id="introbal-test",
+        source_path="ib.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
+        full_text=full,
+    )
+
+
+def test_introduction_too_long_fires() -> None:
+    from manuscript_audit.validators.core import validate_introduction_length
+
+    long_intro = "This paper introduces a new framework for analysis. " * 20
+    short_sec = "Brief section content about the methodology used. " * 10
+    parsed = _intro_length_manuscript([
+        ("Introduction", long_intro),
+        ("Methods", short_sec),
+        ("Results", short_sec),
+        ("Discussion", short_sec),
+    ])
+    result = validate_introduction_length(parsed)
+    codes = [f.code for f in result.findings]
+    assert "introduction-too-long" in codes
+
+
+def test_introduction_balanced_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_introduction_length
+
+    balanced = "This section contains a balanced amount of content. " * 5
+    parsed = _intro_length_manuscript([
+        ("Introduction", balanced),
+        ("Methods", balanced),
+        ("Results", balanced),
+        ("Discussion", balanced),
+    ])
+    result = validate_introduction_length(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 83 – Unquantified comparative claims
+# ---------------------------------------------------------------------------
+
+
+def _unquantified_manuscript(body_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="unq-test",
+        source_path="unq.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Results", level=1, body=body_text)],
+        full_text=body_text,
+    )
+
+
+def test_unquantified_comparison_fires() -> None:
+    from manuscript_audit.validators.core import validate_unquantified_comparisons
+
+    body = (
+        "The proposed method is significantly better than the baseline. "
+        "Training is much faster without any loss of accuracy. "
+        "The approach is considerably higher performing on all tasks."
+    )
+    parsed = _unquantified_manuscript(body)
+    result = validate_unquantified_comparisons(parsed)
+    codes = [f.code for f in result.findings]
+    assert "unquantified-comparison" in codes
+
+
+def test_quantified_comparison_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_unquantified_comparisons
+
+    body = (
+        "The proposed method is significantly better than the baseline "
+        "by 3.2 percentage points. "
+        "Training is much faster at 4.5× speedup."
+    )
+    parsed = _unquantified_manuscript(body)
+    result = validate_unquantified_comparisons(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 84 – Footnote overuse
+# ---------------------------------------------------------------------------
+
+
+def _footnote_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="fn-test",
+        source_path="fn.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_footnote_overuse_fires() -> None:
+    from manuscript_audit.validators.core import validate_footnote_overuse
+
+    # 9 markdown-style footnote definitions
+    text = "\n".join(f"[^{i}]: Footnote {i} explains extra detail." for i in range(1, 10))
+    parsed = _footnote_manuscript(text)
+    result = validate_footnote_overuse(parsed)
+    codes = [f.code for f in result.findings]
+    assert "footnote-heavy" in codes
+
+
+def test_few_footnotes_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_footnote_overuse
+
+    text = "\n".join(f"[^{i}]: Footnote {i}." for i in range(1, 5))
+    parsed = _footnote_manuscript(text)
+    result = validate_footnote_overuse(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 85 – Abbreviation list consistency
+# ---------------------------------------------------------------------------
+
+
+def _abbrev_manuscript(
+    abbrev_body: str,
+    body_sections: list[tuple[str, str]],
+) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    all_sections = [Section(title="Abbreviations", level=1, body=abbrev_body)]
+    all_sections += [Section(title=t, level=1, body=b) for t, b in body_sections]
+    full = abbrev_body + " " + " ".join(b for _, b in body_sections)
+    return ParsedManuscript(
+        manuscript_id="abbrev-test",
+        source_path="abbrev.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=all_sections,
+        full_text=full,
+    )
+
+
+def test_unused_abbreviation_fires() -> None:
+    from manuscript_audit.validators.core import validate_abbreviation_list
+
+    abbrev_body = (
+        "CNN: Convolutional Neural Network\nRNN: Recurrent Neural Network\nXYZ: Unused term\n"
+    )
+    parsed = _abbrev_manuscript(
+        abbrev_body,
+        [("Methods", "We used CNN and RNN for the experiments.")]
+    )
+    result = validate_abbreviation_list(parsed)
+    codes = [f.code for f in result.findings]
+    assert "unused-abbreviation" in codes
+    # XYZ should be flagged
+    abbrevs = [f.evidence[0] for f in result.findings]
+    assert any("XYZ" in e for e in abbrevs)
+
+
+def test_all_abbreviations_used_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abbreviation_list
+
+    abbrev_body = "CNN: Convolutional Neural Network\nRNN: Recurrent Neural Network\n"
+    parsed = _abbrev_manuscript(
+        abbrev_body,
+        [("Methods", "We used CNN and RNN throughout the experiments.")]
+    )
+    result = validate_abbreviation_list(parsed)
+    assert result.findings == []
+
+
+def test_no_abbreviation_section_no_fire() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_abbreviation_list
+
+    ms = ParsedManuscript(
+        manuscript_id="no-abbrev",
+        source_path="na.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        sections=[Section(title="Methods", level=1, body="We used CNN and RNN.")],
+        full_text="We used CNN and RNN.",
+    )
+    result = validate_abbreviation_list(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 86 – Abstract tense consistency
+# ---------------------------------------------------------------------------
+
+
+def _tense_manuscript(abstract: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="tense-test",
+        source_path="tense.md",
+        source_format="markdown",
+        title="Test",
+        abstract=abstract,
+        full_text=abstract,
+    )
+
+
+def test_abstract_tense_mixed_fires() -> None:
+    from manuscript_audit.validators.core import validate_abstract_tense
+
+    abstract = (
+        "We present a novel framework for text classification. "
+        "The model was trained on 50000 examples. "
+        "Results showed a 5% improvement over the baseline. "
+        "This work demonstrates the effectiveness of transfer learning. "
+        "Experiments were conducted on three standard benchmarks. "
+        "The approach is competitive with state-of-the-art methods."
+    )
+    parsed = _tense_manuscript(abstract)
+    result = validate_abstract_tense(parsed)
+    codes = [f.code for f in result.findings]
+    assert "abstract-tense-mixed" in codes
+
+
+def test_abstract_past_tense_only_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_tense
+
+    abstract = (
+        "We trained a novel framework for text classification. "
+        "The model was tested on 50000 examples. "
+        "Results showed a 5% improvement over the baseline. "
+        "Experiments were conducted on three benchmarks. "
+        "Findings confirmed our hypothesis."
+    )
+    parsed = _tense_manuscript(abstract)
+    result = validate_abstract_tense(parsed)
+    assert result.findings == []
+
+
+def test_abstract_too_short_for_tense_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstract_tense
+
+    abstract = (
+        "We present a framework. Results were collected. "
+        "The approach is effective."
+    )
+    parsed = _tense_manuscript(abstract)
+    result = validate_abstract_tense(parsed)
+    assert result.findings == []
