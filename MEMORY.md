@@ -631,15 +631,34 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - Phase 101: `validate_abstract_quantitative_results` → `abstract-no-quantitative-result` (moderate) — requires ≥50 word abstract, empirical only
 - Phase 102: `validate_confidence_interval_reporting` → `missing-confidence-intervals` (moderate) — effect sizes without CIs, empirical only
 
-Current test count: **272 passing** (after phase 102)
+**Phases 103–107** (`4b92ec9`) — Five validators
+- Phase 103: `validate_bayesian_prior_justification` → `missing-prior-justification` (moderate) — Bayesian methods without prior specification
+- Phase 104: `validate_software_version_pinning` → `missing-software-versions` (minor) — software named without version numbers
+- Phase 105: `validate_measurement_scale_reporting` → `missing-scale-reliability` (moderate) — Likert/survey without Cronbach's alpha
+- Phase 106: `validate_sem_fit_indices` → `missing-sem-fit-indices` (moderate) — SEM/CFA without CFI/RMSEA/SRMR
+- Phase 107: `validate_regression_variance_explanation` → `missing-variance-explained` (moderate) — regression without R-squared
 
-Phase 102 is closed. Next candidate phases:
-1. **Phase 103: Inconsistent variable notation** — same concept referred to by multiple names/symbols
-2. **Phase 104: Regression discontinuity assumptions** — RD designs without bandwidth/continuity checks
-3. **Phase 105: Survey instrument validity** — survey studies without reliability/validity reporting
-4. **Phase 106: Measurement invariance** — multi-group comparisons without invariance testing
-5. **Phase 107: Bayesian prior justification** — Bayesian analyses without prior justification
-6. **Phase 108: Code/software version pinning** — software papers without pinned dependency versions
+**Phases 108–111** (`9dfd652`) — Four validators
+- Phase 108: `validate_normality_assumption` → `missing-normality-check` (moderate) — t-test/ANOVA without normality check
+- Phase 109: `validate_attrition_reporting` → `missing-attrition-report` (moderate) — longitudinal without dropout reporting
+- Phase 110: `validate_generalizability_overclaim` → `generalizability-overclaim` (major) — "universally applicable" without hedges
+- Phase 111: `validate_interrater_reliability` → `missing-interrater-reliability` (moderate) — human coding without IRR stats
+
+**Phases 112–115** (`1526431`) — Four validators
+- Phase 112: `validate_spurious_precision` → `spurious-precision` (minor) — values with ≥5 decimal places in Results
+- Phase 113: `validate_vague_temporal_claims` → `vague-temporal-claims` (minor) — ≥3 'recently'/'in recent years' without date anchors
+  - **Bug fix**: non-capturing inner groups in regex to avoid `findall` returning tuples
+- Phase 114: `validate_exclusion_criteria` → `missing-exclusion-criteria` (moderate) — inclusion but no exclusion criteria
+- Phase 115: `validate_title_length` → `title-too-long` / `title-too-short` (minor) — >20 or <5 words
+
+Current test count: **307 passing** (after phase 115)
+
+Phase 115 is closed. Next candidate phases:
+1. **Phase 116: Missing keywords section** — no keywords section present
+2. **Phase 117: Passive introduction** — introduction entirely in passive voice
+3. **Phase 118: Unbalanced parentheses/brackets** — malformed citation notation
+4. **Phase 119: Inconsistent heading capitalization** — mixed title case vs sentence case
+5. **Phase 120: Missing conflict of interest for clinical** — clinical trials always require COI
 
 
 ## Bundle and handoff requirements
