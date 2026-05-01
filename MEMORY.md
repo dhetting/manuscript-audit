@@ -391,13 +391,14 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 40 is closed. Next candidate phases:
-1. **Phase 42: Contribution claim verifier** — extract "N contributions" from abstract, verify body supports them
-2. **Phase 43: First-person consistency** — flag "I" vs "we" mixing in body text
-3. **Phase 44: Caption quality** — flag short or unpunctuated figure/table captions
-4. **Phase 45: Reference staleness** — flag when >60% of bibliography is >10 years old (empirical papers)
+Phase 45 is closed. Next candidate phases:
+1. **Phase 47: Terminology drift** — flag same technical term spelled differently across sections
+2. **Phase 48: Introduction structure** — check motivation/gap/contribution arc in intro
+3. **Phase 49: Reproducibility checklist** — flag missing dataset/code/seed elements in empirical papers
+4. **Phase 50: Self-citation ratio** — proxy check for author bias in bibliography
+5. **Phase 51: Conclusion scope** — flag new quantitative claims introduced only in conclusion
 
-## Phase 22–40 validated state
+## Phase 22–45 validated state
 
 All phases validated end-to-end from the live repo on 2026-05-01.
 
@@ -477,7 +478,29 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - Extracts capitalized multi-word phrases and hyphenated compounds from abstract
 - Fires when <30% of extracted terms appear in body; requires ≥3 extracted terms
 
-Current test count: **116 passing** (after phase 40)
+**Phase 42** (`37ebc83`) — Contribution claim count verifier
+- `validate_contribution_claim_count(parsed)` → `contribution-count-mismatch` (moderate)
+- Detects "make N contributions" in abstract/intro; counts enumerated body items
+- Fires when body items < claimed count; requires claimed count ≥ 2
+
+**Phase 43** (`37ebc83`) — First-person consistency validator
+- `validate_first_person_consistency(parsed)` → `first-person-inconsistency` (minor)
+- Fires when 'I' and 'we' both appear and minority usage exceeds 10% of combined uses
+- Excludes abstract and references sections
+
+**Phase 44** (`37ebc83`) — Caption quality validator
+- `validate_caption_quality(parsed)` → `short-caption` and `caption-missing-period` (both minor)
+- Uses `figure_definitions` / `table_definitions` already extracted by parsers
+- Short-caption fires when caption < 8 words; missing-period fires on unterminated captions
+- revision_new.md fixture caption updated to ≥ 8 words to avoid regression
+
+**Phase 45** (`37ebc83`) — Reference staleness validator
+- `validate_reference_staleness(parsed, classification)` → `stale-reference-majority` (minor)
+- Fires for empirical papers when >60% of dated entries are older than 10 years
+- Requires ≥ 10 dated entries; theory papers exempt
+- `_CURRENT_YEAR` computed at module load via `datetime.date.today().year`
+
+Current test count: **128 passing** (after phase 45)
 
 
 ## Bundle and handoff requirements
