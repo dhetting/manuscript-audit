@@ -6299,3 +6299,260 @@ def test_few_percentages_no_fire() -> None:
     result = validate_percentage_notation_consistency(ms)
     # Only 2 occurrences < threshold of 4
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 131 – validate_figure_label_consistency
+# ---------------------------------------------------------------------------
+
+
+def _fig_label_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="fig-label-test",
+        source_path="fig.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_inconsistent_figure_labels_fires() -> None:
+    from manuscript_audit.validators.core import validate_figure_label_consistency
+
+    ms = _fig_label_manuscript(
+        "See Figure 1 for the overview. "
+        "Fig. 2 shows the distribution. "
+        "Figure 3 displays the results. "
+        "fig. 4 is the comparison."
+    )
+    result = validate_figure_label_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "inconsistent-figure-labels" in codes
+
+
+def test_consistent_figure_labels_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_label_consistency
+
+    ms = _fig_label_manuscript(
+        "See Figure 1 for the overview. "
+        "Figure 2 shows the distribution. "
+        "Figure 3 displays the results."
+    )
+    result = validate_figure_label_consistency(ms)
+    assert result.findings == []
+
+
+def test_few_fig_refs_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_label_consistency
+
+    ms = _fig_label_manuscript("See Fig. 1 and Figure 2 for details.")
+    result = validate_figure_label_consistency(ms)
+    # Only 2 refs < threshold of 3, should not fire
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 132 – validate_draft_title_markers
+# ---------------------------------------------------------------------------
+
+
+def _draft_title_manuscript(title: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="draft-test",
+        source_path="draft.md",
+        source_format="markdown",
+        title=title,
+        abstract="Abstract.",
+        full_text="",
+    )
+
+
+def test_draft_title_fires() -> None:
+    from manuscript_audit.validators.core import validate_draft_title_markers
+
+    ms = _draft_title_manuscript("DRAFT: Effects of X on Y")
+    result = validate_draft_title_markers(ms)
+    codes = [f.code for f in result.findings]
+    assert "draft-title-marker" in codes
+
+
+def test_placeholder_title_fires() -> None:
+    from manuscript_audit.validators.core import validate_draft_title_markers
+
+    ms = _draft_title_manuscript("[Title] of the Manuscript")
+    result = validate_draft_title_markers(ms)
+    codes = [f.code for f in result.findings]
+    assert "draft-title-marker" in codes
+
+
+def test_clean_title_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_draft_title_markers
+
+    ms = _draft_title_manuscript(
+        "Deterministic Validation of Academic Manuscripts"
+    )
+    result = validate_draft_title_markers(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 133 – validate_study_period_reporting
+# ---------------------------------------------------------------------------
+
+
+def _study_period_manuscript(methods_body: str) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="period-test",
+        source_path="period.md",
+        source_format="markdown",
+        title="Test Study",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_study_period_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_study_period_reporting
+
+    ms, clf = _study_period_manuscript(
+        "We recruited 200 participants from an online platform. "
+        "All participants provided written consent."
+    )
+    result = validate_study_period_reporting(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-study-period" in codes
+
+
+def test_study_period_passes_when_present() -> None:
+    from manuscript_audit.validators.core import validate_study_period_reporting
+
+    ms, clf = _study_period_manuscript(
+        "We recruited 200 participants from 2019 to 2021. "
+        "Data collection was conducted between January and June 2020."
+    )
+    result = validate_study_period_reporting(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 134 – validate_scale_anchor_reporting
+# ---------------------------------------------------------------------------
+
+
+def _scale_anchor_manuscript(methods_body: str) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="scale-test",
+        source_path="scale.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_scale_anchor_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_scale_anchor_reporting
+
+    ms, clf = _scale_anchor_manuscript(
+        "Items were rated on a 5-point Likert scale. "
+        "Higher scores indicate greater agreement."
+    )
+    result = validate_scale_anchor_reporting(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-scale-anchors" in codes
+
+
+def test_scale_anchor_passes_with_endpoints() -> None:
+    from manuscript_audit.validators.core import validate_scale_anchor_reporting
+
+    ms, clf = _scale_anchor_manuscript(
+        "Items were rated on a 5-point Likert scale anchored from "
+        "1 = strongly disagree to 5 = strongly agree."
+    )
+    result = validate_scale_anchor_reporting(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 135 – validate_model_specification
+# ---------------------------------------------------------------------------
+
+
+def _model_spec_manuscript(methods_body: str) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="model-spec-test",
+        source_path="model.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_model_spec_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_model_specification
+
+    ms, clf = _model_spec_manuscript(
+        "We used logistic regression to predict outcomes. "
+        "All analyses were performed in R 4.3."
+    )
+    result = validate_model_specification(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-model-specification" in codes
+
+
+def test_model_spec_passes_with_predictors() -> None:
+    from manuscript_audit.validators.core import validate_model_specification
+
+    ms, clf = _model_spec_manuscript(
+        "We used logistic regression with age, gender, and treatment as predictors. "
+        "The dependent variable was 30-day readmission."
+    )
+    result = validate_model_specification(ms, clf)
+    assert result.findings == []
+
+
+def test_model_spec_no_fire_when_no_model() -> None:
+    from manuscript_audit.validators.core import validate_model_specification
+
+    ms, clf = _model_spec_manuscript(
+        "We used descriptive statistics to summarize the data. "
+        "Frequencies and percentages are reported for categorical variables."
+    )
+    result = validate_model_specification(ms, clf)
+    assert result.findings == []

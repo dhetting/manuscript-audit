@@ -6640,6 +6640,11 @@ def run_deterministic_validators(
         validate_participant_demographics(parsed, classification),
         validate_conflicting_acronym_definitions(parsed),
         validate_percentage_notation_consistency(parsed),
+        validate_figure_label_consistency(parsed),
+        validate_draft_title_markers(parsed),
+        validate_study_period_reporting(parsed, classification),
+        validate_scale_anchor_reporting(parsed, classification),
+        validate_model_specification(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -6978,6 +6983,313 @@ def validate_percentage_notation_consistency(
                 ),
                 validator="percentage_notation_consistency",
                 location="Results/Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 131 – Figure/table label format consistency
+# ---------------------------------------------------------------------------
+
+_FIG_LABEL_RE = re.compile(
+    r"\b(Fig\.|Figure|fig\.|figure)\s+\d+\b",
+    re.IGNORECASE,
+)
+_FIG_FORMATS = {
+    "Fig.": re.compile(r"\bFig\.\s+\d+"),
+    "Figure": re.compile(r"\bFigure\s+\d+"),
+    "fig.": re.compile(r"\bfig\.\s+\d+"),
+    "figure": re.compile(r"\bfigure\s+\d+"),
+}
+_FIG_MIN_REFS = 3
+
+
+def validate_figure_label_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts mixing figure label styles.
+
+    Emits ``inconsistent-figure-labels`` (minor) when the manuscript uses
+    multiple different figure reference styles (e.g., 'Fig. 1', 'Figure 1')
+    with >= ``_FIG_MIN_REFS`` total figure references.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="figure_label_consistency", findings=[])
+
+    total = len(_FIG_LABEL_RE.findall(full))
+    if total < _FIG_MIN_REFS:
+        return ValidationResult(validator_name="figure_label_consistency", findings=[])
+
+    found_styles = [name for name, pat in _FIG_FORMATS.items() if pat.search(full)]
+    if len(found_styles) < 2:
+        return ValidationResult(validator_name="figure_label_consistency", findings=[])
+
+    return ValidationResult(
+        validator_name="figure_label_consistency",
+        findings=[
+            Finding(
+                code="inconsistent-figure-labels",
+                severity="minor",
+                message=(
+                    f"Manuscript uses {len(found_styles)} different figure label "
+                    "styles. Use a consistent format (e.g., always 'Figure 1' "
+                    "or always 'Fig. 1')."
+                ),
+                validator="figure_label_consistency",
+                location="manuscript",
+                evidence=found_styles[:4],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 132 – Draft title markers
+# ---------------------------------------------------------------------------
+
+_DRAFT_TITLE_RE = re.compile(
+    r"(\bTBD\b|\bTODO\b|\bFIXME\b|\bDRAFT\b|\bPLACEHOLDER\b|"
+    r"\[Title\]|\[Insert Title\]|"
+    r"\bUntitled\b|title here|your title)",
+    re.IGNORECASE,
+)
+
+
+def validate_draft_title_markers(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag titles containing draft/placeholder markers.
+
+    Emits ``draft-title-marker`` (major) when the manuscript title contains
+    obvious draft markers like 'TBD', 'DRAFT', or '[Title]'.
+    """
+    title = parsed.title or ""
+    if not title:
+        return ValidationResult(validator_name="draft_title_markers", findings=[])
+
+    if _DRAFT_TITLE_RE.search(title):
+        return ValidationResult(
+            validator_name="draft_title_markers",
+            findings=[
+                Finding(
+                    code="draft-title-marker",
+                    severity="major",
+                    message=(
+                        f"Title appears to be a placeholder: '{title}'. "
+                        "Replace with the actual manuscript title before submission."
+                    ),
+                    validator="draft_title_markers",
+                    location="title",
+                    evidence=[title],
+                )
+            ],
+        )
+
+    return ValidationResult(validator_name="draft_title_markers", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 133 – Missing study period in empirical papers
+# ---------------------------------------------------------------------------
+
+_STUDY_PERIOD_RE = re.compile(
+    r"\b(data (were|was) collected (in|from|between|during)|"
+    r"study (period|was conducted)|"
+    r"between (January|February|March|April|May|June|July|August|September|"
+    r"October|November|December|\d{4}) and|"
+    r"from \d{4} to \d{4}|"
+    r"in \d{4}[–-]\d{4}|"
+    r"\d{4}[–-]\d{4} (cohort|sample|survey|dataset)|"
+    r"recruited (in|between|from|during) \d{4}|"
+    r"baseline (assessment|survey|data) in \d{4})\b",
+    re.IGNORECASE,
+)
+
+
+def validate_study_period_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers without a stated study period.
+
+    Emits ``missing-study-period`` (moderate) when an empirical paper's
+    Methods section mentions participants/data collection but provides no
+    study period (e.g., 'data collected from 2019 to 2021').
+    """
+    if classification.paper_type not in _DEMOGRAPHICS_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="study_period_reporting", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="study_period_reporting", findings=[]
+        )
+
+    if not _DEMOGRAPHICS_PARTICIPANT_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="study_period_reporting", findings=[]
+        )
+
+    if _STUDY_PERIOD_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="study_period_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="study_period_reporting",
+        findings=[
+            Finding(
+                code="missing-study-period",
+                severity="moderate",
+                message=(
+                    "Empirical paper mentions participants but provides no study "
+                    "period (e.g., 'data collected from 2019 to 2021'). "
+                    "Report when data were collected for reproducibility."
+                ),
+                validator="study_period_reporting",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 134 – Response scale anchor labels
+# ---------------------------------------------------------------------------
+
+_SCALE_ANCHOR_RE = re.compile(
+    r"\b(\d+|[1-9])\s*[-–]\s*(\d+|point)\s*(Likert|scale|response|rating)\b|"
+    r"\b(Likert|rating|response|ordinal)\s*(scale|format|item)\b",
+    re.IGNORECASE,
+)
+_SCALE_ENDPOINT_RE = re.compile(
+    r"\b(strongly (agree|disagree)|not at all|very (much|often|satisfied|likely)|"
+    r"extremely (satisfied|likely|important)|"
+    r"anchor(ed|s)|end(point)?s? (were|are|included|labeled)|"
+    r"ranged from .{5,40} to .{5,40})\b",
+    re.IGNORECASE,
+)
+
+
+def validate_scale_anchor_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag survey/scale instruments without anchor label description.
+
+    Emits ``missing-scale-anchors`` (minor) when a paper describes a Likert or
+    rating scale but provides no endpoint/anchor labels.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="scale_anchor_reporting", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="scale_anchor_reporting", findings=[]
+        )
+
+    if not _SCALE_ANCHOR_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="scale_anchor_reporting", findings=[]
+        )
+
+    if _SCALE_ENDPOINT_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="scale_anchor_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="scale_anchor_reporting",
+        findings=[
+            Finding(
+                code="missing-scale-anchors",
+                severity="minor",
+                message=(
+                    "Methods describes a Likert/rating scale but provides no "
+                    "anchor/endpoint labels. "
+                    "Describe scale endpoints (e.g., '1 = strongly disagree, "
+                    "5 = strongly agree')."
+                ),
+                validator="scale_anchor_reporting",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 135 – Missing model specification
+# ---------------------------------------------------------------------------
+
+_MODEL_SPEC_TRIGGER_RE = re.compile(
+    r"\b(logistic regression|linear regression|multilevel model|"
+    r"mixed.effect(s)? model|hierarchical (regression|model)|"
+    r"structural equation model|path model|latent class|"
+    r"Poisson regression|Cox (proportional hazard|regression))\b",
+    re.IGNORECASE,
+)
+_MODEL_SPEC_DETAIL_RE = re.compile(
+    r"\b(covariates?|predictors?|independent variable|"
+    r"dependent variable|outcome variable|control variable|"
+    r"fixed effect|random effect|model formula|"
+    r"specified (as|with|using)|included in the model)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_model_specification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag papers describing regression/SEM models without specifying predictors.
+
+    Emits ``missing-model-specification`` (moderate) when Methods describes a
+    complex statistical model but provides no model specification (covariates,
+    predictors, outcome variables).
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="model_specification", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="model_specification", findings=[]
+        )
+
+    if not _MODEL_SPEC_TRIGGER_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="model_specification", findings=[]
+        )
+
+    if _MODEL_SPEC_DETAIL_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="model_specification", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="model_specification",
+        findings=[
+            Finding(
+                code="missing-model-specification",
+                severity="moderate",
+                message=(
+                    "Methods describes a regression/SEM model but provides "
+                    "no specification of predictors, covariates, or outcome variables. "
+                    "State the complete model formula or variable list."
+                ),
+                validator="model_specification",
+                location="Methods",
             )
         ],
     )
