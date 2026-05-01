@@ -1022,3 +1022,194 @@ def test_dedicated_limitations_section_accepted() -> None:
     )
     result = validate_limitations_coverage(parsed, _classification())
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 33: Acronym consistency validator
+# ---------------------------------------------------------------------------
+
+
+def _acronym_manuscript(sections: list[tuple[str, str]], abstract: str = ""):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="acro-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Acronym test",
+        abstract=abstract,
+        full_text="",
+        sections=[Section(title=t, level=2, body=b) for t, b in sections],
+    )
+
+
+def test_acronym_used_before_definition_flagged() -> None:
+    from manuscript_audit.validators.core import validate_acronym_consistency
+
+    # BERT used in abstract before definition appears in Introduction
+    parsed = _acronym_manuscript(
+        abstract="We fine-tune BERT on our dataset.",
+        sections=[
+            ("Introduction",
+             "Bidirectional Encoder Representations from Transformers (BERT) has become standard."),
+        ],
+    )
+    result = validate_acronym_consistency(parsed)
+    codes = [f.code for f in result.findings]
+    assert "acronym-used-before-definition" in codes
+    assert any("BERT" in f.message for f in result.findings)
+
+
+def test_acronym_defined_before_use_not_flagged() -> None:
+    from manuscript_audit.validators.core import validate_acronym_consistency
+
+    parsed = _acronym_manuscript(sections=[
+        ("Introduction",
+         "Bidirectional Encoder Representations from Transformers (BERT) has become standard."),
+        ("Methods", "We apply BERT techniques to the corpus."),
+    ])
+    result = validate_acronym_consistency(parsed)
+    early = [f for f in result.findings if f.code == "acronym-used-before-definition"]
+    assert not early
+
+
+def test_undefined_acronym_flagged() -> None:
+    from manuscript_audit.validators.core import validate_acronym_consistency
+
+    # BERT used throughout but never defined
+    parsed = _acronym_manuscript(sections=[
+        ("Methods", "We fine-tune BERT on our dataset."),
+        ("Results", "BERT achieves the best performance."),
+    ])
+    result = validate_acronym_consistency(parsed)
+    codes = [f.code for f in result.findings]
+    assert "undefined-acronym" in codes
+    assert any("BERT" in f.message for f in result.findings)
+
+
+def test_common_acronyms_exempted() -> None:
+    from manuscript_audit.validators.core import validate_acronym_consistency
+
+    parsed = _acronym_manuscript(sections=[
+        ("Methods", "We use the API to fetch data via HTTP and store as JSON."),
+    ])
+    result = validate_acronym_consistency(parsed)
+    # API, HTTP, JSON should not be flagged as undefined
+    flagged = {f.evidence[0] for f in result.findings if f.evidence}
+    assert "API" not in flagged
+    assert "HTTP" not in flagged
+    assert "JSON" not in flagged
+
+
+# ---------------------------------------------------------------------------
+# Phase 34: Methods tense consistency validator
+# ---------------------------------------------------------------------------
+
+
+def _methods_tense_manuscript(body: str):
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="tense-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Tense test",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+
+
+def test_present_tense_heavy_methods_flagged() -> None:
+    from manuscript_audit.validators.core import validate_methods_tense_consistency
+
+    # 5 present-only sentences out of 5 tense-bearing = 100%
+    body = (
+        "We use gradient descent to optimize the model. "
+        "The learning rate is set to 0.001. "
+        "We apply dropout with probability 0.3. "
+        "The model has three hidden layers. "
+        "We train for 50 epochs on a single GPU."
+    )
+    result = validate_methods_tense_consistency(_methods_tense_manuscript(body))
+    codes = [f.code for f in result.findings]
+    assert "inconsistent-methods-tense" in codes
+
+
+def test_past_tense_methods_not_flagged() -> None:
+    from manuscript_audit.validators.core import validate_methods_tense_consistency
+
+    body = (
+        "We used gradient descent to optimize the model. "
+        "The learning rate was set to 0.001. "
+        "We applied dropout with probability 0.3. "
+        "The model had three hidden layers. "
+        "We trained for 50 epochs on a single GPU."
+    )
+    result = validate_methods_tense_consistency(_methods_tense_manuscript(body))
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 35: Sentence length outlier validator
+# ---------------------------------------------------------------------------
+
+
+def test_overlong_sentence_detected() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_sentence_length_outliers
+
+    long_sentence = "word " * 65  # 65 words > 60 threshold
+    parsed = ParsedManuscript(
+        manuscript_id="long-sent",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Long sentence test",
+        full_text="",
+        sections=[Section(title="Discussion", level=2, body=long_sentence.strip())],
+    )
+    result = validate_sentence_length_outliers(parsed)
+    codes = [f.code for f in result.findings]
+    assert "overlong-sentence" in codes
+
+
+def test_normal_sentences_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_sentence_length_outliers
+
+    body = (
+        "We evaluated the model on three datasets. "
+        "The results show consistent improvement. "
+        "These findings align with prior work."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="normal-sent",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Normal sentences",
+        full_text="",
+        sections=[Section(title="Results", level=2, body=body)],
+    )
+    result = validate_sentence_length_outliers(parsed)
+    assert result.findings == []
+
+
+def test_sentence_length_capped_per_section() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import (
+        _FINDINGS_PER_SECTION_CAP,
+        validate_sentence_length_outliers,
+    )
+
+    # 5 overlong sentences — should only produce _FINDINGS_PER_SECTION_CAP findings
+    long = ("word " * 65).strip()
+    body = ". ".join([long] * 5)
+    parsed = ParsedManuscript(
+        manuscript_id="capped",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Cap test",
+        full_text="",
+        sections=[Section(title="Discussion", level=2, body=body)],
+    )
+    result = validate_sentence_length_outliers(parsed)
+    assert len(result.findings) <= _FINDINGS_PER_SECTION_CAP

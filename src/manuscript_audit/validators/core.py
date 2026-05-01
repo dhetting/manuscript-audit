@@ -1324,6 +1324,221 @@ def validate_limitations_coverage(
     )
 
 
+# ---------------------------------------------------------------------------
+# Acronym consistency
+# ---------------------------------------------------------------------------
+# Matches "Long Name (ABC)" style definitions.
+_ACRONYM_DEF_RE = re.compile(
+    r"\b[A-Z][A-Za-z]*(?:\s+[A-Za-z]+){1,8}\s+\(([A-Z]{2,6})\)",
+)
+# Matches standalone uppercase 2–6 letter tokens not surrounded by other letters.
+_ACRONYM_USE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Z]{2,6})s?(?![A-Za-z0-9])")
+# Well-known acronyms that never need in-text definition.
+_COMMON_ACRONYMS = frozenset({
+    "URL", "HTML", "PDF", "API", "CPU", "GPU", "RAM", "SQL", "XML", "JSON",
+    "HTTP", "HTTPS", "IDE", "SDK", "CI", "CD", "AI", "ML", "NLP", "CV",
+    "US", "UK", "EU", "UN", "USA", "NA", "DOI", "ORCID",
+})
+
+
+def _document_paragraphs(parsed: ParsedManuscript) -> list[tuple[str, str]]:
+    """Return (location, paragraph) pairs in document reading order."""
+    pairs: list[tuple[str, str]] = []
+    if parsed.abstract.strip():
+        for para in _split_paragraphs(parsed.abstract):
+            pairs.append(("abstract", para))
+    for section in parsed.sections:
+        for para in _split_paragraphs(section.body):
+            pairs.append((section.title, para))
+    return pairs
+
+
+def validate_acronym_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag acronym uses that precede their definition or are never defined.
+
+    Scans abstract + sections in document order.  Tracks each acronym's first
+    definition position.  Emits:
+    - ``acronym-used-before-definition`` (moderate) when an acronym appears
+      before its "Long Name (ABC)" definition.
+    - ``undefined-acronym`` (moderate) when an uppercase token of 2–6 letters
+      is used throughout the document but never defined at all.
+
+    Common technical acronyms (URL, PDF, API, etc.) are exempted.
+    """
+    pairs = _document_paragraphs(parsed)
+
+    # First pass: record at which paragraph index each acronym is defined.
+    definition_index: dict[str, int] = {}
+    for idx, (_, para) in enumerate(pairs):
+        for match in _ACRONYM_DEF_RE.finditer(para):
+            acronym = match.group(1)
+            if acronym not in definition_index:
+                definition_index[acronym] = idx
+
+    # Second pass: find uses and check against definition positions.
+    # use_locations maps acronym → list of (para_idx, location) for uses
+    # that precede the definition.
+    early_uses: dict[str, str] = {}   # acronym → first location of premature use
+    all_uses: set[str] = set()
+
+    for idx, (location, para) in enumerate(pairs):
+        for match in _ACRONYM_USE_RE.finditer(para):
+            acronym = match.group(1)
+            if acronym in _COMMON_ACRONYMS:
+                continue
+            all_uses.add(acronym)
+            if acronym not in definition_index and acronym not in early_uses:
+                # We'll resolve undefined vs early-use after full scan.
+                pass
+            elif acronym in definition_index and idx < definition_index[acronym]:
+                if acronym not in early_uses:
+                    early_uses[acronym] = location
+
+    # Acronyms used but never defined anywhere.
+    undefined = all_uses - definition_index.keys() - _COMMON_ACRONYMS
+
+    findings: list[Finding] = []
+    for acronym in sorted(early_uses):
+        findings.append(
+            Finding(
+                code="acronym-used-before-definition",
+                severity="moderate",
+                message=(
+                    f'Acronym "{acronym}" is used in \'{early_uses[acronym]}\' '
+                    "before its first definition."
+                ),
+                validator="acronym_consistency",
+                location=early_uses[acronym],
+                evidence=[acronym],
+            )
+        )
+    for acronym in sorted(undefined):
+        findings.append(
+            Finding(
+                code="undefined-acronym",
+                severity="moderate",
+                message=(
+                    f'Acronym "{acronym}" is used but never defined '
+                    "with a full expansion."
+                ),
+                validator="acronym_consistency",
+                evidence=[acronym],
+            )
+        )
+    return ValidationResult(validator_name="acronym_consistency", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Methods tense consistency
+# ---------------------------------------------------------------------------
+_PRESENT_TENSE_RE = re.compile(
+    r"\b(is|are|has|have|do|does|will|shall|can|may|apply|use|compute|train|"
+    r"evaluate|measure|test|run|perform|calculate|determine|estimate)\b",
+    re.IGNORECASE,
+)
+_PAST_TENSE_RE = re.compile(
+    r"\b(was|were|had|did|applied|used|computed|trained|evaluated|measured|"
+    r"tested|ran|performed|calculated|determined|estimated|conducted|collected)\b",
+    re.IGNORECASE,
+)
+METHODS_TENSE_THRESHOLD = 0.35  # present-tense fraction above which we flag
+
+
+def validate_methods_tense_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag Methods sections where present tense sentences significantly outnumber past.
+
+    Academic Methods sections should predominantly use past tense to describe
+    what was done.  When present-tense-only sentences exceed
+    ``METHODS_TENSE_THRESHOLD`` of sentences that contain any tense marker,
+    emits ``inconsistent-methods-tense`` (minor).  Requires ≥5 tense-bearing
+    sentences to avoid false positives on very short sections.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if not _METHODS_SECTION_RE.search(section.title):
+            continue
+        body = section.body.strip()
+        if not body:
+            continue
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(body) if s.strip()]
+        tense_sentences = [
+            s for s in sentences
+            if _PRESENT_TENSE_RE.search(s) or _PAST_TENSE_RE.search(s)
+        ]
+        if len(tense_sentences) < 5:
+            continue
+        # Count sentences that contain present-tense markers but NO past-tense markers.
+        present_only = sum(
+            1 for s in tense_sentences
+            if _PRESENT_TENSE_RE.search(s) and not _PAST_TENSE_RE.search(s)
+        )
+        ratio = present_only / len(tense_sentences)
+        if ratio > METHODS_TENSE_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="inconsistent-methods-tense",
+                    severity="minor",
+                    message=(
+                        f"{present_only}/{len(tense_sentences)} tense-bearing sentences "
+                        f"({ratio:.0%}) in '{section.title}' use present tense — "
+                        "Methods sections typically narrate in past tense."
+                    ),
+                    validator="methods_tense_consistency",
+                    location=f"section '{section.title}'",
+                    evidence=[f"present-tense fraction: {ratio:.2f}"],
+                )
+            )
+    return ValidationResult(validator_name="methods_tense_consistency", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Sentence length outliers
+# ---------------------------------------------------------------------------
+SENTENCE_LENGTH_THRESHOLD = 60  # words above which a sentence is flagged
+_FINDINGS_PER_SECTION_CAP = 3   # max findings per section
+
+
+def validate_sentence_length_outliers(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag excessively long sentences that harm readability.
+
+    Scans all non-skipped sections.  Sentences exceeding
+    ``SENTENCE_LENGTH_THRESHOLD`` words are flagged as
+    ``overlong-sentence`` (minor).  At most ``_FINDINGS_PER_SECTION_CAP``
+    findings are emitted per section to avoid flooding the report.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() in _SKIP_SECTIONS:
+            continue
+        body = section.body.strip()
+        if not body:
+            continue
+        section_findings = 0
+        for sentence in _SENTENCE_SPLIT_RE.split(body):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            word_count = len(sentence.split())
+            if word_count > SENTENCE_LENGTH_THRESHOLD:
+                findings.append(
+                    Finding(
+                        code="overlong-sentence",
+                        severity="minor",
+                        message=(
+                            f"A sentence in '{section.title}' is {word_count} words long — "
+                            "consider splitting for readability."
+                        ),
+                        validator="sentence_length_outliers",
+                        location=f"section '{section.title}'",
+                        evidence=[sentence[:120]],
+                    )
+                )
+                section_findings += 1
+                if section_findings >= _FINDINGS_PER_SECTION_CAP:
+                    break
+    return ValidationResult(validator_name="sentence_length_outliers", findings=findings)
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1360,6 +1575,9 @@ def run_deterministic_validators(
         validate_hedging_density(parsed),
         validate_related_work_coverage(parsed, classification),
         validate_limitations_coverage(parsed, classification),
+        validate_acronym_consistency(parsed),
+        validate_methods_tense_consistency(parsed),
+        validate_sentence_length_outliers(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
