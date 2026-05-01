@@ -1539,6 +1539,262 @@ def validate_sentence_length_outliers(parsed: ParsedManuscript) -> ValidationRes
     return ValidationResult(validator_name="sentence_length_outliers", findings=findings)
 
 
+# ---------------------------------------------------------------------------
+# Phase 37 – Citation cluster gap detector
+# ---------------------------------------------------------------------------
+
+_CITATION_RE = re.compile(
+    r"\[\d+(?:,\s*\d+)*\]"          # [1], [1, 2]
+    r"|(?:[A-Z][a-z]+\s+(?:et\s+al\.?|and\s+[A-Z][a-z]+),?\s+\d{4})"  # Smith et al. 2020
+    r"|\\\w+cite\{[^}]+\}",         # \cite{key}
+)
+_CITATION_GAP_SECTIONS = frozenset({"results", "discussion", "analysis", "evaluation"})
+CITATION_CLUSTER_GAP = 5  # consecutive sentences without any citation
+
+
+def validate_citation_cluster_gap(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag long stretches of uncited sentences in empirical paper result sections.
+
+    In Results / Discussion sections of empirical papers, 5 or more consecutive
+    sentences with no citation signal a potential evidence-presentation gap.
+    Requires ≥8 sentences in the section to avoid false positives on short sections.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="citation_cluster_gap", findings=[])
+
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        title_lower = section.title.lower()
+        if not any(kw in title_lower for kw in _CITATION_GAP_SECTIONS):
+            continue
+        body = section.body.strip()
+        if not body:
+            continue
+        sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(body) if s.strip()]
+        if len(sentences) < 8:
+            continue
+
+        gap_start: int | None = None
+        gap_count = 0
+        for i, sent in enumerate(sentences):
+            has_citation = bool(_CITATION_RE.search(sent))
+            if not has_citation:
+                if gap_start is None:
+                    gap_start = i
+                gap_count += 1
+            else:
+                if gap_count >= CITATION_CLUSTER_GAP:
+                    findings.append(
+                        Finding(
+                            code="citation-cluster-gap",
+                            severity="minor",
+                            message=(
+                                f"'{section.title}' has {gap_count} consecutive sentences "
+                                "with no citation — consider adding supporting references."
+                            ),
+                            validator="citation_cluster_gap",
+                            location=f"section '{section.title}'",
+                            evidence=[sentences[gap_start][:120]],  # type: ignore[index]
+                        )
+                    )
+                gap_start = None
+                gap_count = 0
+        # check trailing gap
+        if gap_count >= CITATION_CLUSTER_GAP and gap_start is not None:
+            findings.append(
+                Finding(
+                    code="citation-cluster-gap",
+                    severity="minor",
+                    message=(
+                        f"'{section.title}' has {gap_count} consecutive sentences "
+                        "with no citation — consider adding supporting references."
+                    ),
+                    validator="citation_cluster_gap",
+                    location=f"section '{section.title}'",
+                    evidence=[sentences[gap_start][:120]],
+                )
+            )
+    return ValidationResult(validator_name="citation_cluster_gap", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 38 – Power-word overuse detector
+# ---------------------------------------------------------------------------
+
+_POWER_WORDS = (
+    "novel",
+    "state-of-the-art",
+    "significant",
+    "unprecedented",
+    "groundbreaking",
+    "revolutionary",
+    "remarkable",
+    "superior",
+    "outstanding",
+)
+_POWER_WORD_THRESHOLD = 3  # occurrences above which we flag
+_POWER_WORD_SECTIONS = frozenset({"abstract", "introduction"})
+_POWER_WORD_RES = [
+    re.compile(r"(?<![A-Za-z])" + re.escape(w) + r"(?![A-Za-z])", re.IGNORECASE)
+    for w in _POWER_WORDS
+]
+
+
+def validate_power_word_overuse(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag overuse of vague promotional language in abstract / introduction.
+
+    Each power-word is counted across the abstract + introduction body combined.
+    When any single term exceeds ``_POWER_WORD_THRESHOLD`` occurrences the
+    finding ``power-word-overuse`` (minor) is emitted.
+    """
+    combined = ""
+    if parsed.abstract:
+        combined += parsed.abstract + " "
+    for section in parsed.sections:
+        if "introduction" in section.title.lower():
+            combined += section.body + " "
+
+    if not combined.strip():
+        return ValidationResult(validator_name="power_word_overuse", findings=[])
+
+    findings: list[Finding] = []
+    for word, pattern in zip(_POWER_WORDS, _POWER_WORD_RES, strict=True):
+        count = len(pattern.findall(combined))
+        if count > _POWER_WORD_THRESHOLD:
+            findings.append(
+                Finding(
+                    code="power-word-overuse",
+                    severity="minor",
+                    message=(
+                        f"The term '{word}' appears {count} times in abstract/introduction — "
+                        "consider replacing with precise technical language."
+                    ),
+                    validator="power_word_overuse",
+                    location="abstract/introduction",
+                    evidence=[f"'{word}' count: {count}"],
+                )
+            )
+    return ValidationResult(validator_name="power_word_overuse", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 39 – Number formatting consistency
+# ---------------------------------------------------------------------------
+
+_BARE_LARGE_NUMBER_RE = re.compile(r"(?<!\d)\d{5,}(?!\d)")   # 10000, 100000 etc.
+_COMMA_NUMBER_RE = re.compile(r"\d{1,3}(?:,\d{3})+")          # 10,000 / 100,000 etc.
+
+
+def _number_magnitude(n_str: str) -> int:
+    """Return order-of-magnitude bucket (number of digits in bare form)."""
+    return len(n_str.replace(",", ""))
+
+
+def validate_number_format_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag sections that mix bare and comma-formatted large numbers.
+
+    Within a single section, using both ``10000`` and ``10,000`` style for
+    numbers of the same magnitude (≥5 digits) is inconsistent.  Emits
+    ``number-format-inconsistency`` (minor) once per offending section.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() in _SKIP_SECTIONS:
+            continue
+        body = section.body
+        if not body:
+            continue
+
+        bare_magnitudes = {
+            _number_magnitude(m) for m in _BARE_LARGE_NUMBER_RE.findall(body)
+        }
+        comma_magnitudes = {
+            _number_magnitude(m) for m in _COMMA_NUMBER_RE.findall(body)
+        }
+        overlap = bare_magnitudes & comma_magnitudes
+        if overlap:
+            example_mag = min(overlap)
+            findings.append(
+                Finding(
+                    code="number-format-inconsistency",
+                    severity="minor",
+                    message=(
+                        f"'{section.title}' mixes bare numbers (e.g. 10000) and "
+                        "comma-formatted numbers (e.g. 10,000) for the same magnitude — "
+                        "standardise to one style throughout."
+                    ),
+                    validator="number_format_consistency",
+                    location=f"section '{section.title}'",
+                    evidence=[f"magnitude ~{example_mag} digits appears in both styles"],
+                )
+            )
+    return ValidationResult(validator_name="number_format_consistency", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 40 – Abstract keyword coverage
+# ---------------------------------------------------------------------------
+
+_ABSTRACT_TERM_RE = re.compile(
+    r"(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"           # Capitalized multi-word: Neural Network
+    r"|(?:[a-z]+-[a-z]+(?:-[a-z]+)*)"               # hyphenated compound: fine-tuning
+    r"|(?:[a-z]+[A-Z][a-z]+(?:[A-Z][a-z]+)*)",      # camelCase: backPropagation
+)
+_ABSTRACT_KEYWORD_MIN_TERMS = 3  # minimum extracted terms to bother checking
+ABSTRACT_KEYWORD_COVERAGE_THRESHOLD = 0.30  # fraction of terms that must appear in body
+
+
+def validate_abstract_keyword_coverage(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag when key technical terms from the abstract are absent from the body.
+
+    Extracts capitalised multi-word noun phrases and hyphenated compounds from
+    the abstract, then checks how many appear (case-insensitive) in the non-abstract
+    body text.  Emits ``abstract-body-disconnect`` (moderate) when fewer than
+    ``ABSTRACT_KEYWORD_COVERAGE_THRESHOLD`` of the extracted terms appear.
+
+    Requires at least ``_ABSTRACT_KEYWORD_MIN_TERMS`` extracted terms to avoid
+    false positives on sparse abstracts.
+    """
+    abstract = (parsed.abstract or "").strip()
+    if not abstract:
+        return ValidationResult(validator_name="abstract_keyword_coverage", findings=[])
+
+    terms = list({m.lower() for m in _ABSTRACT_TERM_RE.findall(abstract)})
+    if len(terms) < _ABSTRACT_KEYWORD_MIN_TERMS:
+        return ValidationResult(validator_name="abstract_keyword_coverage", findings=[])
+
+    body_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() not in ("abstract",)
+    ).lower()
+
+    matched = [t for t in terms if t in body_text]
+    coverage = len(matched) / len(terms)
+
+    if coverage < ABSTRACT_KEYWORD_COVERAGE_THRESHOLD:
+        missing = [t for t in terms if t not in body_text][:5]
+        findings = [
+            Finding(
+                code="abstract-body-disconnect",
+                severity="moderate",
+                message=(
+                    f"Only {len(matched)}/{len(terms)} abstract technical terms appear in "
+                    "the manuscript body — the abstract may over-promise relative to the content."
+                ),
+                validator="abstract_keyword_coverage",
+                location="abstract",
+                evidence=[f"absent terms: {', '.join(missing)}"] if missing else [],
+            )
+        ]
+    else:
+        findings = []
+    return ValidationResult(validator_name="abstract_keyword_coverage", findings=findings)
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1578,6 +1834,10 @@ def run_deterministic_validators(
         validate_acronym_consistency(parsed),
         validate_methods_tense_consistency(parsed),
         validate_sentence_length_outliers(parsed),
+        validate_citation_cluster_gap(parsed, classification),
+        validate_power_word_overuse(parsed),
+        validate_number_format_consistency(parsed),
+        validate_abstract_keyword_coverage(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

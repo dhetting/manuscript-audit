@@ -1213,3 +1213,230 @@ def test_sentence_length_capped_per_section() -> None:
     )
     result = validate_sentence_length_outliers(parsed)
     assert len(result.findings) <= _FINDINGS_PER_SECTION_CAP
+
+
+# ---------------------------------------------------------------------------
+# Phase 37 – citation cluster gap
+# ---------------------------------------------------------------------------
+
+def _citation_gap_manuscript(
+    sections: list[tuple[str, str]],
+    paper_type: str = "empirical_paper",
+):  # type: ignore[return]
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="gap-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Gap test",
+        full_text="",
+        sections=[Section(title=t, level=2, body=b) for t, b in sections],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_citation_cluster_gap_fires() -> None:
+    from manuscript_audit.validators.core import validate_citation_cluster_gap
+
+    # 10 sentences, first 8 have no citation, last 2 have one
+    uncited = "This observation supports the hypothesis. " * 8
+    cited = "As shown in [1], results confirm. As described by Smith et al. 2020, further. "
+    body = uncited + cited
+    parsed, clf = _citation_gap_manuscript([("Results", body)])
+    result = validate_citation_cluster_gap(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "citation-cluster-gap" in codes
+
+
+def test_citation_cluster_gap_short_section_skipped() -> None:
+    from manuscript_audit.validators.core import validate_citation_cluster_gap
+
+    # Only 6 sentences (below 8 minimum) — should not fire
+    body = "Sentence one. Sentence two. Sentence three. Sentence four. Sentence five. Sentence six."
+    parsed, clf = _citation_gap_manuscript([("Results", body)])
+    result = validate_citation_cluster_gap(parsed, clf)
+    assert result.findings == []
+
+
+def test_citation_cluster_gap_theory_skipped() -> None:
+    from manuscript_audit.validators.core import validate_citation_cluster_gap
+
+    uncited = "This observation supports the hypothesis. " * 10
+    parsed, clf = _citation_gap_manuscript([("Results", uncited)], paper_type="math_stats_theory")
+    result = validate_citation_cluster_gap(parsed, clf)
+    assert result.findings == []
+
+
+def test_citation_cluster_gap_no_fire_when_citations_interspersed() -> None:
+    from manuscript_audit.validators.core import validate_citation_cluster_gap
+
+    # Citations every 3 sentences — no gap of 5+
+    sentence = "We observe the following. As shown in [1], results hold. These support the model. "
+    body = sentence * 4
+    parsed, clf = _citation_gap_manuscript([("Discussion", body)])
+    result = validate_citation_cluster_gap(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "citation-cluster-gap" not in codes
+
+
+# ---------------------------------------------------------------------------
+# Phase 38 – power-word overuse
+# ---------------------------------------------------------------------------
+
+def test_power_word_overuse_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section  # noqa: F401
+    from manuscript_audit.validators.core import validate_power_word_overuse
+
+    abstract = (
+        "We present a novel novel novel novel approach to this novel novel problem."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="pw-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Power words",
+        full_text="",
+        abstract=abstract,
+        sections=[],
+    )
+    result = validate_power_word_overuse(parsed)
+    codes = [f.code for f in result.findings]
+    assert "power-word-overuse" in codes
+    assert any("novel" in f.message for f in result.findings)
+
+
+def test_power_word_overuse_no_fire_below_threshold() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_power_word_overuse
+
+    abstract = "We present a novel approach. This is a significant advance."
+    parsed = ParsedManuscript(
+        manuscript_id="pw-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="OK",
+        full_text="",
+        abstract=abstract,
+        sections=[],
+    )
+    result = validate_power_word_overuse(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 39 – number format consistency
+# ---------------------------------------------------------------------------
+
+def test_number_format_inconsistency_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_number_format_consistency
+
+    body = "We processed 10000 samples and 10,000 controls in the same batch."
+    parsed = ParsedManuscript(
+        manuscript_id="nf-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Numbers",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_number_format_consistency(parsed)
+    codes = [f.code for f in result.findings]
+    assert "number-format-inconsistency" in codes
+
+
+def test_number_format_consistent_no_fire() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_number_format_consistency
+
+    body = "We processed 10,000 samples and 20,000 controls."
+    parsed = ParsedManuscript(
+        manuscript_id="nf-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Numbers OK",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_number_format_consistency(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 40 – abstract keyword coverage
+# ---------------------------------------------------------------------------
+
+def test_abstract_keyword_coverage_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_abstract_keyword_coverage
+
+    abstract = (
+        "We introduce a fine-tuning method for Neural Networks using "
+        "Stochastic Gradient Descent and back-propagation."
+    )
+    # Body mentions none of those technical terms
+    parsed = ParsedManuscript(
+        manuscript_id="kw-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="KW",
+        full_text="",
+        abstract=abstract,
+        sections=[
+            Section(title="Methods", level=2, body="We do stuff with data and compute results."),
+        ],
+    )
+    result = validate_abstract_keyword_coverage(parsed)
+    codes = [f.code for f in result.findings]
+    assert "abstract-body-disconnect" in codes
+
+
+def test_abstract_keyword_coverage_passes_when_terms_present() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_abstract_keyword_coverage
+
+    abstract = (
+        "We introduce fine-tuning for Neural Networks using "
+        "Stochastic Gradient Descent."
+    )
+    body = (
+        "We apply fine-tuning to Neural Networks. "
+        "Stochastic Gradient Descent is used throughout our experiments. "
+        "Results confirm the method."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="kw-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="KW OK",
+        full_text="",
+        abstract=abstract,
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_abstract_keyword_coverage(parsed)
+    assert result.findings == []
+
+
+def test_abstract_keyword_coverage_sparse_abstract_skipped() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_abstract_keyword_coverage
+
+    abstract = "We study data."  # fewer than _ABSTRACT_KEYWORD_MIN_TERMS terms
+    parsed = ParsedManuscript(
+        manuscript_id="kw-sparse",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Sparse",
+        full_text="",
+        abstract=abstract,
+        sections=[Section(title="Methods", level=2, body="Some content.")],
+    )
+    result = validate_abstract_keyword_coverage(parsed)
+    assert result.findings == []
