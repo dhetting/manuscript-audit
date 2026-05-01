@@ -391,13 +391,7 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 79 is closed. Next candidate phases:
-1. **Phase 81: Related work recency** — flag related work where >50% of citations are >8 years old
-2. **Phase 82: Introduction length** — flag introduction >25% of total body word count
-3. **Phase 83: Unquantified comparisons** — flag "much better", "significantly faster" without numbers
-4. **Phase 84: Footnote overuse** — flag >8 footnotes as footnote-heavy
-5. **Phase 85: Abbreviation list** — flag abbreviations listed but not used in body
-6. **Phase 86: Abstract tense** — flag mixing of past and present tense in abstract
+Phase 86 is closed. Next candidate phases listed in phase 86 entry above.
 
 ## Phase 22–62 validated state
 
@@ -582,7 +576,45 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `validate_section_balance(parsed, classification)` → `section-length-imbalance` (minor)
 - Fires when any section >60% of total body word count; requires ≥3 non-skipped sections
 
-Current test count: **213 passing** (after phase 79)
+**Phase 80** (`fff0823`) — MEMORY.md sync (phases 73–79)
+
+**Phase 81** (`6ba7c84`) — Related work recency
+- `validate_related_work_recency(parsed, classification)` → `related-work-stale` (minor)
+- Fires when >50% of citations in Related Work/Literature Review are >8 years old
+- `_YEAR_IN_BIB_RE = re.compile(r"\b(?:19|20)\d{2}\b")` (non-capturing group — critical!)
+- Empirical/applied/software paper types only
+
+**Phase 82** (`6ba7c84`) — Introduction length
+- `validate_introduction_length(parsed)` → `introduction-too-long` (minor)
+- Fires when Introduction >25% of total body word count
+- Guards: ≥4 non-skipped sections AND ≥300 total body words (avoids stub manuscript false positives)
+- `_INTRO_MIN_TOTAL_WORDS = 300` was added after `revision_new.md` fixture triggered false positive
+
+**Phase 83** (`6ba7c84`) — Unquantified comparisons
+- `validate_unquantified_comparisons(parsed)` → `unquantified-comparison` (minor)
+- Flags "much better", "significantly faster", "far superior" etc. without numeric support in body
+
+**Phase 84** (`6ba7c84`) — Footnote overuse
+- `validate_footnote_overuse(parsed)` → `footnote-heavy` (minor)
+- Fires when >5 footnotes in a single section
+
+**Phase 85** (`6ba7c84`) — Abbreviation list
+- `validate_abbreviation_list(parsed)` → `unused-abbreviation` (minor)
+- Flags abbreviations defined in Abbreviations/Glossary section but not used in body
+
+**Phase 86** (`6ba7c84`) — Abstract tense
+- `validate_abstract_tense(parsed)` → `abstract-tense-mixed` (minor)
+- Flags abstracts mixing past and present tense verb forms
+
+Current test count: **228 passing** (after phase 86)
+
+Phase 86 is closed. Next candidate phases:
+1. **Phase 87: Claim strength escalation** — "proves", "demonstrates conclusively" without evidence → major
+2. **Phase 88: Sample size reporting** — empirical papers without explicit N mentioned → moderate
+3. **Phase 89: Limitation section presence** — no Limitations section in empirical papers → moderate
+4. **Phase 90: Author contribution statement** — check for CRediT/author contribution disclosure
+5. **Phase 91: Preregistration mention** — flag registered reports or RCTs without preregistration note
+6. **Phase 92: Response to reviewers completeness** — revision manuscripts without systematic reviewer response
 
 
 ## Bundle and handoff requirements
