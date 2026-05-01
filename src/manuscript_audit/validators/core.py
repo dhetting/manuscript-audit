@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 import re
 
 from manuscript_audit.config import DEFAULT_VALIDATOR_VERSION
@@ -1795,6 +1796,250 @@ def validate_abstract_keyword_coverage(parsed: ParsedManuscript) -> ValidationRe
     return ValidationResult(validator_name="abstract_keyword_coverage", findings=findings)
 
 
+# ---------------------------------------------------------------------------
+# Phase 42 – Contribution claim count verifier
+# ---------------------------------------------------------------------------
+
+_CONTRIBUTION_COUNT_RE = re.compile(
+    r"\b(?:make|present|describe|propose|introduce|identify|provide)"
+    r"\s+(?:the\s+following\s+)?(\w+|\d+)\s+(?:key\s+|main\s+|novel\s+)?contributions?\b",
+    re.IGNORECASE,
+)
+_NUMBER_WORDS = {
+    "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+_ENUM_SIGNAL_RE = re.compile(
+    r"(?:^|\n)\s*(?:\d+[\.\)]\s|\(?[ivx]+\)\s|[-*•]\s|first[,:]?\s|second[,:]?\s|third[,:]?\s)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _parse_count_word(token: str) -> int | None:
+    try:
+        return int(token)
+    except ValueError:
+        return _NUMBER_WORDS.get(token.lower())
+
+
+def validate_contribution_claim_count(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag when the claimed number of contributions exceeds what the body enumerates.
+
+    Looks for "make N contributions" style claims in the abstract or introduction,
+    then counts enumerated items (numbered lists, bullets, "First…Second…Third")
+    across all non-abstract body sections.  Emits ``contribution-count-mismatch``
+    (moderate) when the claimed count is greater than the enumerated body count.
+
+    Requires claimed count ≥ 2 to avoid trivial single-contribution papers.
+    """
+    abstract = (parsed.abstract or "").strip()
+    intro_body = ""
+    for section in parsed.sections:
+        if "introduction" in section.title.lower():
+            intro_body = section.body
+            break
+
+    claimed_count: int | None = None
+    for text in (abstract, intro_body):
+        m = _CONTRIBUTION_COUNT_RE.search(text)
+        if m:
+            claimed_count = _parse_count_word(m.group(1))
+            break
+
+    if claimed_count is None or claimed_count < 2:
+        return ValidationResult(validator_name="contribution_claim_count", findings=[])
+
+    body_text = "\n".join(
+        s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
+    )
+    found_count = len(_ENUM_SIGNAL_RE.findall(body_text))
+
+    if found_count < claimed_count:
+        return ValidationResult(
+            validator_name="contribution_claim_count",
+            findings=[
+                Finding(
+                    code="contribution-count-mismatch",
+                    severity="moderate",
+                    message=(
+                        f"Abstract/introduction claims {claimed_count} contributions but "
+                        f"only {found_count} enumerated items were found in the body — "
+                        "verify that each claimed contribution is explicitly presented."
+                    ),
+                    validator="contribution_claim_count",
+                    location="abstract/introduction",
+                    evidence=[f"claimed: {claimed_count}; found: {found_count}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="contribution_claim_count", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 43 – First-person consistency validator
+# ---------------------------------------------------------------------------
+
+_FIRST_PERSON_I_RE = re.compile(r"(?<![A-Za-z])I\s", re.UNICODE)
+_FIRST_PERSON_WE_RE = re.compile(r"(?<![A-Za-z])[Ww]e\s", re.UNICODE)
+_FIRST_PERSON_MINORITY_THRESHOLD = 0.10  # minority fraction above which we flag
+
+
+def validate_first_person_consistency(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts that mix singular 'I' and plural 'we' first-person voice.
+
+    Counts 'I ' and 'we ' occurrences across all body sections (excluding abstract
+    and references).  When both are present and the minority usage exceeds
+    ``_FIRST_PERSON_MINORITY_THRESHOLD`` of total first-person uses, emits
+    ``first-person-inconsistency`` (minor).
+    """
+    body_text = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS
+    )
+    i_count = len(_FIRST_PERSON_I_RE.findall(body_text))
+    we_count = len(_FIRST_PERSON_WE_RE.findall(body_text))
+    total = i_count + we_count
+
+    if total == 0 or i_count == 0 or we_count == 0:
+        return ValidationResult(validator_name="first_person_consistency", findings=[])
+
+    minority = min(i_count, we_count)
+    if minority / total > _FIRST_PERSON_MINORITY_THRESHOLD:
+        dominant = "we" if we_count >= i_count else "I"
+        other = "I" if dominant == "we" else "we"
+        return ValidationResult(
+            validator_name="first_person_consistency",
+            findings=[
+                Finding(
+                    code="first-person-inconsistency",
+                    severity="minor",
+                    message=(
+                        f"Manuscript mixes first-person '{dominant}' ({max(i_count, we_count)}×) "
+                        f"and '{other}' ({min(i_count, we_count)}×) — "
+                        "standardise to a single voice throughout."
+                    ),
+                    validator="first_person_consistency",
+                    location="manuscript body",
+                    evidence=[f"'I' count: {i_count}; 'we' count: {we_count}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="first_person_consistency", findings=[])
+
+
+# ---------------------------------------------------------------------------
+# Phase 44 – Figure/table caption quality validator
+# ---------------------------------------------------------------------------
+
+_SHORT_CAPTION_THRESHOLD = 8  # words below which a caption is flagged as too short
+
+
+def validate_caption_quality(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag figure and table captions that are too short or lack a terminal period.
+
+    ``figure_definitions`` and ``table_definitions`` on ``ParsedManuscript`` contain
+    caption text extracted by the parsers.  Emits:
+    - ``short-caption`` (minor) when a caption is fewer than ``_SHORT_CAPTION_THRESHOLD`` words
+    - ``caption-missing-period`` (minor) when a caption does not end with a period,
+      question mark, or exclamation mark
+    """
+    findings: list[Finding] = []
+
+    for kind, captions in (
+        ("figure", parsed.figure_definitions),
+        ("table", parsed.table_definitions),
+    ):
+        for caption in captions:
+            caption = caption.strip()
+            if not caption:
+                continue
+            word_count = len(caption.split())
+            if word_count < _SHORT_CAPTION_THRESHOLD:
+                findings.append(
+                    Finding(
+                        code="short-caption",
+                        severity="minor",
+                        message=(
+                            f"A {kind} caption has only {word_count} words — "
+                            "captions should be descriptive (≥8 words)."
+                        ),
+                        validator="caption_quality",
+                        location=f"{kind} caption",
+                        evidence=[caption[:100]],
+                    )
+                )
+            if caption[-1] not in ".?!":
+                findings.append(
+                    Finding(
+                        code="caption-missing-period",
+                        severity="minor",
+                        message=(
+                            f"A {kind} caption does not end with a period — "
+                            "captions should end with terminal punctuation."
+                        ),
+                        validator="caption_quality",
+                        location=f"{kind} caption",
+                        evidence=[caption[:100]],
+                    )
+                )
+    return ValidationResult(validator_name="caption_quality", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 45 – Reference staleness validator
+# ---------------------------------------------------------------------------
+
+_STALE_YEARS_THRESHOLD = 10
+_STALE_FRACTION_THRESHOLD = 0.60
+_STALE_MIN_ENTRIES = 10
+_CURRENT_YEAR = datetime.date.today().year
+
+
+def validate_reference_staleness(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag when the majority of references are older than 10 years in empirical papers.
+
+    Theory papers (``math_stats_theory``) are exempt.  Requires at least
+    ``_STALE_MIN_ENTRIES`` bibliography entries with parseable years.
+    Emits ``stale-reference-majority`` (minor) when >60% of dated entries
+    were published more than 10 years ago.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="reference_staleness", findings=[])
+
+    dated = [
+        e for e in parsed.bibliography_entries if e.year and YEAR_RE.match(e.year)
+    ]
+    if len(dated) < _STALE_MIN_ENTRIES:
+        return ValidationResult(validator_name="reference_staleness", findings=[])
+
+    stale = [e for e in dated if (_CURRENT_YEAR - int(e.year)) > _STALE_YEARS_THRESHOLD]  # type: ignore[arg-type]
+    fraction = len(stale) / len(dated)
+
+    if fraction > _STALE_FRACTION_THRESHOLD:
+        return ValidationResult(
+            validator_name="reference_staleness",
+            findings=[
+                Finding(
+                    code="stale-reference-majority",
+                    severity="minor",
+                    message=(
+                        f"{len(stale)}/{len(dated)} dated references ({fraction:.0%}) "
+                        f"are older than {_STALE_YEARS_THRESHOLD} years — "
+                        "consider citing more recent work."
+                    ),
+                    validator="reference_staleness",
+                    location="bibliography",
+                    evidence=[f"stale entries: {len(stale)}; total dated: {len(dated)}"],
+                )
+            ],
+        )
+    return ValidationResult(validator_name="reference_staleness", findings=[])
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -1838,6 +2083,10 @@ def run_deterministic_validators(
         validate_power_word_overuse(parsed),
         validate_number_format_consistency(parsed),
         validate_abstract_keyword_coverage(parsed),
+        validate_contribution_claim_count(parsed),
+        validate_first_person_consistency(parsed),
+        validate_caption_quality(parsed),
+        validate_reference_staleness(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

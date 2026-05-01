@@ -21,7 +21,7 @@ for the paired workflow outputs.
 
 Figure 1 summarizes the pipeline and the reported outputs.
 
-Figure 1: Audited workflow pipeline.
+Figure 1: Audited workflow pipeline showing all processing stages and outputs.
 
 ## Discussion
 

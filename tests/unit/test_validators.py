@@ -1440,3 +1440,243 @@ def test_abstract_keyword_coverage_sparse_abstract_skipped() -> None:
     )
     result = validate_abstract_keyword_coverage(parsed)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 42 – contribution claim count
+# ---------------------------------------------------------------------------
+
+def test_contribution_claim_fires_when_fewer_items_in_body() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_contribution_claim_count
+
+    abstract = "We make three key contributions to this field."
+    # Only 1 enumerated item in body
+    body = "1. We propose a method. This method is efficient."
+    parsed = ParsedManuscript(
+        manuscript_id="contrib-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Contrib",
+        full_text="",
+        abstract=abstract,
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_contribution_claim_count(parsed)
+    codes = [f.code for f in result.findings]
+    assert "contribution-count-mismatch" in codes
+
+
+def test_contribution_claim_passes_when_items_match() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_contribution_claim_count
+
+    abstract = "We make two contributions."
+    body = "1. First contribution.\n2. Second contribution."
+    parsed = ParsedManuscript(
+        manuscript_id="contrib-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Contrib OK",
+        full_text="",
+        abstract=abstract,
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_contribution_claim_count(parsed)
+    assert result.findings == []
+
+
+def test_contribution_claim_skipped_when_no_claim() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_contribution_claim_count
+
+    parsed = ParsedManuscript(
+        manuscript_id="no-claim",
+        source_path="synthetic",
+        source_format="markdown",
+        title="No claim",
+        full_text="",
+        abstract="We study something interesting.",
+        sections=[Section(title="Methods", level=2, body="We do things.")],
+    )
+    result = validate_contribution_claim_count(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 43 – first-person consistency
+# ---------------------------------------------------------------------------
+
+def test_first_person_inconsistency_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_first_person_consistency
+
+    body = (
+        "We conducted the experiment. We gathered data. We analyzed results. "
+        "We discussed findings. I believe this is important. I confirmed the outcome. "
+        "I computed the statistics."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="fp-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="FP test",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_first_person_consistency(parsed)
+    codes = [f.code for f in result.findings]
+    assert "first-person-inconsistency" in codes
+
+
+def test_first_person_consistent_no_fire() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.validators.core import validate_first_person_consistency
+
+    body = "We conducted the experiment. We gathered data. We analyzed results."
+    parsed = ParsedManuscript(
+        manuscript_id="fp-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="FP OK",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=body)],
+    )
+    result = validate_first_person_consistency(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 44 – caption quality
+# ---------------------------------------------------------------------------
+
+def test_short_caption_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_caption_quality
+
+    parsed = ParsedManuscript(
+        manuscript_id="cap-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Caption test",
+        full_text="",
+        figure_definitions=["Short cap."],
+        sections=[],
+    )
+    result = validate_caption_quality(parsed)
+    codes = [f.code for f in result.findings]
+    assert "short-caption" in codes
+
+
+def test_caption_missing_period_fires() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_caption_quality
+
+    caption = "A detailed description of the experimental setup and results shown here"
+    parsed = ParsedManuscript(
+        manuscript_id="cap-period",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Caption period",
+        full_text="",
+        table_definitions=[caption],
+        sections=[],
+    )
+    result = validate_caption_quality(parsed)
+    codes = [f.code for f in result.findings]
+    assert "caption-missing-period" in codes
+
+
+def test_good_caption_no_fire() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.validators.core import validate_caption_quality
+
+    caption = (
+        "Distribution of test accuracy across all 10 experimental runs with standard deviation."
+    )
+    parsed = ParsedManuscript(
+        manuscript_id="cap-good",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Good caption",
+        full_text="",
+        figure_definitions=[caption],
+        sections=[],
+    )
+    result = validate_caption_quality(parsed)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 45 – reference staleness
+# ---------------------------------------------------------------------------
+
+def _staleness_manuscript(years: list[str], paper_type: str = "empirical_paper"):
+    from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    entries = [
+        BibliographyEntry(
+            key=f"ref{i}",
+            raw_text=f"Ref {i}",
+            year=y,
+            source="bibtex",
+        )
+        for i, y in enumerate(years)
+    ]
+    parsed = ParsedManuscript(
+        manuscript_id="stale-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Stale test",
+        full_text="",
+        bibliography_entries=entries,
+        sections=[],
+    )
+    clf = ManuscriptClassification(
+        paper_type=paper_type,
+        pathway="applied_stats",
+        recommended_stack="standard",
+    )
+    return parsed, clf
+
+
+def test_stale_references_fires() -> None:
+    from manuscript_audit.validators.core import validate_reference_staleness
+
+    # 12 entries all from 2000 (>10 years old)
+    years = ["2000"] * 12
+    parsed, clf = _staleness_manuscript(years)
+    result = validate_reference_staleness(parsed, clf)
+    codes = [f.code for f in result.findings]
+    assert "stale-reference-majority" in codes
+
+
+def test_stale_references_no_fire_recent() -> None:
+    import datetime
+
+    from manuscript_audit.validators.core import validate_reference_staleness
+    current = datetime.date.today().year
+    # 12 entries all from last 5 years
+    years = [str(current - i % 5) for i in range(12)]
+    parsed, clf = _staleness_manuscript(years)
+    result = validate_reference_staleness(parsed, clf)
+    assert result.findings == []
+
+
+def test_stale_references_skipped_theory() -> None:
+    from manuscript_audit.validators.core import validate_reference_staleness
+
+    years = ["2000"] * 12
+    parsed, clf = _staleness_manuscript(years, paper_type="math_stats_theory")
+    result = validate_reference_staleness(parsed, clf)
+    assert result.findings == []
+
+
+def test_stale_references_skipped_too_few_entries() -> None:
+    from manuscript_audit.validators.core import validate_reference_staleness
+
+    years = ["2000"] * 5  # below _STALE_MIN_ENTRIES
+    parsed, clf = _staleness_manuscript(years)
+    result = validate_reference_staleness(parsed, clf)
+    assert result.findings == []
