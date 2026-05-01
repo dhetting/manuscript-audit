@@ -686,13 +686,66 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 
 Current test count: **362 passing** (after phase 135)
 
-Phase 135 is closed. Next candidate phases:
-1. **Phase 136: Missing raw data description** — empirical papers mentioning datasets without describing format/source
-2. **Phase 137: Excessive decimal precision in tables** — table values with >4 decimal places
-3. **Phase 138: Results without effect direction** — "significant difference" without stating which group was higher
-4. **Phase 139: Untested moderation claims** — papers claiming moderation effects without interaction terms
-5. **Phase 140: Missing sensitivity analysis** — papers with multiple imputation or selection bias without sensitivity check
+**Phases 136–140** (`4e01795`) — Five validators (376 tests)
+- Phase 136: `validate_effect_direction_reporting` → `missing-effect-direction` (moderate) — Results with ≥2 significance mentions but no direction
+- Phase 137: `validate_citation_format_consistency` → `mixed-citation-format` (minor) — mixed numeric/author-year citation styles
+  - Constants renamed to `_FORMAT_NUMERIC_CITE_RE`/`_FORMAT_AUTHOR_YEAR_CITE_RE` to avoid shadowing existing `_AUTHOR_YEAR_CITE_RE`
+- Phase 138: `validate_imputation_sensitivity` → `missing-imputation-sensitivity` (moderate) — multiple imputation without sensitivity analysis
+- Phase 139: `validate_computational_environment` → `missing-computational-environment` (moderate) — simulation/ML without language/version details
+- Phase 140: `validate_table_captions` → `missing-table-captions` (minor) — ≥2 table refs but no captions
+  - Caption regex uses MULTILINE + line-start anchor to avoid prose false positives
+- **Golden**: moderate 11→12 (missing-computational-environment fires on latex_equivalence.tex)
 
+**Phases 141–145** (`fef7f76`) — Five validators (392 tests)
+- Phase 141: `validate_raw_data_description` → `missing-raw-data-description` (moderate)
+- Phase 142: `validate_multiple_outcomes_correction` → `missing-multiple-outcomes-correction` (moderate)
+- Phase 143: `validate_replication_dataset` → `missing-replication-dataset` (moderate)
+- Phase 144: `validate_appendix_reference_consistency` → `missing-appendix-section` (minor)
+- Phase 145: `validate_open_science_statement` → `missing-open-science-statement` (minor)
+- **Bug patterns discovered**: `Section` uses `title` not `heading`; `ParsedManuscript` requires `manuscript_id`, `source_path`, `source_format`; `ManuscriptClassification` requires `paper_type` and `recommended_stack`; field is `paper_type` not `primary_type`
+- Module-level imports added to test file: `Section`, `ParsedManuscript`, `ManuscriptClassification`
+- **Golden**: minor 12→13, moderate 12→13 (new validators fire on latex fixture)
+
+**Phases 146–150** (`b606563`) — Five validators (407 tests)
+- Phase 146: `validate_cohort_attrition` → `missing-attrition-reporting` (moderate) — longitudinal without dropout rates
+- Phase 147: `validate_blinding_procedure` → `missing-blinding-procedure` (moderate) — RCT/intervention without blinding description
+- Phase 148: `validate_floor_ceiling_effects` → `missing-floor-ceiling-discussion` (minor) — psychometric scale without floor/ceiling effects
+  - Floor/ceiling regex uses `effects?` (plural form needed)
+- Phase 149: `validate_negative_result_framing` → `negative-result-underreported` (minor) — non-sig Results without null-result Discussion
+- Phase 150: `validate_abstract_results_consistency` → `abstract-results-mismatch` (moderate) — abstract overclaims vs sparse Results
+
+**Phases 151–155** (`8b42a2d`) — Five validators (422 tests)
+- Phase 151: `validate_measurement_invariance` → `missing-measurement-invariance` (moderate) — group comparisons on scales without invariance testing
+- Phase 152: `validate_effect_size_confidence_intervals` → `missing-effect-size-ci` (moderate) — effect sizes without CIs
+- Phase 153: `validate_preregistration_statement` → `missing-preregistration` (minor) — confirmatory/RCT without preregistration
+- Phase 154: `validate_cross_validation_reporting` → `missing-cross-validation` (moderate) — ML/prediction without CV
+- Phase 155: `validate_sensitivity_analysis_reporting` → `missing-sensitivity-analysis` (moderate) — primary analysis without robustness check
+
+**Phases 156–160** (`e99ac19`) — Five validators (437 tests)
+- Phase 156: `validate_regression_diagnostics` → `missing-regression-diagnostics` (moderate) — regression without VIF/residual checks
+- Phase 157: `validate_sample_representativeness` → `non-representative-sample` (moderate) — single-site + generalizability claim without caveat
+  - Renamed `_GENERALIZE_CLAIM_RE` → `_SINGLE_SITE_CLAIM_RE` (shadowed existing constant)
+- Phase 158: `validate_variable_operationalization` → `missing-variable-operationalization` (minor) — ≥3 variable mentions without operationalization
+- Phase 159: `validate_interrater_reliability` already existed — added regression tests only
+- Phase 160: `validate_control_variable_justification` → `missing-control-justification` (minor) — ≥2 control mentions without justification
+
+Current test count: **437 passing** (after phase 160)
+HEAD: `e99ac19`
+
+## Critical technical gotchas (accumulated)
+
+- **`Section` has `title` field, NOT `heading`** — test helpers must use `title=`, validators use `s.title`
+- **`ParsedManuscript` required fields**: `manuscript_id`, `source_path`, `source_format`, `title`, `full_text`
+- **`ManuscriptClassification` required fields**: `pathway`, `paper_type`, `recommended_stack`
+  - Field is `paper_type` (NOT `primary_type`)
+  - `pathway` must be one of `"math_stats_theory"`, `"applied_stats"`, `"data_science"`, `"unknown"`
+- **Constant shadowing hazard**: check before adding any module-level constant (`grep -n "^_CONST_NAME"` in core.py)
+- **Function shadowing hazard**: check before adding any function (`grep -n "^def func_name"` in core.py and test file)
+- **`_EMPIRICAL_PAPER_TYPES`** = `frozenset({"empirical_paper", "applied_stats_paper", "software_workflow_paper"})`
+  - `math_theory_paper` is NOT in this set (use as the "skip" type in tests)
+- **Floor/ceiling regex**: use `effects?` not `effect` (plural form common in papers)
+- **MULTILINE regex** needed when checking for line-anchored captions (`^Table N.`)
+- **Test helpers with `ParsedManuscript`**: always include all required fields; `ManuscriptClassification` needs `recommended_stack`
 
 ## Bundle and handoff requirements
 
