@@ -98,6 +98,7 @@ class StructureContributionAgent(BaseHeuristicAgent):
     ) -> list[Finding]:
         findings: list[Finding] = []
         if len(parsed.abstract.split()) < 30:
+            word_count = len(parsed.abstract.split())
             findings.append(
                 Finding(
                     code="thin-abstract",
@@ -105,6 +106,7 @@ class StructureContributionAgent(BaseHeuristicAgent):
                     message="Abstract is very short for a pre-submission audit target.",
                     validator=self.name,
                     location="Abstract",
+                    confidence=round(min(1.0, (30 - word_count) / 30), 2),
                 )
             )
         introduction = next(
@@ -119,6 +121,7 @@ class StructureContributionAgent(BaseHeuristicAgent):
                     message="Introduction does not clearly signal the manuscript's contribution.",
                     validator=self.name,
                     location="Introduction",
+                    confidence=0.70,
                 )
             )
         return findings
@@ -145,6 +148,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         "No structured bibliography entries were available for metadata review."
                     ),
                     validator=self.name,
+                    confidence=0.99,
                 )
             ]
         findings: list[Finding] = []
@@ -161,6 +165,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         ),
                         validator=self.name,
                         evidence=bibliography_confidence_summary.rationale,
+                        confidence=0.95,
                     )
                 )
             elif bibliography_confidence_summary.confidence_level == "low":
@@ -174,6 +179,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         ),
                         validator=self.name,
                         evidence=bibliography_confidence_summary.rationale,
+                        confidence=0.80,
                     )
                 )
         if not source_verifications:
@@ -191,6 +197,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         validator=self.name,
                         location=item.entry_label,
                         evidence=item.issues,
+                        confidence=0.95,
                     )
                 )
             elif item.status == "ambiguous_match":
@@ -204,6 +211,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         validator=self.name,
                         location=item.entry_label,
                         evidence=item.issues,
+                        confidence=0.70,
                     )
                 )
             elif item.status == "lookup_not_found":
@@ -218,6 +226,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         validator=self.name,
                         location=item.entry_label,
                         evidence=item.issues,
+                        confidence=0.80,
                     )
                 )
             elif item.status == "provider_error":
@@ -232,6 +241,7 @@ class BibliographyMetadataAgent(BaseHeuristicAgent):
                         validator=self.name,
                         location=item.entry_label,
                         evidence=item.issues,
+                        confidence=0.60,
                     )
                 )
         return findings
@@ -410,6 +420,7 @@ class MathProofsNotationAgent(BaseHeuristicAgent):
                     ),
                     validator=self.name,
                     evidence=notation_summary.undefined_symbols[:5],
+                    confidence=round(min(1.0, n_undefined / total), 2),
                 )
             )
 
@@ -425,6 +436,7 @@ class MathProofsNotationAgent(BaseHeuristicAgent):
                             "preliminaries, or definitions section."
                         ),
                         validator=self.name,
+                        confidence=0.90,
                     )
                 )
 

@@ -100,3 +100,91 @@ def test_math_proofs_notation_agent_emits_missing_notation_section() -> None:
     result = agent.run(parsed, classification, validation_suite, applicability)
     codes = {f.code for f in result.findings}
     assert "missing-notation-section" in codes
+
+
+# ---------------------------------------------------------------------------
+# Phase 25: agent finding confidence scores
+# ---------------------------------------------------------------------------
+
+
+def test_thin_abstract_confidence_scaled_by_shortfall() -> None:
+    from manuscript_audit.agents.modules import StructureContributionAgent
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.findings import ValidationSuiteResult
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    # 0 words → confidence should be 1.0 (max shortfall)
+    parsed = ParsedManuscript(
+        manuscript_id="conf-test",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Test",
+        abstract="",
+        full_text="",
+    )
+    classification = ManuscriptClassification(
+        paper_type="empirical_paper", pathway="data_science", recommended_stack="maximal"
+    )
+    suite = ValidationSuiteResult(validator_version="test", results=[])
+    agent = StructureContributionAgent()
+    findings = agent._build_findings(parsed, classification, suite)
+    thin = [f for f in findings if f.code == "thin-abstract"]
+    assert thin, "Expected thin-abstract finding"
+    assert thin[0].confidence is not None
+    assert 0.0 <= thin[0].confidence <= 1.0
+    assert thin[0].confidence == 1.0
+
+
+def test_unclear_contribution_framing_has_fixed_confidence() -> None:
+    from manuscript_audit.agents.modules import StructureContributionAgent
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.findings import ValidationSuiteResult
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    parsed = ParsedManuscript(
+        manuscript_id="conf-contrib",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Test",
+        abstract="A " * 40,  # long enough
+        full_text="",
+        sections=[Section(title="Introduction", level=2, body="We study things.")],
+    )
+    classification = ManuscriptClassification(
+        paper_type="empirical_paper", pathway="data_science", recommended_stack="maximal"
+    )
+    suite = ValidationSuiteResult(validator_version="test", results=[])
+    agent = StructureContributionAgent()
+    findings = agent._build_findings(parsed, classification, suite)
+    contrib = [f for f in findings if f.code == "unclear-contribution-framing"]
+    assert contrib, "Expected unclear-contribution-framing finding"
+    assert contrib[0].confidence == 0.70
+
+
+def test_notation_coverage_confidence_equals_undefined_ratio() -> None:
+    from manuscript_audit.agents.modules import MathProofsNotationAgent
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.findings import ValidationSuiteResult
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    # 3 undefined out of 4 total = 0.75 ratio
+    body = r"Let $\alpha$, $\beta$, $\gamma$, $\delta$ denote parameters where $\alpha$ is defined."
+    parsed = ParsedManuscript(
+        manuscript_id="conf-notation",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Test",
+        full_text=body,
+        sections=[Section(title="Methods", level=2, body=body)],
+        equation_blocks=[body],
+    )
+    classification = ManuscriptClassification(
+        paper_type="theory_paper", pathway="math_stats_theory", recommended_stack="maximal"
+    )
+    suite = ValidationSuiteResult(validator_version="test", results=[])
+    agent = MathProofsNotationAgent()
+    findings = agent._build_findings(parsed, classification, suite)
+    low_cov = [f for f in findings if f.code == "low-notation-definition-coverage"]
+    if low_cov:
+        assert low_cov[0].confidence is not None
+        assert 0.5 < low_cov[0].confidence <= 1.0

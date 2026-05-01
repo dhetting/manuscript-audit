@@ -29,6 +29,7 @@ class Finding(BaseModel):
     validator: str
     location: str | None = None
     evidence: list[str] = Field(default_factory=list)
+    confidence: float | None = None  # 0.0–1.0; None means confidence not assessed
 
 
 class ValidationResult(BaseModel):
