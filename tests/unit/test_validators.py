@@ -6556,3 +6556,270 @@ def test_model_spec_no_fire_when_no_model() -> None:
     )
     result = validate_model_specification(ms, clf)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 136 – validate_effect_direction_reporting
+# ---------------------------------------------------------------------------
+
+
+def _effect_direction_manuscript(results_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="eff-dir-test",
+        source_path="eff.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Results", level=1, body=results_body)],
+    )
+
+
+def test_missing_effect_direction_fires() -> None:
+    from manuscript_audit.validators.core import validate_effect_direction_reporting
+
+    ms = _effect_direction_manuscript(
+        "Intervention and control conditions showed a statistically significant "
+        "difference (p < 0.05). "
+        "The effect was significant (p = 0.03). "
+        "Results were significant across all conditions (p < 0.01)."
+    )
+    result = validate_effect_direction_reporting(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-effect-direction" in codes
+
+
+def test_effect_direction_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_direction_reporting
+
+    ms = _effect_direction_manuscript(
+        "Group A scored significantly higher than Group B (p < 0.05, d = 0.72). "
+        "The treatment group showed greater improvement compared to control (p = 0.03)."
+    )
+    result = validate_effect_direction_reporting(ms)
+    assert result.findings == []
+
+
+def test_few_sig_results_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_direction_reporting
+
+    ms = _effect_direction_manuscript(
+        "Descriptive statistics are shown in Table 1."
+    )
+    result = validate_effect_direction_reporting(ms)
+    # No significance mentions at all — should not fire
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 137 – validate_citation_format_consistency
+# ---------------------------------------------------------------------------
+
+
+def _citation_format_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="cite-fmt-test",
+        source_path="cite.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_mixed_citation_format_fires() -> None:
+    from manuscript_audit.validators.core import validate_citation_format_consistency
+
+    ms = _citation_format_manuscript(
+        "Previous work [1] established this. "
+        "Smith et al. (2020) extended these findings. "
+        "Jones (2019) confirmed the effect. "
+        "See also [2] and [3] for details."
+    )
+    result = validate_citation_format_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "mixed-citation-format" in codes
+
+
+def test_consistent_numeric_cites_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_format_consistency
+
+    ms = _citation_format_manuscript(
+        "Previous work [1] established this. Extended [2]. "
+        "See [3] and [4] for details."
+    )
+    result = validate_citation_format_consistency(ms)
+    assert result.findings == []
+
+
+def test_citation_format_few_refs_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_format_consistency
+
+    ms = _citation_format_manuscript(
+        "See [1] and Smith (2020) for details."
+    )
+    result = validate_citation_format_consistency(ms)
+    # Only 2 total < threshold of 4
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 138 – validate_imputation_sensitivity
+# ---------------------------------------------------------------------------
+
+
+def _imputation_manuscript(full_text: str) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="impute-test",
+        source_path="impute.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_imputation_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_imputation_sensitivity
+
+    ms, clf = _imputation_manuscript(
+        "Missing data were handled using multiple imputation with MICE. "
+        "Twenty imputed datasets were created and pooled using Rubin's rules."
+    )
+    result = validate_imputation_sensitivity(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-imputation-sensitivity" in codes
+
+
+def test_imputation_with_sensitivity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_imputation_sensitivity
+
+    ms, clf = _imputation_manuscript(
+        "Missing data were handled using multiple imputation with MICE. "
+        "A sensitivity analysis using complete-case analysis confirmed results."
+    )
+    result = validate_imputation_sensitivity(ms, clf)
+    assert result.findings == []
+
+
+def test_no_imputation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_imputation_sensitivity
+
+    ms, clf = _imputation_manuscript(
+        "All participants completed the survey. No missing data were observed."
+    )
+    result = validate_imputation_sensitivity(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 139 – validate_computational_environment
+# ---------------------------------------------------------------------------
+
+
+def _computation_manuscript(methods_body: str) -> tuple:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+
+    ms = ParsedManuscript(
+        manuscript_id="comp-env-test",
+        source_path="comp.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+    )
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    return ms, clf
+
+
+def test_computational_env_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_computational_environment
+
+    ms, clf = _computation_manuscript(
+        "We trained a neural network to classify the images. "
+        "Cross-validation was performed with 5 folds."
+    )
+    result = validate_computational_environment(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-computational-environment" in codes
+
+
+def test_computational_env_passes_with_details() -> None:
+    from manuscript_audit.validators.core import validate_computational_environment
+
+    ms, clf = _computation_manuscript(
+        "We trained a neural network using Python 3.9 with TensorFlow 2.10. "
+        "Cross-validation used 5 folds on an NVIDIA GPU."
+    )
+    result = validate_computational_environment(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 140 – validate_table_captions
+# ---------------------------------------------------------------------------
+
+
+def _table_captions_manuscript(full_text: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript
+
+    return ParsedManuscript(
+        manuscript_id="tbl-cap-test",
+        source_path="tbl.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text=full_text,
+    )
+
+
+def test_missing_table_captions_fires() -> None:
+    from manuscript_audit.validators.core import validate_table_captions
+
+    ms = _table_captions_manuscript(
+        "Results are shown in Table 1. Additional data in Table 2. "
+        "See Table 3 for sensitivity results."
+    )
+    result = validate_table_captions(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-table-captions" in codes
+
+
+def test_table_captions_present_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_captions
+
+    ms = _table_captions_manuscript(
+        "Table 1: Descriptive statistics for all study variables.\n"
+        "Table 2: Regression model results showing coefficients.\n"
+        "See Table 1 and Table 2 for details."
+    )
+    result = validate_table_captions(ms)
+    assert result.findings == []
+
+
+def test_single_table_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_captions
+
+    ms = _table_captions_manuscript("Results in Table 1 show the means.")
+    result = validate_table_captions(ms)
+    # Only 1 table ref < threshold of 2
+    assert result.findings == []

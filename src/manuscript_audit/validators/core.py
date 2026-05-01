@@ -6645,6 +6645,11 @@ def run_deterministic_validators(
         validate_study_period_reporting(parsed, classification),
         validate_scale_anchor_reporting(parsed, classification),
         validate_model_specification(parsed, classification),
+        validate_effect_direction_reporting(parsed),
+        validate_citation_format_consistency(parsed),
+        validate_imputation_sensitivity(parsed, classification),
+        validate_computational_environment(parsed, classification),
+        validate_table_captions(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -7290,6 +7295,319 @@ def validate_model_specification(
                 ),
                 validator="model_specification",
                 location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 136 – Effect direction in significant results
+# ---------------------------------------------------------------------------
+
+_SIGNIFICANT_RESULT_RE = re.compile(
+    r"\b(significant(ly)?|p\s*[<=>]\s*0\.\d+|F\(\d+,\s*\d+\)\s*=|"
+    r"t\(\d+\)\s*=|chi.square|χ²|effect was (significant|found))\b",
+    re.IGNORECASE,
+)
+_EFFECT_DIRECTION_RE = re.compile(
+    r"\b(higher|lower|greater|less|more|fewer|increased|decreased|"
+    r"improved|worse|better|faster|slower|larger|smaller|"
+    r"positive(ly)?|negative(ly)?|outperformed|exceeded|"
+    r"group [AB] (had|showed|scored|performed)|"
+    r"compared to|relative to|versus)\b",
+    re.IGNORECASE,
+)
+_MIN_SIGNIFICANT_MENTIONS = 2
+
+
+def validate_effect_direction_reporting(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag Results sections with significant findings but no direction statements.
+
+    Emits ``missing-effect-direction`` (moderate) when the Results section
+    reports significance (p-values, significant effects) but never states
+    the direction of the effect.
+    """
+    results_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"results", "findings", "analysis"}
+    )
+    if not results_body:
+        return ValidationResult(
+            validator_name="effect_direction_reporting", findings=[]
+        )
+
+    sig_matches = _SIGNIFICANT_RESULT_RE.findall(results_body)
+    if len(sig_matches) < _MIN_SIGNIFICANT_MENTIONS:
+        return ValidationResult(
+            validator_name="effect_direction_reporting", findings=[]
+        )
+
+    if _EFFECT_DIRECTION_RE.search(results_body):
+        return ValidationResult(
+            validator_name="effect_direction_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="effect_direction_reporting",
+        findings=[
+            Finding(
+                code="missing-effect-direction",
+                severity="moderate",
+                message=(
+                    f"Results section reports {len(sig_matches)} significant finding(s) "
+                    "but contains no direction statements (higher/lower/increased). "
+                    "State which group performed better or the direction of each effect."
+                ),
+                validator="effect_direction_reporting",
+                location="Results",
+                evidence=[str(m) for m in sig_matches[:3]],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 137 – Mixed citation format (numeric vs. author-year)
+# ---------------------------------------------------------------------------
+
+_FORMAT_NUMERIC_CITE_RE = re.compile(r"\[\d+(?:,\s*\d+)*\]")
+_FORMAT_AUTHOR_YEAR_CITE_RE = re.compile(
+    r"\b[A-Z][a-z]+\s+(?:et al\.?)?\s*\(\d{4}\)|\(\w[^)]+,\s*\d{4}\w?\)"
+)
+_FORMAT_CITE_MIN_REFS = 4
+
+
+def validate_citation_format_consistency(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts mixing numeric and author-year citation styles.
+
+    Emits ``mixed-citation-format`` (minor) when the manuscript uses both
+    '[1]' numeric and '(Smith, 2020)' author-year citation styles, with
+    >= ``_FORMAT_CITE_MIN_REFS`` total citations.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="citation_format_consistency", findings=[]
+        )
+
+    numeric_count = len(_FORMAT_NUMERIC_CITE_RE.findall(full))
+    author_year_count = len(_FORMAT_AUTHOR_YEAR_CITE_RE.findall(full))
+    total = numeric_count + author_year_count
+
+    if total < _FORMAT_CITE_MIN_REFS:
+        return ValidationResult(
+            validator_name="citation_format_consistency", findings=[]
+        )
+
+    if numeric_count > 0 and author_year_count > 0:
+        return ValidationResult(
+            validator_name="citation_format_consistency",
+            findings=[
+                Finding(
+                    code="mixed-citation-format",
+                    severity="minor",
+                    message=(
+                        f"Manuscript uses both numeric [{numeric_count}] and "
+                        f"author-year [{author_year_count}] citation styles. "
+                        "Use a consistent citation format throughout."
+                    ),
+                    validator="citation_format_consistency",
+                    location="manuscript",
+                    evidence=[
+                        f"numeric: {numeric_count}",
+                        f"author-year: {author_year_count}",
+                    ],
+                )
+            ],
+        )
+
+    return ValidationResult(
+        validator_name="citation_format_consistency", findings=[]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 138 – Missing sensitivity analysis for multiple imputation
+# ---------------------------------------------------------------------------
+
+_IMPUTATION_RE = re.compile(
+    r"\b(multiple imputation|MICE|imputed (data|values|missing)|"
+    r"imputation method|missing at random|MAR assumption|"
+    r"missing data (were|was) handled|listwise deletion avoided)\b",
+    re.IGNORECASE,
+)
+_SENSITIVITY_ANALYSIS_RE = re.compile(
+    r"\b(sensitivity analysis|robustness check|complete.case analysis|"
+    r"listwise deletion comparison|pattern mixture model|"
+    r"imputation sensitivity|MCAR test)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_imputation_sensitivity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag papers using multiple imputation without sensitivity analysis.
+
+    Emits ``missing-imputation-sensitivity`` (moderate) when Methods describes
+    multiple imputation but provides no sensitivity analysis or robustness check.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="imputation_sensitivity", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="imputation_sensitivity", findings=[])
+
+    if not _IMPUTATION_RE.search(full):
+        return ValidationResult(validator_name="imputation_sensitivity", findings=[])
+
+    if _SENSITIVITY_ANALYSIS_RE.search(full):
+        return ValidationResult(validator_name="imputation_sensitivity", findings=[])
+
+    return ValidationResult(
+        validator_name="imputation_sensitivity",
+        findings=[
+            Finding(
+                code="missing-imputation-sensitivity",
+                severity="moderate",
+                message=(
+                    "Methods describes multiple imputation but provides no "
+                    "sensitivity analysis. "
+                    "Report complete-case comparison or other robustness check."
+                ),
+                validator="imputation_sensitivity",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 139 – Missing computational environment details
+# ---------------------------------------------------------------------------
+
+_COMPUTATION_RE = re.compile(
+    r"\b(simulation(s)?|Monte Carlo|bootstrap|permutation test|"
+    r"cross.validation|grid search|hyperparameter|"
+    r"neural network|deep learning|training (the )?model|"
+    r"algorithm (was )?implemented|code (is )?available)\b",
+    re.IGNORECASE,
+)
+_COMPUTATION_ENV_RE = re.compile(
+    r"\b(Python|R\s+\d\.\d|MATLAB|Julia|Stata|SAS|SPSS|"
+    r"version \d+\.\d+|GPU|CUDA|CPU|hardware|computing cluster|"
+    r"runtime|wall.?clock|RAM)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_computational_environment(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag papers with computational methods lacking environment details.
+
+    Emits ``missing-computational-environment`` (moderate) when Methods
+    describes simulations, ML, or complex computation but provides no
+    language/version/hardware details.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="computational_environment", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES
+    )
+    if not methods_body:
+        return ValidationResult(
+            validator_name="computational_environment", findings=[]
+        )
+
+    if not _COMPUTATION_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="computational_environment", findings=[]
+        )
+
+    if _COMPUTATION_ENV_RE.search(methods_body):
+        return ValidationResult(
+            validator_name="computational_environment", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="computational_environment",
+        findings=[
+            Finding(
+                code="missing-computational-environment",
+                severity="moderate",
+                message=(
+                    "Methods describes computational procedures but provides no "
+                    "programming language, version, or hardware details. "
+                    "Report the full computational environment for reproducibility."
+                ),
+                validator="computational_environment",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 140 – Table caption completeness
+# ---------------------------------------------------------------------------
+
+_TABLE_DEF_RE = re.compile(
+    r"\b(Table\s+\d+|Tab\.\s+\d+)\b",
+    re.IGNORECASE,
+)
+_TABLE_CAPTION_RE = re.compile(
+    r"(^Table\s+\d+\s*[.:|]\s*[A-Z].{10,}|"
+    r"\\caption\{[^}]{10,}\})",
+    re.IGNORECASE | re.MULTILINE,
+)
+_TABLE_MIN_REFS = 2
+
+
+def validate_table_captions(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts with table references but missing/very short captions.
+
+    Emits ``missing-table-captions`` (minor) when tables are referenced in the
+    text but no table captions or titles are present.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="table_captions", findings=[])
+
+    table_refs = _TABLE_DEF_RE.findall(full)
+    if len(table_refs) < _TABLE_MIN_REFS:
+        return ValidationResult(validator_name="table_captions", findings=[])
+
+    if _TABLE_CAPTION_RE.search(full):
+        return ValidationResult(validator_name="table_captions", findings=[])
+
+    return ValidationResult(
+        validator_name="table_captions",
+        findings=[
+            Finding(
+                code="missing-table-captions",
+                severity="minor",
+                message=(
+                    f"Manuscript references {len(table_refs)} table(s) but no table "
+                    "captions or titles were found. "
+                    "Every table must have a descriptive caption."
+                ),
+                validator="table_captions",
+                location="manuscript",
+                evidence=[str(r) for r in table_refs[:3]],
             )
         ],
     )
