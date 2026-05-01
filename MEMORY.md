@@ -250,12 +250,31 @@ Known limitations (acceptable for MVP):
 - Does not de-duplicate across multiple manuscript passes (each full validator run is independent)
 - Threshold of 3 is a fixed constant — not adaptive to manuscript length or section count
 
+## Phase 17 validated state
+
+Phase 17 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 17 added:
+- Two new test fixtures:
+  - `tests/fixtures/manuscripts/revision_claim_old.md`: contains unsupported quantitative claims, an unsupported comparative claim, and an abstract metric absent from Results — triggers `citationless-quantitative-claim` (×2), `citationless-comparative-claim` (×1), `abstract-metric-unsupported` (×1), `systemic-claim-evidence-gap` (×1, major escalation)
+  - `tests/fixtures/manuscripts/revision_claim_new.md`: same manuscript with citations added to all previously unsupported claims and abstract metric added to Results — zero claim-grounding findings
+- New integration test `test_phase13_to_16_finding_codes_resolve_after_revision` in `test_revision_verification.py`
+  - Runs full `run_revision_verification_workflow` on the old→new pair
+  - Asserts `citationless-quantitative-claim`, `citationless-comparative-claim`, `abstract-metric-unsupported`, and `systemic-claim-evidence-gap` all appear in `resolved_findings`
+  - Asserts none of those codes remain in `persistent_findings`
+- No changes to production code — the revision workflow already tracked all finding codes generically; this phase adds the missing fixture-backed coverage
+- 58 total tests pass (up from 57)
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 58 passed
+
 ## Current immediate next task
 
-Phase 16 is closed. Next candidate phases:
-1. **Phase 17: revision verification coverage** — extend `verify-revision` to track phase-13/14/15/16 finding codes across revisions
-2. **Phase 17: notation cross-section consistency** — flag symbols used in one section but defined only in a later section
-3. **Phase 17: structured severity summary in CLI output** — print a grouped severity/count table to stdout on audit completion
+Phase 17 is closed. Next candidate phases:
+1. **Phase 18: structured severity summary in CLI output** — print a grouped severity/count table to stdout on audit completion (audit-standard and verify-sources)
+2. **Phase 18: notation cross-section consistency** — flag symbols used in one section but defined only in a later section
+3. **Phase 18: revision finding-code coverage report** — include per-code resolve/persist/introduce counts in the revision verification Markdown report
 
 ## Bundle and handoff requirements
 

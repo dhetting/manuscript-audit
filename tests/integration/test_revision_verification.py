@@ -31,3 +31,27 @@ def test_revision_verification_writes_structured_artifacts(tmp_path: Path) -> No
     connection.close()
     assert revision_count == 1
     assert report_count == 1
+
+
+def test_phase13_to_16_finding_codes_resolve_after_revision(tmp_path: Path) -> None:
+    """Phase 13-16 finding codes should appear in resolved_findings when the
+    new manuscript adds proper citations and support-section evidence."""
+    output_dir = tmp_path / "claim_revision_run"
+    db_path = tmp_path / "claim_revision.duckdb"
+    report = run_revision_verification_workflow(
+        old_manuscript_path=Path("tests/fixtures/manuscripts/revision_claim_old.md"),
+        new_manuscript_path=Path("tests/fixtures/manuscripts/revision_claim_new.md"),
+        output_dir=output_dir,
+        db_path=db_path,
+    )
+    resolved_codes = {f.code for f in report.resolved_findings}
+    persistent_codes = {f.code for f in report.persistent_findings}
+
+    assert "citationless-quantitative-claim" in resolved_codes
+    assert "citationless-comparative-claim" in resolved_codes
+    assert "abstract-metric-unsupported" in resolved_codes
+    assert "systemic-claim-evidence-gap" in resolved_codes
+
+    assert "citationless-quantitative-claim" not in persistent_codes
+    assert "citationless-comparative-claim" not in persistent_codes
+    assert "systemic-claim-evidence-gap" not in persistent_codes
