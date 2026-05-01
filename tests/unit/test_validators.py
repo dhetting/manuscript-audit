@@ -373,3 +373,112 @@ def test_claim_grounding_fixture_triggers_escalation() -> None:
     suite = run_deterministic_validators(parsed, classification)
     major_codes = {f.code for f in suite.all_findings if f.severity == "major"}
     assert "systemic-claim-evidence-gap" in major_codes
+
+
+# ---------------------------------------------------------------------------
+# Phase 20: notation section ordering validator
+# ---------------------------------------------------------------------------
+
+
+def test_notation_section_out_of_order_detected() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_notation_section_ordering
+
+    parsed = ParsedManuscript(
+        manuscript_id="order-gap",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Out-of-order notation",
+        full_text="",
+        sections=[
+            Section(title="Introduction", level=1, body=""),
+            Section(title="Proof", level=1, body=""),       # content first
+            Section(title="Notation", level=1, body=""),   # notation after
+            Section(title="Conclusion", level=1, body=""),
+        ],
+    )
+    classification = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="theory_paper",
+        evidence_types=["theorem_or_proof"],
+        claim_types=["theoretical"],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    result = validate_notation_section_ordering(parsed, classification)
+    codes = [f.code for f in result.findings]
+    assert "notation-section-out-of-order" in codes
+
+
+def test_notation_section_in_correct_order_not_flagged() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_notation_section_ordering
+
+    parsed = ParsedManuscript(
+        manuscript_id="order-ok",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Correct notation order",
+        full_text="",
+        sections=[
+            Section(title="Introduction", level=1, body=""),
+            Section(title="Preliminaries", level=1, body=""),  # notation first
+            Section(title="Proof", level=1, body=""),          # content after
+            Section(title="Conclusion", level=1, body=""),
+        ],
+    )
+    classification = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="theory_paper",
+        evidence_types=["theorem_or_proof"],
+        claim_types=["theoretical"],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    result = validate_notation_section_ordering(parsed, classification)
+    assert result.findings == []
+
+
+def test_notation_ordering_skipped_for_non_theory() -> None:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_notation_section_ordering
+
+    parsed = ParsedManuscript(
+        manuscript_id="empirical",
+        source_path="synthetic",
+        source_format="markdown",
+        title="Empirical study",
+        full_text="",
+        sections=[
+            Section(title="Methods", level=1, body=""),
+            Section(title="Results", level=1, body=""),
+            Section(title="Notation", level=1, body=""),
+        ],
+    )
+    classification = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type="applied_stats_paper",
+        evidence_types=[],
+        claim_types=[],
+        high_risk_features=[],
+        recommended_stack="standard",
+    )
+    result = validate_notation_section_ordering(parsed, classification)
+    assert result.findings == []
+
+
+def test_notation_ordering_via_fixture() -> None:
+    from pathlib import Path
+
+    from manuscript_audit.parsers import parse_manuscript
+    from manuscript_audit.routing.rules import classify_manuscript
+    from manuscript_audit.validators import run_deterministic_validators
+
+    parsed = parse_manuscript(Path("tests/fixtures/manuscripts/notation_ordering_gap.md"))
+    classification = classify_manuscript(parsed)
+    suite = run_deterministic_validators(parsed, classification)
+    codes = {f.code for f in suite.all_findings}
+    assert "notation-section-out-of-order" in codes

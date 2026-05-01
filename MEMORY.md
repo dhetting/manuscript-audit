@@ -333,12 +333,38 @@ Validated commands:
 - `pixi run test` → 58 passed
 - `pixi run verify-revision old.md new.md --output-dir <out>` → summary section appears correctly in `.md` report
 
+## Phase 20 validated state
+
+Phase 20 was validated end-to-end from the live repo on 2026-05-01.
+
+Phase 20 added:
+- Moved `NOTATION_SECTION_RE` from `agents/modules.py` to `validators/core.py` (single definition, imported by agents)
+- New constant `PROOF_CONTENT_SECTION_RE` in `validators/core.py`: matches "proof", "proofs", "main result", "theorem", "lemma", "corollary", "proposition(s)"
+- New deterministic validator `validate_notation_section_ordering(parsed, classification)`:
+  - Only applies to theory papers (`paper_type == "theory_paper"`)
+  - Scans `parsed.sections` order for notation-type titles and content-type titles
+  - If first notation section index > first content section index → `notation-section-out-of-order` (moderate)
+  - Silently skips if no notation section or no content section found
+  - Wired into `run_deterministic_validators()` between `validate_notation_section_alignment` and `validate_claim_section_alignment`
+- New fixture: `tests/fixtures/manuscripts/notation_ordering_gap.md` — theory paper with Proof section before Notation
+- 4 new unit tests: out-of-order detected, in-order not flagged, non-theory skipped, end-to-end via fixture
+- 62 total tests pass (up from 58)
+- Golden test for `latex_equivalence.tex` still `{'moderate': 4, 'minor': 1}` (software paper, validator scoped to theory papers)
+
+Validated commands:
+- `pixi run lint` → clean
+- `pixi run test` → 62 passed
+
+Known limitations (acceptable for MVP):
+- Uses section title matching only — does not track symbol occurrences across section bodies
+- A paper could have all sections correctly ordered but still use symbols before defining them inline; this validator does not catch that
+
 ## Current immediate next task
 
-Phase 19 is closed. Next candidate phases:
-1. **Phase 20: notation cross-section consistency** — flag symbols used in one section but defined only in a later section (order-aware scan, theory papers)
-2. **Phase 20: agent heuristic confidence scoring** — attach a numeric confidence score (0–1) to each agent finding based on signal strength
-3. **Phase 20: manuscript word count and density metrics** — add length/density validators (abstract word count, section length ratios)
+Phase 20 is closed. Next candidate phases:
+1. **Phase 21: agent heuristic confidence scoring** — attach a numeric confidence score (0–1) to each agent finding based on signal strength
+2. **Phase 21: manuscript length/density metrics** — add abstract word count and section-length validators
+3. **Phase 21: claim escalation severity tiers** — differentiate major vs fatal escalation based on finding combination (e.g., systemic claim gap + missing required section = fatal)
 
 ## Bundle and handoff requirements
 

@@ -10,6 +10,7 @@ from manuscript_audit.schemas.artifacts import (
 )
 from manuscript_audit.schemas.findings import AgentModuleResult, Finding, ValidationSuiteResult
 from manuscript_audit.schemas.routing import ApplicabilityDecision, ManuscriptClassification
+from manuscript_audit.validators.core import NOTATION_SECTION_RE
 
 CONTRIBUTION_RE = re.compile(
     r"\b(we evaluate|we propose|we present|this study|this manuscript)\b",
@@ -377,12 +378,6 @@ class AIRiskAuditAgent(BaseHeuristicAgent):
                 )
             )
         return findings
-
-
-NOTATION_SECTION_RE = re.compile(
-    r"\b(notation|preliminaries|definitions?|background|setup)\b",
-    re.IGNORECASE,
-)
 
 
 class MathProofsNotationAgent(BaseHeuristicAgent):

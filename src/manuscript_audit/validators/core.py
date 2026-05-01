@@ -60,6 +60,16 @@ _CLAIM_GROUNDING_CODES = frozenset(
 )
 CLAIM_EVIDENCE_GAP_THRESHOLD = 3  # findings needed to trigger major escalation
 
+# Notation ordering: shared regexes used by both validators and agents.
+NOTATION_SECTION_RE = re.compile(
+    r"\b(notation|preliminaries|definitions?|background|setup)\b",
+    re.IGNORECASE,
+)
+PROOF_CONTENT_SECTION_RE = re.compile(
+    r"\b(proof|proofs|main\s+result|theorem|lemma|corollary|propositions?)\b",
+    re.IGNORECASE,
+)
+
 
 def _split_paragraphs(text: str) -> list[str]:
     """Split text into non-empty paragraphs on blank lines."""
@@ -844,6 +854,61 @@ def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationRes
     return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
 
 
+def validate_notation_section_ordering(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag when a notation/preliminaries section appears after proof/content sections.
+
+    In theory papers the notation or preliminaries section should precede the sections
+    that use the defined symbols (proofs, main results, theorems). If it is placed
+    after the first content section the reader encounters symbols before their definitions.
+
+    Only applies to theory papers; silently skips if no notation section or no content
+    section is found.
+    """
+    findings: list[Finding] = []
+    if classification.paper_type != "theory_paper":
+        return ValidationResult(
+            validator_name="notation_section_ordering", findings=findings
+        )
+
+    section_titles = [s.title for s in parsed.sections]
+    notation_indices = [
+        i for i, t in enumerate(section_titles) if NOTATION_SECTION_RE.search(t)
+    ]
+    content_indices = [
+        i for i, t in enumerate(section_titles) if PROOF_CONTENT_SECTION_RE.search(t)
+    ]
+
+    if not notation_indices or not content_indices:
+        return ValidationResult(
+            validator_name="notation_section_ordering", findings=findings
+        )
+
+    first_notation = min(notation_indices)
+    first_content = min(content_indices)
+    if first_notation > first_content:
+        content_title = section_titles[first_content]
+        notation_title = section_titles[first_notation]
+        findings.append(
+            Finding(
+                code="notation-section-out-of-order",
+                severity="moderate",
+                message=(
+                    f"Section '{notation_title}' appears after '{content_title}': "
+                    "notation and definitions should precede the sections that use them."
+                ),
+                validator="notation_section_ordering",
+                location=f"section '{notation_title}'",
+                evidence=[content_title, notation_title],
+            )
+        )
+    return ValidationResult(
+        validator_name="notation_section_ordering", findings=findings
+    )
+
+
 def validate_claim_evidence_escalation(suite: ValidationSuiteResult) -> ValidationResult:
     """Escalate to major when multiple citationless/unsupported claim findings accumulate.
 
@@ -896,6 +961,7 @@ def run_deterministic_validators(
         validate_bibliography_source_record_readiness(parsed),
         validate_equation_notation_coverage(parsed),
         validate_notation_section_alignment(parsed),
+        validate_notation_section_ordering(parsed, classification),
         validate_claim_section_alignment(parsed, classification),
         validate_unlabeled_equations(parsed, classification),
         validate_citationless_quantitative_claims(parsed),
