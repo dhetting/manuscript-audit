@@ -5981,6 +5981,309 @@ def validate_title_length(parsed: ParsedManuscript) -> ValidationResult:
     return ValidationResult(validator_name="title_length", findings=[])
 
 
+# ---------------------------------------------------------------------------
+# Phase 116 – Missing statistical power / sample size justification
+# ---------------------------------------------------------------------------
+
+_POWER_PAPER_TYPES = frozenset(
+    {
+        "empirical_paper",
+        "applied_stats_paper",
+        "clinical_trial_report",
+    }
+)
+_POWER_RE = re.compile(
+    r"\b(power analysis|statistical power|power\s*=\s*0\.\d+|"
+    r"powered to detect|adequately powered|"
+    r"sample size (was|is|were) (determined|calculated|justified|estimated)|"
+    r"a priori power|G\*Power|power calculation|"
+    r"minimum (detectable|significant) (effect|difference))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_statistical_power(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical papers without statistical power analysis.
+
+    Emits ``missing-power-analysis`` (moderate) when an empirical paper's
+    Methods section lacks any reference to statistical power or sample size
+    justification.
+    """
+    if classification.paper_type not in _POWER_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="statistical_power", findings=[]
+        )
+
+    methods_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {
+            "methods", "methodology", "participants", "sample", "statistical analysis"
+        }
+    )
+    if not methods_body:
+        return ValidationResult(validator_name="statistical_power", findings=[])
+
+    if _POWER_RE.search(methods_body):
+        return ValidationResult(validator_name="statistical_power", findings=[])
+
+    return ValidationResult(
+        validator_name="statistical_power",
+        findings=[
+            Finding(
+                code="missing-power-analysis",
+                severity="moderate",
+                message=(
+                    "Empirical manuscript lacks statistical power analysis or "
+                    "sample size justification in Methods. "
+                    "Report the a priori power calculation used to determine N."
+                ),
+                validator="statistical_power",
+                location="Methods",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 117 – Missing keywords section
+# ---------------------------------------------------------------------------
+
+_KEYWORD_SECTION_TITLES = frozenset(
+    {"keywords", "key words", "index terms", "subject terms"}
+)
+_KEYWORD_INLINE_RE = re.compile(
+    r"\b(keywords?|key words?|index terms?)\s*:\s*\S",
+    re.IGNORECASE,
+)
+
+
+def validate_keywords_present(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag manuscripts without a keywords section or inline keyword list.
+
+    Emits ``missing-keywords`` (minor) when no keywords section or
+    inline keyword declaration is detected in the manuscript.
+    """
+    has_section = any(
+        s.title.lower() in _KEYWORD_SECTION_TITLES for s in parsed.sections
+    )
+    if has_section:
+        return ValidationResult(validator_name="keywords_present", findings=[])
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _KEYWORD_INLINE_RE.search(combined) or _KEYWORD_INLINE_RE.search(
+        parsed.abstract or ""
+    ):
+        return ValidationResult(validator_name="keywords_present", findings=[])
+
+    return ValidationResult(
+        validator_name="keywords_present",
+        findings=[
+            Finding(
+                code="missing-keywords",
+                severity="minor",
+                message=(
+                    "No keywords section or inline keyword list detected. "
+                    "Most journals require a keyword list for indexing."
+                ),
+                validator="keywords_present",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 118 – Results/Discussion overlong sentences
+# ---------------------------------------------------------------------------
+
+_SENTENCE_SPLIT_RESULTS_RE = re.compile(r"(?<=[.!?])\s+")
+_OVERLONG_SENTENCE_WORDS = 60
+_OVERLONG_SECTION_TITLES = frozenset({"results", "discussion", "analysis", "findings"})
+
+
+def validate_overlong_sentences(parsed: ParsedManuscript) -> ValidationResult:
+    """Flag sections with sentences exceeding the word-count threshold.
+
+    Emits ``overlong-sentence`` (minor) when Results or Discussion sections
+    contain sentences with more than ``_OVERLONG_SENTENCE_WORDS`` words.
+    """
+    findings: list[Finding] = []
+    for section in parsed.sections:
+        if section.title.lower() not in _OVERLONG_SECTION_TITLES:
+            continue
+        sentences = _SENTENCE_SPLIT_RESULTS_RE.split(section.body)
+        for sent in sentences:
+            wc = len(sent.split())
+            if wc > _OVERLONG_SENTENCE_WORDS:
+                findings.append(
+                    Finding(
+                        code="overlong-sentence",
+                        severity="minor",
+                        message=(
+                            f"Section '{section.title}' contains a sentence with "
+                            f"{wc} words (max {_OVERLONG_SENTENCE_WORDS}). "
+                            "Break long sentences to improve readability."
+                        ),
+                        validator="overlong_sentences",
+                        location=section.title,
+                        evidence=[sent[:80] + "..." if len(sent) > 80 else sent],
+                    )
+                )
+    return ValidationResult(validator_name="overlong_sentences", findings=findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 119 – Mixed heading capitalization
+# ---------------------------------------------------------------------------
+
+def _is_title_case(text: str) -> bool:
+    """Return True if most content words are Title Cased."""
+    words = [w for w in text.split() if len(w) > 3]
+    if not words:
+        return False
+    title_cased = sum(1 for w in words if w[0].isupper())
+    return title_cased / len(words) > 0.6
+
+
+def _is_sentence_case(text: str) -> bool:
+    """Return True if text looks like Sentence case (only first word capitalized)."""
+    words = [w for w in text.split() if len(w) > 3]
+    if not words:
+        return False
+    title_cased = sum(1 for w in words if w[0].isupper())
+    return title_cased / len(words) < 0.3
+
+
+_HEADING_MIN_SECTIONS = 4
+
+
+def validate_heading_capitalization_consistency(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag inconsistent heading capitalization styles.
+
+    Emits ``inconsistent-heading-capitalization`` (minor) when a manuscript
+    mixes Title Case and Sentence case across section headings
+    (requires ≥ ``_HEADING_MIN_SECTIONS`` sections).
+    """
+    major_sections = [
+        s for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS and len(s.title.split()) >= 2
+    ]
+    if len(major_sections) < _HEADING_MIN_SECTIONS:
+        return ValidationResult(
+            validator_name="heading_capitalization_consistency", findings=[]
+        )
+
+    title_case_count = sum(1 for s in major_sections if _is_title_case(s.title))
+    sentence_case_count = sum(1 for s in major_sections if _is_sentence_case(s.title))
+    total = len(major_sections)
+
+    has_title = title_case_count / total > 0.25
+    has_sentence = sentence_case_count / total > 0.25
+
+    if has_title and has_sentence:
+        return ValidationResult(
+            validator_name="heading_capitalization_consistency",
+            findings=[
+                Finding(
+                    code="inconsistent-heading-capitalization",
+                    severity="minor",
+                    message=(
+                        f"Section headings mix Title Case ({title_case_count}) and "
+                        f"Sentence case ({sentence_case_count}). "
+                        "Use a consistent capitalization style throughout."
+                    ),
+                    validator="heading_capitalization_consistency",
+                    location="manuscript",
+                    evidence=[
+                        f"title-case: {title_case_count}/{total}",
+                        f"sentence-case: {sentence_case_count}/{total}",
+                    ],
+                )
+            ],
+        )
+
+    return ValidationResult(
+        validator_name="heading_capitalization_consistency", findings=[]
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 120 – Unanswered research questions
+# ---------------------------------------------------------------------------
+
+_RESEARCH_QUESTION_RE = re.compile(
+    r"\b(research question|RQ\d*|we (ask|investigate|examine|explore) "
+    r"(whether|how|what|if|why)|"
+    r"the (central|main|primary|key) (question|aim|objective) (is|was)|"
+    r"this (paper|study) (aims?|seeks?|investigates?|examines?) to)\b",
+    re.IGNORECASE,
+)
+_RESULTS_PRESENT_RE = re.compile(
+    r"\b(results? (show|indicate|suggest|demonstrate|confirm)|"
+    r"we (found|observed|detected|identified|showed|demonstrated)|"
+    r"our (analysis|results?|findings?) (show|indicate|suggest|demonstrate))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_research_question_addressed(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts that state research questions without results addressing them.
+
+    Emits ``unanswered-research-question`` (moderate) when Introduction states
+    research questions but Results/Discussion contains no interpretive results
+    language.
+    """
+    intro_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"introduction", "intro", "background"}
+    )
+    if not intro_body or not _RESEARCH_QUESTION_RE.search(intro_body):
+        return ValidationResult(
+            validator_name="research_question_addressed", findings=[]
+        )
+
+    results_body = " ".join(
+        s.body
+        for s in parsed.sections
+        if s.title.lower() in {"results", "discussion", "findings", "analysis"}
+    )
+    if not results_body:
+        return ValidationResult(
+            validator_name="research_question_addressed", findings=[]
+        )
+
+    if _RESULTS_PRESENT_RE.search(results_body):
+        return ValidationResult(
+            validator_name="research_question_addressed", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="research_question_addressed",
+        findings=[
+            Finding(
+                code="unanswered-research-question",
+                severity="moderate",
+                message=(
+                    "Introduction states research questions but Results/Discussion "
+                    "contains no explicit results addressing them. "
+                    "Ensure each stated research question is directly answered."
+                ),
+                validator="research_question_addressed",
+                location="Results/Discussion",
+            )
+        ],
+    )
+
+
 def run_deterministic_validators(
     parsed: ParsedManuscript,
     classification: ManuscriptClassification,
@@ -6090,6 +6393,11 @@ def run_deterministic_validators(
         validate_vague_temporal_claims(parsed),
         validate_exclusion_criteria(parsed, classification),
         validate_title_length(parsed),
+        validate_statistical_power(parsed, classification),
+        validate_keywords_present(parsed),
+        validate_overlong_sentences(parsed),
+        validate_heading_capitalization_consistency(parsed),
+        validate_research_question_addressed(parsed),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))

@@ -5466,3 +5466,294 @@ def test_normal_title_no_fire() -> None:
     )
     result = validate_title_length(ms)
     assert result.findings == []
+
+
+
+# ---------------------------------------------------------------------------
+# Phase 116 – validate_statistical_power
+# ---------------------------------------------------------------------------
+
+
+def _power_manuscript(methods_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="power-test",
+        source_path="power.md",
+        source_format="markdown",
+        title="Power Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title="Methods", level=1, body=methods_body)],
+    )
+
+
+def test_statistical_power_fires_on_empirical_without_power() -> None:
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_statistical_power
+
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    ms = _power_manuscript(
+        "We recruited 50 participants. Data were analyzed using t-tests. "
+        "Significance threshold was set at alpha = 0.05. All analyses in R 4.3."
+    )
+    result = validate_statistical_power(ms, clf)
+    codes = [f.code for f in result.findings]
+    assert "missing-power-analysis" in codes
+
+
+def test_statistical_power_passes_with_power_analysis() -> None:
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_statistical_power
+
+    clf = ManuscriptClassification(
+        paper_type="empirical_paper",
+        pathway="data_science",
+        recommended_stack="maximal",
+    )
+    ms = _power_manuscript(
+        "We conducted a power analysis using G*Power with power = 0.80 "
+        "and alpha = 0.05. The required sample size was determined to be 64."
+    )
+    result = validate_statistical_power(ms, clf)
+    assert result.findings == []
+
+
+def test_statistical_power_skips_non_empirical() -> None:
+    from manuscript_audit.schemas.routing import ManuscriptClassification
+    from manuscript_audit.validators.core import validate_statistical_power
+
+    clf = ManuscriptClassification(
+        paper_type="literature_review",
+        pathway="unknown",
+        recommended_stack="standard",
+    )
+    ms = _power_manuscript("We searched PubMed and Scopus for relevant studies.")
+    result = validate_statistical_power(ms, clf)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 117 – validate_keywords_present
+# ---------------------------------------------------------------------------
+
+
+def _keywords_manuscript(
+    abstract: str = "Abstract.",
+    section_titles: list | None = None,
+) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    sections = [
+        Section(title=t, level=1, body="body text here.")
+        for t in (section_titles or ["Introduction", "Methods", "Results"])
+    ]
+    return ParsedManuscript(
+        manuscript_id="kw-test",
+        source_path="kw.md",
+        source_format="markdown",
+        title="Test Study",
+        abstract=abstract,
+        full_text="",
+        sections=sections,
+    )
+
+
+def test_keywords_fires_when_absent() -> None:
+    from manuscript_audit.validators.core import validate_keywords_present
+
+    ms = _keywords_manuscript(
+        abstract="This is an abstract with no keywords.",
+        section_titles=["Introduction", "Methods", "Results"],
+    )
+    result = validate_keywords_present(ms)
+    codes = [f.code for f in result.findings]
+    assert "missing-keywords" in codes
+
+
+def test_keywords_passes_with_section() -> None:
+    from manuscript_audit.validators.core import validate_keywords_present
+
+    ms = _keywords_manuscript(
+        section_titles=["Introduction", "Methods", "Results", "Keywords"],
+    )
+    result = validate_keywords_present(ms)
+    assert result.findings == []
+
+
+def test_keywords_passes_with_inline_abstract() -> None:
+    from manuscript_audit.validators.core import validate_keywords_present
+
+    ms = _keywords_manuscript(
+        abstract="This study examined X. Keywords: machine learning; statistics"
+    )
+    result = validate_keywords_present(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 118 – validate_overlong_sentences
+# ---------------------------------------------------------------------------
+
+
+def _overlong_manuscript(section_title: str, body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="long-test",
+        source_path="long.md",
+        source_format="markdown",
+        title="Overlong Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title=section_title, level=1, body=body)],
+    )
+
+
+def test_overlong_sentence_fires_in_results() -> None:
+    from manuscript_audit.validators.core import validate_overlong_sentences
+
+    long_sent = " ".join(["word"] * 65)
+    ms = _overlong_manuscript("Results", f"Short sentence. {long_sent}.")
+    result = validate_overlong_sentences(ms)
+    codes = [f.code for f in result.findings]
+    assert "overlong-sentence" in codes
+
+
+def test_overlong_sentence_no_fire_in_introduction() -> None:
+    from manuscript_audit.validators.core import validate_overlong_sentences
+
+    long_sent = " ".join(["word"] * 65)
+    ms = _overlong_manuscript("Introduction", f"{long_sent}.")
+    result = validate_overlong_sentences(ms)
+    assert result.findings == []
+
+
+def test_short_sentences_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_overlong_sentences
+
+    ms = _overlong_manuscript(
+        "Results", "We found significant effects. The p-value was 0.01."
+    )
+    result = validate_overlong_sentences(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 119 – validate_heading_capitalization_consistency
+# ---------------------------------------------------------------------------
+
+
+def _heading_manuscript(titles: list) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="head-test",
+        source_path="head.md",
+        source_format="markdown",
+        title="Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[Section(title=t, level=1, body="body text") for t in titles],
+    )
+
+
+def test_mixed_heading_case_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_heading_capitalization_consistency,
+    )
+
+    # Two title-case headings + two sentence-case headings
+    ms = _heading_manuscript([
+        "Introduction Background Context",
+        "Methods And Participants Study",
+        "Results from findings analysis here",
+        "Discussion implications limitations here",
+    ])
+    result = validate_heading_capitalization_consistency(ms)
+    codes = [f.code for f in result.findings]
+    assert "inconsistent-heading-capitalization" in codes
+
+
+def test_consistent_title_case_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_heading_capitalization_consistency,
+    )
+
+    ms = _heading_manuscript([
+        "Introduction Background Study",
+        "Methods And Participants Study",
+        "Results And Analysis Study",
+        "Discussion And Conclusions Study",
+    ])
+    result = validate_heading_capitalization_consistency(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 120 – validate_research_question_addressed
+# ---------------------------------------------------------------------------
+
+
+def _rq_manuscript(intro_body: str, results_body: str) -> object:
+    from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
+
+    return ParsedManuscript(
+        manuscript_id="rq-test",
+        source_path="rq.md",
+        source_format="markdown",
+        title="RQ Test",
+        abstract="Abstract.",
+        full_text="",
+        sections=[
+            Section(title="Introduction", level=1, body=intro_body),
+            Section(title="Results", level=1, body=results_body),
+        ],
+    )
+
+
+def test_unanswered_rq_fires() -> None:
+    from manuscript_audit.validators.core import validate_research_question_addressed
+
+    ms = _rq_manuscript(
+        intro_body=(
+            "The central question is whether treatment A improves outcomes. "
+            "RQ1: Does intervention X change behavior?"
+        ),
+        results_body="Table 1 shows descriptive statistics for all groups.",
+    )
+    result = validate_research_question_addressed(ms)
+    codes = [f.code for f in result.findings]
+    assert "unanswered-research-question" in codes
+
+
+def test_answered_rq_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_research_question_addressed
+
+    ms = _rq_manuscript(
+        intro_body=(
+            "The central question is whether treatment A improves outcomes."
+        ),
+        results_body=(
+            "We found that participants in the treatment group showed "
+            "significantly better outcomes (p < 0.05). "
+            "Our results indicate a positive effect of treatment A."
+        ),
+    )
+    result = validate_research_question_addressed(ms)
+    assert result.findings == []
+
+
+def test_rq_no_fire_when_no_research_question() -> None:
+    from manuscript_audit.validators.core import validate_research_question_addressed
+
+    ms = _rq_manuscript(
+        intro_body="This paper presents a new method for image classification.",
+        results_body="Table 1 shows the accuracy metrics across all benchmarks.",
+    )
+    result = validate_research_question_addressed(ms)
+    assert result.findings == []
