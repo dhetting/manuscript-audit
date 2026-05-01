@@ -6679,6 +6679,11 @@ def run_deterministic_validators(
         validate_subjective_claim_hedging(parsed),
         validate_population_definition(parsed, classification),
         validate_pilot_study_claims(parsed),
+        validate_exclusion_criteria_reporting(parsed, classification),
+        validate_normal_distribution_assumption(parsed, classification),
+        validate_figure_axes_labeling(parsed),
+        validate_duplicate_reporting(parsed),
+        validate_response_rate_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -9677,6 +9682,337 @@ def validate_pilot_study_claims(
                 ),
                 validator="pilot_study_claims",
                 location="Discussion/Conclusion",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 171 – Exclusion criteria rationale
+# ---------------------------------------------------------------------------
+
+_EXCLUSION_RE = re.compile(
+    r"\b(?:exclusion\s+criteria|excluded?\s+(?:participants?|patients?|subjects?|"
+    r"individuals?)\s+(?:who|with|if|due\s+to)|we\s+excluded?\s+\w+\s+who)\b",
+    re.IGNORECASE,
+)
+_EXCLUSION_RATIONALE_RE = re.compile(
+    r"\b(?:to\s+(?:ensure|avoid|minimize|reduce|control\s+for|prevent)|"
+    r"because\s+(?:they|these|this)|due\s+to\s+(?:concern|risk|confound)|"
+    r"(?:potential|possible)\s+confound|these\s+criteria\s+were\s+(?:chosen|selected|"
+    r"determined|established)\s+(?:to|because|based))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_exclusion_criteria_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts with exclusion criteria but no rationale.
+
+    Emits ``missing-exclusion-criteria-rationale`` (minor) when exclusion
+    criteria are mentioned but no justification for their selection is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="exclusion_criteria_reporting", findings=[]
+        )
+
+    methods_text = " ".join(
+        s.body for s in parsed.sections if s.title and "method" in s.title.lower()
+    )
+    if not methods_text:
+        return ValidationResult(
+            validator_name="exclusion_criteria_reporting", findings=[]
+        )
+
+    if not _EXCLUSION_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="exclusion_criteria_reporting", findings=[]
+        )
+
+    if _EXCLUSION_RATIONALE_RE.search(methods_text):
+        return ValidationResult(
+            validator_name="exclusion_criteria_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="exclusion_criteria_reporting",
+        findings=[
+            Finding(
+                code="missing-exclusion-criteria-rationale",
+                severity="minor",
+                message=(
+                    "Exclusion criteria are listed but no rationale or justification "
+                    "is provided for their selection. "
+                    "Explain why each exclusion criterion was chosen."
+                ),
+                validator="exclusion_criteria_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 172 – Normality assumption testing
+# ---------------------------------------------------------------------------
+
+_PARAMETRIC_TEST_RE = re.compile(
+    r"\b(?:t.?test|ANOVA|analysis\s+of\s+variance|ANCOVA|MANOVA|"
+    r"Pearson\s+(?:r|correlation)|linear\s+regression|"
+    r"independent.?samples\s+t|paired\s+t.?test|one.?way\s+ANOVA)\b",
+    re.IGNORECASE,
+)
+_NORMALITY_TEST_RE = re.compile(
+    r"\b(?:Shapiro.Wilk|Kolmogorov.Smirnov|Anderson.Darling|"
+    r"normality\s+(?:test|assumption|check)|Q.Q\s+plot|"
+    r"normal\s+distribution\s+(?:was\s+)?(?:verified|confirmed|tested|assumed)|"
+    r"data\s+(?:were\s+)?(?:normally\s+distributed|checked\s+for\s+normality)|"
+    r"non.?parametric|distribution.?free)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_normal_distribution_assumption(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts using parametric tests without normality checks.
+
+    Emits ``untested-normality-assumption`` (minor) when parametric tests are
+    used but normality is neither tested nor explicitly assumed and justified.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="normal_distribution_assumption", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="normal_distribution_assumption", findings=[]
+        )
+
+    if not _PARAMETRIC_TEST_RE.search(full):
+        return ValidationResult(
+            validator_name="normal_distribution_assumption", findings=[]
+        )
+
+    if _NORMALITY_TEST_RE.search(full):
+        return ValidationResult(
+            validator_name="normal_distribution_assumption", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="normal_distribution_assumption",
+        findings=[
+            Finding(
+                code="untested-normality-assumption",
+                severity="minor",
+                message=(
+                    "Parametric tests detected (t-test, ANOVA, Pearson r, etc.) but "
+                    "normality of the data distribution is not tested or addressed. "
+                    "Report normality test results or justify the parametric approach."
+                ),
+                validator="normal_distribution_assumption",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 173 – Figure axes labeling
+# ---------------------------------------------------------------------------
+
+_FIGURE_MENTION_RE = re.compile(
+    r"\b(?:Figure|Fig\.?)\s*(\d+)\b",
+    re.IGNORECASE,
+)
+_AXIS_LABEL_RE = re.compile(
+    r"\b(?:x.?axis|y.?axis|horizontal\s+axis|vertical\s+axis|"
+    r"axis\s+(?:label|title)|labeled?\s+(?:with|as)|"
+    r"x.?label|y.?label|\bxlabel\b|\bylabel\b|"
+    r"\\xlabel\{|\\ylabel\{)\b",
+    re.IGNORECASE,
+)
+_FIGURE_MIN_DISTINCT = 2
+
+
+def validate_figure_axes_labeling(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts with multiple distinct figures but no axis label documentation.
+
+    Emits ``unlabeled-figure-axes`` (minor) when >= ``_FIGURE_MIN_DISTINCT``
+    distinct figure numbers appear but no axis labels are described.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="figure_axes_labeling", findings=[]
+        )
+
+    fig_numbers = set(_FIGURE_MENTION_RE.findall(full))
+    if len(fig_numbers) < _FIGURE_MIN_DISTINCT:
+        return ValidationResult(
+            validator_name="figure_axes_labeling", findings=[]
+        )
+
+    if _AXIS_LABEL_RE.search(full):
+        return ValidationResult(
+            validator_name="figure_axes_labeling", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="figure_axes_labeling",
+        findings=[
+            Finding(
+                code="unlabeled-figure-axes",
+                severity="minor",
+                message=(
+                    f"Manuscript includes {len(fig_numbers)} distinct figure(s) but no "
+                    "axis label documentation is found. "
+                    "Ensure all figure axes are clearly labeled."
+                ),
+                validator="figure_axes_labeling",
+                location="manuscript",
+                evidence=[f"Figure {n}" for n in sorted(fig_numbers)[:3]],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 174 – Duplicate reporting (same values in table AND text)
+# ---------------------------------------------------------------------------
+
+_TABLE_VALUE_RE = re.compile(
+    r"\b(?:Table\s+\d+|as\s+shown\s+in\s+Table|see\s+Table)\b",
+    re.IGNORECASE,
+)
+_TEXT_DUPLICATE_RE = re.compile(
+    r"\b(?:as\s+(?:reported|shown|presented|displayed|described)\s+in\s+Table\s+\d+|"
+    r"the\s+(?:values?|data|results?|statistics?)\s+(?:in|from|presented\s+in)\s+Table\s+\d+\s+"
+    r"(?:show|demonstrate|indicate)|"
+    r"Table\s+\d+\s+(?:shows?|presents?|displays?)\s+the\s+(?:same|identical|aforementioned))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_duplicate_reporting(
+    parsed: ParsedManuscript,
+) -> ValidationResult:
+    """Flag manuscripts explicitly redundantly describing table contents in text.
+
+    Emits ``duplicate-reporting`` (major) when the text explicitly acknowledges
+    repeating table-reported values, or uses language indicating the same
+    statistics are narrated again.
+    """
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="duplicate_reporting", findings=[]
+        )
+
+    if not _TABLE_VALUE_RE.search(full):
+        return ValidationResult(
+            validator_name="duplicate_reporting", findings=[]
+        )
+
+    matches = _TEXT_DUPLICATE_RE.findall(full)
+    if not matches:
+        return ValidationResult(
+            validator_name="duplicate_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="duplicate_reporting",
+        findings=[
+            Finding(
+                code="duplicate-reporting",
+                severity="major",
+                message=(
+                    f"Manuscript appears to repeat {len(matches)} table-reported "
+                    "statistic(s) verbatim in the text. "
+                    "Summarize or interpret table contents rather than re-listing values."
+                ),
+                validator="duplicate_reporting",
+                location="Results",
+                evidence=list(dict.fromkeys(matches[:2])),
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 175 – Response rate reporting for surveys
+# ---------------------------------------------------------------------------
+
+_SURVEY_DESIGN_RE = re.compile(
+    r"\b(?:online\s+(?:survey|questionnaire)|mail(?:ed)?\s+(?:survey|questionnaire)|"
+    r"phone\s+(?:survey|interview)|mailed\s+questionnaire|"
+    r"postal\s+(?:survey|questionnaire)|email(?:ed)?\s+(?:survey|questionnaire)|"
+    r"(?:web.?based|electronic)\s+(?:survey|questionnaire))\b",
+    re.IGNORECASE,
+)
+_RESPONSE_RATE_RE = re.compile(
+    r"\b(?:response\s+rate|participation\s+rate|completion\s+rate|"
+    r"return\s+rate|response\s+(?:ratio|proportion)|"
+    r"\d+\s*%\s*(?:of\s+(?:invitees?|recipients?|those\s+contacted|"
+    r"eligible\s+(?:participants?|respondents?)))\s+responded|"
+    r"responded\s+out\s+of\s+\d+\s+(?:invited|contacted|eligible))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_response_rate_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag survey studies not reporting response rate.
+
+    Emits ``missing-response-rate`` (moderate) when an online/mailed survey
+    design is detected but no response rate or participation rate is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="response_rate_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="response_rate_reporting", findings=[]
+        )
+
+    if not _SURVEY_DESIGN_RE.search(full):
+        return ValidationResult(
+            validator_name="response_rate_reporting", findings=[]
+        )
+
+    if _RESPONSE_RATE_RE.search(full):
+        return ValidationResult(
+            validator_name="response_rate_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="response_rate_reporting",
+        findings=[
+            Finding(
+                code="missing-response-rate",
+                severity="moderate",
+                message=(
+                    "Online or mailed survey design detected but no response rate "
+                    "or participation rate is reported. "
+                    "Report the response rate to allow assessment of non-response bias."
+                ),
+                validator="response_rate_reporting",
+                location="Methods",
                 evidence=[],
             )
         ],

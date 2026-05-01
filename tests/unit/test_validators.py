@@ -8564,3 +8564,303 @@ def test_non_pilot_no_fire() -> None:
     )
     result = validate_pilot_study_claims(ms)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 171 – validate_exclusion_criteria_reporting
+# ---------------------------------------------------------------------------
+
+
+def _excl_ms(methods_body: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="excl-1",
+        source_path="excl.md",
+        source_format="markdown",
+        title="Exclusion Criteria Study",
+        full_text="",
+        sections=[Section(title="Methods", level=2, body=methods_body)],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_exclusion_criteria_no_rationale_fires() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria_reporting
+
+    ms, cl = _excl_ms(
+        "We excluded participants who had prior diagnoses. "
+        "The sample consisted of 200 adults."
+    )
+    result = validate_exclusion_criteria_reporting(ms, cl)
+    assert any(f.code == "missing-exclusion-criteria-rationale" for f in result.findings)
+
+
+def test_exclusion_criteria_with_rationale_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria_reporting
+
+    ms, cl = _excl_ms(
+        "We excluded participants who had prior diagnoses to ensure a clean baseline. "
+        "This was done to avoid confounds. Sample n=200."
+    )
+    result = validate_exclusion_criteria_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_exclusion_criteria_no_exclusion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria_reporting
+
+    ms, cl = _excl_ms("All 200 adults were recruited from the community.")
+    result = validate_exclusion_criteria_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_exclusion_criteria_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_exclusion_criteria_reporting
+
+    ms, cl = _excl_ms(
+        "We excluded participants who had prior diagnoses.",
+        paper_type="math_theory_paper",
+    )
+    result = validate_exclusion_criteria_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 172 – validate_normal_distribution_assumption
+# ---------------------------------------------------------------------------
+
+
+def _norm_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="norm-1",
+        source_path="norm.md",
+        source_format="markdown",
+        title="Normality Test Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_parametric_no_normality_fires() -> None:
+    from manuscript_audit.validators.core import validate_normal_distribution_assumption
+
+    ms, cl = _norm_ms(
+        "We used an independent-samples t-test to compare group means. "
+        "Results were significant (p < .05)."
+    )
+    result = validate_normal_distribution_assumption(ms, cl)
+    assert any(f.code == "untested-normality-assumption" for f in result.findings)
+
+
+def test_parametric_with_normality_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_normal_distribution_assumption
+
+    ms, cl = _norm_ms(
+        "We used a t-test. The Shapiro-Wilk test confirmed normal distribution "
+        "(W=0.98, p=.43) before analysis."
+    )
+    result = validate_normal_distribution_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_parametric_nonparametric_fallback_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_normal_distribution_assumption
+
+    ms, cl = _norm_ms(
+        "Given non-parametric data, we used t-test with Wilcoxon non-parametric fallback."
+    )
+    result = validate_normal_distribution_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_no_parametric_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_normal_distribution_assumption
+
+    ms, cl = _norm_ms("We used chi-square and Fisher exact tests throughout.")
+    result = validate_normal_distribution_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_normality_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_normal_distribution_assumption
+
+    ms, cl = _norm_ms("We used an ANOVA to compare group means.", "math_theory_paper")
+    result = validate_normal_distribution_assumption(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 173 – validate_figure_axes_labeling
+# ---------------------------------------------------------------------------
+
+
+def _fig_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="fig-1",
+        source_path="fig.md",
+        source_format="markdown",
+        title="Figure Study",
+        full_text=text,
+        sections=[],
+    )
+
+
+def test_figures_no_axes_fires() -> None:
+    from manuscript_audit.validators.core import validate_figure_axes_labeling
+
+    ms = _fig_ms(
+        "As shown in Figure 1, the results are clear. "
+        "Figure 2 shows the distribution."
+    )
+    result = validate_figure_axes_labeling(ms)
+    assert any(f.code == "unlabeled-figure-axes" for f in result.findings)
+
+
+def test_figures_with_axes_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_axes_labeling
+
+    ms = _fig_ms(
+        "As shown in Figure 1, with x-axis representing time and y-axis "
+        "representing score. Figure 2 shows the distribution."
+    )
+    result = validate_figure_axes_labeling(ms)
+    assert result.findings == []
+
+
+def test_single_figure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_axes_labeling
+
+    ms = _fig_ms(
+        "As shown in Figure 1, the results are clear. "
+        "Figure 1 shows the pipeline diagram."
+    )
+    result = validate_figure_axes_labeling(ms)
+    assert result.findings == []
+
+
+def test_no_figures_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_figure_axes_labeling
+
+    ms = _fig_ms("Results are reported in Table 1 and Table 2.")
+    result = validate_figure_axes_labeling(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 174 – validate_duplicate_reporting
+# ---------------------------------------------------------------------------
+
+
+def _dup_ms(text: str) -> ParsedManuscript:
+    return ParsedManuscript(
+        manuscript_id="dup-1",
+        source_path="dup.md",
+        source_format="markdown",
+        title="Duplicate Report Study",
+        full_text=text,
+        sections=[],
+    )
+
+
+def test_duplicate_reporting_fires() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_reporting
+
+    ms = _dup_ms(
+        "As reported in Table 1, the values are M=3.5, SD=0.8. "
+        "The statistics presented in Table 1 show the same results as above."
+    )
+    result = validate_duplicate_reporting(ms)
+    assert any(f.code == "duplicate-reporting" for f in result.findings)
+
+
+def test_no_duplicate_reporting_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_reporting
+
+    ms = _dup_ms(
+        "Results are presented in Table 1. Briefly, the mean score was higher "
+        "in the intervention group."
+    )
+    result = validate_duplicate_reporting(ms)
+    assert result.findings == []
+
+
+def test_no_table_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_duplicate_reporting
+
+    ms = _dup_ms("The mean was 3.5 and SD was 0.8 as noted above.")
+    result = validate_duplicate_reporting(ms)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 175 – validate_response_rate_reporting
+# ---------------------------------------------------------------------------
+
+
+def _survey_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="surv-1",
+        source_path="surv.md",
+        source_format="markdown",
+        title="Survey Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_survey_no_response_rate_fires() -> None:
+    from manuscript_audit.validators.core import validate_response_rate_reporting
+
+    ms, cl = _survey_ms(
+        "We used an online survey to collect data from 300 participants. "
+        "The survey was distributed via email."
+    )
+    result = validate_response_rate_reporting(ms, cl)
+    assert any(f.code == "missing-response-rate" for f in result.findings)
+
+
+def test_survey_with_response_rate_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_response_rate_reporting
+
+    ms, cl = _survey_ms(
+        "We used an online survey. The response rate was 72% (300/417). "
+        "Invitees were contacted by email."
+    )
+    result = validate_response_rate_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_non_survey_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_response_rate_reporting
+
+    ms, cl = _survey_ms(
+        "We recruited participants from local clinics for an in-person experiment."
+    )
+    result = validate_response_rate_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_survey_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_response_rate_reporting
+
+    ms, cl = _survey_ms(
+        "We used an online questionnaire to explore patterns.",
+        paper_type="math_theory_paper",
+    )
+    result = validate_response_rate_reporting(ms, cl)
+    assert result.findings == []
