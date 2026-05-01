@@ -391,13 +391,17 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 57 is closed. Next candidate phases:
-1. **Phase 59: Author keyword coverage** — flag keywords listed in manuscript but absent from body
-2. **Phase 60: Statistical test reporting** — flag tests named without p-value reporting
-3. **Phase 61: Effect size reporting** — flag p-values without effect size measures
-4. **Phase 62: Acknowledgments presence** — flag empirical papers missing acknowledgments/funding
+Phase 62 is closed. Next candidate phases:
+1. **Phase 64: COI disclosure** — flag missing conflict of interest statement
+2. **Phase 65: Data availability** — flag empirical papers without data availability info
+3. **Phase 66: Ethics/IRB** — flag human/animal studies without ethics approval statement
+4. **Phase 67: Citation style consistency** — flag mixing numbered and author-year styles
+5. **Phase 68: Cross-reference integrity** — flag Figure/Table N mentions > definition count
+6. **Phase 69: Decimal precision** — flag same metric at different decimal precisions
+7. **Phase 70: Future-work balance** — flag discussions heavy on future work
+8. **Phase 71: Null result acknowledgment** — flag empirical papers with no negative results
 
-## Phase 22–57 validated state
+## Phase 22–62 validated state
 
 All phases validated end-to-end from the live repo on 2026-05-01.
 
@@ -548,7 +552,26 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - `_imrad_key()` maps Introduction/Method/Result/Discussion to slots 0-3
 - Flags adjacent inversions; only fires for empirical/applied papers
 
-Current test count: **152 passing** (after phase 57)
+**Phase 59** (`4d96f54`) — Author keyword coverage
+- `validate_keyword_section_coverage(parsed)` → `missing-keyword-coverage` (minor)
+- Extracts from 'Keywords:' line or dedicated section; checks each in body; capped at 5
+
+**Phase 60** (`4d96f54`) — Statistical test reporting
+- `validate_statistical_test_reporting(parsed, classification)` → `missing-p-value-report` (moderate)
+- `_STAT_TEST_RE` detects 11 test types; fires when test named but no p-value found
+- Empirical/applied papers only
+
+**Phase 61** (`4d96f54`) — Effect size reporting
+- `validate_effect_size_reporting(parsed, classification)` → `missing-effect-size` (minor)
+- `_EFFECT_SIZE_RE`: Cohen's d/f, η², odds/hazard ratio, Hedges' g, etc.
+- Only fires when p-values present but effect size absent
+
+**Phase 62** (`4d96f54`) — Acknowledgments presence
+- `validate_acknowledgments_presence(parsed, classification)` → `missing-acknowledgments` (minor)
+- Checks for section AND `_FUNDING_RE` keywords in full text
+- Requires ≥5 bibliography entries; empirical/applied/software only
+
+Current test count: **164 passing** (after phase 62)
 
 
 ## Bundle and handoff requirements
