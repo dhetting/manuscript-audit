@@ -391,14 +391,13 @@ Known limitations (acceptable for MVP):
 
 ## Current immediate next task
 
-Phase 51 is closed. Next candidate phases:
-1. **Phase 53: Equation density** — math/theory papers with low equation density relative to section count
-2. **Phase 54: Abstract structure** — check method and result signals in abstract
-3. **Phase 55: URL format** — flag malformed URLs and missing access dates
-4. **Phase 56: Figure/table balance** — flag empirical papers with too few figures
-5. **Phase 57: Section ordering** — IMRaD order validation for empirical papers
+Phase 57 is closed. Next candidate phases:
+1. **Phase 59: Author keyword coverage** — flag keywords listed in manuscript but absent from body
+2. **Phase 60: Statistical test reporting** — flag tests named without p-value reporting
+3. **Phase 61: Effect size reporting** — flag p-values without effect size measures
+4. **Phase 62: Acknowledgments presence** — flag empirical papers missing acknowledgments/funding
 
-## Phase 22–51 validated state
+## Phase 22–57 validated state
 
 All phases validated end-to-end from the live repo on 2026-05-01.
 
@@ -526,7 +525,30 @@ All phases validated end-to-end from the live repo on 2026-05-01.
 - Finds quantitative metrics (METRIC_RE) in conclusion not in abstract/results
 - Fires when ≥2 novel metrics detected; uses `_CONCLUSION_SECTIONS` frozenset
 
-Current test count: **139 passing** (after phase 51)
+**Phase 53** (`a0841e5`) — Equation density validator
+- `validate_equation_density(parsed, classification)` → `low-equation-density` (minor)
+- Fires for `math_stats_theory` pathway when <0.5 equations/section; requires ≥4 sections
+
+**Phase 54** (`a0841e5`) — Abstract structure validator
+- `validate_abstract_structure(parsed)` → `missing-abstract-component` (minor)
+- Checks for `_ABSTRACT_METHOD_RE` and `_ABSTRACT_RESULT_RE` signals; requires ≥50 words
+
+**Phase 55** (`a0841e5`) — URL format validator
+- `validate_url_format(parsed)` → `malformed-url` and `url-without-access-date` (both minor)
+- Scans full_text for `www.` and `ftp://` URLs; also checks bibliography `url` fields
+- Capped at 5 findings to avoid flooding
+
+**Phase 56** (`a0841e5`) — Figure/table balance validator
+- `validate_figure_table_balance(parsed, classification)` → `insufficient-figures` and `table-heavy` (both minor)
+- Empirical papers with ≥4 sections and <2 figure mentions get `insufficient-figures`
+- `table-heavy` fires when table mentions > 2× figure mentions
+
+**Phase 57** (`a0841e5`) — Section ordering (IMRaD) validator
+- `validate_section_ordering(parsed, classification)` → `section-order-violation` (minor)
+- `_imrad_key()` maps Introduction/Method/Result/Discussion to slots 0-3
+- Flags adjacent inversions; only fires for empirical/applied papers
+
+Current test count: **152 passing** (after phase 57)
 
 
 ## Bundle and handoff requirements
