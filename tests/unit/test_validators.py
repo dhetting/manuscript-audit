@@ -28799,3 +28799,339 @@ def test_no_variant_trigger_no_fire() -> None:
     ms, cl = _variant470_ms("We applied a linear mixed model to phenotype prediction.")
     result = validate_variant_calling_pipeline(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 471 – validate_protein_structure_evaluation
+# ---------------------------------------------------------------------------
+
+def _prot471_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-prot471",
+            source_path="/tmp/prot471.md",
+            source_format="markdown",
+            title="Protein Structure Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_protein_without_tmscore_fires() -> None:
+    from manuscript_audit.validators.core import validate_protein_structure_evaluation
+
+    ms, cl = _prot471_ms(
+        "We used AlphaFold for protein structure prediction on CASP14 targets."
+    )
+    result = validate_protein_structure_evaluation(ms, cl)
+    assert any(f.code == "missing-protein-structure-metrics" for f in result.findings)
+
+
+def test_protein_with_tmscore_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_protein_structure_evaluation
+
+    ms, cl = _prot471_ms(
+        "We used AlphaFold for protein structure prediction. "
+        "TM-score and backbone RMSD were reported on CASP14 targets."
+    )
+    result = validate_protein_structure_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_protein_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_protein_structure_evaluation
+
+    ms, cl = _prot471_ms("We evaluated AlphaFold for protein structure prediction.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_protein_structure_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_protein_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_protein_structure_evaluation
+
+    ms, cl = _prot471_ms("We used a Bayesian classifier for text categorization.")
+    result = validate_protein_structure_evaluation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 472 – validate_climate_model_skill_score
+# ---------------------------------------------------------------------------
+
+def _climate472_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-climate472",
+            source_path="/tmp/climate472.md",
+            source_format="markdown",
+            title="Climate Model Skill Score Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_climate_without_skill_fires() -> None:
+    from manuscript_audit.validators.core import validate_climate_model_skill_score
+
+    ms, cl = _climate472_ms(
+        "We performed climate model evaluation against reanalysis data."
+    )
+    result = validate_climate_model_skill_score(ms, cl)
+    assert any(
+        f.code == "missing-climate-model-skill-score" for f in result.findings
+    )
+
+
+def test_climate_with_skill_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_climate_model_skill_score
+
+    ms, cl = _climate472_ms(
+        "We performed climate model evaluation. "
+        "A Taylor diagram and skill score were used to assess model performance."
+    )
+    result = validate_climate_model_skill_score(ms, cl)
+    assert result.findings == []
+
+
+def test_climate_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_climate_model_skill_score
+
+    ms, cl = _climate472_ms("We performed climate model evaluation on historical data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_climate_model_skill_score(ms, cl)
+    assert result.findings == []
+
+
+def test_no_climate_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_climate_model_skill_score
+
+    ms, cl = _climate472_ms("We applied a mixed ANOVA design to behavioral outcomes.")
+    result = validate_climate_model_skill_score(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 473 – validate_panel_unit_root_testing
+# ---------------------------------------------------------------------------
+
+def _panelur473_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-panelur473",
+            source_path="/tmp/panelur473.md",
+            source_format="markdown",
+            title="Panel Unit Root Testing Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_panel_ur_without_testing_fires() -> None:
+    from manuscript_audit.validators.core import validate_panel_unit_root_testing
+
+    ms, cl = _panelur473_ms(
+        "We estimated a panel VAR using macroeconomic panel data."
+    )
+    result = validate_panel_unit_root_testing(ms, cl)
+    assert any(
+        f.code == "missing-panel-unit-root-testing" for f in result.findings
+    )
+
+
+def test_panel_ur_with_adf_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panel_unit_root_testing
+
+    ms, cl = _panelur473_ms(
+        "We estimated a panel VAR model. "
+        "Unit root tests (ADF test and KPSS test) confirmed stationarity."
+    )
+    result = validate_panel_unit_root_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_panel_ur_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panel_unit_root_testing
+
+    ms, cl = _panelur473_ms("We estimated a panel data model using macroeconomic data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_panel_unit_root_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_no_panel_ur_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panel_unit_root_testing
+
+    ms, cl = _panelur473_ms("We used propensity score matching for causal inference.")
+    result = validate_panel_unit_root_testing(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 474 – validate_social_network_centrality_reporting
+# ---------------------------------------------------------------------------
+
+def _sna474_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sna474",
+            source_path="/tmp/sna474.md",
+            source_format="markdown",
+            title="Social Network Centrality Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sna_without_centrality_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_social_network_centrality_reporting,
+    )
+
+    ms, cl = _sna474_ms(
+        "We conducted social network analysis of scientific collaboration networks."
+    )
+    result = validate_social_network_centrality_reporting(ms, cl)
+    assert any(
+        f.code == "missing-network-centrality-metrics" for f in result.findings
+    )
+
+
+def test_sna_with_centrality_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_social_network_centrality_reporting,
+    )
+
+    ms, cl = _sna474_ms(
+        "We conducted social network analysis of collaboration networks. "
+        "Betweenness centrality and clustering coefficient were computed."
+    )
+    result = validate_social_network_centrality_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_sna_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_social_network_centrality_reporting,
+    )
+
+    ms, cl = _sna474_ms("We performed social network analysis on citation data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_social_network_centrality_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sna_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_social_network_centrality_reporting,
+    )
+
+    ms, cl = _sna474_ms("We applied a structural equation model to survey data.")
+    result = validate_social_network_centrality_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 475 – validate_agent_based_model_validation
+# ---------------------------------------------------------------------------
+
+def _abm475_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-abm475",
+            source_path="/tmp/abm475.md",
+            source_format="markdown",
+            title="ABM Sensitivity Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_abm475_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_abm_sensitivity_analysis
+
+    ms, cl = _abm475_ms(
+        "An agent-based model was implemented in NetLogo to simulate urban mobility."
+    )
+    result = validate_abm_sensitivity_analysis(ms, cl)
+    assert any(f.code == "missing-abm-sensitivity-analysis" for f in result.findings)
+
+
+def test_abm475_with_sobol_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abm_sensitivity_analysis
+
+    ms, cl = _abm475_ms(
+        "An agent-based model was implemented in NetLogo. "
+        "Sobol indices and variance-based sensitivity analysis were computed."
+    )
+    result = validate_abm_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_abm475_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abm_sensitivity_analysis
+
+    ms, cl = _abm475_ms(
+        "An agent-based model was used to simulate urban mobility patterns."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_abm_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_no_abm475_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abm_sensitivity_analysis
+
+    ms, cl = _abm475_ms("We used a generalized linear model on ecological count data.")
+    result = validate_abm_sensitivity_analysis(ms, cl)
+    assert result.findings == []

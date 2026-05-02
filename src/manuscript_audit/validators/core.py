@@ -6977,6 +6977,11 @@ def run_deterministic_validators(
         validate_eeg_preprocessing_details(parsed, classification),
         validate_admet_reporting(parsed, classification),
         validate_variant_calling_pipeline(parsed, classification),
+        validate_protein_structure_evaluation(parsed, classification),
+        validate_climate_model_skill_score(parsed, classification),
+        validate_panel_unit_root_testing(parsed, classification),
+        validate_social_network_centrality_reporting(parsed, classification),
+        validate_abm_sensitivity_analysis(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -27576,6 +27581,250 @@ def validate_variant_calling_pipeline(
                 ),
                 severity="moderate",
                 validator=_VARIANT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 471 – Protein structure: TM-score / RMSD reporting
+# ---------------------------------------------------------------------------
+_PROT_TRIGGER_RE = re.compile(
+    r"\b(?:protein\s+structure\s+(?:prediction|modeling|evaluation)|"
+    r"AlphaFold|RoseTTAFold|protein\s+folding|"
+    r"de\s+novo\s+protein\s+design|structure\s+prediction\s+benchmark)\b",
+    re.IGNORECASE,
+)
+_PROT_METRIC_RE = re.compile(
+    r"\b(?:TM.?score|RMSD\s*=|GDT.?TS|GDT.?HA|lDDT\s*=|"
+    r"backbone\s+RMSD|all.atom\s+RMSD|global\s+distance\s+test)\b",
+    re.IGNORECASE,
+)
+
+_PROT_VID = "missing-protein-structure-metrics"
+
+
+def validate_protein_structure_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when protein structure prediction papers lack TM-score or RMSD metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PROT_VID, findings=[])
+    text = parsed.full_text
+    if not _PROT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PROT_VID, findings=[])
+    if _PROT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_PROT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PROT_VID,
+        findings=[
+            Finding(
+                code=_PROT_VID,
+                message=(
+                    "Protein structure prediction paper detected but no TM-score, "
+                    "RMSD, or GDT metrics were reported."
+                ),
+                severity="moderate",
+                validator=_PROT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 472 – Climate model evaluation: skill score reporting
+# ---------------------------------------------------------------------------
+_CLIMATE_TRIGGER_RE = re.compile(
+    r"\b(?:climate\s+model\s+(?:evaluation|validation|projection)|"
+    r"general\s+circulation\s+model|GCM\s+(?:evaluation|projection)|"
+    r"earth\s+system\s+model|climate\s+simulation\s+(?:validation|bias))\b",
+    re.IGNORECASE,
+)
+_CLIMATE_METRIC_RE = re.compile(
+    r"\b(?:skill\s+score|Taylor\s+diagram|bias\s+correction|"
+    r"RMSE\s+for\s+(?:temperature|precipitation)|"
+    r"pattern\s+correlation|spatial\s+correlation\s+(?:skill|score)|"
+    r"Nash.Sutcliffe\s+efficiency)\b",
+    re.IGNORECASE,
+)
+
+_CLIMATE_VID = "missing-climate-model-skill-score"
+
+
+def validate_climate_model_skill_score(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when climate model papers lack skill score or bias evaluation."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CLIMATE_VID, findings=[])
+    text = parsed.full_text
+    if not _CLIMATE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CLIMATE_VID, findings=[])
+    if _CLIMATE_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CLIMATE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CLIMATE_VID,
+        findings=[
+            Finding(
+                code=_CLIMATE_VID,
+                message=(
+                    "Climate model evaluation paper detected but no skill score, "
+                    "Taylor diagram, or bias evaluation was reported."
+                ),
+                severity="moderate",
+                validator=_CLIMATE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 473 – Panel econometrics: unit root and cointegration testing
+# ---------------------------------------------------------------------------
+_PANEL_UR_TRIGGER_RE = re.compile(
+    r"\b(?:panel\s+data\s+(?:model|analysis|regression|unit\s+root)|"
+    r"panel\s+unit\s+root|panel\s+cointegration|"
+    r"Levin.Lin.Chu\s+test|Im.Pesaran.Shin\s+test|"
+    r"panel\s+VAR|panel\s+VECM)\b",
+    re.IGNORECASE,
+)
+_PANEL_UR_DETAIL_RE = re.compile(
+    r"\b(?:unit\s+root\s+test|stationarity\s+test|ADF\s+test|"
+    r"KPSS\s+test|cointegration\s+test|Pedroni\s+test|"
+    r"Kao\s+test\s+for\s+cointegration|panel\s+stationarity)\b",
+    re.IGNORECASE,
+)
+
+_PANEL_UR_VID = "missing-panel-unit-root-testing"
+
+
+def validate_panel_unit_root_testing(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when panel econometrics papers lack unit root or cointegration tests."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PANEL_UR_VID, findings=[])
+    text = parsed.full_text
+    if not _PANEL_UR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PANEL_UR_VID, findings=[])
+    if _PANEL_UR_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_PANEL_UR_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PANEL_UR_VID,
+        findings=[
+            Finding(
+                code=_PANEL_UR_VID,
+                message=(
+                    "Panel econometrics paper detected but no unit root or "
+                    "cointegration testing was reported."
+                ),
+                severity="moderate",
+                validator=_PANEL_UR_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 474 – Social network analysis: centrality measure reporting
+# ---------------------------------------------------------------------------
+_SNA_TRIGGER_RE = re.compile(
+    r"\b(?:social\s+network\s+analysis|network\s+centrality|"
+    r"community\s+detection\s+in\s+(?:networks?|graphs?)|"
+    r"network\s+topology\s+analysis|network\s+structure\s+analysis)\b",
+    re.IGNORECASE,
+)
+_SNA_METRIC_RE = re.compile(
+    r"\b(?:betweenness\s+centrality|closeness\s+centrality|"
+    r"eigenvector\s+centrality|degree\s+centrality|"
+    r"clustering\s+coefficient|modularity\s+(?:score|Q)|"
+    r"network\s+density|average\s+path\s+length)\b",
+    re.IGNORECASE,
+)
+
+_SNA_VID = "missing-network-centrality-metrics"
+
+
+def validate_social_network_centrality_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when social network analysis papers lack centrality metric reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SNA_VID, findings=[])
+    text = parsed.full_text
+    if not _SNA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SNA_VID, findings=[])
+    if _SNA_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SNA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SNA_VID,
+        findings=[
+            Finding(
+                code=_SNA_VID,
+                message=(
+                    "Social network analysis paper detected but no centrality "
+                    "metrics or network statistics were reported."
+                ),
+                severity="minor",
+                validator=_SNA_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 475 – Agent-based modeling: validation protocol disclosure
+# ---------------------------------------------------------------------------
+_ABM_TRIGGER_RE = re.compile(
+    r"\b(?:agent.based\s+model|agent.based\s+simulation|ABM\b|"
+    r"multi.agent\s+simulation|NetLogo\s+model|"
+    r"individual.based\s+model)\b",
+    re.IGNORECASE,
+)
+_ABM_VALID_RE = re.compile(
+    r"\b(?:model\s+validation\s+(?:protocol|procedure)|ODD\s+protocol|"
+    r"pattern.oriented\s+modeling|sensitivity\s+analysis\s+of\s+(?:the\s+)?ABM|"
+    r"Monte\s+Carlo\s+sensitivity|calibration\s+of\s+(?:the\s+)?(?:ABM|model))\b",
+    re.IGNORECASE,
+)
+
+_ABM_SENS_VID = "missing-abm-sensitivity-analysis"
+_ABM_SENS_RE = re.compile(
+    r"\b(?:global\s+sensitivity\s+analysis|variance.based\s+sensitivity|"
+    r"Sobol\s+indices?|Morris\s+method\s+sensitivity|"
+    r"one.at.a.time\s+sensitivity|OAT\s+sensitivity|"
+    r"sensitivity\s+analysis\s+of\s+(?:the\s+)?(?:ABM|model)\s+parameters?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_abm_sensitivity_analysis(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when ABM papers lack formal parameter sensitivity analysis."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ABM_SENS_VID, findings=[])
+    text = parsed.full_text
+    if not _ABM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ABM_SENS_VID, findings=[])
+    if _ABM_SENS_RE.search(text):
+        return ValidationResult(validator_name=_ABM_SENS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ABM_SENS_VID,
+        findings=[
+            Finding(
+                code=_ABM_SENS_VID,
+                message=(
+                    "Agent-based model paper detected but no parameter sensitivity "
+                    "analysis (Sobol, Morris, variance-based) was reported."
+                ),
+                severity="minor",
+                validator=_ABM_SENS_VID,
             )
         ],
     )
