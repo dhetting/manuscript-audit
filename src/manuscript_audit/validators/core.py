@@ -6749,6 +6749,11 @@ def run_deterministic_validators(
         validate_regression_coefficient_ci(parsed, classification),
         validate_longitudinal_followup_duration(parsed, classification),
         validate_bayesian_reporting(parsed, classification),
+        validate_floor_ceiling_effect_check(parsed, classification),
+        validate_hazard_ratio_ci(parsed, classification),
+        validate_outlier_removal_impact(parsed, classification),
+        validate_multilevel_icc_reporting(parsed, classification),
+        validate_citation_currency(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -14691,6 +14696,366 @@ def validate_bayesian_reporting(
                 ),
                 validator="bayesian_reporting",
                 location="Statistical Analysis / Results",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 241 – Missing floor/ceiling effect check for parametric analysis
+# ---------------------------------------------------------------------------
+
+_FLOOR_CEILING_TRIGGER_RE = re.compile(
+    r"\b(?:Likert.?(?:scale|items?|measure|data|response)|"
+    r"ordinal\s+(?:scale|data|response|measure)|"
+    r"rating\s+scale\s+(?:data|responses?|items?)|"
+    r"ceiling\s+effect|floor\s+effect)\b",
+    re.IGNORECASE,
+)
+_FLOOR_CEILING_CHECK_RE = re.compile(
+    r"\b(?:ceiling\s+effect\s+(?:was|were|is|are)?\s*(?:examined?|tested?|checked?|"
+    r"assessed?|detected?|found?|observed?|present|absent|noted?|reported?)|"
+    r"floor\s+effect\s+(?:was|were|is|are)?\s*(?:examined?|tested?|checked?|"
+    r"assessed?|detected?|found?|observed?|present|absent|noted?|reported?)|"
+    r"distribution\s+of\s+(?:the\s+)?(?:scale|Likert|item|response)\s+"
+    r"(?:scores?|data)\s+(?:was|were)\s+(?:examined?|inspected?|assessed?|checked?)|"
+    r"skewness\s+and\s+kurtosis\s+(?:were|was)\s+(?:examined?|assessed?|checked?)|"
+    r"(?:the\s+data\s+)?(?:did\s+not\s+show|showed?\s+no)\s+(?:significant\s+)?"
+    r"(?:ceiling|floor)\s+effect)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_floor_ceiling_effect_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Likert/ordinal data used in parametric analyses without ceiling/floor checks.
+
+    Emits ``missing-floor-ceiling-check`` (minor) when Likert or ordinal scale
+    data are used but no ceiling or floor effect check is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="floor_ceiling_effect_check", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="floor_ceiling_effect_check", findings=[]
+        )
+
+    if not _FLOOR_CEILING_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="floor_ceiling_effect_check", findings=[]
+        )
+
+    if _FLOOR_CEILING_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="floor_ceiling_effect_check", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="floor_ceiling_effect_check",
+        findings=[
+            Finding(
+                code="missing-floor-ceiling-check",
+                severity="minor",
+                message=(
+                    "Likert or ordinal scale data used but no ceiling or floor effect "
+                    "check is reported. "
+                    "Inspect score distributions for ceiling/floor effects before "
+                    "applying parametric analyses."
+                ),
+                validator="floor_ceiling_effect_check",
+                location="Methods / Statistical Analysis",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 242 – Hazard ratio without confidence interval (survival analysis)
+# ---------------------------------------------------------------------------
+
+_HAZARD_RATIO_RE = re.compile(
+    r"\b(?:hazard\s+ratio|HR\s*=\s*\d|hazard\s+rate\s+ratio|"
+    r"Cox\s+(?:proportional\s+hazards?|regression)|"
+    r"survival\s+analysis\s+(?:was|were|is|are)\s+(?:conducted?|performed?|used?|run)|"
+    r"time.to.event\s+analysis)\b",
+    re.IGNORECASE,
+)
+_HAZARD_RATIO_CI_RE = re.compile(
+    r"\b(?:HR\s*[\(=]\s*\d+\.?\d*\s*[,\(]\s*95\s*%\s*CI|"
+    r"hazard\s+ratio\s*\(?95\s*%\s*CI|"
+    r"95\s*%\s*CI\s+(?:for\s+(?:the\s+)?HR|for\s+hazard)|"
+    r"\[[\d\.\s]+,\s*[\d\.\s]+\]\s*(?:for\s+(?:the\s+)?HR|hazard))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_hazard_ratio_ci(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag survival analyses reporting hazard ratios without confidence intervals.
+
+    Emits ``missing-hazard-ratio-ci`` (moderate) when a Cox regression or
+    survival analysis is used but no CI for the HR is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="hazard_ratio_ci", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="hazard_ratio_ci", findings=[]
+        )
+
+    if not _HAZARD_RATIO_RE.search(full):
+        return ValidationResult(
+            validator_name="hazard_ratio_ci", findings=[]
+        )
+
+    if _HAZARD_RATIO_CI_RE.search(full):
+        return ValidationResult(
+            validator_name="hazard_ratio_ci", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="hazard_ratio_ci",
+        findings=[
+            Finding(
+                code="missing-hazard-ratio-ci",
+                severity="moderate",
+                message=(
+                    "Hazard ratio (HR) or Cox regression reported but no confidence "
+                    "interval for the HR is given. "
+                    "Report the 95% CI for each hazard ratio."
+                ),
+                validator="hazard_ratio_ci",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 243 – Undisclosed outlier removal impact on results
+# ---------------------------------------------------------------------------
+
+_OUTLIER_REMOVAL_RE = re.compile(
+    r"\b(?:outliers?\s+(?:were\s+)?(?:removed?|excluded?|deleted?|winsorized?|"
+    r"trimmed?)|"
+    r"(?:removed?|excluded?|deleted?)\s+(?:\d+\s+)?outliers?|"
+    r"outlier\s+(?:detection|identification|removal)\s+(?:was|were)\s+(?:performed?|"
+    r"conducted?|applied?|used?)|"
+    r"values?\s+(?:more\s+than|exceeding?|beyond?)\s+\d+\s*SD)\b",
+    re.IGNORECASE,
+)
+_OUTLIER_SENSITIVITY_RE = re.compile(
+    r"\b(?:analyses?\s+(?:were\s+)?(?:re.?run|repeated?|conducted?)\s+"
+    r"(?:with|including?)\s+(?:the\s+)?outliers?|"
+    r"results?\s+(?:were\s+)?(robust|unchanged?|similar|consistent)\s+"
+    r"(?:when|with|after)\s+(?:including?|re.?including?|retaining?)\s+"
+    r"(?:the\s+)?outliers?|"
+    r"sensitivity\s+(?:analysis|check)\s+(?:with|including?)\s+outliers?|"
+    r"excluding?\s+outliers?\s+did\s+not\s+(?:substantially\s+)?(?:change|alter|"
+    r"affect)\s+(?:the\s+)?(?:results?|findings?|conclusions?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_outlier_removal_impact(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag outlier removal without reporting sensitivity of results to removal.
+
+    Emits ``missing-outlier-removal-impact`` (minor) when outliers are removed
+    but no sensitivity check on whether removal changes the conclusions is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="outlier_removal_impact", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="outlier_removal_impact", findings=[]
+        )
+
+    if not _OUTLIER_REMOVAL_RE.search(full):
+        return ValidationResult(
+            validator_name="outlier_removal_impact", findings=[]
+        )
+
+    if _OUTLIER_SENSITIVITY_RE.search(full):
+        return ValidationResult(
+            validator_name="outlier_removal_impact", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="outlier_removal_impact",
+        findings=[
+            Finding(
+                code="missing-outlier-removal-impact",
+                severity="minor",
+                message=(
+                    "Outliers were removed but no sensitivity check or statement on "
+                    "whether removal changes the conclusions is provided. "
+                    "Report whether findings are robust to including the removed cases."
+                ),
+                validator="outlier_removal_impact",
+                location="Statistical Analysis",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 244 – Missing intraclass correlation for multilevel data
+# ---------------------------------------------------------------------------
+
+_MULTILEVEL_DATA_RE = re.compile(
+    r"\b(?:multilevel|hierarchical\s+linear\s+model|HLM\b|mixed.effects?\s+model|"
+    r"random.effects?\s+model|nested\s+(?:data|design|structure)|"
+    r"students?\s+(?:nested|clustered)\s+(?:within|in)\s+"
+    r"(?:classrooms?|schools?|teachers?)|"
+    r"patients?\s+(?:nested|clustered)\s+(?:within|in)\s+"
+    r"(?:hospitals?|clinics?|providers?)|"
+    r"level.?\d\s+(?:units?|variables?|predictors?|outcomes?))\b",
+    re.IGNORECASE,
+)
+_ICC_MULTILEVEL_RE = re.compile(
+    r"\b(?:intraclass\s+correlation\s+(?:coefficient|ICC)|"
+    r"ICC\s*[\(=]|"
+    r"between.(?:cluster|group|school|class|hospital)\s+variance\s+(?:was|=)|"
+    r"proportion\s+of\s+(?:variance|variability)\s+(?:attributable\s+to|explained?\s+by|"
+    r"due\s+to)\s+(?:the\s+)?(?:cluster|group|school|class|level.?\d))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multilevel_icc_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag multilevel models that do not report ICCs.
+
+    Emits ``missing-multilevel-icc`` (moderate) when hierarchical/multilevel
+    data or models are used but no ICC or between-cluster variance is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="multilevel_icc_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="multilevel_icc_reporting", findings=[]
+        )
+
+    if not _MULTILEVEL_DATA_RE.search(full):
+        return ValidationResult(
+            validator_name="multilevel_icc_reporting", findings=[]
+        )
+
+    if _ICC_MULTILEVEL_RE.search(full):
+        return ValidationResult(
+            validator_name="multilevel_icc_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="multilevel_icc_reporting",
+        findings=[
+            Finding(
+                code="missing-multilevel-icc",
+                severity="moderate",
+                message=(
+                    "Multilevel or hierarchical model detected but no ICC or "
+                    "between-cluster variance proportion is reported. "
+                    "Report the ICC to justify the multilevel approach."
+                ),
+                validator="multilevel_icc_reporting",
+                location="Statistical Analysis / Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 245 – Outdated or potentially retracted citations
+# ---------------------------------------------------------------------------
+
+_OLD_CITATION_RE = re.compile(
+    r"\b(?:19[0-7]\d|198[0-5])\b",
+)
+_OLD_CITATION_CONTEXT_RE = re.compile(
+    r"\([^)]{2,50}(?:19[0-7]\d|198[0-5])\)",
+    re.IGNORECASE,
+)
+_FOUNDATIONAL_CAVEAT_RE = re.compile(
+    r"\b(?:seminal|foundational|classic|landmark|original|pioneering|"
+    r"first\s+(?:to\s+)?(?:demonstrate?|show?|establish?|identify?|report?)|"
+    r"originally\s+(?:developed?|proposed?|described?|established?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_citation_currency(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical claims supported only by very old citations without justification.
+
+    Emits ``potentially-outdated-citation`` (minor) when a citation from before
+    1986 is used to support a current empirical claim without acknowledging
+    it as a foundational reference.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="citation_currency", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="citation_currency", findings=[]
+        )
+
+    if not _OLD_CITATION_CONTEXT_RE.search(full):
+        return ValidationResult(
+            validator_name="citation_currency", findings=[]
+        )
+
+    if _FOUNDATIONAL_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="citation_currency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="citation_currency",
+        findings=[
+            Finding(
+                code="potentially-outdated-citation",
+                severity="minor",
+                message=(
+                    "A citation from before 1986 is used to support an empirical claim "
+                    "without acknowledging it as a foundational or seminal reference. "
+                    "Supplement with more recent citations or note the foundational status."
+                ),
+                validator="citation_currency",
+                location="Introduction / Discussion",
                 evidence=[],
             )
         ],

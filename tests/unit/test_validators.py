@@ -13195,3 +13195,340 @@ def test_bayesian_non_empirical_no_fire() -> None:
     )
     result = validate_bayesian_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 241 – validate_floor_ceiling_effect_check
+# ---------------------------------------------------------------------------
+
+def _fc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fc",
+            source_path="/tmp/fc.md",
+            source_format="markdown",
+            title="Floor Ceiling Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_likert_without_ceiling_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effect_check
+
+    ms, cl = _fc_ms(
+        "Participants completed a 5-point Likert scale measuring satisfaction. "
+        "Scores were analysed using parametric ANOVA."
+    )
+    result = validate_floor_ceiling_effect_check(ms, cl)
+    assert any(f.code == "missing-floor-ceiling-check" for f in result.findings)
+
+
+def test_likert_with_ceiling_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effect_check
+
+    ms, cl = _fc_ms(
+        "Participants completed a 5-point Likert scale. "
+        "Ceiling effects were examined and no significant ceiling effect was found."
+    )
+    result = validate_floor_ceiling_effect_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_likert_scale_fc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effect_check
+
+    ms, cl = _fc_ms(
+        "Biomarker concentrations were measured using serum assays."
+    )
+    result = validate_floor_ceiling_effect_check(ms, cl)
+    assert result.findings == []
+
+
+def test_floor_ceiling_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_floor_ceiling_effect_check
+
+    ms, cl = _fc_ms("Likert scale data are used in this framework.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_floor_ceiling_effect_check(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 242 – validate_hazard_ratio_ci
+# ---------------------------------------------------------------------------
+
+def _hr_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-hr",
+            source_path="/tmp/hr.md",
+            source_format="markdown",
+            title="Hazard Ratio CI Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_hr_without_ci_fires() -> None:
+    from manuscript_audit.validators.core import validate_hazard_ratio_ci
+
+    ms, cl = _hr_ms(
+        "Cox proportional hazards regression indicated that treatment group "
+        "had a significantly lower hazard ratio of HR = 0.62 (p = 0.003)."
+    )
+    result = validate_hazard_ratio_ci(ms, cl)
+    assert any(f.code == "missing-hazard-ratio-ci" for f in result.findings)
+
+
+def test_hr_with_ci_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hazard_ratio_ci
+
+    ms, cl = _hr_ms(
+        "Cox proportional hazards regression indicated HR = 0.62 "
+        "(95% CI [0.45, 0.86], p = 0.003)."
+    )
+    result = validate_hazard_ratio_ci(ms, cl)
+    assert result.findings == []
+
+
+def test_no_survival_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hazard_ratio_ci
+
+    ms, cl = _hr_ms(
+        "Linear regression was used to predict quality of life from treatment group."
+    )
+    result = validate_hazard_ratio_ci(ms, cl)
+    assert result.findings == []
+
+
+def test_hr_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hazard_ratio_ci
+
+    ms, cl = _hr_ms("Cox regression and hazard ratios are discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_hazard_ratio_ci(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 243 – validate_outlier_removal_impact
+# ---------------------------------------------------------------------------
+
+def _outlier_impact_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-outlier-impact",
+            source_path="/tmp/outlier_impact.md",
+            source_format="markdown",
+            title="Outlier Removal Impact Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_outlier_removed_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_outlier_removal_impact
+
+    ms, cl = _outlier_impact_ms(
+        "Outliers were removed based on values more than 3 SD from the mean. "
+        "The remaining data were analysed using regression."
+    )
+    result = validate_outlier_removal_impact(ms, cl)
+    assert any(f.code == "missing-outlier-removal-impact" for f in result.findings)
+
+
+def test_outlier_removed_with_sensitivity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outlier_removal_impact
+
+    ms, cl = _outlier_impact_ms(
+        "Outliers were removed based on values more than 3 SD from the mean. "
+        "Sensitivity analysis with outliers included showed results were robust."
+    )
+    result = validate_outlier_removal_impact(ms, cl)
+    assert result.findings == []
+
+
+def test_no_outlier_removal_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outlier_removal_impact
+
+    ms, cl = _outlier_impact_ms(
+        "The complete dataset was used for all analyses without any exclusions."
+    )
+    result = validate_outlier_removal_impact(ms, cl)
+    assert result.findings == []
+
+
+def test_outlier_impact_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_outlier_removal_impact
+
+    ms, cl = _outlier_impact_ms("Outliers were excluded from analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_outlier_removal_impact(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 244 – validate_multilevel_icc_reporting
+# ---------------------------------------------------------------------------
+
+def _mlm_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mlm",
+            source_path="/tmp/mlm.md",
+            source_format="markdown",
+            title="Multilevel ICC Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multilevel_without_icc_fires() -> None:
+    from manuscript_audit.validators.core import validate_multilevel_icc_reporting
+
+    ms, cl = _mlm_ms(
+        "We used a multilevel model with students at level 1 nested within schools "
+        "at level 2. Fixed and random effects were estimated."
+    )
+    result = validate_multilevel_icc_reporting(ms, cl)
+    assert any(f.code == "missing-multilevel-icc" for f in result.findings)
+
+
+def test_multilevel_with_icc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multilevel_icc_reporting
+
+    ms, cl = _mlm_ms(
+        "We used a multilevel model with students nested within schools. "
+        "The intraclass correlation coefficient ICC = 0.18 indicated that 18% "
+        "of variance was attributable to the school level."
+    )
+    result = validate_multilevel_icc_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_flat_model_no_multilevel_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multilevel_icc_reporting
+
+    ms, cl = _mlm_ms(
+        "Ordinary least squares regression was used to predict exam performance "
+        "from hours of study, treating all observations as independent."
+    )
+    result = validate_multilevel_icc_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_multilevel_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multilevel_icc_reporting
+
+    ms, cl = _mlm_ms("Multilevel models are discussed in this framework.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multilevel_icc_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 245 – validate_citation_currency
+# ---------------------------------------------------------------------------
+
+def _cite_currency_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cite-currency",
+            source_path="/tmp/cite_currency.md",
+            source_format="markdown",
+            title="Citation Currency Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_old_citation_without_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_citation_currency
+
+    ms, cl = _cite_currency_ms(
+        "Depression prevalence increases with age (Smith, 1972) and is strongly "
+        "linked to socioeconomic status (Jones & Brown, 1968)."
+    )
+    result = validate_citation_currency(ms, cl)
+    assert any(f.code == "potentially-outdated-citation" for f in result.findings)
+
+
+def test_old_citation_with_foundational_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_currency
+
+    ms, cl = _cite_currency_ms(
+        "This classic framework, originally proposed by Seligman (1975), "
+        "has been foundational to subsequent research on learned helplessness."
+    )
+    result = validate_citation_currency(ms, cl)
+    assert result.findings == []
+
+
+def test_recent_citations_only_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_currency
+
+    ms, cl = _cite_currency_ms(
+        "Depression prevalence increases with age (Smith, 2018) and is linked "
+        "to socioeconomic status (Jones & Brown, 2020)."
+    )
+    result = validate_citation_currency(ms, cl)
+    assert result.findings == []
+
+
+def test_citation_currency_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_citation_currency
+
+    ms, cl = _cite_currency_ms("The seminal work (Author, 1975) is discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_citation_currency(ms, cl)
+    assert result.findings == []
