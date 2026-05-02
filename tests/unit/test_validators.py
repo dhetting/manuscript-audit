@@ -11846,3 +11846,340 @@ def test_gratuitous_non_empirical_no_fire() -> None:
     )
     result = validate_gratuitous_significance_language(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 221 – validate_unit_of_analysis_clarity
+# ---------------------------------------------------------------------------
+
+def _unit_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-unit",
+            source_path="/tmp/unit.md",
+            source_format="markdown",
+            title="Unit of Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nested_without_unit_fires() -> None:
+    from manuscript_audit.validators.core import validate_unit_of_analysis_clarity
+
+    ms, cl = _unit_ms(
+        "Students nested within classrooms were assessed on mathematics achievement. "
+        "OLS regression was used to predict scores."
+    )
+    result = validate_unit_of_analysis_clarity(ms, cl)
+    assert any(f.code == "unclear-unit-of-analysis" for f in result.findings)
+
+
+def test_nested_with_mlm_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_unit_of_analysis_clarity
+
+    ms, cl = _unit_ms(
+        "Students nested within classrooms were assessed. "
+        "We used HLM to account for the multilevel data structure, with students "
+        "at level 1 and classrooms at level 2."
+    )
+    result = validate_unit_of_analysis_clarity(ms, cl)
+    assert result.findings == []
+
+
+def test_no_nesting_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_unit_of_analysis_clarity
+
+    ms, cl = _unit_ms(
+        "We recruited 200 adults from the community and administered an online survey."
+    )
+    result = validate_unit_of_analysis_clarity(ms, cl)
+    assert result.findings == []
+
+
+def test_unit_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_unit_of_analysis_clarity
+
+    ms, cl = _unit_ms("Students nested within classrooms are discussed theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_unit_of_analysis_clarity(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 222 – validate_apriori_preregistration_statement
+# ---------------------------------------------------------------------------
+
+def _prereg222_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-prereg",
+            source_path="/tmp/prereg.md",
+            source_format="markdown",
+            title="Preregistration Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_apriori_hypothesis_without_prereg_fires() -> None:
+    from manuscript_audit.validators.core import validate_apriori_preregistration_statement
+
+    ms, cl = _prereg222_ms(
+        "Our confirmatory analysis tested a priori hypotheses about the effect of "
+        "mindfulness on stress reduction."
+    )
+    result = validate_apriori_preregistration_statement(ms, cl)
+    assert any(f.code == "missing-preregistration-statement" for f in result.findings)
+
+
+def test_apriori_with_prereg_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_apriori_preregistration_statement
+
+    ms, cl = _prereg222_ms(
+        "Our confirmatory analysis tested a priori hypotheses. The study was "
+        "pre-registered on OSF (https://osf.io/xyz)."
+    )
+    result = validate_apriori_preregistration_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_apriori_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_apriori_preregistration_statement
+
+    ms, cl = _prereg222_ms(
+        "This exploratory study examined associations between sleep duration and mood."
+    )
+    result = validate_apriori_preregistration_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_prereg_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_apriori_preregistration_statement
+
+    ms, cl = _prereg222_ms("Confirmatory analysis tested a priori hypotheses.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_apriori_preregistration_statement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 223 – validate_selective_literature_citation
+# ---------------------------------------------------------------------------
+
+def _selective_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-selective",
+            source_path="/tmp/selective.md",
+            source_format="markdown",
+            title="Selective Citation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_universal_consensus_without_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_selective_literature_citation
+
+    ms, cl = _selective_ms(
+        "Research consistently shows that exercise improves cognitive function. "
+        "All studies confirm this positive relationship."
+    )
+    result = validate_selective_literature_citation(ms, cl)
+    assert any(f.code == "selective-literature-citation" for f in result.findings)
+
+
+def test_consensus_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_selective_literature_citation
+
+    ms, cl = _selective_ms(
+        "Research consistently shows that exercise improves cognitive function. "
+        "However, some studies have found mixed evidence, particularly among older adults."
+    )
+    result = validate_selective_literature_citation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_consensus_language_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_selective_literature_citation
+
+    ms, cl = _selective_ms(
+        "We examined associations between sleep duration and cognitive performance."
+    )
+    result = validate_selective_literature_citation(ms, cl)
+    assert result.findings == []
+
+
+def test_selective_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_selective_literature_citation
+
+    ms, cl = _selective_ms("Research consistently shows positive effects.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_selective_literature_citation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 224 – validate_participant_compensation_disclosure
+# ---------------------------------------------------------------------------
+
+def _compensation_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-compensation",
+            source_path="/tmp/compensation.md",
+            source_format="markdown",
+            title="Compensation Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_compensation_without_amount_fires() -> None:
+    from manuscript_audit.validators.core import validate_participant_compensation_disclosure
+
+    ms, cl = _compensation_ms(
+        "Participants were compensated for their time. Informed consent was obtained."
+    )
+    result = validate_participant_compensation_disclosure(ms, cl)
+    assert any(f.code == "missing-compensation-amount" for f in result.findings)
+
+
+def test_compensation_with_amount_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_participant_compensation_disclosure
+
+    ms, cl = _compensation_ms(
+        "Participants received $15 as compensation for completing the 45-minute session."
+    )
+    result = validate_participant_compensation_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_compensation_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_participant_compensation_disclosure
+
+    ms, cl = _compensation_ms(
+        "Data were collected via an online survey distributed through the university portal."
+    )
+    result = validate_participant_compensation_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_compensation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_participant_compensation_disclosure
+
+    ms, cl = _compensation_ms("Participants were compensated for their time.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_participant_compensation_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 225 – validate_observational_causal_language
+# ---------------------------------------------------------------------------
+
+def _obs_causal_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-obs-causal",
+            source_path="/tmp/obs_causal.md",
+            source_format="markdown",
+            title="Observational Causal Language Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_observational_with_causal_language_fires() -> None:
+    from manuscript_audit.validators.core import validate_observational_causal_language
+
+    ms, cl = _obs_causal_ms(
+        "This cross-sectional study demonstrates that social media use causes "
+        "depression in adolescents."
+    )
+    result = validate_observational_causal_language(ms, cl)
+    assert any(f.code == "overclaimed-causality-observational" for f in result.findings)
+
+
+def test_observational_with_causal_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_observational_causal_language
+
+    ms, cl = _obs_causal_ms(
+        "This cross-sectional study found that social media use was associated with "
+        "depression in adolescents. However, we cannot establish causality from "
+        "cross-sectional data."
+    )
+    result = validate_observational_causal_language(ms, cl)
+    assert result.findings == []
+
+
+def test_rct_no_observational_design_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_observational_causal_language
+
+    ms, cl = _obs_causal_ms(
+        "This RCT demonstrated that the intervention caused a significant reduction "
+        "in anxiety symptoms (p < 0.01)."
+    )
+    result = validate_observational_causal_language(ms, cl)
+    assert result.findings == []
+
+
+def test_observational_causal_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_observational_causal_language
+
+    ms, cl = _obs_causal_ms(
+        "Cross-sectional studies demonstrate that X causes Y."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_observational_causal_language(ms, cl)
+    assert result.findings == []

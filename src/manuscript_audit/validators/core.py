@@ -6729,6 +6729,11 @@ def run_deterministic_validators(
         validate_sampling_frame_description(parsed, classification),
         validate_one_tailed_test_justification(parsed, classification),
         validate_gratuitous_significance_language(parsed, classification),
+        validate_unit_of_analysis_clarity(parsed, classification),
+        validate_apriori_preregistration_statement(parsed, classification),
+        validate_selective_literature_citation(parsed, classification),
+        validate_participant_compensation_disclosure(parsed, classification),
+        validate_observational_causal_language(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -13223,6 +13228,377 @@ def validate_gratuitous_significance_language(
                 ),
                 validator="gratuitous_significance_language",
                 location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 221 – Unclear unit of analysis
+# ---------------------------------------------------------------------------
+
+_UNIT_MISMATCH_TRIGGER_RE = re.compile(
+    r"\b(?:multilevel|nested\s+(?:data|design|structure|model)|"
+    r"hierarchical\s+(?:data|structure|model|design)|"
+    r"clustered\s+(?:data|design|observations?|sample)|"
+    r"students?\s+(?:nested|clustered)\s+(?:within|in)\s+"
+    r"(?:classrooms?|schools?|teachers?|districts?)|"
+    r"patients?\s+(?:nested|clustered)\s+(?:within|in)\s+"
+    r"(?:hospitals?|clinics?|providers?|wards?)|"
+    r"employees?\s+(?:nested|clustered)\s+(?:within|in)\s+"
+    r"(?:teams?|departments?|organisations?|firms?))\b",
+    re.IGNORECASE,
+)
+_UNIT_OF_ANALYSIS_RE = re.compile(
+    r"\b(?:unit\s+of\s+analysis|level\s+of\s+analysis|"
+    r"individual.level|group.level|school.level|classroom.level|"
+    r"patient.level|hospital.level|HLM\b|MLM\b|mixed.effects?\s+model|"
+    r"random.effects?\s+model|fixed.effects?\s+model|"
+    r"within.cluster\s+(?:variance|correlation))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_unit_of_analysis_clarity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag nested/clustered designs without specifying the unit of analysis.
+
+    Emits ``unclear-unit-of-analysis`` (moderate) when nested or clustered
+    data are described but the unit of analysis is not explicitly addressed.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="unit_of_analysis_clarity", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="unit_of_analysis_clarity", findings=[]
+        )
+
+    if not _UNIT_MISMATCH_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="unit_of_analysis_clarity", findings=[]
+        )
+
+    if _UNIT_OF_ANALYSIS_RE.search(full):
+        return ValidationResult(
+            validator_name="unit_of_analysis_clarity", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="unit_of_analysis_clarity",
+        findings=[
+            Finding(
+                code="unclear-unit-of-analysis",
+                severity="moderate",
+                message=(
+                    "Nested or clustered data structure detected but the unit of analysis "
+                    "is not explicitly stated. Clarify whether the analysis is at the "
+                    "individual, group, or cluster level and handle nesting appropriately."
+                ),
+                validator="unit_of_analysis_clarity",
+                location="Methods / Statistical Analysis",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 222 – Missing pre-registration statement
+# ---------------------------------------------------------------------------
+
+_PREREG_TRIGGER_RE = re.compile(
+    r"\b(?:confirmatory\s+(?:analysis|study|test|hypothesis)|"
+    r"hypothesis\s+(?:was|were)\s+(?:generated?|formulated?|specified?)\s+"
+    r"(?:a\s+priori|prior\s+to|before)\s+(?:data\s+collection|analysis)|"
+    r"a\s+priori\s+hypothesis|predicted?\s+(?:that|a)\s+"
+    r"(?:positive|negative|significant|higher|lower)\s+(?:effect|difference|association|relationship))\b",
+    re.IGNORECASE,
+)
+_PREREG_STATEMENT_RE = re.compile(
+    r"\b(?:pre.?register(?:ed|ing)?|AsPredicted|OSF\s+(?:pre.?registration|registration)|"
+    r"registered?\s+(?:at|on|with|via)|ClinicalTrials\.gov|ISRCTN|"
+    r"trial\s+(?:was|is)\s+registered?|pre.?registration\s+(?:at|on|with)|"
+    r"study\s+was\s+pre.?registered?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_apriori_preregistration_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag confirmatory studies without a pre-registration statement.
+
+    Emits ``missing-preregistration-statement`` (moderate) when a priori
+    hypotheses are claimed but no pre-registration URL or registry is cited.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="apriori_preregistration_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="apriori_preregistration_statement", findings=[]
+        )
+
+    if not _PREREG_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="apriori_preregistration_statement", findings=[]
+        )
+
+    if _PREREG_STATEMENT_RE.search(full):
+        return ValidationResult(
+            validator_name="apriori_preregistration_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="apriori_preregistration_statement",
+        findings=[
+            Finding(
+                code="missing-preregistration-statement",
+                severity="moderate",
+                message=(
+                    "Confirmatory a priori hypothesis language detected but no "
+                    "pre-registration (OSF, ClinicalTrials.gov, etc.) is cited. "
+                    "Pre-register confirmatory studies and provide the registration link."
+                ),
+                validator="preregistration_statement",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 223 – Selective citation of supporting literature
+# ---------------------------------------------------------------------------
+
+_CONSISTENT_CITE_RE = re.compile(
+    r"\b(?:consistently\s+(?:shows?|found?|demonstrated?|supports?|confirms?)|"
+    r"universally\s+(?:agreed?|accepted?|supported?)|"
+    r"overwhelmingly\s+(?:supports?|shows?|found?|demonstrated?)|"
+    r"all\s+(?:studies|research|evidence|literature)\s+(?:shows?|found?|agree|support)|"
+    r"no\s+study\s+has\s+(?:found?|reported?|shown?)\s+"
+    r"(?:a\s+)?(?:null|negative|opposing|contradictory)\s+(?:result|effect|finding))\b",
+    re.IGNORECASE,
+)
+_SELECTIVE_CITE_CAVEAT_RE = re.compile(
+    r"\b(?:some\s+(?:studies|research|evidence|authors?|researchers?)|"
+    r"mixed\s+(?:evidence|results?|findings?)|"
+    r"inconsistent\s+(?:evidence|results?|findings?)|"
+    r"contrary\s+(?:evidence|findings?|results?)|"
+    r"however|nevertheless|although|despite|notwithstanding|"
+    r"in\s+contrast|on\s+the\s+other\s+hand)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_selective_literature_citation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts that claim universal consensus without acknowledging contrary evidence.
+
+    Emits ``selective-literature-citation`` (minor) when language implies
+    all literature agrees but no caveats about mixed or contrary findings appear.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="selective_literature_citation", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="selective_literature_citation", findings=[]
+        )
+
+    if not _CONSISTENT_CITE_RE.search(full):
+        return ValidationResult(
+            validator_name="selective_literature_citation", findings=[]
+        )
+
+    if _SELECTIVE_CITE_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="selective_literature_citation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="selective_literature_citation",
+        findings=[
+            Finding(
+                code="selective-literature-citation",
+                severity="minor",
+                message=(
+                    "Language implying universal consensus in the literature is used "
+                    "without acknowledging contrary or mixed findings. "
+                    "Review the literature for opposing evidence and note any inconsistencies."
+                ),
+                validator="selective_literature_citation",
+                location="Introduction / Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 224 – Missing participant compensation / incentive disclosure
+# ---------------------------------------------------------------------------
+
+_COMPENSATION_TRIGGER_RE = re.compile(
+    r"\b(?:participants?\s+(?:were\s+)?(?:paid|compensated?|reimbursed?|rewarded?|"
+    r"received?\s+(?:payment|compensation|reimbursement|reward|credit|points?))|"
+    r"(?:paid|compensated?|reimbursed?)\s+(?:participants?|volunteers?|subjects?)|"
+    r"monetary\s+compensation|gift\s+card|course\s+credit|extra\s+credit|"
+    r"payment\s+(?:was|were)\s+(?:provided?|offered?|given?)|"
+    r"incentive\s+(?:was|were)\s+(?:provided?|offered?|given?))\b",
+    re.IGNORECASE,
+)
+_COMPENSATION_AMOUNT_RE = re.compile(
+    r"\b(?:\$\s*\d+|\€\s*\d+|£\s*\d+|\d+\s*(?:dollars?|euros?|pounds?)|"
+    r"\d+\s*(?:course\s+)?credits?|\d+\s*(?:points?|tokens?)|"
+    r"\d+\s*(?:USD|GBP|EUR)\b|"
+    r"(?:no\s+compensation|not\s+compensated?|unpaid|volunteer(?:ed)?|"
+    r"no\s+(?:monetary\s+)?incentive))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_participant_compensation_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies mentioning compensation without disclosing the amount.
+
+    Emits ``missing-compensation-amount`` (minor) when participant compensation
+    is mentioned but no specific amount or type is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="participant_compensation_disclosure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="participant_compensation_disclosure", findings=[]
+        )
+
+    if not _COMPENSATION_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="participant_compensation_disclosure", findings=[]
+        )
+
+    if _COMPENSATION_AMOUNT_RE.search(full):
+        return ValidationResult(
+            validator_name="participant_compensation_disclosure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="participant_compensation_disclosure",
+        findings=[
+            Finding(
+                code="missing-compensation-amount",
+                severity="minor",
+                message=(
+                    "Participant compensation is mentioned but the specific amount, "
+                    "type (cash, gift card, course credit), or value is not disclosed. "
+                    "Report the exact compensation provided."
+                ),
+                validator="participant_compensation_disclosure",
+                location="Participants / Ethics",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 225 – Overclaiming causal language in observational studies
+# ---------------------------------------------------------------------------
+
+_OBSERVATIONAL_DESIGN_RE = re.compile(
+    r"\b(?:cross.?sectional|longitudinal\s+(?:survey|study|cohort)|observational\s+(?:study|design|data)|"
+    r"survey\s+(?:study|data|design)|secondary\s+data\s+analysis|"
+    r"archival\s+(?:data|study)|retrospective\s+(?:study|analysis|cohort))\b",
+    re.IGNORECASE,
+)
+_CAUSAL_CLAIM_RE = re.compile(
+    r"\b(?:causes?\b|caused?\s+(?:by|a\s+)?|causally?|causation\b|"
+    r"(?:our\s+)?(?:results?|findings?|data|study)\s+(?:shows?|demonstrates?|"
+    r"proves?|establishes?)\s+(?:that\s+)?(?:\w+\s+){0,4}(?:causes?|causes?\s+a)\b|"
+    r"impact\s+of\s+\w+\s+on\s+\w+\s+(?:was|were)\s+(?:found|observed|demonstrated)|"
+    r"effect\s+of\s+\w+\s+on\s+\w+\s+(?:was|were)\s+established?)\b",
+    re.IGNORECASE,
+)
+_CAUSAL_CAVEAT_RE = re.compile(
+    r"\b(?:association\b|correlation\b|related?\s+to|linked?\s+to|"
+    r"cannot\s+(?:establish|infer|determine)\s+causality?|"
+    r"causal\s+(?:inference|claims?|interpretation)\s+(?:cannot|should\s+not)|"
+    r"longitudinal\s+designs?\s+(?:are\s+needed?|required?|would\s+be)|"
+    r"future\s+(?:experiment(?:al)?|RCT|randomized)\s+(?:studies?|research)\s+(?:are\s+needed?|required?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_observational_causal_language(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag causal language in observational studies without appropriate caveats.
+
+    Emits ``overclaimed-causality-observational`` (major) when causal language
+    is used in an observational or cross-sectional study without caveats.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="observational_causal_language", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="observational_causal_language", findings=[]
+        )
+
+    if not _OBSERVATIONAL_DESIGN_RE.search(full):
+        return ValidationResult(
+            validator_name="observational_causal_language", findings=[]
+        )
+
+    if not _CAUSAL_CLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="observational_causal_language", findings=[]
+        )
+
+    if _CAUSAL_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="observational_causal_language", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="observational_causal_language",
+        findings=[
+            Finding(
+                code="overclaimed-causality-observational",
+                severity="major",
+                message=(
+                    "Causal language used in an observational study without appropriate "
+                    "caveats. Cross-sectional and observational designs do not support "
+                    "causal inference. Use associational language and acknowledge the limitation."
+                ),
+                validator="observational_causal_language",
+                location="Discussion / Conclusion",
                 evidence=[],
             )
         ],
