@@ -6914,6 +6914,11 @@ def run_deterministic_validators(
         validate_annotation_agreement_reporting(parsed, classification),
         validate_crowdsourcing_quality_control(parsed, classification),
         validate_active_learning_strategy(parsed, classification),
+    validate_model_card_presence(parsed, classification),
+    validate_negative_control_reporting(parsed, classification),
+    validate_uncertainty_terminology_clarity(parsed, classification),
+    validate_data_versioning(parsed, classification),
+    validate_code_run_example(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -6980,6 +6985,203 @@ def validate_methods_section_presence(
                     "A clearly labeled Methods section is required for reproducibility."
                 ),
                 validator="methods_section_presence",
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# New validators: Phase 15 additions
+# ---------------------------------------------------------------------------
+
+# Model card presence: require a "model card" when a model is claimed
+_MODEL_TRIGGER_RE = re.compile(
+    r"\b(model|classifier|neural\s+network|random\s+forest|xgboost|gradient\s+boost|svm|cnn|rnn)\b",
+    re.IGNORECASE,
+)
+_MODEL_CARD_RE = re.compile(r"\bmodel[- ]?card\b", re.IGNORECASE)
+
+
+def validate_model_card_presence(
+    parsed: ParsedManuscript, classification: ManuscriptClassification
+) -> ValidationResult:
+    _vid = "validate_model_card_presence"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _MODEL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _MODEL_CARD_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-model-card",
+                message=(
+                    "Paper introduces or describes a predictive model but no "
+                    "model card or equivalent model documentation is provided."
+                ),
+                severity="minor",
+                validator=_vid,
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# Negative control / falsification reporting for causal claims
+_CAUSAL_TRIGGER_RE = re.compile(
+    r"\b(causal\s+inference|treatment\s+effect|causal\s+effect|"
+    r"difference[- ]in[- ]differences|did|instrumental\s+variable|synthetic\s+control)\b",
+    re.IGNORECASE,
+)
+_NEG_CTRL_RE = re.compile(
+    r"\b(negative\s+control|placebo\s+test|falsification\s+test)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_negative_control_reporting(
+    parsed: ParsedManuscript, classification: ManuscriptClassification
+) -> ValidationResult:
+    _vid = "validate_negative_control_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _CAUSAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _NEG_CTRL_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-negative-control",
+                message=(
+                    "Causal claims or treatment effects are discussed but no "
+                    "negative control or falsification test is reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+                location="Methods",
+            )
+        ],
+    )
+
+
+# Uncertainty terminology clarity: mention of uncertainty without quantification
+_UNCERTAINTY_TRIGGER_RE = re.compile(
+    r"\b(uncertainty|uncertain|uncertainties)\b",
+    re.IGNORECASE,
+)
+_UNCERTAINTY_QUANT_RE = re.compile(
+    r"\b("
+    r"confidence\s+interval|credible\s+interval|standard\s+error|SE\b|CI\b|"
+    r"prediction\s+interval|posterior\s+predictive)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_uncertainty_terminology_clarity(
+    parsed: ParsedManuscript, classification: ManuscriptClassification
+) -> ValidationResult:
+    _vid = "validate_uncertainty_terminology_clarity"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _UNCERTAINTY_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _UNCERTAINTY_QUANT_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-uncertainty-quantification",
+                message=(
+                    "Uncertainty is discussed but not quantified (no CIs/SEs/"
+                    "credible intervals or prediction intervals)."
+                ),
+                severity="minor",
+                validator=_vid,
+                location="manuscript",
+            )
+        ],
+    )
+
+
+# Data versioning: require version/DOI or accession when datasets are used
+_DATASET_TRIGGER_RE = re.compile(
+    r"\b(dataset|data\s+set|data\s+repository|data\s+source)\b",
+    re.IGNORECASE,
+)
+_DATA_VERSION_RE = re.compile(
+    r"\b(version\s*v?\d+|doi:\s*10\.|doi\.org|zenodo|figshare|osf\.io|accession\s+number)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_data_versioning(
+    parsed: ParsedManuscript, classification: ManuscriptClassification
+) -> ValidationResult:
+    _vid = "validate_data_versioning"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _DATASET_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _DATA_VERSION_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-data-version",
+                message=(
+                    "Datasets are used but no version, DOI, or accession number is "
+                    "provided for deterministic reference."
+                ),
+                severity="minor",
+                validator=_vid,
+                location="Methods",
+            )
+        ],
+    )
+
+
+# Code run example: require at least a short runnable example when repo is provided
+_CODE_AVAIL_RE = re.compile(
+    r"\b(github\.com|gitlab\.com|bitbucket\.org|repository)\b",
+    re.IGNORECASE,
+)
+_RUN_EXAMPLE_RE = re.compile(
+    r"(python\s+-m|pip\s+install|docker\s+run|singularity|make\s+run|python\s+script)",
+    re.IGNORECASE,
+)
+
+
+def validate_code_run_example(
+    parsed: ParsedManuscript, classification: ManuscriptClassification
+) -> ValidationResult:
+    _vid = "validate_code_run_example"
+    text = parsed.full_text or ""
+    if not _CODE_AVAIL_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _RUN_EXAMPLE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-code-run-example",
+                message=(
+                    "Code repository is referenced but no minimal run example or "
+                    "installation instruction is provided." 
+                ),
+                severity="minor",
+                validator=_vid,
                 location="manuscript",
             )
         ],
