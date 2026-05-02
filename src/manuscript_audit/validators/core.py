@@ -7128,6 +7128,11 @@ def run_deterministic_validators(
         validate_gaze_estimation_metrics(parsed, classification),
         validate_action_quality_assessment_metrics(parsed, classification),
         validate_sign_language_recognition_metrics(parsed, classification),
+        validate_lip_reading_metrics(parsed, classification),
+        validate_erc_metrics(parsed, classification),
+        validate_multimodal_emotion_recognition_metrics(parsed, classification),
+        validate_avsr_metrics(parsed, classification),
+        validate_speaker_diarization_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -34673,6 +34678,240 @@ def validate_sign_language_recognition_metrics(
                 ),
                 location="full_text",
                 validator=_SLR620_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 621 – lip reading / visual speech recognition evaluation
+# ---------------------------------------------------------------------------
+_LIPREAD621_VID = "missing-lip-reading-metrics"
+
+_LIPREAD621_TRIGGERS = re.compile(
+    r"\b(?:lip\s+reading|visual\s+speech\s+recognition|lipreading|"
+    r"lip[- ]?sync|LRS[23]\b|LRW\b|GRID\s+(?:corpus|dataset)|"
+    r"audio[- ]visual\s+speech)\b",
+    re.IGNORECASE,
+)
+_LIPREAD621_METRICS = re.compile(
+    r"\b(?:WER|word\s+error\s+rate|CER|accuracy|Top[- ]?1)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:WER|accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_lip_reading_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_LIPREAD621_VID, findings=[])
+    text = parsed.full_text
+    if not _LIPREAD621_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_LIPREAD621_VID, findings=[])
+    if _LIPREAD621_METRICS.search(text):
+        return ValidationResult(validator_name=_LIPREAD621_VID, findings=[])
+    return ValidationResult(
+        validator_name=_LIPREAD621_VID,
+        findings=[
+            Finding(
+                code=_LIPREAD621_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses lip reading but does not report "
+                    "WER or accuracy on LRS2/LRS3/LRW."
+                ),
+                location="full_text",
+                validator=_LIPREAD621_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 622 – emotion recognition in conversation evaluation
+# ---------------------------------------------------------------------------
+_ERC622_VID = "missing-erc-metrics"
+
+_ERC622_TRIGGERS = re.compile(
+    r"\b(?:emotion\s+recognition\s+in\s+conversation|ERC\b|"
+    r"IEMOCAP|MELD\s+(?:dataset|corpus)|EmoryNLP|"
+    r"conversational\s+emotion\s+recognition)\b",
+    re.IGNORECASE,
+)
+_ERC622_METRICS = re.compile(
+    r"\b(?:weighted\s+F1|W-F1|micro[- ]F1|macro[- ]F1|"
+    r"weighted\s+average\s+F1)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:F1|accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_erc_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ERC622_VID, findings=[])
+    text = parsed.full_text
+    if not _ERC622_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ERC622_VID, findings=[])
+    if _ERC622_METRICS.search(text):
+        return ValidationResult(validator_name=_ERC622_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ERC622_VID,
+        findings=[
+            Finding(
+                code=_ERC622_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses emotion recognition in conversation but does "
+                    "not report weighted-F1 on IEMOCAP/MELD."
+                ),
+                location="full_text",
+                validator=_ERC622_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 623 – multimodal emotion recognition evaluation
+# ---------------------------------------------------------------------------
+_MMEMO623_VID = "missing-multimodal-emotion-recognition-metrics"
+
+_MMEMO623_TRIGGERS = re.compile(
+    r"\b(?:multimodal\s+emotion\s+(?:recognition|analysis)|"
+    r"CMU[- ]MOSI|CMU[- ]MOSEI|MER\s+(?:dataset|challenge)|"
+    r"multimodal\s+sentiment\s+analysis)\b",
+    re.IGNORECASE,
+)
+_MMEMO623_METRICS = re.compile(
+    r"\b(?:MAE|Pearson|binary\s+accuracy|F1|weighted[- ]F1|Acc[- ]2|Acc[- ]7)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*(?:MAE|Pearson|F1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multimodal_emotion_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MMEMO623_VID, findings=[])
+    text = parsed.full_text
+    if not _MMEMO623_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MMEMO623_VID, findings=[])
+    if _MMEMO623_METRICS.search(text):
+        return ValidationResult(validator_name=_MMEMO623_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MMEMO623_VID,
+        findings=[
+            Finding(
+                code=_MMEMO623_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses multimodal emotion recognition but does not "
+                    "report MAE, Pearson correlation, or F1 on CMU-MOSI/MOSEI."
+                ),
+                location="full_text",
+                validator=_MMEMO623_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 624 – audio-visual speech recognition evaluation
+# ---------------------------------------------------------------------------
+_AVSR624_VID = "missing-avsr-metrics"
+
+_AVSR624_TRIGGERS = re.compile(
+    r"\b(?:audio[- ]visual\s+speech\s+recognition|AVSR\b|"
+    r"AV[- ]HuBERT|VoxCeleb[12]\b|LRS3[- ]TED|"
+    r"audio[- ]visual\s+automatic\s+speech)\b",
+    re.IGNORECASE,
+)
+_AVSR624_METRICS = re.compile(
+    r"\b(?:WER|word\s+error\s+rate|CER|accuracy)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:WER|CER)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_avsr_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AVSR624_VID, findings=[])
+    text = parsed.full_text
+    if not _AVSR624_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_AVSR624_VID, findings=[])
+    if _AVSR624_METRICS.search(text):
+        return ValidationResult(validator_name=_AVSR624_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AVSR624_VID,
+        findings=[
+            Finding(
+                code=_AVSR624_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses audio-visual speech recognition but does not "
+                    "report WER on LRS3/VoxCeleb."
+                ),
+                location="full_text",
+                validator=_AVSR624_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 625 – speaker diarization evaluation
+# ---------------------------------------------------------------------------
+_SPKDIAR625_VID = "missing-speaker-diarization-metrics"
+
+_SPKDIAR625_TRIGGERS = re.compile(
+    r"\b(?:speaker\s+diarization|diarization\s+error|"
+    r"CALLHOME|AMI\s+(?:corpus|dataset)|VoxConverse|"
+    r"DIHARD|who\s+spoke\s+when)\b",
+    re.IGNORECASE,
+)
+_SPKDIAR625_METRICS = re.compile(
+    r"\b(?:DER|diarization\s+error\s+rate|JER|Jaccard\s+error\s+rate)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:DER|JER)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_speaker_diarization_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SPKDIAR625_VID, findings=[])
+    text = parsed.full_text
+    if not _SPKDIAR625_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SPKDIAR625_VID, findings=[])
+    if _SPKDIAR625_METRICS.search(text):
+        return ValidationResult(validator_name=_SPKDIAR625_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SPKDIAR625_VID,
+        findings=[
+            Finding(
+                code=_SPKDIAR625_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses speaker diarization but does not report "
+                    "DER on CALLHOME/AMI/DIHARD."
+                ),
+                location="full_text",
+                validator=_SPKDIAR625_VID,
             )
         ],
     )

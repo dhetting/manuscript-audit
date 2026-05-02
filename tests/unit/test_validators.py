@@ -36575,3 +36575,256 @@ def test_slr620_non_empirical_no_fire() -> None:
     )
     r = validate_sign_language_recognition_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 621 – validate_lip_reading_metrics
+# ---------------------------------------------------------------------------
+def _lipread621_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t621", source_path="t621.md", source_format="markdown",
+            title="Lip reading", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lipread621_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_lip_reading_metrics
+    ms, cl = _lipread621_ms("We propose a lip reading model on LRS2.")
+    r = validate_lip_reading_metrics(ms, cl)
+    assert any(f.code == "missing-lip-reading-metrics" for f in r.findings)
+
+
+def test_lipread621_no_fire_when_wer_reported() -> None:
+    from manuscript_audit.validators.core import validate_lip_reading_metrics
+    ms, cl = _lipread621_ms("Lip reading: WER = 28.4% on LRS2 dataset.")
+    r = validate_lip_reading_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lipread621_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_lip_reading_metrics
+    ms, cl = _lipread621_ms("We study crowd counting methods.")
+    r = validate_lip_reading_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lipread621_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_lip_reading_metrics
+    ms, _ = _lipread621_ms("Visual speech recognition theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_lip_reading_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 622 – validate_erc_metrics
+# ---------------------------------------------------------------------------
+def _erc622_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t622", source_path="t622.md", source_format="markdown",
+            title="Emotion recognition in conversation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_erc622_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_erc_metrics
+    ms, cl = _erc622_ms(
+        "We propose an ERC model evaluated on IEMOCAP and MELD dataset."
+    )
+    r = validate_erc_metrics(ms, cl)
+    assert any(f.code == "missing-erc-metrics" for f in r.findings)
+
+
+def test_erc622_no_fire_when_wf1_reported() -> None:
+    from manuscript_audit.validators.core import validate_erc_metrics
+    ms, cl = _erc622_ms(
+        "Emotion recognition in conversation: weighted F1 = 68.5% on IEMOCAP."
+    )
+    r = validate_erc_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_erc622_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_erc_metrics
+    ms, cl = _erc622_ms("We study gaze estimation approaches.")
+    r = validate_erc_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_erc622_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_erc_metrics
+    ms, _ = _erc622_ms("Conversational emotion theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_erc_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 623 – validate_multimodal_emotion_recognition_metrics
+# ---------------------------------------------------------------------------
+def _mmemo623_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t623", source_path="t623.md", source_format="markdown",
+            title="Multimodal emotion recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mmemo623_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_emotion_recognition_metrics
+    ms, cl = _mmemo623_ms(
+        "We propose a multimodal emotion recognition model on CMU-MOSI."
+    )
+    r = validate_multimodal_emotion_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-multimodal-emotion-recognition-metrics" for f in r.findings)
+
+
+def test_mmemo623_no_fire_when_mae_reported() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_emotion_recognition_metrics
+    ms, cl = _mmemo623_ms(
+        "Multimodal sentiment analysis: MAE = 0.71, Pearson = 0.81 on CMU-MOSI."
+    )
+    r = validate_multimodal_emotion_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_mmemo623_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_emotion_recognition_metrics
+    ms, cl = _mmemo623_ms("We study sign language recognition methods.")
+    r = validate_multimodal_emotion_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_mmemo623_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_emotion_recognition_metrics
+    ms, _ = _mmemo623_ms("Multimodal affective computing theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_multimodal_emotion_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 624 – validate_avsr_metrics
+# ---------------------------------------------------------------------------
+def _avsr624_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t624", source_path="t624.md", source_format="markdown",
+            title="Audio-visual speech recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_avsr624_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_avsr_metrics
+    ms, cl = _avsr624_ms("We propose an AVSR model using AV-HuBERT on LRS3-TED.")
+    r = validate_avsr_metrics(ms, cl)
+    assert any(f.code == "missing-avsr-metrics" for f in r.findings)
+
+
+def test_avsr624_no_fire_when_wer_reported() -> None:
+    from manuscript_audit.validators.core import validate_avsr_metrics
+    ms, cl = _avsr624_ms(
+        "Audio-visual speech recognition: WER = 1.4% on LRS3-TED benchmark."
+    )
+    r = validate_avsr_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_avsr624_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_avsr_metrics
+    ms, cl = _avsr624_ms("We study action quality assessment methods.")
+    r = validate_avsr_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_avsr624_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_avsr_metrics
+    ms, _ = _avsr624_ms("Audio-visual speech theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_avsr_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 625 – validate_speaker_diarization_metrics
+# ---------------------------------------------------------------------------
+def _spkdiar625_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t625", source_path="t625.md", source_format="markdown",
+            title="Speaker diarization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spkdiar625_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_speaker_diarization_metrics
+    ms, cl = _spkdiar625_ms(
+        "We propose a speaker diarization system evaluated on CALLHOME."
+    )
+    r = validate_speaker_diarization_metrics(ms, cl)
+    assert any(f.code == "missing-speaker-diarization-metrics" for f in r.findings)
+
+
+def test_spkdiar625_no_fire_when_der_reported() -> None:
+    from manuscript_audit.validators.core import validate_speaker_diarization_metrics
+    ms, cl = _spkdiar625_ms(
+        "Speaker diarization: DER = 7.3% on AMI corpus (collar 0.25s)."
+    )
+    r = validate_speaker_diarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_spkdiar625_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_speaker_diarization_metrics
+    ms, cl = _spkdiar625_ms("We study lip reading methods.")
+    r = validate_speaker_diarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_spkdiar625_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_speaker_diarization_metrics
+    ms, _ = _spkdiar625_ms("Speaker separation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_speaker_diarization_metrics(ms, cl)
+    assert r.findings == []
