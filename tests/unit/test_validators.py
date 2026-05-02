@@ -18447,3 +18447,348 @@ def test_no_ml_prediction_no_fire_uncertainty() -> None:
     )
     result = validate_ml_uncertainty_quantification(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 316 – validate_class_imbalance_handling
+# ---------------------------------------------------------------------------
+
+def _ci316_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ci316",
+            source_path="/tmp/ci316.md",
+            source_format="markdown",
+            title="Class Imbalance Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_class_imbalance_without_handling_fires() -> None:
+    from manuscript_audit.validators.core import validate_class_imbalance_handling
+
+    ms, cl = _ci316_ms(
+        "The dataset exhibited class imbalance with a 10:1 class ratio "
+        "between negative and positive cases."
+    )
+    result = validate_class_imbalance_handling(ms, cl)
+    assert any(f.code == "missing-class-imbalance-handling" for f in result.findings)
+
+
+def test_class_imbalance_with_smote_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_class_imbalance_handling
+
+    ms, cl = _ci316_ms(
+        "The dataset exhibited class imbalance. We applied SMOTE oversampling "
+        "to balance the training data."
+    )
+    result = validate_class_imbalance_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_class_imbalance_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_class_imbalance_handling
+
+    ms, cl = _ci316_ms(
+        "The dataset exhibited class imbalance with a 10:1 class ratio."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_class_imbalance_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_class_imbalance_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_class_imbalance_handling
+
+    ms, cl = _ci316_ms(
+        "We conducted a randomised controlled trial with balanced assignment."
+    )
+    result = validate_class_imbalance_handling(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 317 – validate_model_calibration_reporting
+# ---------------------------------------------------------------------------
+
+def _cal317_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cal317",
+            source_path="/tmp/cal317.md",
+            source_format="markdown",
+            title="Model Calibration Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_probabilistic_model_without_calibration_fires() -> None:
+    from manuscript_audit.validators.core import validate_model_calibration_reporting
+
+    ms, cl = _cal317_ms(
+        "We used logistic regression to produce probability estimates for each "
+        "participant. The ROC curve achieved AUC-ROC = 0.82."
+    )
+    result = validate_model_calibration_reporting(ms, cl)
+    assert any(f.code == "missing-model-calibration" for f in result.findings)
+
+
+def test_probabilistic_model_with_brier_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_model_calibration_reporting
+
+    ms, cl = _cal317_ms(
+        "Logistic regression produced probability estimates. Calibration was "
+        "assessed using the Brier score (0.12) and a calibration curve."
+    )
+    result = validate_model_calibration_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_calibration_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_model_calibration_reporting
+
+    ms, cl = _cal317_ms(
+        "We used logistic regression to produce probability estimates."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_model_calibration_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_probabilistic_model_no_fire_calibration() -> None:
+    from manuscript_audit.validators.core import validate_model_calibration_reporting
+
+    ms, cl = _cal317_ms(
+        "We computed descriptive statistics and conducted between-group t-tests."
+    )
+    result = validate_model_calibration_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 318 – validate_fairness_metric_reporting
+# ---------------------------------------------------------------------------
+
+def _fair318_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fair318",
+            source_path="/tmp/fair318.md",
+            source_format="markdown",
+            title="Fairness Metric Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sensitive_attribute_without_fairness_metric_fires() -> None:
+    from manuscript_audit.validators.core import validate_fairness_metric_reporting
+
+    ms, cl = _fair318_ms(
+        "The classifier was trained to predict loan default. Racial and gender "
+        "attributes were included as predictors."
+    )
+    result = validate_fairness_metric_reporting(ms, cl)
+    assert any(f.code == "missing-fairness-metrics" for f in result.findings)
+
+
+def test_sensitive_attribute_with_fairness_metric_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fairness_metric_reporting
+
+    ms, cl = _fair318_ms(
+        "The classifier was trained to predict loan default. We assessed demographic "
+        "parity and equalised odds across gender groups."
+    )
+    result = validate_fairness_metric_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_fairness_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fairness_metric_reporting
+
+    ms, cl = _fair318_ms(
+        "The classifier uses racial and gender attributes as predictors."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_fairness_metric_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sensitive_attribute_no_fire_fairness() -> None:
+    from manuscript_audit.validators.core import validate_fairness_metric_reporting
+
+    ms, cl = _fair318_ms(
+        "We trained a regression model to predict test scores from prior grades."
+    )
+    result = validate_fairness_metric_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 319 – validate_transfer_learning_disclosure
+# ---------------------------------------------------------------------------
+
+def _tl319_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-tl319",
+            source_path="/tmp/tl319.md",
+            source_format="markdown",
+            title="Transfer Learning Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_transfer_learning_without_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_transfer_learning_disclosure
+
+    ms, cl = _tl319_ms(
+        "We fine-tuned BERT for the sentiment classification task."
+    )
+    result = validate_transfer_learning_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-transfer-learning-disclosure" for f in result.findings
+    )
+
+
+def test_transfer_learning_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_transfer_learning_disclosure
+
+    ms, cl = _tl319_ms(
+        "We fine-tuned on the clinical notes from our institution starting from "
+        "BERT pretrained weights. The final three layers were fine-tuned while "
+        "earlier layers were frozen."
+    )
+    result = validate_transfer_learning_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_transfer_learning_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_transfer_learning_disclosure
+
+    ms, cl = _tl319_ms(
+        "We fine-tuned BERT for the sentiment classification task."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_transfer_learning_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_transfer_learning_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_transfer_learning_disclosure
+
+    ms, cl = _tl319_ms(
+        "We trained a logistic regression model from scratch on the collected data."
+    )
+    result = validate_transfer_learning_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 320 – validate_cross_validation_strategy
+# ---------------------------------------------------------------------------
+
+def _cv320_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cv320",
+            source_path="/tmp/cv320.md",
+            source_format="markdown",
+            title="Cross-Validation Strategy Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cv_without_strategy_fires() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_strategy
+
+    ms, cl = _cv320_ms(
+        "Model performance was evaluated using cross-validation accuracy."
+    )
+    result = validate_cross_validation_strategy(ms, cl)
+    assert any(f.code == "missing-cv-strategy" for f in result.findings)
+
+
+def test_cv_with_strategy_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_strategy
+
+    ms, cl = _cv320_ms(
+        "Model performance was evaluated using stratified 5-fold cross-validation."
+    )
+    result = validate_cross_validation_strategy(ms, cl)
+    assert result.findings == []
+
+
+def test_cv_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_strategy
+
+    ms, cl = _cv320_ms(
+        "Model performance was evaluated using cross-validation accuracy."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cross_validation_strategy(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cv_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_validation_strategy
+
+    ms, cl = _cv320_ms(
+        "We conducted a between-subjects ANOVA on the collected survey data."
+    )
+    result = validate_cross_validation_strategy(ms, cl)
+    assert result.findings == []

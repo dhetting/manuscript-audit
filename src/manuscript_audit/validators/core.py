@@ -6822,6 +6822,11 @@ def run_deterministic_validators(
         validate_feature_importance_method(parsed, classification),
         validate_data_leakage_prevention(parsed, classification),
         validate_ml_uncertainty_quantification(parsed, classification),
+        validate_class_imbalance_handling(parsed, classification),
+        validate_model_calibration_reporting(parsed, classification),
+        validate_fairness_metric_reporting(parsed, classification),
+        validate_transfer_learning_disclosure(parsed, classification),
+        validate_cross_validation_strategy(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -19236,6 +19241,308 @@ def validate_ml_uncertainty_quantification(
                     "quantification (e.g., confidence intervals, prediction intervals, "
                     "calibration) is reported. Include uncertainty estimates to support "
                     "evidence-based interpretation."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 316 – validate_class_imbalance_handling
+# ---------------------------------------------------------------------------
+
+_CLASS_IMBALANCE_TRIGGER_RE = re.compile(
+    r"\b(?:class\s+imbalance|imbalanced\s+(?:dataset|data|classes?)|"
+    r"imbalanced\s+class(?:es)?|minority\s+class|majority\s+class|"
+    r"class\s+distribution\s+was\s+(?:skewed|unequal|unbalanced)|"
+    r"(?:\d+)\s*:\s*(?:\d+)\s+class\s+ratio|"
+    r"rare\s+(?:class|outcome|event)\s+(?:with|of|in))\b",
+    re.IGNORECASE,
+)
+_IMBALANCE_ADDRESSED_RE = re.compile(
+    r"\b(?:SMOTE\b|oversampling|undersampling|class\s+weight(?:ing)?|"
+    r"weighted\s+loss|cost[\s-]sensitive|balanced\s+class\s+weight|"
+    r"stratified\s+(?:sampling|split|k[\s-]?fold)|"
+    r"resampling\s+(?:strategy|method)|"
+    r"synthetic\s+(?:minority|samples?)|"
+    r"ADASYN\b|BorderlineSMOTE\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_class_imbalance_handling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag class imbalance acknowledgement without mitigation disclosure.
+
+    Emits ``missing-class-imbalance-handling`` (minor) when class imbalance
+    is noted but no handling strategy is described.
+    """
+    _vid = "validate_class_imbalance_handling"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _CLASS_IMBALANCE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _IMBALANCE_ADDRESSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-class-imbalance-handling",
+                severity="minor",
+                message=(
+                    "Class imbalance is noted but no handling strategy is described. "
+                    "Report whether oversampling, undersampling, class weighting, or "
+                    "stratified sampling was used to address the imbalance."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 317 – validate_model_calibration_reporting
+# ---------------------------------------------------------------------------
+
+_PROBABILISTIC_MODEL_TRIGGER_RE = re.compile(
+    r"\b(?:probability\s+(?:estimates?|scores?|predictions?|outputs?)|"
+    r"predicted\s+probability|predicted\s+probabilities|"
+    r"logistic\s+regression|naive\s+Bayes|probabilistic\s+(?:classifier|model)|"
+    r"ROC\s+curve|AUC[\s-]ROC|area\s+under\s+(?:the\s+)?(?:ROC\s+)?curve)\b",
+    re.IGNORECASE,
+)
+_CALIBRATION_REPORTED_RE = re.compile(
+    r"\b(?:calibrat(?:ion|ed|ing)\s+(?:the\s+)?(?:model|classifier|probabilities?)|"
+    r"calibration\s+(?:curve|plot|error|metric)|"
+    r"Brier\s+score|reliability\s+diagram|"
+    r"Platt\s+scal(?:ing|ed)|isotonic\s+regression\s+calibrat|"
+    r"expected\s+calibration\s+error|ECE\b|MCE\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_model_calibration_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag probabilistic models without calibration assessment.
+
+    Emits ``missing-model-calibration`` (minor) when probability estimates
+    are produced but calibration is not assessed or reported.
+    """
+    _vid = "validate_model_calibration_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _PROBABILISTIC_MODEL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _CALIBRATION_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-model-calibration",
+                severity="minor",
+                message=(
+                    "Probability estimates are produced but model calibration is not "
+                    "assessed. Report calibration metrics (e.g., Brier score, "
+                    "calibration curve) to validate probability accuracy."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 318 – validate_fairness_metric_reporting
+# ---------------------------------------------------------------------------
+
+_FAIRNESS_CONTEXT_TRIGGER_RE = re.compile(
+    r"\b(?:sensitive\s+attribute|protected\s+(?:attribute|group|characteristic)|"
+    r"demographic\s+(?:group|parity|equity)|"
+    r"racial|ethnic|gender|sex[\s,]|age\s+group|socioeconomic|"
+    r"disparity\s+(?:in|across|between)|"
+    r"disparate\s+impact|equal(?:ised?)?\s+odds|"
+    r"algorithmic\s+(?:bias|fairness))\b",
+    re.IGNORECASE,
+)
+_FAIRNESS_METRICS_RE = re.compile(
+    r"\b(?:demographic\s+parity|equalised?\s+odds|equal\s+opportunity|"
+    r"predictive\s+parity|individual\s+fairness|"
+    r"disparate\s+impact\s+ratio|fairness\s+metric|"
+    r"false\s+positive\s+rate\s+(?:by|across|for)\s+(?:group|subgroup|race|gender)|"
+    r"subgroup\s+performance|performance\s+(?:gap|difference)\s+across\s+groups?|"
+    r"bias\s+audit)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_fairness_metric_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag models involving sensitive attributes without fairness metrics.
+
+    Emits ``missing-fairness-metrics`` (minor) when a model involves
+    sensitive/protected attributes but fairness metrics are not reported.
+    """
+    _vid = "validate_fairness_metric_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _FAIRNESS_CONTEXT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _FAIRNESS_METRICS_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-fairness-metrics",
+                severity="minor",
+                message=(
+                    "The model involves sensitive or protected attributes but no "
+                    "fairness metrics (e.g., demographic parity, equalised odds) are "
+                    "reported. Include subgroup performance analysis."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 319 – validate_transfer_learning_disclosure
+# ---------------------------------------------------------------------------
+
+_TRANSFER_LEARNING_TRIGGER_RE = re.compile(
+    r"\b(?:transfer\s+learning|fine[\s-]tun(?:ing|ed)|"
+    r"pre[\s-]trained\s+(?:model|network|weights?)|"
+    r"pretrained\s+(?:model|network|weights?)|"
+    r"ImageNet\s+weights?|BERT|GPT|foundation\s+model|"
+    r"domain\s+adaptation)\b",
+    re.IGNORECASE,
+)
+_TRANSFER_DISCLOSED_RE = re.compile(
+    r"\b(?:pre[\s-]trained\s+on\s+|pretrained\s+on\s+|"
+    r"fine[\s-]tuned\s+(?:on|from|using)|"
+    r"source\s+domain|target\s+domain|"
+    r"frozen\s+(?:layers?|weights?)|"
+    r"layers?\s+(?:were\s+)?(?:frozen|unfrozen|fine[\s-]tuned)|"
+    r"(?:ImageNet|BERT|GPT|ResNet|VGG)\s+(?:pre[\s-])?trained\s+weights?|"
+    r"checkpoint\s+(?:from|using)|original\s+(?:training\s+)?dataset\s+(?:was|is))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_transfer_learning_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag transfer learning or fine-tuning without source model disclosure.
+
+    Emits ``missing-transfer-learning-disclosure`` (minor) when transfer
+    learning or fine-tuning is used but the source model and adaptation
+    strategy are not disclosed.
+    """
+    _vid = "validate_transfer_learning_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _TRANSFER_LEARNING_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _TRANSFER_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-transfer-learning-disclosure",
+                severity="minor",
+                message=(
+                    "Transfer learning or fine-tuning is used but the source model "
+                    "and adaptation strategy are not disclosed. Specify the pre-trained "
+                    "model, its training data, and which layers were fine-tuned."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 320 – validate_cross_validation_strategy
+# ---------------------------------------------------------------------------
+
+_CV_TRIGGER_RE = re.compile(
+    r"\b(?:cross[\s-]?validat(?:ion|ed|ing)|"
+    r"k[\s-]fold|leave[\s-]one[\s-]out\s+cross|"
+    r"repeated\s+cross[\s-]?validat(?:ion|ed|ing)|"
+    r"nested\s+cross[\s-]?validat(?:ion|ed|ing)|"
+    r"cross[\s-]?validat(?:ion|ed)\s+(?:accuracy|performance|error|AUC))\b",
+    re.IGNORECASE,
+)
+_CV_STRATEGY_DESCRIBED_RE = re.compile(
+    r"\b(?:(?:\d+)[\s-]fold\s+cross[\s-]?validat(?:ion|ed)|"
+    r"leave[\s-]one[\s-]out\s+cross[\s-]?validat(?:ion|ed)|"
+    r"stratified\s+(?:k[\s-]fold|cross[\s-]?validat(?:ion|ed))|"
+    r"repeated\s+(?:\d+)[\s-]fold|nested\s+cross[\s-]?validat(?:ion|ed)|"
+    r"time[\s-]series\s+cross[\s-]?validat(?:ion|ed)|"
+    r"blocked\s+cross[\s-]?validat(?:ion|ed)|"
+    r"group[\s-]k[\s-]fold|GroupKFold\b|TimeSeriesSplit\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cross_validation_strategy(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag cross-validation use without strategy disclosure.
+
+    Emits ``missing-cv-strategy`` (minor) when cross-validation is used but
+    the specific strategy (e.g., 5-fold, stratified) is not described.
+    """
+    _vid = "validate_cross_validation_strategy"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _CV_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _CV_STRATEGY_DESCRIBED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cv-strategy",
+                severity="minor",
+                message=(
+                    "Cross-validation is used but the strategy is not described. "
+                    "Specify the type (e.g., 5-fold, stratified k-fold, leave-one-out) "
+                    "and any special considerations (e.g., temporal ordering, grouping)."
                 ),
                 validator=_vid,
             )
