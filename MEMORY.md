@@ -1254,8 +1254,70 @@ HEAD: `89d9637`
 - Phase 519: `validate_referring_expression_comprehension_metrics` → `missing-referring-expression-comprehension-metrics` (moderate)
 - Phase 520: `validate_cross_modal_retrieval_metrics` → `missing-cross-modal-retrieval-metrics` (moderate)
 
-Current test count: **1866 passing** (after phase 520)
-HEAD: `69056ae`
+**Phases 521–525** (`6cedbb6`, 1886 tests)
+- Phase 521: `validate_emotion_recognition_metrics` → `missing-emotion-recognition-metrics` (moderate)
+- Phase 522: `validate_document_layout_analysis_metrics` → `missing-document-layout-metrics` (moderate)
+- Phase 523: `validate_table_structure_recognition_metrics` → `missing-table-structure-metrics` (moderate)
+- Phase 524: `validate_handwriting_recognition_metrics` → `missing-handwriting-recognition-metrics` (moderate)
+- Phase 525: `validate_entity_normalization_metrics` → `missing-entity-normalization-metrics` (moderate)
+- Bug fix: Cyrillic variable `_НЕНОРМ_VID` → `_NENORM_VID`; duplicate definition removed
+
+**Phases 526–530** (`ac78fcb`, 1906 tests)
+- Phase 526: `validate_relation_extraction_metrics` → `missing-relation-extraction-metrics` (moderate)
+- Phase 527: `validate_event_extraction_metrics` → `missing-event-extraction-metrics` (moderate)
+- Phase 528: `validate_kbqa_metrics` → `missing-kbqa-metrics` (moderate)
+- Phase 529: `validate_dialogue_state_tracking_metrics` → `missing-dialogue-state-tracking-metrics` (moderate)
+- Phase 530: `validate_conversational_qa_metrics` → `missing-conversational-qa-metrics` (moderate)
+
+**Phases 531–535** (`40051be`, 1926 tests)
+- Phase 531: `validate_abstractive_summarization_metrics` → `missing-abstractive-summarization-metrics` (moderate)
+- Phase 532: `validate_text_style_transfer_metrics` → `missing-text-style-transfer-metrics` (moderate)
+- Phase 533: `validate_grammatical_error_correction_metrics` → `missing-gec-metrics` (moderate)
+- Phase 534: `validate_text_simplification_metrics` → `missing-text-simplification-metrics` (moderate)
+- Phase 535: `validate_story_generation_metrics` → `missing-story-generation-metrics` (moderate)
+
+**Phases 536–540** (`919e5a0`, 1946 tests)
+- Phase 536: `validate_data_to_text_metrics` → `missing-data-to-text-metrics` (moderate)
+- Phase 537: `validate_paraphrase_detection_metrics` → `missing-paraphrase-detection-metrics` (moderate)
+- Phase 538: `validate_wsd_metrics` → `missing-wsd-metrics` (moderate)
+- Phase 539: `validate_srl_scoring_metrics` → `missing-srl-scoring-metrics` (moderate)
+- Phase 540: `validate_argument_mining_metrics` → `missing-argument-mining-metrics` (moderate)
+- Note: phase 539 uses `_SRL539_VID` (not `_SRL_VID`) to avoid shadowing phase 492's `_SRL_VID`
+
+**Phases 541–545** (`548849d`, 1966 tests)
+- Phase 541: `validate_commonsense_reasoning_metrics` → `missing-commonsense-reasoning-metrics` (moderate)
+- Phase 542: `validate_semantic_parsing_metrics` → `missing-semantic-parsing-metrics` (moderate)
+- Phase 543: `validate_code_summarization_metrics` → `missing-code-summarization-metrics` (moderate)
+- Phase 544: `validate_api_usage_prediction_metrics` → `missing-api-usage-prediction-metrics` (moderate)
+- Phase 545: `validate_multilingual_ner_metrics` → `missing-multilingual-ner-metrics` (moderate)
+- Bug fixes: phases 541-545 used `source="deterministic"` (not a valid Finding field) — replaced with `validator=<VID>`; also phases 536-540 validator bodies verified clean
+- Bug fix: `_APIUSAGE_TRIGGERS` trailing `\b` after non-word alternatives — restructured to not require outer `\b`
+
+**Phases 546–550** (`59fec83`, 1986 tests)
+- Phase 546: `validate_zero_shot_classification_metrics` → `missing-zero-shot-classification-metrics` (moderate)
+- Phase 547: `validate_chain_of_thought_evaluation` → `missing-chain-of-thought-evaluation` (moderate)
+- Phase 548: `validate_rag_evaluation_metrics` → `missing-rag-evaluation-metrics` (moderate)
+- Phase 549: `validate_instruction_tuning_evaluation` → `missing-instruction-tuning-evaluation` (moderate)
+- Phase 550: `validate_long_context_evaluation` → `missing-long-context-evaluation` (moderate)
+
+**Phases 551–555** (`81186dd`, 2006 tests)
+- Phase 551: `validate_continual_learning_metrics` → `missing-continual-learning-metrics` (moderate)
+- Phase 552: `validate_gnn_benchmark_metrics` → `missing-gnn-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_gnn_evaluation_metrics` because phase 444 already defines that name
+- Phase 553: `validate_nas_evaluation_metrics` → `missing-nas-evaluation-metrics` (moderate)
+  - NOTE: uses `_NAS553_VID` and `_NAS553_TRIGGERS` (not `_NAS_VID`) to avoid shadowing phase 455's `_NAS_VID`
+- Phase 554: `validate_contrastive_learning_evaluation` → `missing-contrastive-learning-evaluation` (moderate)
+- Phase 555: `validate_knowledge_distillation_evaluation` → `missing-knowledge-distillation-evaluation` (moderate)
+
+**Phases 556–560** (`b29fee7`, 2026 tests)
+- Phase 556: `validate_quantization_evaluation_metrics` → `missing-quantization-evaluation-metrics` (moderate)
+- Phase 557: `validate_adversarial_robustness_metrics` → `missing-adversarial-robustness-metrics` (moderate)
+- Phase 558: `validate_differential_privacy_evaluation` → `missing-differential-privacy-evaluation` (moderate)
+- Phase 559: `validate_multi_task_learning_evaluation` → `missing-multi-task-learning-evaluation` (moderate)
+- Phase 560: `validate_speech_synthesis_evaluation` → `missing-speech-synthesis-evaluation` (moderate)
+
+Current test count: **2026 passing** (after phase 560)
+HEAD: `b29fee7`
 
 ## Critical technical gotchas (accumulated)
 
@@ -1343,7 +1405,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 520 with 1866 tests passing
+- currently at phase 560 with 2026 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 560)
+- update MEMORY.md after every 40 phases (next update due after phase 600)
