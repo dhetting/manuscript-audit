@@ -32137,3 +32137,242 @@ def test_convqa530_non_empirical_no_fire() -> None:
     )
     r = validate_conversational_qa_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 531 – validate_abstractive_summarization_metrics
+# ---------------------------------------------------------------------------
+def _absum531_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t531", source_path="t531.md", source_format="markdown",
+            title="Abstractive summarization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_absum531_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_abstractive_summarization_metrics
+    ms, cl = _absum531_ms("We propose a model for abstractive summarization on CNN/DM.")
+    r = validate_abstractive_summarization_metrics(ms, cl)
+    assert any(f.code == "missing-abstractive-summarization-metrics" for f in r.findings)
+
+
+def test_absum531_no_fire_when_rouge_reported() -> None:
+    from manuscript_audit.validators.core import validate_abstractive_summarization_metrics
+    ms, cl = _absum531_ms("Abstractive summarization: ROUGE-1 = 44.2 on CNN/DM.")
+    r = validate_abstractive_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_absum531_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_abstractive_summarization_metrics
+    ms, cl = _absum531_ms("We study lane detection methods.")
+    r = validate_abstractive_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_absum531_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_abstractive_summarization_metrics
+    ms, _ = _absum531_ms("Neural summarization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_abstractive_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 532 – validate_text_style_transfer_metrics
+# ---------------------------------------------------------------------------
+def _stytrans532_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t532", source_path="t532.md", source_format="markdown",
+            title="Style transfer", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_stytrans532_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_text_style_transfer_metrics
+    ms, cl = _stytrans532_ms("We tackle text style transfer for sentiment transfer.")
+    r = validate_text_style_transfer_metrics(ms, cl)
+    assert any(f.code == "missing-text-style-transfer-metrics" for f in r.findings)
+
+
+def test_stytrans532_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_text_style_transfer_metrics
+    ms, cl = _stytrans532_ms("Text style transfer: BLEU = 22.1 and style accuracy = 87.4%.")
+    r = validate_text_style_transfer_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_stytrans532_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_text_style_transfer_metrics
+    ms, cl = _stytrans532_ms("We present a model for point cloud classification.")
+    r = validate_text_style_transfer_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_stytrans532_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_text_style_transfer_metrics
+    ms, _ = _stytrans532_ms("Formality transfer theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_text_style_transfer_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 533 – validate_gec_metrics
+# ---------------------------------------------------------------------------
+def _gec533_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t533", source_path="t533.md", source_format="markdown",
+            title="GEC", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gec533_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_gec_metrics
+    ms, cl = _gec533_ms("We propose a grammatical error correction model on CoNLL-2014.")
+    r = validate_gec_metrics(ms, cl)
+    assert any(f.code == "missing-gec-metrics" for f in r.findings)
+
+
+def test_gec533_no_fire_when_gleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_gec_metrics
+    ms, cl = _gec533_ms("GEC evaluation: GLEU = 57.3% on CoNLL-2014 test.")
+    r = validate_gec_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_gec533_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_gec_metrics
+    ms, cl = _gec533_ms("We study medical image segmentation.")
+    r = validate_gec_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_gec533_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gec_metrics
+    ms, _ = _gec533_ms("Grammar correction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_gec_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 534 – validate_text_simplification_metrics
+# ---------------------------------------------------------------------------
+def _textsimpl534_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t534", source_path="t534.md", source_format="markdown",
+            title="Text simplification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_textsimpl534_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_text_simplification_metrics
+    ms, cl = _textsimpl534_ms("We address text simplification on Newsela corpus.")
+    r = validate_text_simplification_metrics(ms, cl)
+    assert any(f.code == "missing-text-simplification-metrics" for f in r.findings)
+
+
+def test_textsimpl534_no_fire_when_sari_reported() -> None:
+    from manuscript_audit.validators.core import validate_text_simplification_metrics
+    ms, cl = _textsimpl534_ms("Text simplification: SARI = 41.2 on Newsela.")
+    r = validate_text_simplification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_textsimpl534_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_text_simplification_metrics
+    ms, cl = _textsimpl534_ms("We study action recognition on Kinetics.")
+    r = validate_text_simplification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_textsimpl534_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_text_simplification_metrics
+    ms, _ = _textsimpl534_ms("Lexical simplification theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_text_simplification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 535 – validate_story_generation_metrics
+# ---------------------------------------------------------------------------
+def _storygen535_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t535", source_path="t535.md", source_format="markdown",
+            title="Story generation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_storygen535_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_story_generation_metrics
+    ms, cl = _storygen535_ms("We propose a model for story generation from prompts.")
+    r = validate_story_generation_metrics(ms, cl)
+    assert any(f.code == "missing-story-generation-metrics" for f in r.findings)
+
+
+def test_storygen535_no_fire_when_mauve_reported() -> None:
+    from manuscript_audit.validators.core import validate_story_generation_metrics
+    ms, cl = _storygen535_ms("Story generation: MAUVE = 0.87 on ROCStories.")
+    r = validate_story_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_storygen535_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_story_generation_metrics
+    ms, cl = _storygen535_ms("We introduce a causal model for observational data.")
+    r = validate_story_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_storygen535_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_story_generation_metrics
+    ms, _ = _storygen535_ms("Narrative generation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_story_generation_metrics(ms, cl)
+    assert r.findings == []

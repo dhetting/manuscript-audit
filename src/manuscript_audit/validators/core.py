@@ -7037,6 +7037,11 @@ def run_deterministic_validators(
         validate_kbqa_metrics(parsed, classification),
         validate_dialogue_state_tracking_metrics(parsed, classification),
         validate_conversational_qa_metrics(parsed, classification),
+        validate_abstractive_summarization_metrics(parsed, classification),
+        validate_text_style_transfer_metrics(parsed, classification),
+        validate_gec_metrics(parsed, classification),
+        validate_text_simplification_metrics(parsed, classification),
+        validate_story_generation_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -30390,6 +30395,231 @@ def validate_conversational_qa_metrics(
                 ),
                 severity="moderate",
                 validator=_CONVQA_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 531 – Abstractive summarization metrics
+# ---------------------------------------------------------------------------
+_ABSUM_VID = "missing-abstractive-summarization-metrics"
+_ABSUM_TRIGGER_RE = re.compile(
+    r"\b(?:abstractive\s+summarization|abstractive\s+summary|"
+    r"neural\s+summarization|document\s+summarization)\b",
+    re.IGNORECASE,
+)
+_ABSUM_METRIC_RE = re.compile(
+    r"\b(?:ROUGE-[12L]|BERTScore|BARTScore|SummaC)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_abstractive_summarization_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when abstractive summarization papers omit ROUGE/BERTScore metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ABSUM_VID, findings=[])
+    text = parsed.full_text
+    if not _ABSUM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ABSUM_VID, findings=[])
+    if _ABSUM_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_ABSUM_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ABSUM_VID,
+        findings=[
+            Finding(
+                code=_ABSUM_VID,
+                message=(
+                    "Abstractive summarization paper detected but standard "
+                    "metrics (ROUGE, BERTScore) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_ABSUM_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 532 – Text style transfer metrics
+# ---------------------------------------------------------------------------
+_STYTRANS_VID = "missing-text-style-transfer-metrics"
+_STYTRANS_TRIGGER_RE = re.compile(
+    r"\b(?:text\s+style\s+transfer|style\s+transfer\s+for\s+text|"
+    r"sentiment\s+transfer|formality\s+transfer)\b",
+    re.IGNORECASE,
+)
+_STYTRANS_METRIC_RE = re.compile(
+    r"\b(?:style\s+accuracy|content\s+preservation|BLEU|fluency|"
+    r"perplexity)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_text_style_transfer_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when text style transfer papers omit style accuracy/BLEU metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_STYTRANS_VID, findings=[])
+    text = parsed.full_text
+    if not _STYTRANS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_STYTRANS_VID, findings=[])
+    if _STYTRANS_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_STYTRANS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_STYTRANS_VID,
+        findings=[
+            Finding(
+                code=_STYTRANS_VID,
+                message=(
+                    "Text style transfer paper detected but standard metrics "
+                    "(style accuracy, content preservation, BLEU) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_STYTRANS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 533 – Grammatical error correction metrics
+# ---------------------------------------------------------------------------
+_GEC_VID = "missing-gec-metrics"
+_GEC_TRIGGER_RE = re.compile(
+    r"\b(?:grammatical\s+error\s+correction|GEC|grammar\s+error\s+correction|"
+    r"automatic\s+grammar\s+correction)\b",
+    re.IGNORECASE,
+)
+_GEC_METRIC_RE = re.compile(
+    r"\b(?:F0\.5|F1|precision|recall|GLEU|ERRANT)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_gec_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when GEC papers omit F0.5/GLEU/ERRANT metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_GEC_VID, findings=[])
+    text = parsed.full_text
+    if not _GEC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_GEC_VID, findings=[])
+    if _GEC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_GEC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_GEC_VID,
+        findings=[
+            Finding(
+                code=_GEC_VID,
+                message=(
+                    "Grammatical error correction paper detected but standard "
+                    "metrics (F0.5, GLEU, ERRANT) with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_GEC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 534 – Text simplification metrics
+# ---------------------------------------------------------------------------
+_TEXTSIMPL_VID = "missing-text-simplification-metrics"
+_TEXTSIMPL_TRIGGER_RE = re.compile(
+    r"\b(?:text\s+simplification|sentence\s+simplification|"
+    r"lexical\s+simplification|readability\s+improvement)\b",
+    re.IGNORECASE,
+)
+_TEXTSIMPL_METRIC_RE = re.compile(
+    r"\b(?:SARI|BLEU|readability\s+score|Flesch|FKGL|FRE)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_text_simplification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when text simplification papers omit SARI/BLEU/Flesch metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TEXTSIMPL_VID, findings=[])
+    text = parsed.full_text
+    if not _TEXTSIMPL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_TEXTSIMPL_VID, findings=[])
+    if _TEXTSIMPL_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_TEXTSIMPL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TEXTSIMPL_VID,
+        findings=[
+            Finding(
+                code=_TEXTSIMPL_VID,
+                message=(
+                    "Text simplification paper detected but standard metrics "
+                    "(SARI, BLEU, readability score) with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_TEXTSIMPL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 535 – Story / open-ended text generation metrics
+# ---------------------------------------------------------------------------
+_STORYGEN_VID = "missing-story-generation-metrics"
+_STORYGEN_TRIGGER_RE = re.compile(
+    r"\b(?:story\s+generation|narrative\s+generation|open-?ended\s+generation|"
+    r"creative\s+text\s+generation)\b",
+    re.IGNORECASE,
+)
+_STORYGEN_METRIC_RE = re.compile(
+    r"\b(?:perplexity|MAUVE|diversity|distinct-[12]|coherence)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_story_generation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when story/open-ended generation papers omit perplexity/MAUVE/diversity."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_STORYGEN_VID, findings=[])
+    text = parsed.full_text
+    if not _STORYGEN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_STORYGEN_VID, findings=[])
+    if _STORYGEN_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_STORYGEN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_STORYGEN_VID,
+        findings=[
+            Finding(
+                code=_STORYGEN_VID,
+                message=(
+                    "Story/open-ended generation paper detected but standard "
+                    "metrics (perplexity, MAUVE, diversity) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_STORYGEN_VID,
             )
         ],
     )
