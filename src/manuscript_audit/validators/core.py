@@ -6932,6 +6932,11 @@ def run_deterministic_validators(
         validate_bayesian_sequential_stopping_rule(parsed, classification),
         validate_variational_inference_elbo(parsed, classification),
         validate_hierarchical_shrinkage_reporting(parsed, classification),
+        validate_spatial_weights_matrix_specification(parsed, classification),
+        validate_spatial_spillover_effects(parsed, classification),
+        validate_gwr_bandwidth_specification(parsed, classification),
+        validate_spatial_panel_fe_re_selection(parsed, classification),
+        validate_coordinate_reference_system_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -25405,6 +25410,250 @@ def validate_hierarchical_shrinkage_reporting(
                 message=(
                     "A hierarchical or mixed-effects model was used but the "
                     "random effect variance or ICC was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 426 – Spatial weights matrix specification
+# ---------------------------------------------------------------------------
+
+_SPATIAL_WT_TRIGGER_RE = re.compile(
+    r"\b(?:spatial\s+(?:regression|model|analysis|econometric|autoregressive)|"
+    r"Moran.s\s+I|spatial\s+lag\s+model|spatial\s+error\s+model|"
+    r"geographically\s+weighted|spatial\s+panel)\b",
+    re.IGNORECASE,
+)
+_SPATIAL_WT_SPECIFIED_RE = re.compile(
+    r"\b(?:spatial\s+weights?\s+matrix|contiguity\s+matrix|"
+    r"queen\s+contiguity|rook\s+contiguity|"
+    r"k[- ]nearest\s+neighbo[ur]+s?\s+weights?|"
+    r"inverse\s+distance\s+weights?|row[- ]standardized|"
+    r"bandwidth\s+(?:selection|choice)\s+for\s+weights?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_spatial_weights_matrix_specification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_spatial_weights_matrix_specification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _SPATIAL_WT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SPATIAL_WT_SPECIFIED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-spatial-weights-specification",
+                message=(
+                    "Spatial regression or Moran's I was reported but the spatial "
+                    "weights matrix specification was not described."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 427 – Spatial spillover effects reporting
+# ---------------------------------------------------------------------------
+
+_SPILLOVER_TRIGGER_RE = re.compile(
+    r"\b(?:spatial\s+lag\s+model|SAR\s+model|spatial\s+Durbin|"
+    r"spatial\s+spillover|direct\s+effect[s]?\s+and\s+indirect|"
+    r"LeSage|Pace\s+(?:spatial|model)|"
+    r"spatial\s+multiplier)\b",
+    re.IGNORECASE,
+)
+_SPILLOVER_REPORTED_RE = re.compile(
+    r"\b(?:direct\s+effect[s]?|indirect\s+effect[s]?|total\s+effect[s]?|"
+    r"spillover\s+effect[s]?|feedback\s+effect[s]?|"
+    r"impact\s+(?:decomposition|matrix)|"
+    r"average\s+direct\s+impact|average\s+indirect\s+impact)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_spatial_spillover_effects(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_spatial_spillover_effects"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _SPILLOVER_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SPILLOVER_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-spatial-spillover-effects",
+                message=(
+                    "A spatial lag or Durbin model was used but direct and "
+                    "indirect spillover effects were not decomposed."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 428 – Geographically weighted regression bandwidth
+# ---------------------------------------------------------------------------
+
+_GWR_TRIGGER_RE = re.compile(
+    r"\b(?:geographically\s+weighted\s+regression|GWR|"
+    r"locally\s+weighted\s+regression|"
+    r"multiscale\s+GWR|MGWR|"
+    r"spatially\s+varying\s+coefficient)\b",
+    re.IGNORECASE,
+)
+_GWR_BANDWIDTH_RE = re.compile(
+    r"\b(?:bandwidth\s+(?:selection|optimized|cross[- ]validation|"
+    r"AIC[c]?\s+criterion|fixed\s+bandwidth|adaptive\s+bandwidth|"
+    r"was\s+(?:set\s+to|selected|estimated))|"
+    r"kernel\s+bandwidth|golden\s+section\s+search|"
+    r"optimal\s+bandwidth|bandwidth\s*=\s*\d)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_gwr_bandwidth_specification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_gwr_bandwidth_specification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _GWR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _GWR_BANDWIDTH_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-gwr-bandwidth",
+                message=(
+                    "Geographically weighted regression was used but the bandwidth "
+                    "selection method or value was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 429 – Spatial panel model fixed vs random effects selection
+# ---------------------------------------------------------------------------
+
+_SPATIAL_PANEL_TRIGGER_RE = re.compile(
+    r"\b(?:spatial\s+panel|panel\s+spatial|"
+    r"spatial\s+fixed\s+effects?|spatial\s+random\s+effects?|"
+    r"spatial[- ]temporal\s+panel|spatio[- ]temporal\s+panel)\b",
+    re.IGNORECASE,
+)
+_SPATIAL_PANEL_TEST_RE = re.compile(
+    r"\b(?:Hausman\s+test\s+(?:for|of)\s+spatial|"
+    r"spatial\s+Hausman|spatial\s+LM\s+test|"
+    r"Lagrange\s+multiplier\s+test\s+(?:for|of)\s+spatial|"
+    r"spatial\s+panel\s+(?:fixed|random)\s+effect[s]?\s+(?:was|were)\s+(?:chosen|selected|preferred)|"
+    r"spatial\s+autocorrelation\s+in\s+(?:residuals?|errors?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_spatial_panel_fe_re_selection(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_spatial_panel_fe_re_selection"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _SPATIAL_PANEL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SPATIAL_PANEL_TEST_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-spatial-panel-model-selection",
+                message=(
+                    "A spatial panel model was used but the fixed vs. random effects "
+                    "specification choice was not tested or justified."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 430 – Coordinate reference system / projection disclosure
+# ---------------------------------------------------------------------------
+
+_CRS_TRIGGER_RE = re.compile(
+    r"\b(?:geographic\s+(?:data|coordinates?|information)|"
+    r"spatial\s+(?:data|coordinates?|coordinates?\s+system)|"
+    r"latitude\s+and\s+longitude|geocoded|"
+    r"shapefile|GIS|raster\s+(?:data|layer)|"
+    r"map\s+projection)\b",
+    re.IGNORECASE,
+)
+_CRS_DISCLOSED_RE = re.compile(
+    r"\b(?:coordinate\s+reference\s+system|CRS|EPSG\s*:\s*\d+|"
+    r"WGS\s*84|NAD\s*83|ETRS\s*89|"
+    r"UTM\s+(?:zone|projection)|"
+    r"projected\s+(?:coordinate\s+system|CRS)|"
+    r"geographic\s+coordinate\s+system|"
+    r"Mercator\s+projection|Albers\s+projection)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_coordinate_reference_system_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_coordinate_reference_system_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CRS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CRS_DISCLOSED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-crs-disclosure",
+                message=(
+                    "Geographic or spatial data were used but the coordinate "
+                    "reference system or map projection was not disclosed."
                 ),
                 severity="minor",
                 validator=_vid,

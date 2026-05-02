@@ -25790,3 +25790,357 @@ def test_no_hierarchical_trigger_no_fire() -> None:
     )
     result = validate_hierarchical_shrinkage_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 426 – validate_spatial_weights_matrix_specification
+# ---------------------------------------------------------------------------
+
+def _swm426_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-swm426",
+            source_path="/tmp/swm426.md",
+            source_format="markdown",
+            title="Spatial Weights Matrix Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spatial_regression_without_weights_spec_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_spatial_weights_matrix_specification,
+    )
+
+    ms, cl = _swm426_ms(
+        "A spatial autoregressive model was estimated to account for spatial dependence."
+    )
+    result = validate_spatial_weights_matrix_specification(ms, cl)
+    assert any(
+        f.code == "missing-spatial-weights-specification" for f in result.findings
+    )
+
+
+def test_spatial_regression_with_weights_spec_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_spatial_weights_matrix_specification,
+    )
+
+    ms, cl = _swm426_ms(
+        "A spatial autoregressive model was estimated. A row-standardized "
+        "queen contiguity spatial weights matrix was used."
+    )
+    result = validate_spatial_weights_matrix_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_spatial_wm_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_spatial_weights_matrix_specification,
+    )
+
+    ms, cl = _swm426_ms(
+        "A spatial autoregressive model was estimated for regional analysis."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_spatial_weights_matrix_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_spatial_regression_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_spatial_weights_matrix_specification,
+    )
+
+    ms, cl = _swm426_ms(
+        "We used a panel fixed-effects regression to estimate the causal effect."
+    )
+    result = validate_spatial_weights_matrix_specification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 427 – validate_spatial_spillover_effects
+# ---------------------------------------------------------------------------
+
+def _ssp427_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ssp427",
+            source_path="/tmp/ssp427.md",
+            source_format="markdown",
+            title="Spatial Spillover Effects Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spatial_lag_without_spillovers_fires() -> None:
+    from manuscript_audit.validators.core import validate_spatial_spillover_effects
+
+    ms, cl = _ssp427_ms(
+        "A spatial lag model was estimated using a queen contiguity weights matrix."
+    )
+    result = validate_spatial_spillover_effects(ms, cl)
+    assert any(f.code == "missing-spatial-spillover-effects" for f in result.findings)
+
+
+def test_spatial_lag_with_spillovers_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_spillover_effects
+
+    ms, cl = _ssp427_ms(
+        "A spatial lag model was estimated. Direct effects and indirect spillover "
+        "effects were decomposed using impact decomposition."
+    )
+    result = validate_spatial_spillover_effects(ms, cl)
+    assert result.findings == []
+
+
+def test_spatial_spillover_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_spillover_effects
+
+    ms, cl = _ssp427_ms("A spatial lag model was estimated for the regional data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_spatial_spillover_effects(ms, cl)
+    assert result.findings == []
+
+
+def test_no_spatial_lag_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_spillover_effects
+
+    ms, cl = _ssp427_ms(
+        "We used an OLS regression to estimate the effect of the treatment variable."
+    )
+    result = validate_spatial_spillover_effects(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 428 – validate_gwr_bandwidth_specification
+# ---------------------------------------------------------------------------
+
+def _gwr428_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gwr428",
+            source_path="/tmp/gwr428.md",
+            source_format="markdown",
+            title="GWR Bandwidth Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gwr_without_bandwidth_fires() -> None:
+    from manuscript_audit.validators.core import validate_gwr_bandwidth_specification
+
+    ms, cl = _gwr428_ms(
+        "Geographically weighted regression was used to capture spatial non-stationarity."
+    )
+    result = validate_gwr_bandwidth_specification(ms, cl)
+    assert any(f.code == "missing-gwr-bandwidth" for f in result.findings)
+
+
+def test_gwr_with_bandwidth_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gwr_bandwidth_specification
+
+    ms, cl = _gwr428_ms(
+        "Geographically weighted regression was used. An adaptive bandwidth was selected "
+        "using AIC cross-validation."
+    )
+    result = validate_gwr_bandwidth_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_gwr_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gwr_bandwidth_specification
+
+    ms, cl = _gwr428_ms(
+        "Geographically weighted regression was used to analyze spatial variation."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_gwr_bandwidth_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_gwr_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gwr_bandwidth_specification
+
+    ms, cl = _gwr428_ms(
+        "We used a standard OLS regression to estimate the effect of income."
+    )
+    result = validate_gwr_bandwidth_specification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 429 – validate_spatial_panel_fe_re_selection
+# ---------------------------------------------------------------------------
+
+def _spfr429_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-spfr429",
+            source_path="/tmp/spfr429.md",
+            source_format="markdown",
+            title="Spatial Panel FE/RE Selection Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spatial_panel_without_model_selection_fires() -> None:
+    from manuscript_audit.validators.core import validate_spatial_panel_fe_re_selection
+
+    ms, cl = _spfr429_ms(
+        "A spatial panel model was estimated using fixed effects for the regions."
+    )
+    result = validate_spatial_panel_fe_re_selection(ms, cl)
+    assert any(
+        f.code == "missing-spatial-panel-model-selection" for f in result.findings
+    )
+
+
+def test_spatial_panel_with_hausman_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_panel_fe_re_selection
+
+    ms, cl = _spfr429_ms(
+        "A spatial panel model was estimated. A spatial Hausman test confirmed "
+        "that spatial fixed effects were preferred over random effects."
+    )
+    result = validate_spatial_panel_fe_re_selection(ms, cl)
+    assert result.findings == []
+
+
+def test_spatial_panel_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_panel_fe_re_selection
+
+    ms, cl = _spfr429_ms("A spatial panel model was estimated for regional data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_spatial_panel_fe_re_selection(ms, cl)
+    assert result.findings == []
+
+
+def test_no_spatial_panel_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_panel_fe_re_selection
+
+    ms, cl = _spfr429_ms(
+        "We used a standard panel fixed-effects model with time dummies."
+    )
+    result = validate_spatial_panel_fe_re_selection(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 430 – validate_coordinate_reference_system_disclosure
+# ---------------------------------------------------------------------------
+
+def _crs430_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-crs430",
+            source_path="/tmp/crs430.md",
+            source_format="markdown",
+            title="CRS Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_geodata_without_crs_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_coordinate_reference_system_disclosure,
+    )
+
+    ms, cl = _crs430_ms(
+        "Geographic data were obtained from the national GIS database for analysis."
+    )
+    result = validate_coordinate_reference_system_disclosure(ms, cl)
+    assert any(f.code == "missing-crs-disclosure" for f in result.findings)
+
+
+def test_geodata_with_crs_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_coordinate_reference_system_disclosure,
+    )
+
+    ms, cl = _crs430_ms(
+        "Geographic data were obtained from the GIS database. All spatial data were "
+        "projected to WGS 84 (EPSG: 4326) before analysis."
+    )
+    result = validate_coordinate_reference_system_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_crs_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_coordinate_reference_system_disclosure,
+    )
+
+    ms, cl = _crs430_ms("Geographic data were used from the GIS database.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_coordinate_reference_system_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_geodata_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_coordinate_reference_system_disclosure,
+    )
+
+    ms, cl = _crs430_ms(
+        "We collected survey data from 500 participants in urban areas."
+    )
+    result = validate_coordinate_reference_system_disclosure(ms, cl)
+    assert result.findings == []
