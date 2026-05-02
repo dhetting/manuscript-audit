@@ -911,6 +911,67 @@ Current test count: **362 passing** (after phase 135)
 Current test count: **906 passing** (after phase 280)
 HEAD: `907b239`
 
+**Phases 281–285** (`9815622`, 926 tests)
+- Phase 281: `validate_scale_reliability_reporting` → `missing-scale-reliability` (minor)
+- Phase 282: `validate_pilot_study_scope_limitation` → `missing-pilot-scope-limitation` (minor)
+- Phase 283: `validate_literature_search_recency` → `missing-literature-search-date` (minor)
+- Phase 284: `validate_publication_bias_acknowledgement` → `missing-publication-bias-acknowledgement` (minor)
+- Phase 285: `validate_replication_citation` → `missing-replication-citation` (minor)
+
+**Phases 286–290** (`4fadac9`, 946 tests)
+- Phase 286: `validate_negative_binomial_overdispersion` → `missing-overdispersion-test` (minor)
+- Phase 287: `validate_zero_inflated_data_handling` → `missing-zero-inflation-handling` (minor)
+- Phase 288: `validate_variance_homogeneity_check` → `missing-variance-homogeneity-check` (minor)
+- Phase 289: `validate_path_model_fit_indices` → `missing-path-model-fit-indices` (minor)
+- Phase 290: `validate_post_hoc_power_caution` → `missing-post-hoc-power-caution` (minor)
+
+**Phases 291–295** (`9a56533`, 966 tests)
+- Phase 291: `validate_ancova_covariate_balance` → `missing-ancova-covariate-balance` (minor)
+- Phase 292: `validate_partial_eta_squared_reporting` → `missing-partial-eta-squared` (minor)
+- Phase 293: `validate_cohens_d_reporting` → `missing-cohens-d` (minor)
+- Phase 294: `validate_sequential_testing_correction` → `missing-sequential-testing-correction` (moderate)
+- Phase 295: `validate_adaptive_design_disclosure` → `missing-adaptive-design-disclosure` (moderate)
+
+**Phases 296–300** (`2352af9`, 986 tests)
+- Phase 296: `validate_kaplan_meier_censoring_note` → `missing-km-censoring-note` (minor)
+- Phase 297: `validate_cox_proportional_hazards_assumption` → `missing-cox-ph-assumption-check` (moderate)
+- Phase 298: `validate_competing_risks_disclosure` → `missing-competing-risks-disclosure` (moderate)
+- Phase 299: `validate_propensity_score_balance` → `missing-propensity-balance-check` (moderate)
+- Phase 300: `validate_instrumental_variable_disclosure` → `missing-iv-validity-argument` (moderate)
+
+**Phases 301–305** (`509cbde`, 1006 tests)
+- Phase 301: `validate_multilevel_random_effects_justification` → `missing-random-effects-justification` (minor)
+- Phase 302: `validate_cross_level_interaction_interpretation` → `missing-cross-level-interaction-interpretation` (minor)
+- Phase 303: `validate_repeated_measures_sphericity` → `missing-sphericity-correction` (moderate)
+- Phase 304: `validate_survey_sampling_weight` → `missing-survey-weight-disclosure` (minor)
+- Phase 305: `validate_finite_population_correction` → `missing-finite-population-correction` (minor)
+
+**Phases 306–310** (`df49848`, 1026 tests)
+- Phase 306: `validate_mcmc_convergence_reporting` → `missing-mcmc-convergence-report` (moderate)
+- Phase 307: `validate_bayes_factor_interpretation` → `missing-bayes-factor-interpretation` (minor)
+- Phase 308: `validate_waic_looic_reporting` → `missing-loo-model-comparison` (minor)
+- Phase 309: `validate_informative_prior_justification` → `missing-informative-prior-justification` (minor)
+- Phase 310: `validate_posterior_predictive_check` → `missing-posterior-predictive-check` (minor)
+- Bug fixed: `_PPC_PERFORMED_RE` needed `checks?` (plural match)
+
+**Phases 311–315** (`6af7b12`, 1046 tests)
+- Phase 311: `validate_train_test_split_disclosure` → `missing-train-test-split` (minor)
+- Phase 312: `validate_hyperparameter_tuning_disclosure` → `missing-hyperparameter-tuning-disclosure` (minor)
+- Phase 313: `validate_feature_importance_method` → `missing-feature-importance-method` (minor)
+- Phase 314: `validate_data_leakage_prevention` → `missing-data-leakage-check` (moderate)
+- Phase 315: `validate_ml_uncertainty_quantification` → `missing-ml-uncertainty` (minor)
+- Bug fixed: `_ML_UNCERTAINTY_RE` needed `intervals?` (plural); `pathway="theory"` invalid → use `"math_stats_theory"`
+
+**Phases 316–320** (`d59cd48`, 1066 tests)
+- Phase 316: `validate_class_imbalance_handling` → `missing-class-imbalance-handling` (minor)
+- Phase 317: `validate_model_calibration_reporting` → `missing-model-calibration` (minor)
+- Phase 318: `validate_fairness_metric_reporting` → `missing-fairness-metrics` (minor)
+- Phase 319: `validate_transfer_learning_disclosure` → `missing-transfer-learning-disclosure` (minor)
+- Phase 320: `validate_cross_validation_strategy` → `missing-cv-strategy` (minor)
+
+Current test count: **1066 passing** (after phase 320)
+HEAD: `d59cd48`
+
 ## Critical technical gotchas (accumulated)
 
 - **`Section` has `title` field, NOT `heading`** — test helpers must use `title=`, validators use `s.title`
@@ -933,9 +994,10 @@ HEAD: `907b239`
 - **`_NULL_RESULT_RE` shadowing (phases 249/279)**: Both phases defined `_NULL_RESULT_RE` at module level. Phase 279's copy shadows phase 249's, breaking phase 249's `validate_null_result_discussion`. Fix: rename later copies to specific names (e.g., `_NULL_POWER_TRIGGER_RE` for phase 279's version)
 - **Trailing `\b` after `to` in time-label patterns**: `T[123]\s+was\s+to` never fires since "was" is followed by content, not "to". Drop the final `\s+to` requirement: `T[123]\s+(?:was|corresponds?)` alone is sufficient
 - **Phase 280 `validate_author_contribution_statement` already existed** at line 4331 with single-argument signature `(parsed: ParsedManuscript)`. The new duplicate was removed; 4 supplemental tests were adapted to match the existing code (single arg, code `missing-author-contributions`, requires both `_CONTRIB_SECTION_RE` AND `_CONTRIB_KEYWORD_RE` to match)
-- **Helper function `_mcc_ms` at line ~9681**: takes 2 args — new helpers must be renamed (e.g., `_mcc256_ms`)
-- **Helper function `_dichot_ms` at line ~8938**: takes 2 args — rename new to `_dichot261_ms`
-- **Helper function `_attrition_ms` at line ~7128**: returns `ParsedManuscript` (not tuple) — rename new to `_attrition260_ms`
+- **`_PPC_PERFORMED_RE` plural (phase 310)**: pattern had `check` without `s?`, missing "checks". Always add `s?` to potentially-plural nouns in match patterns.
+- **`_ML_UNCERTAINTY_RE` plural (phase 315)**: `confidence interval` needed `intervals?` to match plural "confidence intervals". Apply plural-form discipline to ALL content nouns in match patterns.
+- **`pathway="theory"` is invalid** — valid values: `"math_stats_theory"`, `"applied_stats"`, `"data_science"`, `"unknown"`. Always use `"math_stats_theory"` for non-empirical (math_theory_paper) no-fire tests.
+- **`_replication_ms` helper at line ~6955**: returns `ParsedManuscript` (not tuple) — rename new to `_replication285_ms`
 
 - **Floor/ceiling regex**: use `effects?` not `effect` (plural form common)
 - **MULTILINE regex** needed when checking for line-anchored captions (`^Table N.`)
@@ -997,4 +1059,4 @@ Assume:
 - currently at phase 280 with 906 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 320)
+- update MEMORY.md after every 40 phases (next update due after phase 360)
