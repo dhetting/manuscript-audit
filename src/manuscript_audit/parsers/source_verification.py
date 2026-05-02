@@ -488,7 +488,7 @@ def build_bibliography_confidence_summary(
                 "All bibliography entries resolve to deterministic canonical links "
                 "without external lookup planning."
             )
-        if insufficient_metadata_count > 0 or score < 55:
+        if insufficient_metadata_count >= 2 or score < 55:
             level = "critical"
         elif ready_for_lookup_count > 0 or score < 75:
             level = "low"
