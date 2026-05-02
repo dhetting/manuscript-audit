@@ -7067,6 +7067,11 @@ def run_deterministic_validators(
         validate_differential_privacy_evaluation(parsed, classification),
         validate_multi_task_learning_evaluation(parsed, classification),
         validate_speech_synthesis_evaluation(parsed, classification),
+        validate_music_generation_evaluation(parsed, classification),
+        validate_audio_source_separation_metrics(parsed, classification),
+        validate_speaker_verification_metrics(parsed, classification),
+        validate_audio_captioning_metrics(parsed, classification),
+        validate_singing_voice_synthesis_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -31804,6 +31809,240 @@ def validate_speech_synthesis_evaluation(
                 ),
                 location="full_text",
                 validator=_SPEECHSYNTH_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 561 – music generation evaluation
+# ---------------------------------------------------------------------------
+_MUSICGEN_VID = "missing-music-generation-evaluation"
+
+_MUSICGEN_TRIGGERS = re.compile(
+    r"\b(?:music\s+generation|symbolic\s+music\s+generation|"
+    r"neural\s+music\s+(?:composition|synthesis)|music\s+transformer|"
+    r"MIDI\s+generation)\b",
+    re.IGNORECASE,
+)
+_MUSICGEN_METRICS = re.compile(
+    r"\b(?:FID|Frechet\s+(?:Audio|Inception)\s+Distance|KL\s+divergence|"
+    r"pitch\s+class\s+entropy|note\s+density|human\s+(?:evaluation|study))\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*|\d+\.\d+)|"
+    r"(?:\d+\.\d+)\s*(?:FID|KL)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_music_generation_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MUSICGEN_VID, findings=[])
+    text = parsed.full_text
+    if not _MUSICGEN_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MUSICGEN_VID, findings=[])
+    if _MUSICGEN_METRICS.search(text):
+        return ValidationResult(validator_name=_MUSICGEN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MUSICGEN_VID,
+        findings=[
+            Finding(
+                code=_MUSICGEN_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses music generation but does not report "
+                    "FID, KL divergence, or human evaluation scores."
+                ),
+                location="full_text",
+                validator=_MUSICGEN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 562 – audio source separation evaluation
+# ---------------------------------------------------------------------------
+_AUDIOSEP_VID = "missing-audio-source-separation-metrics"
+
+_AUDIOSEP_TRIGGERS = re.compile(
+    r"\b(?:source\s+separation|audio\s+(?:separation|unmixing)|"
+    r"blind\s+source\s+separation|speech\s+separation|"
+    r"music\s+source\s+separation)\b",
+    re.IGNORECASE,
+)
+_AUDIOSEP_METRICS = re.compile(
+    r"\b(?:SDR|SIR|SAR|SI[- ]SNR|PESQ|STOI|scale[- ]invariant\s+SNR)\b.*?"
+    r"(?:\d[\d.]*\s*(?:dB|%)|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*dB)\s*(?:SDR|SIR|SAR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_audio_source_separation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AUDIOSEP_VID, findings=[])
+    text = parsed.full_text
+    if not _AUDIOSEP_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_AUDIOSEP_VID, findings=[])
+    if _AUDIOSEP_METRICS.search(text):
+        return ValidationResult(validator_name=_AUDIOSEP_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AUDIOSEP_VID,
+        findings=[
+            Finding(
+                code=_AUDIOSEP_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses audio source separation but does not report "
+                    "SDR, SI-SNR, PESQ, or STOI on a benchmark."
+                ),
+                location="full_text",
+                validator=_AUDIOSEP_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 563 – speaker verification/identification evaluation
+# ---------------------------------------------------------------------------
+_SPKVERIF_VID = "missing-speaker-verification-metrics"
+
+_SPKVERIF_TRIGGERS = re.compile(
+    r"\b(?:speaker\s+(?:verification|identification|recognition|diarization)|"
+    r"text[- ]independent\s+speaker|x[- ]vector|d[- ]vector|"
+    r"ECAPA[- ]TDNN)\b",
+    re.IGNORECASE,
+)
+_SPKVERIF_METRICS = re.compile(
+    r"\b(?:EER|equal\s+error\s+rate|MinDCF|TAR@FAR|DER|diarization\s+error\s+rate)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:EER|DER)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_speaker_verification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SPKVERIF_VID, findings=[])
+    text = parsed.full_text
+    if not _SPKVERIF_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SPKVERIF_VID, findings=[])
+    if _SPKVERIF_METRICS.search(text):
+        return ValidationResult(validator_name=_SPKVERIF_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SPKVERIF_VID,
+        findings=[
+            Finding(
+                code=_SPKVERIF_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses speaker verification/identification but does not "
+                    "report EER, MinDCF, or DER on a benchmark."
+                ),
+                location="full_text",
+                validator=_SPKVERIF_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 564 – audio captioning evaluation
+# ---------------------------------------------------------------------------
+_AUDIOCAP_VID = "missing-audio-captioning-metrics"
+
+_AUDIOCAP_TRIGGERS = re.compile(
+    r"\b(?:automated\s+audio\s+captioning|audio\s+(?:captioning|description\s+generation)|"
+    r"sound\s+captioning|environmental\s+sound\s+captioning)\b",
+    re.IGNORECASE,
+)
+_AUDIOCAP_METRICS = re.compile(
+    r"\b(?:BLEU(?:-[0-9]+)?|ROUGE(?:-[A-Z0-9]+)?|METEOR|CIDEr|SPICE|"
+    r"SPIDEr|FENSE)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:BLEU|CIDEr|METEOR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_audio_captioning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AUDIOCAP_VID, findings=[])
+    text = parsed.full_text
+    if not _AUDIOCAP_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_AUDIOCAP_VID, findings=[])
+    if _AUDIOCAP_METRICS.search(text):
+        return ValidationResult(validator_name=_AUDIOCAP_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AUDIOCAP_VID,
+        findings=[
+            Finding(
+                code=_AUDIOCAP_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses audio captioning but does not report "
+                    "BLEU, CIDEr, METEOR, or SPIDEr on a standard benchmark."
+                ),
+                location="full_text",
+                validator=_AUDIOCAP_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 565 – singing voice synthesis evaluation
+# ---------------------------------------------------------------------------
+_SINGSYN_VID = "missing-singing-voice-synthesis-evaluation"
+
+_SINGSYN_TRIGGERS = re.compile(
+    r"\b(?:singing\s+voice\s+synthesis|singing\s+voice\s+conversion|"
+    r"neural\s+singing\s+synthesis|SVS\b|singing\s+voice\s+generation)\b",
+    re.IGNORECASE,
+)
+_SINGSYN_METRICS = re.compile(
+    r"\b(?:MOS|mean\s+opinion\s+score|F0\s+RMSE|MCD|mel\s+cepstral\s+distortion|"
+    r"pitch\s+accuracy|naturalness)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*|\d+\.\d+)|"
+    r"(?:\d+\.\d+)\s*(?:MOS|MCD)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_singing_voice_synthesis_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SINGSYN_VID, findings=[])
+    text = parsed.full_text
+    if not _SINGSYN_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SINGSYN_VID, findings=[])
+    if _SINGSYN_METRICS.search(text):
+        return ValidationResult(validator_name=_SINGSYN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SINGSYN_VID,
+        findings=[
+            Finding(
+                code=_SINGSYN_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses singing voice synthesis but does not report "
+                    "MOS, F0 RMSE, or MCD on a benchmark."
+                ),
+                location="full_text",
+                validator=_SINGSYN_VID,
             )
         ],
     )

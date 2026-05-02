@@ -33583,3 +33583,242 @@ def test_speechsynth560_non_empirical_no_fire() -> None:
     )
     r = validate_speech_synthesis_evaluation(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 561 – validate_music_generation_evaluation
+# ---------------------------------------------------------------------------
+def _musicgen561_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t561", source_path="t561.md", source_format="markdown",
+            title="Music generation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_musicgen561_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_music_generation_evaluation
+    ms, cl = _musicgen561_ms("We propose a neural music generation model using MIDI generation.")
+    r = validate_music_generation_evaluation(ms, cl)
+    assert any(f.code == "missing-music-generation-evaluation" for f in r.findings)
+
+
+def test_musicgen561_no_fire_when_fid_reported() -> None:
+    from manuscript_audit.validators.core import validate_music_generation_evaluation
+    ms, cl = _musicgen561_ms("Music generation: FID = 3.2 on the test split.")
+    r = validate_music_generation_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_musicgen561_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_music_generation_evaluation
+    ms, cl = _musicgen561_ms("We present a video captioning model.")
+    r = validate_music_generation_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_musicgen561_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_music_generation_evaluation
+    ms, _ = _musicgen561_ms("Symbolic music generation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_music_generation_evaluation(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 562 – validate_audio_source_separation_metrics
+# ---------------------------------------------------------------------------
+def _audiosep562_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t562", source_path="t562.md", source_format="markdown",
+            title="Audio source separation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_audiosep562_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_audio_source_separation_metrics
+    ms, cl = _audiosep562_ms("We propose a model for speech separation on WSJ0-2mix.")
+    r = validate_audio_source_separation_metrics(ms, cl)
+    assert any(f.code == "missing-audio-source-separation-metrics" for f in r.findings)
+
+
+def test_audiosep562_no_fire_when_sdr_reported() -> None:
+    from manuscript_audit.validators.core import validate_audio_source_separation_metrics
+    ms, cl = _audiosep562_ms("Source separation: SDR = 15.3 dB on WSJ0-2mix.")
+    r = validate_audio_source_separation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_audiosep562_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_audio_source_separation_metrics
+    ms, cl = _audiosep562_ms("We propose an image segmentation model.")
+    r = validate_audio_source_separation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_audiosep562_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_audio_source_separation_metrics
+    ms, _ = _audiosep562_ms("Blind source separation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_audio_source_separation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 563 – validate_speaker_verification_metrics
+# ---------------------------------------------------------------------------
+def _spkverif563_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t563", source_path="t563.md", source_format="markdown",
+            title="Speaker verification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spkverif563_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_speaker_verification_metrics
+    ms, cl = _spkverif563_ms("We propose an ECAPA-TDNN model for speaker verification.")
+    r = validate_speaker_verification_metrics(ms, cl)
+    assert any(f.code == "missing-speaker-verification-metrics" for f in r.findings)
+
+
+def test_spkverif563_no_fire_when_eer_reported() -> None:
+    from manuscript_audit.validators.core import validate_speaker_verification_metrics
+    ms, cl = _spkverif563_ms("Speaker verification: EER = 0.87% on VoxCeleb1.")
+    r = validate_speaker_verification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_spkverif563_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_speaker_verification_metrics
+    ms, cl = _spkverif563_ms("We present a face detection network.")
+    r = validate_speaker_verification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_spkverif563_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_speaker_verification_metrics
+    ms, _ = _spkverif563_ms("Speaker embedding theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_speaker_verification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 564 – validate_audio_captioning_metrics
+# ---------------------------------------------------------------------------
+def _audiocap564_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t564", source_path="t564.md", source_format="markdown",
+            title="Audio captioning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_audiocap564_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_metrics
+    ms, cl = _audiocap564_ms("We propose a model for automated audio captioning on Clotho.")
+    r = validate_audio_captioning_metrics(ms, cl)
+    assert any(f.code == "missing-audio-captioning-metrics" for f in r.findings)
+
+
+def test_audiocap564_no_fire_when_cider_reported() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_metrics
+    ms, cl = _audiocap564_ms("Audio captioning: CIDEr = 0.52 on Clotho v2.")
+    r = validate_audio_captioning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_audiocap564_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_metrics
+    ms, cl = _audiocap564_ms("We present a lane detection model for autonomous driving.")
+    r = validate_audio_captioning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_audiocap564_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_metrics
+    ms, _ = _audiocap564_ms("Sound description generation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_audio_captioning_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 565 – validate_singing_voice_synthesis_evaluation
+# ---------------------------------------------------------------------------
+def _singsyn565_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t565", source_path="t565.md", source_format="markdown",
+            title="Singing voice synthesis", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_singsyn565_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_singing_voice_synthesis_evaluation
+    ms, cl = _singsyn565_ms("We propose an SVS model for singing voice synthesis.")
+    r = validate_singing_voice_synthesis_evaluation(ms, cl)
+    assert any(f.code == "missing-singing-voice-synthesis-evaluation" for f in r.findings)
+
+
+def test_singsyn565_no_fire_when_mos_reported() -> None:
+    from manuscript_audit.validators.core import validate_singing_voice_synthesis_evaluation
+    ms, cl = _singsyn565_ms("Singing voice synthesis: MOS = 3.89 on the NUS-48E dataset.")
+    r = validate_singing_voice_synthesis_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_singsyn565_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_singing_voice_synthesis_evaluation
+    ms, cl = _singsyn565_ms("We present a 3D pose estimation model.")
+    r = validate_singing_voice_synthesis_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_singsyn565_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_singing_voice_synthesis_evaluation
+    ms, _ = _singsyn565_ms("Singing voice conversion theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_singing_voice_synthesis_evaluation(ms, cl)
+    assert r.findings == []
