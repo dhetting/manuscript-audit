@@ -1197,6 +1197,66 @@ HEAD: `907b239`
 Current test count: **1706 passing** (after phase 480)
 HEAD: `89d9637`
 
+**Phases 481–485** (`405be04`, 1726 tests)
+- Phase 481: `validate_nids_imbalance_handling` → `missing-nids-imbalance-handling` (moderate)
+- Phase 482: `validate_fraud_cost_evaluation` → `missing-fraud-cost-evaluation` (moderate)
+- Phase 483: `validate_credit_scorecard_calibration` → `missing-credit-scorecard-calibration` (moderate)
+- Phase 484: `validate_nli_artifact_evaluation` → `missing-nli-artifact-evaluation` (moderate)
+- Phase 485: `validate_image_captioning_metrics` → `missing-image-captioning-metrics` (moderate)
+- Gotcha: CIDEr/SPICE metric regex `(?:CIDEr\s*=|...)\b` — trailing `\b` after `=` fails. Restructured to `(?:\bCIDEr\b|\bSPICE\b)\s*=`.
+
+**Phases 486–490** (`0d10325`, 1746 tests)
+- Phase 486: `validate_vqa_accuracy_split` → `missing-vqa-accuracy-split` (moderate)
+- Phase 487: `validate_sgg_recall_metrics` → `missing-sgg-recall-metrics` (moderate)
+- Phase 488: `validate_audio_event_detection_metrics` → `missing-audio-event-detection-metrics` (moderate)
+- Phase 489: `validate_table_qa_execution_accuracy` → `missing-table-qa-execution-accuracy` (moderate)
+- Phase 490: `validate_code_gen_pass_at_k` → `missing-code-gen-pass-at-k` (moderate)
+
+**Phases 491–495** (`50e72d4`, 1766 tests)
+- Phase 491: `validate_coreference_resolution_metrics` → `missing-coreference-metrics` (moderate)
+- Phase 492: `validate_srl_evaluation_metrics` → `missing-srl-evaluation-metrics` (moderate)
+- Phase 493: `validate_dependency_parsing_metrics` → `missing-dependency-parsing-metrics` (moderate)
+- Phase 494: `validate_cross_lingual_per_language_results` → `missing-cross-lingual-per-language-results` (minor)
+- Phase 495: `validate_multimodal_modality_ablation` → `missing-multimodal-modality-ablation` (moderate)
+
+**Phases 496–500** (`969986d`, 1786 tests)
+- Phase 496: `validate_ocr_evaluation_metrics` → `missing-ocr-evaluation-metrics` (moderate)
+- Phase 497: `validate_3d_pose_estimation_metrics` → `missing-3d-pose-estimation-metrics` (moderate)
+- Phase 498: `validate_panoptic_segmentation_metrics` → `missing-panoptic-segmentation-metrics` (moderate)
+- Phase 499: `validate_medical_report_generation_metrics` → `missing-medical-report-generation-metrics` (moderate)
+- Phase 500: `validate_kg_completion_metrics` → `missing-kg-completion-metrics` (moderate)
+
+**Phases 501–505** (`3af0dac`, 1806 tests)
+- Phase 501: `validate_optical_flow_metrics` → `missing-optical-flow-metrics` (moderate)
+- Phase 502: `validate_depth_estimation_metrics` → `missing-depth-estimation-metrics` (moderate)
+- Phase 503: `validate_visual_place_recognition_metrics` → `missing-visual-place-recognition-metrics` (moderate)
+- Phase 504: `validate_action_recognition_metrics` → `missing-action-recognition-metrics` (moderate)
+- Phase 505: `validate_trajectory_prediction_metrics` → `missing-trajectory-prediction-metrics` (moderate)
+
+**Phases 506–510** (`b57d2c1`, 1826 tests)
+- Phase 506: `validate_hand_pose_estimation_metrics` → `missing-hand-pose-estimation-metrics` (moderate)
+- Phase 507: `validate_face_recognition_metrics` → `missing-face-recognition-metrics` (moderate)
+- Phase 508: `validate_lane_detection_metrics` → `missing-lane-detection-metrics` (moderate)
+- Phase 509: `validate_salient_object_detection_metrics` → `missing-salient-object-detection-metrics` (moderate)
+- Phase 510: `validate_image_restoration_metrics` → `missing-image-restoration-metrics` (moderate)
+
+**Phases 511–515** (`d73f0e9`, 1846 tests)
+- Phase 511: `validate_reid_metrics` → `missing-reid-metrics` (moderate)
+- Phase 512: `validate_inpainting_evaluation_metrics` → `missing-inpainting-evaluation-metrics` (moderate)
+- Phase 513: `validate_lidar_3d_detection_metrics` → `missing-lidar-3d-detection-metrics` (moderate)
+- Phase 514: `validate_visual_question_generation_metrics` → `missing-visual-question-generation-metrics` (moderate)
+- Phase 515: `validate_captioning_hallucination_evaluation` → `missing-captioning-hallucination-evaluation` (moderate)
+
+**Phases 516–520** (`69056ae`, 1866 tests)
+- Phase 516: `validate_semantic_image_synthesis_metrics` → `missing-semantic-image-synthesis-metrics` (moderate)
+- Phase 517: `validate_mot_metrics` → `missing-mot-metrics` (moderate)
+- Phase 518: `validate_video_object_segmentation_metrics` → `missing-video-object-segmentation-metrics` (moderate)
+- Phase 519: `validate_referring_expression_comprehension_metrics` → `missing-referring-expression-comprehension-metrics` (moderate)
+- Phase 520: `validate_cross_modal_retrieval_metrics` → `missing-cross-modal-retrieval-metrics` (moderate)
+
+Current test count: **1866 passing** (after phase 520)
+HEAD: `69056ae`
+
 ## Critical technical gotchas (accumulated)
 
 - **`Section` has `title` field, NOT `heading`** — test helpers must use `title=`, validators use `s.title`
@@ -1283,7 +1343,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 400 with 1386 tests passing
+- currently at phase 520 with 1866 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 520)
+- update MEMORY.md after every 40 phases (next update due after phase 560)
