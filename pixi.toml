@@ -27,3 +27,4 @@ audit-core = { cmd = "python -m manuscript_audit.cli audit-core", env = { PYTHON
 audit-standard = { cmd = "python -m manuscript_audit.cli audit-standard", env = { PYTHONPATH = "src" } }
 verify-revision = { cmd = "python -m manuscript_audit.cli verify-revision", env = { PYTHONPATH = "src" } }
 verify-sources = { cmd = "python -m manuscript_audit.cli verify-sources", env = { PYTHONPATH = "src" } }
+ci-biblio = { cmd = "pytest tests/unit/test_source_record.py tests/unit/test_doi_normalization.py -q", env = { PYTHONPATH = "src" } }
