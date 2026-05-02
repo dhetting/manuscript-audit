@@ -16680,3 +16680,352 @@ def test_post_hoc_power_non_empirical_no_fire() -> None:
     )
     result = validate_post_hoc_power_caution(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 291 – validate_ancova_covariate_balance
+# ---------------------------------------------------------------------------
+
+def _ancova_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ancova",
+            source_path="/tmp/ancova.md",
+            source_format="markdown",
+            title="ANCOVA Covariate Balance Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ancova_without_covariate_balance_fires() -> None:
+    from manuscript_audit.validators.core import validate_ancova_covariate_balance
+
+    ms, cl = _ancova_ms(
+        "We used ANCOVA to compare groups while adjusting for baseline scores. "
+        "The treatment group showed significantly higher outcomes (p = .03)."
+    )
+    result = validate_ancova_covariate_balance(ms, cl)
+    assert any(f.code == "missing-ancova-covariate-balance" for f in result.findings)
+
+
+def test_ancova_with_covariate_balance_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ancova_covariate_balance
+
+    ms, cl = _ancova_ms(
+        "ANCOVA was used to adjust for baseline scores. No significant group "
+        "difference on the covariate was found before intervention (p = .61), "
+        "confirming covariate balance across conditions."
+    )
+    result = validate_ancova_covariate_balance(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ancova_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ancova_covariate_balance
+
+    ms, cl = _ancova_ms(
+        "We used a paired samples t-test to compare pre- and post-scores."
+    )
+    result = validate_ancova_covariate_balance(ms, cl)
+    assert result.findings == []
+
+
+def test_ancova_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ancova_covariate_balance
+
+    ms, cl = _ancova_ms("ANCOVA adjusts for covariates to reduce error variance.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ancova_covariate_balance(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 292 – validate_partial_eta_squared_reporting
+# ---------------------------------------------------------------------------
+
+def _anova_eta_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-anova-eta",
+            source_path="/tmp/anova_eta.md",
+            source_format="markdown",
+            title="ANOVA Effect Size Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_anova_without_eta_squared_fires() -> None:
+    from manuscript_audit.validators.core import validate_partial_eta_squared_reporting
+
+    ms, cl = _anova_eta_ms(
+        "A one-way ANOVA revealed a significant group effect, F(2, 147) = 8.43, "
+        "p = .0003."
+    )
+    result = validate_partial_eta_squared_reporting(ms, cl)
+    assert any(f.code == "missing-partial-eta-squared" for f in result.findings)
+
+
+def test_anova_with_eta_squared_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_partial_eta_squared_reporting
+
+    ms, cl = _anova_eta_ms(
+        "A two-way ANOVA revealed a significant interaction, F(1, 198) = 12.3, "
+        "p = .0006, partial η² = .06."
+    )
+    result = validate_partial_eta_squared_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_anova_no_eta_fire() -> None:
+    from manuscript_audit.validators.core import validate_partial_eta_squared_reporting
+
+    ms, cl = _anova_eta_ms(
+        "A Spearman correlation was computed between the two variables."
+    )
+    result = validate_partial_eta_squared_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_anova_eta_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_partial_eta_squared_reporting
+
+    ms, cl = _anova_eta_ms(
+        "Partial eta-squared measures the proportion of variance explained by a factor."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_partial_eta_squared_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 293 – validate_cohens_d_reporting
+# ---------------------------------------------------------------------------
+
+def _cohens_d_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cohens-d",
+            source_path="/tmp/cohens_d.md",
+            source_format="markdown",
+            title="Cohen's d Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ttest_without_cohens_d_fires() -> None:
+    from manuscript_audit.validators.core import validate_cohens_d_reporting
+
+    ms, cl = _cohens_d_ms(
+        "An independent samples t-test revealed a significant difference between "
+        "groups, t(98) = 2.34, p = .02."
+    )
+    result = validate_cohens_d_reporting(ms, cl)
+    assert any(f.code == "missing-cohens-d" for f in result.findings)
+
+
+def test_ttest_with_cohens_d_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cohens_d_reporting
+
+    ms, cl = _cohens_d_ms(
+        "An independent samples t-test revealed a significant difference, "
+        "t(98) = 2.34, p = .02, Cohen's d = 0.47."
+    )
+    result = validate_cohens_d_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ttest_no_cohens_d_fire() -> None:
+    from manuscript_audit.validators.core import validate_cohens_d_reporting
+
+    ms, cl = _cohens_d_ms(
+        "A logistic regression was used to predict binary outcomes."
+    )
+    result = validate_cohens_d_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_cohens_d_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cohens_d_reporting
+
+    ms, cl = _cohens_d_ms(
+        "Cohen's d quantifies the standardised mean difference between two groups."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cohens_d_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 294 – validate_sequential_testing_correction
+# ---------------------------------------------------------------------------
+
+def _sequential_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sequential",
+            source_path="/tmp/sequential.md",
+            source_format="markdown",
+            title="Sequential Testing Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_interim_analysis_without_alpha_spending_fires() -> None:
+    from manuscript_audit.validators.core import validate_sequential_testing_correction
+
+    ms, cl = _sequential_ms(
+        "We conducted two interim analyses and a final analysis. The data "
+        "monitoring committee reviewed results at each stage."
+    )
+    result = validate_sequential_testing_correction(ms, cl)
+    assert any(
+        f.code == "missing-sequential-testing-correction" for f in result.findings
+    )
+
+
+def test_interim_analysis_with_alpha_spending_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sequential_testing_correction
+
+    ms, cl = _sequential_ms(
+        "Two interim analyses were conducted. The alpha-spending function "
+        "(O'Brien-Fleming bounds) was used to control Type I error across stages."
+    )
+    result = validate_sequential_testing_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_no_interim_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sequential_testing_correction
+
+    ms, cl = _sequential_ms(
+        "A single analysis was conducted after all data were collected."
+    )
+    result = validate_sequential_testing_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_sequential_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sequential_testing_correction
+
+    ms, cl = _sequential_ms(
+        "Sequential testing methods allow for interim looks at accumulating data."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sequential_testing_correction(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 295 – validate_adaptive_design_disclosure
+# ---------------------------------------------------------------------------
+
+def _adaptive_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-adaptive",
+            source_path="/tmp/adaptive.md",
+            source_format="markdown",
+            title="Adaptive Design Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_adaptive_trial_without_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_adaptive_design_disclosure
+
+    ms, cl = _adaptive_ms(
+        "We used an adaptive design to allow sample size reassessment at the "
+        "midpoint of the trial based on observed effect sizes."
+    )
+    result = validate_adaptive_design_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-adaptive-design-disclosure" for f in result.findings
+    )
+
+
+def test_adaptive_trial_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adaptive_design_disclosure
+
+    ms, cl = _adaptive_ms(
+        "The adaptive sample size re-estimation rule was pre-specified in the "
+        "protocol. Type I error was controlled across adaptations using a "
+        "blinded sample size reassessment procedure."
+    )
+    result = validate_adaptive_design_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_adaptive_design_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adaptive_design_disclosure
+
+    ms, cl = _adaptive_ms(
+        "Participants were randomly allocated to conditions in a fixed-sample design."
+    )
+    result = validate_adaptive_design_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_adaptive_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adaptive_design_disclosure
+
+    ms, cl = _adaptive_ms(
+        "Adaptive randomisation improves allocation efficiency in clinical trials."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_adaptive_design_disclosure(ms, cl)
+    assert result.findings == []

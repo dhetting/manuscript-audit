@@ -6797,6 +6797,11 @@ def run_deterministic_validators(
         validate_variance_homogeneity_check(parsed, classification),
         validate_path_model_fit_indices(parsed, classification),
         validate_post_hoc_power_caution(parsed, classification),
+        validate_ancova_covariate_balance(parsed, classification),
+        validate_partial_eta_squared_reporting(parsed, classification),
+        validate_cohens_d_reporting(parsed, classification),
+        validate_sequential_testing_correction(parsed, classification),
+        validate_adaptive_design_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -17753,6 +17758,297 @@ def validate_post_hoc_power_caution(
                     "Post-hoc or observed power is reported without caveats. "
                     "Post-hoc power analysis is widely criticised as uninformative "
                     "and circular. Note this limitation or remove post-hoc power."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 291 – validate_ancova_covariate_balance
+# ---------------------------------------------------------------------------
+
+_ANCOVA_TRIGGER_RE = re.compile(
+    r"\b(?:ANCOVA|analysis\s+of\s+covariance|covariate[\s-]adjusted|"
+    r"adjusted\s+for\s+(?:baseline|pre[\s-]test|pre-existing)|"
+    r"controlling\s+for\s+(?:a\s+)?covariate)\b",
+    re.IGNORECASE,
+)
+_COVARIATE_BALANCE_RE = re.compile(
+    r"\b(?:covariate\s+(?:balance|equivalence|distribution)|"
+    r"group\s+(?:equivalence|balance|comparability)\s+on\s+(?:the\s+)?covariate|"
+    r"randomisation\s+ensured\s+(?:covariate\s+)?balance|"
+    r"covariate\s+(?:was|were)\s+(?:checked|verified|balanced|comparable)\s+across|"
+    r"no\s+(?:significant\s+)?(?:group\s+)?difference\s+(?:on|in)\s+(?:the\s+)?covariate|"
+    r"pre[\s-]test\s+(?:did\s+not\s+differ|was\s+comparable))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ancova_covariate_balance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ANCOVA analyses without covariate balance verification.
+
+    Emits ``missing-ancova-covariate-balance`` (minor) when ANCOVA is used
+    but the balance or comparability of the covariate across groups is not
+    verified.
+    """
+    _vid = "validate_ancova_covariate_balance"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ANCOVA_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _COVARIATE_BALANCE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ancova-covariate-balance",
+                severity="minor",
+                message=(
+                    "ANCOVA is used but covariate balance or group comparability "
+                    "on the covariate is not verified. Confirm that groups do not "
+                    "differ meaningfully on the covariate before adjustment."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 292 – validate_partial_eta_squared_reporting
+# ---------------------------------------------------------------------------
+
+_ANOVA_TRIGGER_RE = re.compile(
+    r"\b(?:(?:one|two|three)[\s-]?way\s+ANOVA|repeated[\s-]?measures\s+ANOVA|"
+    r"mixed\s+(?:factorial\s+)?ANOVA|MANOVA|ANCOVA|F\s*\(\s*\d+\s*,\s*\d+\s*\))\b",
+    re.IGNORECASE,
+)
+_PARTIAL_ETA_RE = re.compile(
+    r"\b(?:partial\s+η²|partial\s+eta[\s-]?squared|ηp²|η_p\s*=|"
+    r"partial\s+omega[\s-]?squared|ω²_p|generalised\s+eta[\s-]?squared|"
+    r"effect\s+size\s+(?:was|were|is)\s+reported\s+as\s+(?:partial\s+)?η)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_partial_eta_squared_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ANOVA analyses without a partial eta-squared or equivalent.
+
+    Emits ``missing-partial-eta-squared`` (minor) when ANOVA results are
+    reported but no effect size (e.g., partial η²) is given.
+    """
+    _vid = "validate_partial_eta_squared_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ANOVA_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PARTIAL_ETA_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-partial-eta-squared",
+                severity="minor",
+                message=(
+                    "ANOVA is used but no effect size (e.g., partial η², ω²_p) is "
+                    "reported. Include effect size estimates alongside F-statistics "
+                    "to enable readers to assess practical significance."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 293 – validate_cohens_d_reporting
+# ---------------------------------------------------------------------------
+
+_MEAN_DIFF_TRIGGER_RE = re.compile(
+    r"\b(?:independent\s+samples?\s+t[\s-]?test|paired\s+samples?\s+t[\s-]?test|"
+    r"t\s*\(\s*\d+\s*\)\s*=\s*-?[0-9]+\.[0-9]+|"
+    r"mean\s+difference\s+(?:was|is|of)|"
+    r"groups?\s+differed\s+significantly)\b",
+    re.IGNORECASE,
+)
+_COHENS_D_RE = re.compile(
+    r"\b(?:Cohen(?:'s)?\s+d\b|Hedges(?:'s?)?\s+g\b|d\s*=\s*-?[0-9]*\.[0-9]+|"
+    r"g\s*=\s*-?[0-9]*\.[0-9]+|standardis(?:ed|ed)\s+mean\s+difference)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cohens_d_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag t-test results without Cohen's d or equivalent.
+
+    Emits ``missing-cohens-d`` (minor) when a t-test is reported but no
+    standardised effect size (Cohen's d or Hedges' g) is given.
+    """
+    _vid = "validate_cohens_d_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MEAN_DIFF_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _COHENS_D_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cohens-d",
+                severity="minor",
+                message=(
+                    "A t-test is reported but no standardised effect size "
+                    "(Cohen's d or Hedges' g) is given. Report an effect size "
+                    "to allow meta-analytic synthesis and practical interpretation."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 294 – validate_sequential_testing_correction
+# ---------------------------------------------------------------------------
+
+_SEQUENTIAL_TEST_TRIGGER_RE = re.compile(
+    r"\b(?:interim\s+(?:analysis|analyses|look)|"
+    r"sequential\s+(?:testing|trial|analysis|design)|"
+    r"group\s+sequential\s+(?:design|method|approach)|"
+    r"adaptive\s+(?:stopping|interim)|"
+    r"data\s+monitoring\s+committee|DSMB|"
+    r"early\s+(?:stopping|termination)\s+(?:for\s+)?(?:efficacy|futility|harm))\b",
+    re.IGNORECASE,
+)
+_SEQUENTIAL_ALPHA_CORRECTION_RE = re.compile(
+    r"\b(?:alpha[\s-]?spending|O(?:'|')?Brien[\s-]?Fleming|Pocock\s+(?:bounds?|correction)|"
+    r"Lan[\s-]DeMets|adjusted\s+alpha|spending\s+function|"
+    r"error\s+(?:spending|inflation)\s+(?:was|is|were)\s+(?:controlled|addressed|corrected)|"
+    r"sequential\s+(?:stopping\s+rule|boundary)|"
+    r"familywise\s+error\s+rate\s+(?:was|is|were)\s+controlled)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sequential_testing_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag sequential/interim analyses without alpha-spending correction.
+
+    Emits ``missing-sequential-testing-correction`` (moderate) when interim
+    or sequential testing is described but no Type I error correction
+    (e.g., alpha-spending, O'Brien-Fleming) is mentioned.
+    """
+    _vid = "validate_sequential_testing_correction"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _SEQUENTIAL_TEST_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SEQUENTIAL_ALPHA_CORRECTION_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-sequential-testing-correction",
+                severity="moderate",
+                message=(
+                    "Sequential or interim testing is described but no alpha-spending "
+                    "or Type I error correction (e.g., O'Brien-Fleming bounds, Pocock "
+                    "correction) is mentioned. Report the error control procedure used."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 295 – validate_adaptive_design_disclosure
+# ---------------------------------------------------------------------------
+
+_ADAPTIVE_TRIGGER_RE = re.compile(
+    r"\b(?:adaptive\s+(?:design|trial|randomisation|allocation|sample\s+size)|"
+    r"sample\s+size\s+(?:re[\s-]?estimation|reassessment|adaptive\s+adjustment)|"
+    r"response[\s-]?adaptive\s+randomisation|"
+    r"biomarker[\s-]?adaptive|seamless\s+(?:phase|design))\b",
+    re.IGNORECASE,
+)
+_ADAPTIVE_DISCLOSURE_RE = re.compile(
+    r"\b(?:pre[\s-]?specified\s+(?:adaptive\s+)?(?:rule|decision|criterion|stopping)|"
+    r"adaptation\s+(?:rule|procedure|criteria)\s+(?:was|were|had\s+been)\s+"
+    r"(?:pre[\s-]?specified|registered|prospectively\s+defined)|"
+    r"independent\s+(?:statistician|committee|data\s+monitoring)|"
+    r"type\s+I\s+error\s+(?:was|is|were)\s+(?:controlled|protected|maintained)\s+"
+    r"across\s+(?:adaptations?|stages?)|"
+    r"blinded\s+(?:sample\s+size\s+)?reassessment)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_adaptive_design_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag adaptive designs without pre-specification disclosure.
+
+    Emits ``missing-adaptive-design-disclosure`` (moderate) when an adaptive
+    trial design is described but the pre-specification and error control
+    procedures are not disclosed.
+    """
+    _vid = "validate_adaptive_design_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ADAPTIVE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _ADAPTIVE_DISCLOSURE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-adaptive-design-disclosure",
+                severity="moderate",
+                message=(
+                    "An adaptive trial design is described but the pre-specification "
+                    "of adaptation rules and Type I error control procedures are not "
+                    "disclosed. Report how adaptations were governed and how error "
+                    "rates were controlled."
                 ),
                 validator=_vid,
             )
