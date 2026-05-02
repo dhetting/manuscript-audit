@@ -1091,7 +1091,6 @@ HEAD: `907b239`
 - Phase 408: `validate_log_likelihood_reporting` → `missing-log-likelihood` (minor)
 - Phase 409: `validate_link_function_justification` → `missing-link-function-justification` (minor)
 - Phase 410: `validate_functional_form_test` → `missing-functional-form-test` (minor)
-- Gotcha: trailing `\b` after `=` fails (non-word char). Use `value/ratio` etc. not bare `=` as last match.
 
 **Phases 411–415** (`20e585b`, 1446 tests)
 - Phase 411: `validate_efa_factor_retention` → `missing-efa-retention-criteria` (moderate)
@@ -1099,7 +1098,6 @@ HEAD: `907b239`
 - Phase 413: `validate_omega_reliability` → `missing-omega-reliability` (minor)
 - Phase 414: `validate_criterion_validity_evidence` → `missing-criterion-validity-evidence` (moderate)
 - Phase 415: `validate_irt_dif_reporting` → `missing-irt-dif-reporting` (minor)
-- NOTE: phase 415 renamed from `validate_irt_model_fit` (duplicate at line 21300) to `validate_irt_dif_reporting`
 
 **Phases 416–420** (`8ccd2e4`, 1466 tests)
 - Phase 416: `validate_robust_standard_errors` → `missing-robust-standard-errors` (minor)
@@ -1107,7 +1105,6 @@ HEAD: `907b239`
 - Phase 418: `validate_propensity_score_overlap` → `missing-propensity-overlap` (moderate)
 - Phase 419: `validate_cure_model_fraction_reporting` → `missing-cure-fraction` (minor)
 - Phase 420: `validate_recurrent_event_modeling` → `missing-recurrent-event-method` (minor)
-- Bug: `_RECUR_TRIGGER_RE` used singular `event/episode` — missed plural. Fixed with `events?`/`episodes?`.
 
 **Phases 421–425** (`d929e82`, 1486 tests)
 - Phase 421: `validate_prior_specification_justification` → `missing-prior-justification` (moderate)
@@ -1115,8 +1112,6 @@ HEAD: `907b239`
 - Phase 423: `validate_bayesian_sequential_stopping_rule` → `missing-bayesian-stopping-rule` (moderate)
 - Phase 424: `validate_variational_inference_elbo` → `missing-elbo-reporting` (minor)
 - Phase 425: `validate_hierarchical_shrinkage_reporting` → `missing-hierarchical-shrinkage` (minor)
-- Bug: `_PRIOR_JUSTIFIED_RE` had `informative\s+prior` which matched trigger text (suppress when fires expected). Removed.
-- Bug: plural form in `priors?\s+were\s+specified` needed `priors?` not just `prior`.
 
 **Phases 426–430** (`99287c8`, 1506 tests)
 - Phase 426: `validate_spatial_weights_matrix_specification` → `missing-spatial-weights-specification` (moderate)
@@ -1131,7 +1126,6 @@ HEAD: `907b239`
 - Phase 433: `validate_active_learning_strategy` → `missing-active-learning-strategy` (minor)
 - Phase 434: `validate_sequence_labeling_evaluation` → `missing-sequence-labeling-evaluation` (minor)
 - Phase 435: `validate_nlp_heldout_evaluation` → `missing-nlp-heldout-evaluation` (moderate)
-- Bug: `_ANNOT_TRIGGER_RE` used `manual\s+labeling` missing "manually labeled". Fixed with `manual(?:ly)?\s+(?:labeling|...|labeled)`.
 
 **Phases 436–440** (`084f831`, 1546 tests)
 - Phase 436: `validate_bleu_rouge_evaluation` → `missing-bleu-rouge-evaluation` (moderate)
@@ -1140,8 +1134,68 @@ HEAD: `907b239`
 - Phase 439: `validate_language_model_perplexity` → `missing-perplexity-reporting` (minor)
 - Phase 440: `validate_reading_comprehension_evaluation` → `missing-reading-comprehension-eval` (moderate)
 
-Current test count: **1546 passing** (after phase 440)
-HEAD: `084f831`
+**Phases 441–445** (`b3cd503`, 1566 tests)
+- Phase 441: `validate_ir_ranking_metrics` → `missing-ir-ranking-metrics` (moderate)
+- Phase 442: `validate_recsys_evaluation_metrics` → `missing-recsys-metrics` (moderate)
+- Phase 443: `validate_object_detection_metrics` → `missing-detection-metrics` (moderate)
+- Phase 444: `validate_gnn_evaluation_metrics` → `missing-gnn-evaluation-metrics` (moderate)
+- Phase 445: `validate_rl_reward_reporting` → `missing-rl-reward-reporting` (moderate)
+
+**Phases 446–450** (`d4d9bc0`, 1586 tests)
+- Phase 446: `validate_multitask_per_task_performance` → `missing-per-task-performance` (minor)
+- Phase 447: `validate_few_shot_setup_details` → `missing-few-shot-setup-details` (moderate)
+- Phase 448: `validate_knowledge_distillation_setup` → `missing-distillation-setup` (minor)
+- Phase 449: `validate_federated_learning_setup` → `missing-federated-setup` (moderate)
+- Phase 450: `validate_continual_learning_forgetting_metric` → `missing-forgetting-metric` (moderate)
+
+**Phases 451–455** (`cb639af`, 1606 tests)
+- Phase 451: `validate_ssl_augmentation_details` → `missing-ssl-augmentation-details` (moderate)
+- Phase 452: `validate_prompt_template_disclosure` → `missing-prompt-template-disclosure` (minor)
+- Phase 453: `validate_augmentation_parameter_disclosure` → `missing-augmentation-parameters` (minor)
+- Phase 454: `validate_pruning_sparsity_disclosure` → `missing-pruning-sparsity-details` (minor)
+- Phase 455: `validate_nas_search_space_disclosure` → `missing-nas-search-space-details` (moderate)
+- Gotcha: `_AUGMENT_REPR_TRIGGER_RE` used `technique` (singular) — missed `techniques`. Fixed with `techniques?`.
+- Duplicate test names for phase 453 `test_augmentation_*` — renamed to `test_augmentation453_*`.
+
+**Phases 456–460** (`8f9f3e5`, 1626 tests)
+- Phase 456: `validate_adversarial_attack_details` → `missing-adversarial-attack-details` (moderate)
+- Phase 457: `validate_uncertainty_decomposition` → `missing-uncertainty-decomposition` (minor)
+- Phase 458: `validate_causal_discovery_assumptions` → `missing-causal-discovery-assumptions` (moderate)
+- Phase 459: `validate_domain_adaptation_description` → `missing-domain-adaptation-description` (minor)
+- Phase 460: `validate_meta_learning_task_setup` → `missing-meta-learning-task-setup` (moderate)
+
+**Phases 461–465** (`079d4c1`, 1646 tests)
+- Phase 461: `validate_forecasting_metrics` → `missing-forecasting-metrics` (moderate)
+- Phase 462: `validate_anomaly_detection_threshold` → `missing-anomaly-detection-threshold` (moderate)
+- Phase 463: `validate_generative_model_metrics` → `missing-generative-model-metrics` (moderate)
+- Phase 464: `validate_tts_evaluation` → `missing-tts-evaluation` (moderate)
+- Phase 465: `validate_video_evaluation_metrics` → `missing-video-evaluation-metrics` (moderate)
+- Gotcha: `(?:MAE\s*=|RMSE\s*=|...)\b` — trailing `\b` after `=` fails. Restructured to `(?:\bMAE\b|\bRMSE\b)\s*=`.
+
+**Phases 466–470** (`b425bbb`, 1666 tests)
+- Phase 466: `validate_point_cloud_metrics` → `missing-point-cloud-metrics` (moderate)
+- Phase 467: `validate_segmentation_dice_metrics` → `missing-segmentation-dice-metrics` (moderate)
+- Phase 468: `validate_eeg_preprocessing_details` → `missing-eeg-preprocessing-details` (moderate)
+- Phase 469: `validate_admet_reporting` → `missing-admet-reporting` (minor)
+- Phase 470: `validate_variant_calling_pipeline` → `missing-variant-calling-pipeline` (moderate)
+
+**Phases 471–475** (`74e0bf4`, 1686 tests)
+- Phase 471: `validate_protein_structure_evaluation` → `missing-protein-structure-metrics` (moderate)
+- Phase 472: `validate_climate_model_skill_score` → `missing-climate-model-skill-score` (moderate)
+- Phase 473: `validate_panel_unit_root_testing` → `missing-panel-unit-root-testing` (moderate)
+- Phase 474: `validate_social_network_centrality_reporting` → `missing-network-centrality-metrics` (minor)
+- Phase 475: `validate_abm_sensitivity_analysis` → `missing-abm-sensitivity-analysis` (minor)
+- NOTE: `validate_agent_based_model_validation` already existed at line 22047; phase 475 renamed to `validate_abm_sensitivity_analysis`.
+
+**Phases 476–480** (`89d9637`, 1706 tests)
+- Phase 476: `validate_sbi_coverage_testing` → `missing-sbi-coverage-testing` (moderate)
+- Phase 477: `validate_bo_acquisition_function` → `missing-bo-acquisition-function` (minor)
+- Phase 478: `validate_sdm_evaluation_metrics` → `missing-sdm-evaluation-metrics` (moderate)
+- Phase 479: `validate_epi_parameter_estimation` → `missing-epi-parameter-estimation` (moderate)
+- Phase 480: `validate_optimization_convergence_reporting` → `missing-optimization-convergence-reporting` (minor)
+
+Current test count: **1706 passing** (after phase 480)
+HEAD: `89d9637`
 
 ## Critical technical gotchas (accumulated)
 
@@ -1232,4 +1286,4 @@ Assume:
 - currently at phase 400 with 1386 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 480)
+- update MEMORY.md after every 40 phases (next update due after phase 520)
