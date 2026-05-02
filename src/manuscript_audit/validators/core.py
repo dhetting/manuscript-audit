@@ -7082,6 +7082,11 @@ def run_deterministic_validators(
         validate_video_dense_captioning_metrics(parsed, classification),
         validate_document_vqa_metrics(parsed, classification),
         validate_chart_qa_metrics(parsed, classification),
+        validate_crosslingual_summarization_metrics(parsed, classification),
+        validate_multilingual_mt_metrics(parsed, classification),
+        validate_code_translation_metrics(parsed, classification),
+        validate_formal_verification_metrics(parsed, classification),
+        validate_program_synthesis_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -32520,6 +32525,237 @@ def validate_chart_qa_metrics(
                 ),
                 location="full_text",
                 validator=_CHARTQA_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 576 – cross-lingual summarization evaluation
+# ---------------------------------------------------------------------------
+_XLSUM_VID = "missing-crosslingual-summarization-metrics"
+
+_XLSUM_TRIGGERS = re.compile(
+    r"\b(?:cross[- ]lingual\s+summarization|XL[- ]Sum\s+(?:benchmark|dataset)|"
+    r"multilingual\s+summarization|cross[- ]language\s+summarization)\b",
+    re.IGNORECASE,
+)
+_XLSUM_METRICS = re.compile(
+    r"\b(?:ROUGE(?:-[A-Z0-9]+)?|BERTScore|METEOR)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:ROUGE|BERTScore|METEOR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_crosslingual_summarization_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_XLSUM_VID, findings=[])
+    text = parsed.full_text
+    if not _XLSUM_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_XLSUM_VID, findings=[])
+    if _XLSUM_METRICS.search(text):
+        return ValidationResult(validator_name=_XLSUM_VID, findings=[])
+    return ValidationResult(
+        validator_name=_XLSUM_VID,
+        findings=[
+            Finding(
+                code=_XLSUM_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses cross-lingual summarization but does not "
+                    "report ROUGE, BERTScore, or METEOR on a benchmark."
+                ),
+                location="full_text",
+                validator=_XLSUM_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 577 – multilingual machine translation evaluation
+# ---------------------------------------------------------------------------
+_MULTILMT_VID = "missing-multilingual-mt-metrics"
+
+_MULTILMT_TRIGGERS = re.compile(
+    r"\b(?:multilingual\s+(?:machine\s+)?translation|many[- ]to[- ]many\s+(?:MT|translation)|"
+    r"massively\s+multilingual\s+(?:MT|translation)|M2M\s+(?:model|translation))\b",
+    re.IGNORECASE,
+)
+_MULTILMT_METRICS = re.compile(
+    r"\b(?:BLEU|spBLEU|chrF\+?\+?|TER|COMET)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:BLEU|spBLEU|chrF|COMET)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multilingual_mt_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MULTILMT_VID, findings=[])
+    text = parsed.full_text
+    if not _MULTILMT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MULTILMT_VID, findings=[])
+    if _MULTILMT_METRICS.search(text):
+        return ValidationResult(validator_name=_MULTILMT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MULTILMT_VID,
+        findings=[
+            Finding(
+                code=_MULTILMT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses multilingual machine translation but does not "
+                    "report BLEU, spBLEU, chrF, or COMET on a benchmark."
+                ),
+                location="full_text",
+                validator=_MULTILMT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 578 – code translation evaluation
+# ---------------------------------------------------------------------------
+_CODETRANS_VID = "missing-code-translation-metrics"
+
+_CODETRANS_TRIGGERS = re.compile(
+    r"\b(?:code\s+translation|program\s+translation|trans(?:pil(?:ing|ation))|"
+    r"cross[- ]language\s+code\s+migration|source[- ]to[- ]source\s+translation)\b",
+    re.IGNORECASE,
+)
+_CODETRANS_METRICS = re.compile(
+    r"\b(?:CodeBLEU|BLEU(?:-[0-9]+)?|exact\s+match|EM|compilation\s+rate|"
+    r"pass@\s*[0-9]+|execution\s+accuracy)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:CodeBLEU|BLEU|EM)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_code_translation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CODETRANS_VID, findings=[])
+    text = parsed.full_text
+    if not _CODETRANS_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CODETRANS_VID, findings=[])
+    if _CODETRANS_METRICS.search(text):
+        return ValidationResult(validator_name=_CODETRANS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CODETRANS_VID,
+        findings=[
+            Finding(
+                code=_CODETRANS_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses code translation but does not report "
+                    "CodeBLEU, BLEU, exact match, or compilation rate."
+                ),
+                location="full_text",
+                validator=_CODETRANS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 579 – formal verification evaluation
+# ---------------------------------------------------------------------------
+_FORMALVERIF_VID = "missing-formal-verification-metrics"
+
+_FORMALVERIF_TRIGGERS = re.compile(
+    r"\b(?:formal\s+verif\w+|theorem\s+prov\w+|proof\s+(?:synthesis|search|assist)|"
+    r"automated\s+(?:theorem\s+proving|reasoning)|Lean\s+prover|Isabelle|Coq|HOL)\b",
+    re.IGNORECASE,
+)
+_FORMALVERIF_METRICS = re.compile(
+    r"\b(?:proof\s+success\s+rate|verification\s+rate|"
+    r"pass@\s*[0-9]+|solve\s+rate|proved\s+(?:lemmas?|theorems?))\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:proof\s+success|solve\s+rate)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_formal_verification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FORMALVERIF_VID, findings=[])
+    text = parsed.full_text
+    if not _FORMALVERIF_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_FORMALVERIF_VID, findings=[])
+    if _FORMALVERIF_METRICS.search(text):
+        return ValidationResult(validator_name=_FORMALVERIF_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FORMALVERIF_VID,
+        findings=[
+            Finding(
+                code=_FORMALVERIF_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses formal verification / theorem proving but does "
+                    "not report proof success rate, solve rate, or pass@k."
+                ),
+                location="full_text",
+                validator=_FORMALVERIF_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 580 – program synthesis evaluation
+# ---------------------------------------------------------------------------
+_PROGSYN_VID = "missing-program-synthesis-metrics"
+
+_PROGSYN_TRIGGERS = re.compile(
+    r"\b(?:program\s+synthesis|code\s+synthesis|neural\s+program\s+synthesis|"
+    r"inductive\s+program\s+synthesis|programming\s+by\s+example|"
+    r"spec(?:ification)?[- ]guided\s+synthesis)\b",
+    re.IGNORECASE,
+)
+_PROGSYN_METRICS = re.compile(
+    r"\b(?:pass@\s*[0-9]+|exact\s+match|EM|solve\s+rate|"
+    r"functional\s+correctness|synthesis\s+accuracy)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:pass@[0-9]+|exact\s+match)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_program_synthesis_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PROGSYN_VID, findings=[])
+    text = parsed.full_text
+    if not _PROGSYN_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_PROGSYN_VID, findings=[])
+    if _PROGSYN_METRICS.search(text):
+        return ValidationResult(validator_name=_PROGSYN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PROGSYN_VID,
+        findings=[
+            Finding(
+                code=_PROGSYN_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses program synthesis but does not report "
+                    "pass@k, exact match, solve rate, or functional correctness."
+                ),
+                location="full_text",
+                validator=_PROGSYN_VID,
             )
         ],
     )

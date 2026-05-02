@@ -34302,3 +34302,256 @@ def test_chartqa575_non_empirical_no_fire() -> None:
     )
     r = validate_chart_qa_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 576 – validate_crosslingual_summarization_metrics
+# ---------------------------------------------------------------------------
+def _xlsum576_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t576", source_path="t576.md", source_format="markdown",
+            title="Cross-lingual summarization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_xlsum576_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_crosslingual_summarization_metrics
+    ms, cl = _xlsum576_ms(
+        "We propose a model for cross-lingual summarization on the XL-Sum dataset."
+    )
+    r = validate_crosslingual_summarization_metrics(ms, cl)
+    assert any(f.code == "missing-crosslingual-summarization-metrics" for f in r.findings)
+
+
+def test_xlsum576_no_fire_when_rouge_reported() -> None:
+    from manuscript_audit.validators.core import validate_crosslingual_summarization_metrics
+    ms, cl = _xlsum576_ms("Cross-lingual summarization: ROUGE-L = 22.4 on XL-Sum.")
+    r = validate_crosslingual_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_xlsum576_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_crosslingual_summarization_metrics
+    ms, cl = _xlsum576_ms("We propose a salient object detection approach.")
+    r = validate_crosslingual_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_xlsum576_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_crosslingual_summarization_metrics
+    ms, _ = _xlsum576_ms("Multilingual summarization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_crosslingual_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 577 – validate_multilingual_mt_metrics
+# ---------------------------------------------------------------------------
+def _multilmt577_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t577", source_path="t577.md", source_format="markdown",
+            title="Multilingual MT", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multilmt577_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_mt_metrics
+    ms, cl = _multilmt577_ms(
+        "We propose a massively multilingual translation model."
+    )
+    r = validate_multilingual_mt_metrics(ms, cl)
+    assert any(f.code == "missing-multilingual-mt-metrics" for f in r.findings)
+
+
+def test_multilmt577_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_mt_metrics
+    ms, cl = _multilmt577_ms(
+        "Many-to-many translation: spBLEU = 31.2 averaged over 100 directions."
+    )
+    r = validate_multilingual_mt_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_multilmt577_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_mt_metrics
+    ms, cl = _multilmt577_ms("We present a code generation benchmark.")
+    r = validate_multilingual_mt_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_multilmt577_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_mt_metrics
+    ms, _ = _multilmt577_ms("Many-to-many MT theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_multilingual_mt_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 578 – validate_code_translation_metrics
+# ---------------------------------------------------------------------------
+def _codetrans578_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t578", source_path="t578.md", source_format="markdown",
+            title="Code translation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_codetrans578_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_code_translation_metrics
+    ms, cl = _codetrans578_ms(
+        "We propose a transpilation model for cross-language code migration."
+    )
+    r = validate_code_translation_metrics(ms, cl)
+    assert any(f.code == "missing-code-translation-metrics" for f in r.findings)
+
+
+def test_codetrans578_no_fire_when_codebleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_code_translation_metrics
+    ms, cl = _codetrans578_ms("Code translation: CodeBLEU = 67.4 on the CodeXGLUE benchmark.")
+    r = validate_code_translation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_codetrans578_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_code_translation_metrics
+    ms, cl = _codetrans578_ms("We study 3D scene reconstruction approaches.")
+    r = validate_code_translation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_codetrans578_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_code_translation_metrics
+    ms, _ = _codetrans578_ms("Source-to-source translation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_code_translation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 579 – validate_formal_verification_metrics
+# ---------------------------------------------------------------------------
+def _formalverif579_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t579", source_path="t579.md", source_format="markdown",
+            title="Formal verification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_formalverif579_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_formal_verification_metrics
+    ms, cl = _formalverif579_ms(
+        "We propose a neural theorem prover for Lean using automated reasoning."
+    )
+    r = validate_formal_verification_metrics(ms, cl)
+    assert any(f.code == "missing-formal-verification-metrics" for f in r.findings)
+
+
+def test_formalverif579_no_fire_when_proof_rate_reported() -> None:
+    from manuscript_audit.validators.core import validate_formal_verification_metrics
+    ms, cl = _formalverif579_ms(
+        "Formal verification: proof success rate = 43.2% on miniF2F benchmark."
+    )
+    r = validate_formal_verification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_formalverif579_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_formal_verification_metrics
+    ms, cl = _formalverif579_ms("We present a visual question answering model.")
+    r = validate_formal_verification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_formalverif579_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_formal_verification_metrics
+    ms, _ = _formalverif579_ms("Automated theorem proving theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_formal_verification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 580 – validate_program_synthesis_metrics
+# ---------------------------------------------------------------------------
+def _progsyn580_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t580", source_path="t580.md", source_format="markdown",
+            title="Program synthesis", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_progsyn580_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_program_synthesis_metrics
+    ms, cl = _progsyn580_ms(
+        "We propose a neural program synthesis model using spec-guided synthesis."
+    )
+    r = validate_program_synthesis_metrics(ms, cl)
+    assert any(f.code == "missing-program-synthesis-metrics" for f in r.findings)
+
+
+def test_progsyn580_no_fire_when_pass_at_k_reported() -> None:
+    from manuscript_audit.validators.core import validate_program_synthesis_metrics
+    ms, cl = _progsyn580_ms("Program synthesis: pass@1 = 52.1% on the HumanEval benchmark.")
+    r = validate_program_synthesis_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_progsyn580_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_program_synthesis_metrics
+    ms, cl = _progsyn580_ms("We present a multilingual translation model.")
+    r = validate_program_synthesis_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_progsyn580_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_program_synthesis_metrics
+    ms, _ = _progsyn580_ms("Inductive program synthesis theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_program_synthesis_metrics(ms, cl)
+    assert r.findings == []
