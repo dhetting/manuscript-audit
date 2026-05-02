@@ -37083,3 +37083,264 @@ def test_svs630_non_empirical_no_fire() -> None:
     )
     r = validate_svs_benchmark_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 631 – validate_audio_captioning_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _audcap631_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t631", source_path="t631.md", source_format="markdown",
+            title="Audio captioning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_audcap631_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_benchmark_metrics
+    ms, cl = _audcap631_ms(
+        "We propose an automated audio captioning model on Clotho dataset."
+    )
+    r = validate_audio_captioning_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-audio-captioning-benchmark-metrics" for f in r.findings)
+
+
+def test_audcap631_no_fire_when_cider_reported() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_benchmark_metrics
+    ms, cl = _audcap631_ms(
+        "Audio captioning: CIDEr = 0.483, SPIDEr = 0.386 on Clotho v2."
+    )
+    r = validate_audio_captioning_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_audcap631_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_benchmark_metrics
+    ms, cl = _audcap631_ms("We study voice conversion approaches.")
+    r = validate_audio_captioning_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_audcap631_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_audio_captioning_benchmark_metrics
+    ms, _ = _audcap631_ms("Audio description theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_audio_captioning_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 632 – validate_sed_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _sed632_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t632", source_path="t632.md", source_format="markdown",
+            title="Sound event detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sed632_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_sed_benchmark_metrics
+    ms, cl = _sed632_ms("We propose a sound event detection model on DESED dataset.")
+    r = validate_sed_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-sed-benchmark-metrics" for f in r.findings)
+
+
+def test_sed632_no_fire_when_psds_reported() -> None:
+    from manuscript_audit.validators.core import validate_sed_benchmark_metrics
+    ms, cl = _sed632_ms("Sound event detection: PSDS1 = 0.534 on DESED corpus.")
+    r = validate_sed_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_sed632_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_sed_benchmark_metrics
+    ms, cl = _sed632_ms("We study music source separation methods.")
+    r = validate_sed_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_sed632_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sed_benchmark_metrics
+    ms, _ = _sed632_ms("Acoustic event theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_sed_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 633 – validate_acoustic_scene_classification_metrics
+# ---------------------------------------------------------------------------
+def _asc633_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t633", source_path="t633.md", source_format="markdown",
+            title="Acoustic scene classification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_asc633_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_acoustic_scene_classification_metrics
+    ms, cl = _asc633_ms("We propose an ASC model on TAU Urban dataset.")
+    r = validate_acoustic_scene_classification_metrics(ms, cl)
+    assert any(
+        f.code == "missing-acoustic-scene-classification-metrics" for f in r.findings
+    )
+
+
+def test_asc633_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_acoustic_scene_classification_metrics
+    ms, cl = _asc633_ms(
+        "Acoustic scene classification: accuracy = 78.3% on TAU Urban 2020."
+    )
+    r = validate_acoustic_scene_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_asc633_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_acoustic_scene_classification_metrics
+    ms, cl = _asc633_ms("We study audio captioning methods.")
+    r = validate_acoustic_scene_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_asc633_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_acoustic_scene_classification_metrics
+    ms, _ = _asc633_ms("Soundscape classification theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_acoustic_scene_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 634 – validate_environmental_sound_classification_metrics
+# ---------------------------------------------------------------------------
+def _esc634_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t634", source_path="t634.md", source_format="markdown",
+            title="Environmental sound classification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_esc634_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import (
+        validate_environmental_sound_classification_metrics,
+    )
+    ms, cl = _esc634_ms("We propose a model evaluated on ESC-50 dataset.")
+    r = validate_environmental_sound_classification_metrics(ms, cl)
+    assert any(
+        f.code == "missing-environmental-sound-classification-metrics" for f in r.findings
+    )
+
+
+def test_esc634_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import (
+        validate_environmental_sound_classification_metrics,
+    )
+    ms, cl = _esc634_ms("ESC-50 accuracy = 96.4% using our proposed approach.")
+    r = validate_environmental_sound_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_esc634_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import (
+        validate_environmental_sound_classification_metrics,
+    )
+    ms, cl = _esc634_ms("We study speech enhancement approaches.")
+    r = validate_environmental_sound_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_esc634_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_environmental_sound_classification_metrics,
+    )
+    ms, _ = _esc634_ms("Audio classification theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_environmental_sound_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 635 – validate_urban_sound_tagging_metrics
+# ---------------------------------------------------------------------------
+def _urbansound635_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t635", source_path="t635.md", source_format="markdown",
+            title="Urban sound tagging", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_urbansound635_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_urban_sound_tagging_metrics
+    ms, cl = _urbansound635_ms(
+        "We propose a model for urban sound tagging on SONYC-UST."
+    )
+    r = validate_urban_sound_tagging_metrics(ms, cl)
+    assert any(f.code == "missing-urban-sound-tagging-metrics" for f in r.findings)
+
+
+def test_urbansound635_no_fire_when_auprc_reported() -> None:
+    from manuscript_audit.validators.core import validate_urban_sound_tagging_metrics
+    ms, cl = _urbansound635_ms(
+        "Urban sound tagging: macro-AUPRC = 0.732 on SONYC-UST dataset."
+    )
+    r = validate_urban_sound_tagging_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_urbansound635_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_urban_sound_tagging_metrics
+    ms, cl = _urbansound635_ms("We study acoustic scene classification methods.")
+    r = validate_urban_sound_tagging_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_urbansound635_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_urban_sound_tagging_metrics
+    ms, _ = _urbansound635_ms("Urban noise monitoring theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_urban_sound_tagging_metrics(ms, cl)
+    assert r.findings == []

@@ -7138,6 +7138,11 @@ def run_deterministic_validators(
         validate_music_source_separation_metrics(parsed, classification),
         validate_music_transcription_metrics(parsed, classification),
         validate_svs_benchmark_metrics(parsed, classification),
+        validate_audio_captioning_benchmark_metrics(parsed, classification),
+        validate_sed_benchmark_metrics(parsed, classification),
+        validate_acoustic_scene_classification_metrics(parsed, classification),
+        validate_environmental_sound_classification_metrics(parsed, classification),
+        validate_urban_sound_tagging_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -35151,6 +35156,238 @@ def validate_svs_benchmark_metrics(
                 ),
                 location="full_text",
                 validator=_SVS630_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 631 – audio captioning evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_AUDCAP631_VID = "missing-audio-captioning-benchmark-metrics"
+
+_AUDCAP631_TRIGGERS = re.compile(
+    r"\b(?:audio\s+captioning|automated\s+audio\s+captioning|AAC\b|"
+    r"Clotho\s+(?:dataset|v[12])|AudioCaps|DCASE\s+(?:audio\s+)?captioning)\b",
+    re.IGNORECASE,
+)
+_AUDCAP631_METRICS = re.compile(
+    r"\b(?:CIDEr|SPIDEr|METEOR|BLEU|ROUGE|SPICE)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:CIDEr|SPIDEr|METEOR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_audio_captioning_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AUDCAP631_VID, findings=[])
+    text = parsed.full_text
+    if not _AUDCAP631_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_AUDCAP631_VID, findings=[])
+    if _AUDCAP631_METRICS.search(text):
+        return ValidationResult(validator_name=_AUDCAP631_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AUDCAP631_VID,
+        findings=[
+            Finding(
+                code=_AUDCAP631_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses audio captioning but does not report "
+                    "CIDEr, SPIDEr, or METEOR on Clotho/AudioCaps."
+                ),
+                location="full_text",
+                validator=_AUDCAP631_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 632 – sound event detection evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_SED632_VID = "missing-sed-benchmark-metrics"
+
+_SED632_TRIGGERS = re.compile(
+    r"\b(?:sound\s+event\s+detection|SED\b|"
+    r"DCASE\s+(?:task|challenge)\s*\d|AudioSet\s+(?:strong|detection)|"
+    r"DESED\s+(?:dataset|corpus))\b",
+    re.IGNORECASE,
+)
+_SED632_METRICS = re.compile(
+    r"\b(?:PSDS|PSDS1|PSDS2|event[- ]based\s+F1|"
+    r"collar[- ]based\s+F1|mAP)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*(?:PSDS|F1|mAP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sed_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SED632_VID, findings=[])
+    text = parsed.full_text
+    if not _SED632_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SED632_VID, findings=[])
+    if _SED632_METRICS.search(text):
+        return ValidationResult(validator_name=_SED632_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SED632_VID,
+        findings=[
+            Finding(
+                code=_SED632_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses sound event detection but does not report "
+                    "PSDS or event-based F1 on DESED/DCASE."
+                ),
+                location="full_text",
+                validator=_SED632_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 633 – acoustic scene classification evaluation
+# ---------------------------------------------------------------------------
+_ASC633_VID = "missing-acoustic-scene-classification-metrics"
+
+_ASC633_TRIGGERS = re.compile(
+    r"\b(?:acoustic\s+scene\s+classification|ASC\b|"
+    r"DCASE\s+(?:task\s*1|ASC)|TAU\s+(?:Urban|dataset)|"
+    r"TUT\s+(?:sound|dataset))\b",
+    re.IGNORECASE,
+)
+_ASC633_METRICS = re.compile(
+    r"\b(?:accuracy|log[- ]loss|classification\s+accuracy|Top[- ]?1)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:accuracy|acc)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_acoustic_scene_classification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ASC633_VID, findings=[])
+    text = parsed.full_text
+    if not _ASC633_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ASC633_VID, findings=[])
+    if _ASC633_METRICS.search(text):
+        return ValidationResult(validator_name=_ASC633_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ASC633_VID,
+        findings=[
+            Finding(
+                code=_ASC633_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses acoustic scene classification but does not "
+                    "report accuracy on TAU/DCASE."
+                ),
+                location="full_text",
+                validator=_ASC633_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 634 – environmental sound classification evaluation
+# ---------------------------------------------------------------------------
+_ESC634_VID = "missing-environmental-sound-classification-metrics"
+
+_ESC634_TRIGGERS = re.compile(
+    r"\b(?:environmental\s+sound\s+classification|ESC[- ](?:10|50)|"
+    r"UrbanSound8K|FSD(?:50K|Kaggle)|"
+    r"audio\s+classification\s+benchmark)\b",
+    re.IGNORECASE,
+)
+_ESC634_METRICS = re.compile(
+    r"\b(?:accuracy|Top[- ]?1\s+accuracy|F1|mAP)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:accuracy|F1|mAP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_environmental_sound_classification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ESC634_VID, findings=[])
+    text = parsed.full_text
+    if not _ESC634_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ESC634_VID, findings=[])
+    if _ESC634_METRICS.search(text):
+        return ValidationResult(validator_name=_ESC634_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ESC634_VID,
+        findings=[
+            Finding(
+                code=_ESC634_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses environmental sound classification but does "
+                    "not report accuracy on ESC-50/UrbanSound8K."
+                ),
+                location="full_text",
+                validator=_ESC634_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 635 – urban sound tagging evaluation
+# ---------------------------------------------------------------------------
+_URBANSOUND635_VID = "missing-urban-sound-tagging-metrics"
+
+_URBANSOUND635_TRIGGERS = re.compile(
+    r"\b(?:urban\s+sound\s+(?:tagging|detection)|SONYC[- ]UST|"
+    r"DCASE\s+(?:task\s*5|urban\s+sound)|urban\s+noise\s+detection)\b",
+    re.IGNORECASE,
+)
+_URBANSOUND635_METRICS = re.compile(
+    r"\b(?:AUPRC|AUPR|mAP|F1|macro[- ]AUPRC)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*(?:AUPRC|mAP|F1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_urban_sound_tagging_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_URBANSOUND635_VID, findings=[])
+    text = parsed.full_text
+    if not _URBANSOUND635_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_URBANSOUND635_VID, findings=[])
+    if _URBANSOUND635_METRICS.search(text):
+        return ValidationResult(validator_name=_URBANSOUND635_VID, findings=[])
+    return ValidationResult(
+        validator_name=_URBANSOUND635_VID,
+        findings=[
+            Finding(
+                code=_URBANSOUND635_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses urban sound tagging but does not report "
+                    "AUPRC or mAP on SONYC-UST/DCASE."
+                ),
+                location="full_text",
+                validator=_URBANSOUND635_VID,
             )
         ],
     )
