@@ -7092,6 +7092,11 @@ def run_deterministic_validators(
         validate_coreference_benchmark_metrics(parsed, classification),
         validate_semantic_textual_similarity_metrics(parsed, classification),
         validate_open_ie_metrics(parsed, classification),
+        validate_multimodal_sentiment_metrics(parsed, classification),
+        validate_multimodal_mt_metrics(parsed, classification),
+        validate_grounded_language_learning_metrics(parsed, classification),
+        validate_text_to_sql_metrics(parsed, classification),
+        validate_commonsense_kg_completion_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -32994,6 +32999,238 @@ def validate_open_ie_metrics(
                 ),
                 location="full_text",
                 validator=_OPENIE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 586 – multimodal sentiment analysis evaluation
+# ---------------------------------------------------------------------------
+_MULTISENTIMENT_VID = "missing-multimodal-sentiment-metrics"
+
+_MULTISENTIMENT_TRIGGERS = re.compile(
+    r"\b(?:multimodal\s+sentiment\s+analysis|audio[- ]visual\s+sentiment|"
+    r"CMU[- ]MOSI|CMU[- ]MOSEI|multimodal\s+opinion\s+mining)\b",
+    re.IGNORECASE,
+)
+_MULTISENTIMENT_METRICS = re.compile(
+    r"\b(?:MAE|Pearson|accuracy|F1|binary\s+accuracy|7[- ]class\s+accuracy)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:MAE|Pearson|accuracy|F1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multimodal_sentiment_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MULTISENTIMENT_VID, findings=[])
+    text = parsed.full_text
+    if not _MULTISENTIMENT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MULTISENTIMENT_VID, findings=[])
+    if _MULTISENTIMENT_METRICS.search(text):
+        return ValidationResult(validator_name=_MULTISENTIMENT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MULTISENTIMENT_VID,
+        findings=[
+            Finding(
+                code=_MULTISENTIMENT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses multimodal sentiment analysis but does not "
+                    "report MAE, Pearson correlation, or accuracy on CMU-MOSI/MOSEI."
+                ),
+                location="full_text",
+                validator=_MULTISENTIMENT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 587 – multimodal machine translation evaluation
+# ---------------------------------------------------------------------------
+_MULTIMT_VID = "missing-multimodal-mt-metrics"
+
+_MULTIMT_TRIGGERS = re.compile(
+    r"\b(?:multimodal\s+(?:machine\s+)?translation|visually\s+grounded\s+translation|"
+    r"image[- ]guided\s+(?:MT|translation)|Multi30K\s+(?:dataset|benchmark))\b",
+    re.IGNORECASE,
+)
+_MULTIMT_METRICS = re.compile(
+    r"\b(?:BLEU(?:-[0-9]+)?|METEOR|chrF|TER|COMET)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:BLEU|METEOR|chrF|COMET)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multimodal_mt_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MULTIMT_VID, findings=[])
+    text = parsed.full_text
+    if not _MULTIMT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MULTIMT_VID, findings=[])
+    if _MULTIMT_METRICS.search(text):
+        return ValidationResult(validator_name=_MULTIMT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MULTIMT_VID,
+        findings=[
+            Finding(
+                code=_MULTIMT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses multimodal machine translation but does not "
+                    "report BLEU, METEOR, chrF, or COMET on a benchmark."
+                ),
+                location="full_text",
+                validator=_MULTIMT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 588 – grounded language learning evaluation
+# ---------------------------------------------------------------------------
+_GROUNDEDLANG_VID = "missing-grounded-language-learning-metrics"
+
+_GROUNDEDLANG_TRIGGERS = re.compile(
+    r"\b(?:grounded\s+language\s+learn\w+|embodied\s+language\s+grounding|"
+    r"vision[- ]and[- ]language\s+navigation|VLN\s+(?:benchmark|task)|"
+    r"room[- ]to[- ]room|R2R\s+(?:dataset|benchmark))\b",
+    re.IGNORECASE,
+)
+_GROUNDEDLANG_METRICS = re.compile(
+    r"\b(?:success\s+rate|SPL|NDTW|navigation\s+error|task\s+completion|"
+    r"goal\s+condition\s+success)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:success\s+rate|SPL)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_grounded_language_learning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_GROUNDEDLANG_VID, findings=[])
+    text = parsed.full_text
+    if not _GROUNDEDLANG_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_GROUNDEDLANG_VID, findings=[])
+    if _GROUNDEDLANG_METRICS.search(text):
+        return ValidationResult(validator_name=_GROUNDEDLANG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_GROUNDEDLANG_VID,
+        findings=[
+            Finding(
+                code=_GROUNDEDLANG_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses grounded language learning / VLN but does "
+                    "not report success rate, SPL, or navigation error."
+                ),
+                location="full_text",
+                validator=_GROUNDEDLANG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 589 – text-to-SQL evaluation
+# ---------------------------------------------------------------------------
+_TEXT2SQL_VID = "missing-text-to-sql-metrics"
+
+_TEXT2SQL_TRIGGERS = re.compile(
+    r"\b(?:text[- ]to[- ]SQL|natural\s+language\s+to\s+SQL|NL2SQL|"
+    r"semantic\s+parsing\s+to\s+SQL|Spider\s+(?:benchmark|dataset)|"
+    r"WikiSQL\s+(?:benchmark|dataset))\b",
+    re.IGNORECASE,
+)
+_TEXT2SQL_METRICS = re.compile(
+    r"\b(?:exact\s+match|EM|execution\s+accuracy|test[- ]suite\s+accuracy|"
+    r"component\s+matching|ESTS)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:exact\s+match|EM|execution\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_text_to_sql_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TEXT2SQL_VID, findings=[])
+    text = parsed.full_text
+    if not _TEXT2SQL_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_TEXT2SQL_VID, findings=[])
+    if _TEXT2SQL_METRICS.search(text):
+        return ValidationResult(validator_name=_TEXT2SQL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TEXT2SQL_VID,
+        findings=[
+            Finding(
+                code=_TEXT2SQL_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses text-to-SQL parsing but does not report "
+                    "exact match, execution accuracy, or test-suite accuracy."
+                ),
+                location="full_text",
+                validator=_TEXT2SQL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 590 – commonsense knowledge graph completion evaluation
+# ---------------------------------------------------------------------------
+_CSKGC_VID = "missing-commonsense-kg-completion-metrics"
+
+_CSKGC_TRIGGERS = re.compile(
+    r"\b(?:commonsense\s+knowledge\s+graph\s+completion|"
+    r"commonsense\s+KG\s+completion|ConceptNet\s+(?:completion|evaluation)|"
+    r"ATOMIC\s+(?:completion|generation)|commonsense\s+link\s+prediction)\b",
+    re.IGNORECASE,
+)
+_CSKGC_METRICS = re.compile(
+    r"\b(?:MRR|Hits@[0-9]+|mean\s+rank|accuracy|F1|BLEU|CIDEr)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:MRR|Hits@[0-9]+|accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_commonsense_kg_completion_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CSKGC_VID, findings=[])
+    text = parsed.full_text
+    if not _CSKGC_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CSKGC_VID, findings=[])
+    if _CSKGC_METRICS.search(text):
+        return ValidationResult(validator_name=_CSKGC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CSKGC_VID,
+        findings=[
+            Finding(
+                code=_CSKGC_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses commonsense knowledge graph completion but "
+                    "does not report MRR, Hits@k, or accuracy on a benchmark."
+                ),
+                location="full_text",
+                validator=_CSKGC_VID,
             )
         ],
     )

@@ -34800,3 +34800,260 @@ def test_openie585_non_empirical_no_fire() -> None:
     )
     r = validate_open_ie_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 586 – validate_multimodal_sentiment_metrics
+# ---------------------------------------------------------------------------
+def _multisentiment586_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t586", source_path="t586.md", source_format="markdown",
+            title="Multimodal sentiment analysis", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multisentiment586_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_sentiment_metrics
+    ms, cl = _multisentiment586_ms(
+        "We propose a model for multimodal sentiment analysis on CMU-MOSI."
+    )
+    r = validate_multimodal_sentiment_metrics(ms, cl)
+    assert any(f.code == "missing-multimodal-sentiment-metrics" for f in r.findings)
+
+
+def test_multisentiment586_no_fire_when_mae_reported() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_sentiment_metrics
+    ms, cl = _multisentiment586_ms(
+        "Multimodal sentiment: MAE = 0.73 on CMU-MOSI, binary accuracy = 84.1%."
+    )
+    r = validate_multimodal_sentiment_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_multisentiment586_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_sentiment_metrics
+    ms, cl = _multisentiment586_ms("We propose a 3D object detection model.")
+    r = validate_multimodal_sentiment_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_multisentiment586_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_sentiment_metrics
+    ms, _ = _multisentiment586_ms("Audio-visual sentiment theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_multimodal_sentiment_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 587 – validate_multimodal_mt_metrics
+# ---------------------------------------------------------------------------
+def _multimt587_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t587", source_path="t587.md", source_format="markdown",
+            title="Multimodal MT", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multimt587_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_mt_metrics
+    ms, cl = _multimt587_ms(
+        "We propose a visually grounded translation model on the Multi30K dataset."
+    )
+    r = validate_multimodal_mt_metrics(ms, cl)
+    assert any(f.code == "missing-multimodal-mt-metrics" for f in r.findings)
+
+
+def test_multimt587_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_mt_metrics
+    ms, cl = _multimt587_ms(
+        "Multimodal MT: BLEU = 41.2 on Multi30K EN-DE test2016."
+    )
+    r = validate_multimodal_mt_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_multimt587_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_mt_metrics
+    ms, cl = _multimt587_ms("We present a video grounding approach.")
+    r = validate_multimodal_mt_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_multimt587_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_mt_metrics
+    ms, _ = _multimt587_ms("Image-guided translation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_multimodal_mt_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 588 – validate_grounded_language_learning_metrics
+# ---------------------------------------------------------------------------
+def _groundedlang588_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t588", source_path="t588.md", source_format="markdown",
+            title="Vision-and-language navigation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_groundedlang588_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_grounded_language_learning_metrics
+    ms, cl = _groundedlang588_ms(
+        "We propose an agent for vision-and-language navigation on the R2R benchmark."
+    )
+    r = validate_grounded_language_learning_metrics(ms, cl)
+    assert any(f.code == "missing-grounded-language-learning-metrics" for f in r.findings)
+
+
+def test_groundedlang588_no_fire_when_success_rate_reported() -> None:
+    from manuscript_audit.validators.core import validate_grounded_language_learning_metrics
+    ms, cl = _groundedlang588_ms(
+        "VLN: success rate = 67.3%, SPL = 61.2 on R2R validation unseen."
+    )
+    r = validate_grounded_language_learning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_groundedlang588_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_grounded_language_learning_metrics
+    ms, cl = _groundedlang588_ms("We present a music generation model.")
+    r = validate_grounded_language_learning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_groundedlang588_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_grounded_language_learning_metrics
+    ms, _ = _groundedlang588_ms("Embodied language grounding theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_grounded_language_learning_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 589 – validate_text_to_sql_metrics
+# ---------------------------------------------------------------------------
+def _text2sql589_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t589", source_path="t589.md", source_format="markdown",
+            title="Text-to-SQL", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_text2sql589_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_text_to_sql_metrics
+    ms, cl = _text2sql589_ms("We propose a text-to-SQL model evaluated on the Spider benchmark.")
+    r = validate_text_to_sql_metrics(ms, cl)
+    assert any(f.code == "missing-text-to-sql-metrics" for f in r.findings)
+
+
+def test_text2sql589_no_fire_when_exact_match_reported() -> None:
+    from manuscript_audit.validators.core import validate_text_to_sql_metrics
+    ms, cl = _text2sql589_ms(
+        "Text-to-SQL: exact match = 73.4% on Spider development set."
+    )
+    r = validate_text_to_sql_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_text2sql589_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_text_to_sql_metrics
+    ms, cl = _text2sql589_ms("We study image captioning approaches.")
+    r = validate_text_to_sql_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_text2sql589_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_text_to_sql_metrics
+    ms, _ = _text2sql589_ms("NL2SQL theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_text_to_sql_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 590 – validate_commonsense_kg_completion_metrics
+# ---------------------------------------------------------------------------
+def _cskgc590_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t590", source_path="t590.md", source_format="markdown",
+            title="Commonsense KG completion", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cskgc590_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_kg_completion_metrics
+    ms, cl = _cskgc590_ms(
+        "We propose a model for commonsense knowledge graph completion on ConceptNet."
+    )
+    r = validate_commonsense_kg_completion_metrics(ms, cl)
+    assert any(f.code == "missing-commonsense-kg-completion-metrics" for f in r.findings)
+
+
+def test_cskgc590_no_fire_when_mrr_reported() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_kg_completion_metrics
+    ms, cl = _cskgc590_ms(
+        "Commonsense KG completion: MRR = 0.74, Hits@1 = 68.3% on ConceptNet."
+    )
+    r = validate_commonsense_kg_completion_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_cskgc590_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_kg_completion_metrics
+    ms, cl = _cskgc590_ms("We present a video segmentation model.")
+    r = validate_commonsense_kg_completion_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_cskgc590_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_kg_completion_metrics
+    ms, _ = _cskgc590_ms("ATOMIC commonsense link prediction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_commonsense_kg_completion_metrics(ms, cl)
+    assert r.findings == []
