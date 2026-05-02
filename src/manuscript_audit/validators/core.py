@@ -6719,6 +6719,11 @@ def run_deterministic_validators(
         validate_baseline_equivalence(parsed, classification),
         validate_likert_distribution_check(parsed, classification),
         validate_reproducibility_statement(parsed, classification),
+        validate_missing_data_handling(parsed, classification),
+        validate_coding_scheme_description(parsed, classification),
+        validate_logistic_regression_assumptions(parsed, classification),
+        validate_researcher_positionality(parsed, classification),
+        validate_data_collection_recency(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -12513,6 +12518,356 @@ def validate_reproducibility_statement(
                 ),
                 validator="reproducibility_statement",
                 location="manuscript",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 211 – Missing missing-data handling
+# ---------------------------------------------------------------------------
+
+_MISSING_DATA_TRIGGER_RE = re.compile(
+    r"\b(?:missing\s+(?:data|values?|cases?|observations?)|"
+    r"incomplete\s+data|item\s+non.?response|"
+    r"(?:some|several|few)\s+participants?\s+(?:did\s+not\s+complete|dropped?\s+out|"
+    r"withdrew?|were\s+excluded?)\b|"
+    r"(?:n\s*=\s*\d+\s*excluded?|excluded?\s+n\s*=\s*\d+)\b)\b",
+    re.IGNORECASE,
+)
+_MISSING_DATA_METHOD_RE = re.compile(
+    r"\b(?:listwise\s+deletion|pairwise\s+deletion|complete\s+case\s+analysis|"
+    r"multiple\s+imputation|single\s+imputation|mean\s+imputation|"
+    r"hot\s+deck\s+imputation|MICE|maximum\s+likelihood|full\s+information|"
+    r"EM\s+algorithm|missing\s+at\s+random|"
+    r"missing\s+data\s+(?:were|was)\s+(?:handled?|addressed?|imputed?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_missing_data_handling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies mentioning missing data without specifying handling method.
+
+    Emits ``missing-data-handling-not-described`` (moderate) when missing data
+    are noted but the handling strategy is not disclosed.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="missing_data_handling", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="missing_data_handling", findings=[]
+        )
+
+    if not _MISSING_DATA_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="missing_data_handling", findings=[]
+        )
+
+    if _MISSING_DATA_METHOD_RE.search(full):
+        return ValidationResult(
+            validator_name="missing_data_handling", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="missing_data_handling",
+        findings=[
+            Finding(
+                code="missing-data-handling-not-described",
+                severity="moderate",
+                message=(
+                    "Missing data are noted but the handling method "
+                    "(listwise deletion, multiple imputation, MICE, etc.) is not disclosed. "
+                    "Report how missing data were addressed."
+                ),
+                validator="missing_data_handling",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 212 – Insufficient description of coding scheme (content analysis)
+# ---------------------------------------------------------------------------
+
+_CODING_SCHEME_TRIGGER_RE = re.compile(
+    r"\b(?:coding\s+(?:scheme|manual|system|frame(?:work)?)|"
+    r"codes?\s+(?:were|was)\s+(?:developed?|created?|established?|applied?)|"
+    r"content\s+analysis\s+(?:coding|categories?)|"
+    r"codebook|deductive\s+coding|inductive\s+coding|"
+    r"categories?\s+(?:were|was)\s+(?:identified?|developed?|created?))\b",
+    re.IGNORECASE,
+)
+_CODING_SCHEME_DETAIL_RE = re.compile(
+    r"\b(?:inter.?coder|inter.?rater|coding\s+agreement|Cohen.s\s+kappa|"
+    r"kappa\s*=|Krippendorff|percent\s+agreement|coding\s+rules?|"
+    r"operational\s+definitions?|example\s+(?:of\s+)?(?:codes?|categories?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_coding_scheme_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag content analysis studies with insufficient coding scheme detail.
+
+    Emits ``missing-coding-scheme-detail`` (moderate) when a coding scheme is
+    used but no inter-coder reliability, operational definitions, or coding
+    rules are described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="coding_scheme_description", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="coding_scheme_description", findings=[]
+        )
+
+    if not _CODING_SCHEME_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="coding_scheme_description", findings=[]
+        )
+
+    if _CODING_SCHEME_DETAIL_RE.search(full):
+        return ValidationResult(
+            validator_name="coding_scheme_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="coding_scheme_description",
+        findings=[
+            Finding(
+                code="missing-coding-scheme-detail",
+                severity="moderate",
+                message=(
+                    "Coding scheme or content analysis detected but no inter-coder "
+                    "reliability, operational definitions, or coding rules are described. "
+                    "Report coding agreement (kappa, percent agreement) and definitions."
+                ),
+                validator="coding_scheme_description",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 213 – Missing model assumptions for logistic regression
+# ---------------------------------------------------------------------------
+
+_LOGISTIC_RE = re.compile(
+    r"\b(?:logistic\s+regression|logit\s+(?:model|regression)|"
+    r"binary\s+(?:logistic|logit)|multinomial\s+logistic|"
+    r"ordinal\s+(?:logistic|logit)|proportional\s+odds\s+model)\b",
+    re.IGNORECASE,
+)
+_LOGISTIC_ASSUMPTION_RE = re.compile(
+    r"\b(?:linearity\s+of\s+the\s+logit|log.?odds\s+(?:linearity|assumption)|"
+    r"Hosmer.?Lemeshow|goodness.of.fit\s+(?:test|statistic)|"
+    r"classification\s+table|AUC\b|ROC\s+(?:curve|analysis)|"
+    r"pseudo\s+R.?squared|Nagelkerke|Cox\s+and\s+Snell|"
+    r"odds\s+ratio\s+(?:CI|95\s*%\s*CI)|"
+    r"model\s+fit\s+(?:statistic|index)|likelihood\s+ratio\s+test)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_logistic_regression_assumptions(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag logistic regression without model fit or assumption checks.
+
+    Emits ``missing-logistic-model-fit`` (minor) when logistic regression is
+    used but no model fit statistic, ROC/AUC, Hosmer-Lemeshow, or pseudo-R² is
+    reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="logistic_regression_assumptions", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="logistic_regression_assumptions", findings=[]
+        )
+
+    if not _LOGISTIC_RE.search(full):
+        return ValidationResult(
+            validator_name="logistic_regression_assumptions", findings=[]
+        )
+
+    if _LOGISTIC_ASSUMPTION_RE.search(full):
+        return ValidationResult(
+            validator_name="logistic_regression_assumptions", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="logistic_regression_assumptions",
+        findings=[
+            Finding(
+                code="missing-logistic-model-fit",
+                severity="minor",
+                message=(
+                    "Logistic regression detected but no model fit statistic "
+                    "(Hosmer-Lemeshow, AUC/ROC, pseudo-R², classification table) "
+                    "is reported. Report at least one model fit index."
+                ),
+                validator="logistic_regression_assumptions",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 214 – Undisclosed researcher positionality (qualitative)
+# ---------------------------------------------------------------------------
+
+_QUALITATIVE_POSITIONALITY_TRIGGER_RE = re.compile(
+    r"\b(?:qualitative\s+(?:study|research|inquiry|analysis)|"
+    r"grounded\s+theory|phenomenolog(?:y|ical)|ethnograph(?:y|ic)|"
+    r"interpretive\s+(?:research|inquiry|analysis))\b",
+    re.IGNORECASE,
+)
+_POSITIONALITY_RE = re.compile(
+    r"\b(?:positionality|reflexivity|researcher.s?\s+(?:role|position|background)|"
+    r"my\s+(?:own\s+)?(?:position|background|perspective|experience|bias)|"
+    r"the\s+(?:researcher|author|PI)\s+(?:is|was|had|brings?|acknowledges?)\s+"
+    r"(?:\w+\s+)?(?:background|experience|perspective|bias)|"
+    r"researcher\s+bias|I\s+(?:am|was)\s+(?:a\s+)?\w+\s+"
+    r"(?:who|and\s+therefore|which\s+may))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_researcher_positionality(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag qualitative research without researcher positionality disclosure.
+
+    Emits ``missing-researcher-positionality`` (minor) when qualitative
+    methods are used but no reflexivity or positionality statement is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="researcher_positionality", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="researcher_positionality", findings=[]
+        )
+
+    if not _QUALITATIVE_POSITIONALITY_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="researcher_positionality", findings=[]
+        )
+
+    if _POSITIONALITY_RE.search(full):
+        return ValidationResult(
+            validator_name="researcher_positionality", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="researcher_positionality",
+        findings=[
+            Finding(
+                code="missing-researcher-positionality",
+                severity="minor",
+                message=(
+                    "Qualitative research detected but no reflexivity or researcher "
+                    "positionality statement is present. "
+                    "Acknowledge the researcher's background, assumptions, and potential biases."
+                ),
+                validator="researcher_positionality",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 215 – Data collection period gap (data older than methods imply)
+# ---------------------------------------------------------------------------
+
+_RECENT_CLAIM_RE = re.compile(
+    r"\b(?:recent\s+(?:data|evidence|study|survey|trend)|"
+    r"current\s+(?:data|evidence|trends?|landscape)|"
+    r"up.?to.?date\s+(?:data|evidence)|"
+    r"latest\s+(?:data|evidence|figures?|statistics?))\b",
+    re.IGNORECASE,
+)
+_OLD_DATA_RE = re.compile(
+    r"\b(?:data\s+(?:were|was)\s+collected?\s+(?:in|between|from)\s+"
+    r"(?:19\d{2}|200[0-9]|201[0-5])|"
+    r"(?:19\d{2}|200[0-9]|201[0-5])\s+(?:data|survey|census|dataset)|"
+    r"dataset\s+(?:from|covering)\s+(?:19\d{2}|200[0-9]|201[0-5]))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_data_collection_recency(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts claiming recency but citing old data collection periods.
+
+    Emits ``potentially-outdated-data`` (minor) when 'recent' or 'current'
+    data are claimed but the data collection year is ≤2015.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="data_collection_recency", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="data_collection_recency", findings=[]
+        )
+
+    if not _RECENT_CLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="data_collection_recency", findings=[]
+        )
+
+    if not _OLD_DATA_RE.search(full):
+        return ValidationResult(
+            validator_name="data_collection_recency", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="data_collection_recency",
+        findings=[
+            Finding(
+                code="potentially-outdated-data",
+                severity="minor",
+                message=(
+                    "Manuscript claims to use 'recent' or 'current' data but "
+                    "the data collection year appears to be 2015 or earlier. "
+                    "Justify why the older data are still representative."
+                ),
+                validator="data_collection_recency",
+                location="Methods",
                 evidence=[],
             )
         ],

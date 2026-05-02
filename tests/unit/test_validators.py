@@ -11178,3 +11178,338 @@ def test_repro_non_empirical_no_fire() -> None:
     )
     result = validate_reproducibility_statement(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 211 – validate_missing_data_handling
+# ---------------------------------------------------------------------------
+
+def _missing_data_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-missing",
+            source_path="/tmp/missing.md",
+            source_format="markdown",
+            title="Missing Data Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_missing_data_without_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_handling
+
+    ms, cl = _missing_data_ms(
+        "Some participants did not complete all items, resulting in missing data "
+        "that were excluded from analysis."
+    )
+    result = validate_missing_data_handling(ms, cl)
+    assert any(f.code == "missing-data-handling-not-described" for f in result.findings)
+
+
+def test_missing_data_with_method_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_handling
+
+    ms, cl = _missing_data_ms(
+        "Missing data were addressed using multiple imputation with 20 datasets "
+        "under the MICE procedure."
+    )
+    result = validate_missing_data_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_missing_data_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_handling
+
+    ms, cl = _missing_data_ms(
+        "Data were complete for all participants; no exclusions were required."
+    )
+    result = validate_missing_data_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_missing_data_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_handling
+
+    ms, cl = _missing_data_ms("Some participants did not complete all items.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_missing_data_handling(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 212 – validate_coding_scheme_description
+# ---------------------------------------------------------------------------
+
+def _coding_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-coding",
+            source_path="/tmp/coding.md",
+            source_format="markdown",
+            title="Coding Scheme Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_coding_without_icr_fires() -> None:
+    from manuscript_audit.validators.core import validate_coding_scheme_description
+
+    ms, cl = _coding_ms(
+        "We developed a coding scheme with four categories based on the data. "
+        "Inductive coding was used to identify themes."
+    )
+    result = validate_coding_scheme_description(ms, cl)
+    assert any(f.code == "missing-coding-scheme-detail" for f in result.findings)
+
+
+def test_coding_scheme_with_kappa_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coding_scheme_description
+
+    ms, cl = _coding_ms(
+        "An inductive coding scheme was developed. Inter-coder reliability was "
+        "assessed using Cohen's kappa = 0.82."
+    )
+    result = validate_coding_scheme_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_coding_scheme_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coding_scheme_description
+
+    ms, cl = _coding_ms(
+        "We performed a regression analysis predicting exam scores from study hours."
+    )
+    result = validate_coding_scheme_description(ms, cl)
+    assert result.findings == []
+
+
+def test_coding_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coding_scheme_description
+
+    ms, cl = _coding_ms("A codebook was developed using inductive coding.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_coding_scheme_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 213 – validate_logistic_regression_assumptions
+# ---------------------------------------------------------------------------
+
+def _logit_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-logit",
+            source_path="/tmp/logit.md",
+            source_format="markdown",
+            title="Logistic Regression Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_logistic_without_fit_fires() -> None:
+    from manuscript_audit.validators.core import validate_logistic_regression_assumptions
+
+    ms, cl = _logit_ms(
+        "Binary logistic regression was used to predict group membership from "
+        "the composite score (OR = 2.1, p = 0.03)."
+    )
+    result = validate_logistic_regression_assumptions(ms, cl)
+    assert any(f.code == "missing-logistic-model-fit" for f in result.findings)
+
+
+def test_logistic_with_auc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_logistic_regression_assumptions
+
+    ms, cl = _logit_ms(
+        "Binary logistic regression was used. The Hosmer-Lemeshow goodness-of-fit test "
+        "indicated acceptable model fit, and the AUC was 0.81."
+    )
+    result = validate_logistic_regression_assumptions(ms, cl)
+    assert result.findings == []
+
+
+def test_no_logistic_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_logistic_regression_assumptions
+
+    ms, cl = _logit_ms(
+        "We ran an independent samples t-test to compare means between groups."
+    )
+    result = validate_logistic_regression_assumptions(ms, cl)
+    assert result.findings == []
+
+
+def test_logistic_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_logistic_regression_assumptions
+
+    ms, cl = _logit_ms("Logistic regression was analysed theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_logistic_regression_assumptions(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 214 – validate_researcher_positionality
+# ---------------------------------------------------------------------------
+
+def _positionality_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-positionality",
+            source_path="/tmp/positionality.md",
+            source_format="markdown",
+            title="Positionality Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_qualitative_without_positionality_fires() -> None:
+    from manuscript_audit.validators.core import validate_researcher_positionality
+
+    ms, cl = _positionality_ms(
+        "This phenomenological study explored participants' lived experiences of "
+        "chronic pain through semi-structured interviews."
+    )
+    result = validate_researcher_positionality(ms, cl)
+    assert any(f.code == "missing-researcher-positionality" for f in result.findings)
+
+
+def test_qualitative_with_positionality_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_researcher_positionality
+
+    ms, cl = _positionality_ms(
+        "This phenomenological study used semi-structured interviews. "
+        "The researcher's positionality as a clinical psychologist with ten years "
+        "of practice experience may have influenced interpretation."
+    )
+    result = validate_researcher_positionality(ms, cl)
+    assert result.findings == []
+
+
+def test_quantitative_no_positionality_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_researcher_positionality
+
+    ms, cl = _positionality_ms(
+        "We conducted a randomised controlled trial with 200 adult participants."
+    )
+    result = validate_researcher_positionality(ms, cl)
+    assert result.findings == []
+
+
+def test_positionality_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_researcher_positionality
+
+    ms, cl = _positionality_ms("This phenomenological framework is discussed theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_researcher_positionality(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 215 – validate_data_collection_recency
+# ---------------------------------------------------------------------------
+
+def _recency_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-recency",
+            source_path="/tmp/recency.md",
+            source_format="markdown",
+            title="Recency Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_recent_claim_old_data_fires() -> None:
+    from manuscript_audit.validators.core import validate_data_collection_recency
+
+    ms, cl = _recency_ms(
+        "We use recent data collected from a nationally representative survey. "
+        "Data were collected in 2009 using random-digit dialing."
+    )
+    result = validate_data_collection_recency(ms, cl)
+    assert any(f.code == "potentially-outdated-data" for f in result.findings)
+
+
+def test_recent_claim_new_data_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_collection_recency
+
+    ms, cl = _recency_ms(
+        "We use recent data from the 2021 national census. "
+        "Data were collected in 2021."
+    )
+    result = validate_data_collection_recency(ms, cl)
+    assert result.findings == []
+
+
+def test_no_recent_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_collection_recency
+
+    ms, cl = _recency_ms(
+        "We analysed archival records from 1990 to examine historical trends."
+    )
+    result = validate_data_collection_recency(ms, cl)
+    assert result.findings == []
+
+
+def test_recency_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_collection_recency
+
+    ms, cl = _recency_ms("Recent data from 2005 are discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_data_collection_recency(ms, cl)
+    assert result.findings == []
