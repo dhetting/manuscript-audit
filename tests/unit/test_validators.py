@@ -34061,3 +34061,244 @@ def test_scenetxt570_non_empirical_no_fire() -> None:
     )
     r = validate_scene_text_recognition_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 571 – validate_visual_dialog_metrics
+# ---------------------------------------------------------------------------
+def _visdial571_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t571", source_path="t571.md", source_format="markdown",
+            title="Visual dialog", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_visdial571_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_visual_dialog_metrics
+    ms, cl = _visdial571_ms("We propose a model for visual dialog on the VisDial benchmark.")
+    r = validate_visual_dialog_metrics(ms, cl)
+    assert any(f.code == "missing-visual-dialog-metrics" for f in r.findings)
+
+
+def test_visdial571_no_fire_when_mrr_reported() -> None:
+    from manuscript_audit.validators.core import validate_visual_dialog_metrics
+    ms, cl = _visdial571_ms("Visual dialog: MRR = 0.731 on VisDial v1.0.")
+    r = validate_visual_dialog_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_visdial571_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_visual_dialog_metrics
+    ms, cl = _visdial571_ms("We propose a salient object detection approach.")
+    r = validate_visual_dialog_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_visdial571_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_visual_dialog_metrics
+    ms, _ = _visdial571_ms("Multi-turn visual QA theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_visual_dialog_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 572 – validate_visual_commonsense_reasoning_metrics
+# ---------------------------------------------------------------------------
+def _visvcr572_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t572", source_path="t572.md", source_format="markdown",
+            title="Visual commonsense reasoning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_visvcr572_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_visual_commonsense_reasoning_metrics
+    ms, cl = _visvcr572_ms("We address visual commonsense reasoning on the VCR benchmark.")
+    r = validate_visual_commonsense_reasoning_metrics(ms, cl)
+    assert any(f.code == "missing-visual-commonsense-reasoning-metrics" for f in r.findings)
+
+
+def test_visvcr572_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_visual_commonsense_reasoning_metrics
+    ms, cl = _visvcr572_ms("VCR: Q->A accuracy = 73.8% on the VCR test set.")
+    r = validate_visual_commonsense_reasoning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_visvcr572_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_visual_commonsense_reasoning_metrics
+    ms, cl = _visvcr572_ms("We propose a speech synthesis model.")
+    r = validate_visual_commonsense_reasoning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_visvcr572_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_visual_commonsense_reasoning_metrics
+    ms, _ = _visvcr572_ms("Visual abductive reasoning theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_visual_commonsense_reasoning_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 573 – validate_video_dense_captioning_metrics
+# ---------------------------------------------------------------------------
+def _viddensecap573_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t573", source_path="t573.md", source_format="markdown",
+            title="Dense video captioning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_viddensecap573_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_video_dense_captioning_metrics
+    ms, cl = _viddensecap573_ms(
+        "We propose a model for dense video captioning on ActivityNet Captions."
+    )
+    r = validate_video_dense_captioning_metrics(ms, cl)
+    assert any(f.code == "missing-video-dense-captioning-metrics" for f in r.findings)
+
+
+def test_viddensecap573_no_fire_when_meteor_reported() -> None:
+    from manuscript_audit.validators.core import validate_video_dense_captioning_metrics
+    ms, cl = _viddensecap573_ms("Dense video captioning: METEOR = 8.42 on ActivityNet.")
+    r = validate_video_dense_captioning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_viddensecap573_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_video_dense_captioning_metrics
+    ms, cl = _viddensecap573_ms("We study 3D pose estimation methods.")
+    r = validate_video_dense_captioning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_viddensecap573_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_dense_captioning_metrics
+    ms, _ = _viddensecap573_ms("Dense event captioning theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_video_dense_captioning_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 574 – validate_document_vqa_metrics
+# ---------------------------------------------------------------------------
+def _docvqa574_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t574", source_path="t574.md", source_format="markdown",
+            title="Document VQA", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_docvqa574_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_document_vqa_metrics
+    ms, cl = _docvqa574_ms("We address document VQA on the DocVQA benchmark.")
+    r = validate_document_vqa_metrics(ms, cl)
+    assert any(f.code == "missing-document-vqa-metrics" for f in r.findings)
+
+
+def test_docvqa574_no_fire_when_anls_reported() -> None:
+    from manuscript_audit.validators.core import validate_document_vqa_metrics
+    ms, cl = _docvqa574_ms("Document VQA: ANLS = 0.892 on DocVQA test set.")
+    r = validate_document_vqa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_docvqa574_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_document_vqa_metrics
+    ms, cl = _docvqa574_ms("We present a 3D object detection model.")
+    r = validate_document_vqa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_docvqa574_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_document_vqa_metrics
+    ms, _ = _docvqa574_ms("Document image QA theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_document_vqa_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 575 – validate_chart_qa_metrics
+# ---------------------------------------------------------------------------
+def _chartqa575_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t575", source_path="t575.md", source_format="markdown",
+            title="Chart QA", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_chartqa575_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_chart_qa_metrics
+    ms, cl = _chartqa575_ms("We propose a model for chart question answering on ChartQA.")
+    r = validate_chart_qa_metrics(ms, cl)
+    assert any(f.code == "missing-chart-qa-metrics" for f in r.findings)
+
+
+def test_chartqa575_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_chart_qa_metrics
+    ms, cl = _chartqa575_ms("ChartQA: relaxed accuracy = 79.2% on the ChartQA test split.")
+    r = validate_chart_qa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_chartqa575_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_chart_qa_metrics
+    ms, cl = _chartqa575_ms("We present an image classification approach.")
+    r = validate_chart_qa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_chartqa575_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_chart_qa_metrics
+    ms, _ = _chartqa575_ms("Figure understanding theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_chart_qa_metrics(ms, cl)
+    assert r.findings == []

@@ -7077,6 +7077,11 @@ def run_deterministic_validators(
         validate_3d_scene_understanding_metrics(parsed, classification),
         validate_table_to_text_metrics(parsed, classification),
         validate_scene_text_recognition_metrics(parsed, classification),
+        validate_visual_dialog_metrics(parsed, classification),
+        validate_visual_commonsense_reasoning_metrics(parsed, classification),
+        validate_video_dense_captioning_metrics(parsed, classification),
+        validate_document_vqa_metrics(parsed, classification),
+        validate_chart_qa_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -32283,6 +32288,238 @@ def validate_scene_text_recognition_metrics(
                 ),
                 location="full_text",
                 validator=_SCENETXT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 571 – visual dialog evaluation
+# ---------------------------------------------------------------------------
+_VISDIAL_VID = "missing-visual-dialog-metrics"
+
+_VISDIAL_TRIGGERS = re.compile(
+    r"\b(?:visual\s+dialog|VisDial\s+(?:benchmark|dataset)|"
+    r"visual\s+conversation|multi[- ]turn\s+visual\s+QA)\b",
+    re.IGNORECASE,
+)
+_VISDIAL_METRICS = re.compile(
+    r"\b(?:MRR|R@[0-9]+|mean\s+rank|NDCG|normalized\s+discounted\s+cumulative\s+gain)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:MRR|NDCG|R@[0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_visual_dialog_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VISDIAL_VID, findings=[])
+    text = parsed.full_text
+    if not _VISDIAL_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VISDIAL_VID, findings=[])
+    if _VISDIAL_METRICS.search(text):
+        return ValidationResult(validator_name=_VISDIAL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VISDIAL_VID,
+        findings=[
+            Finding(
+                code=_VISDIAL_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses visual dialog but does not report "
+                    "MRR, Recall@k, or NDCG on a VisDial benchmark."
+                ),
+                location="full_text",
+                validator=_VISDIAL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 572 – visual common sense reasoning evaluation
+# ---------------------------------------------------------------------------
+_VISVCR_VID = "missing-visual-commonsense-reasoning-metrics"
+
+_VISVCR_TRIGGERS = re.compile(
+    r"\b(?:visual\s+commonsense\s+reasoning|VCR\s+(?:benchmark|dataset)|"
+    r"visual\s+abductive\s+reasoning|grounded\s+situation\s+models?)\b",
+    re.IGNORECASE,
+)
+_VISVCR_METRICS = re.compile(
+    r"\b(?:accuracy|Q[- ]>A|QA[- ]>R|Q[- ]>AR)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|Q->A)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_visual_commonsense_reasoning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VISVCR_VID, findings=[])
+    text = parsed.full_text
+    if not _VISVCR_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VISVCR_VID, findings=[])
+    if _VISVCR_METRICS.search(text):
+        return ValidationResult(validator_name=_VISVCR_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VISVCR_VID,
+        findings=[
+            Finding(
+                code=_VISVCR_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses visual commonsense reasoning but does not "
+                    "report Q->A, QA->R, or Q->AR accuracy on a VCR benchmark."
+                ),
+                location="full_text",
+                validator=_VISVCR_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 573 – video dense captioning evaluation
+# ---------------------------------------------------------------------------
+_VIDDENSECAP_VID = "missing-video-dense-captioning-metrics"
+
+_VIDDENSECAP_TRIGGERS = re.compile(
+    r"\b(?:dense\s+video\s+captioning|dense\s+event\s+captioning|"
+    r"ActivityNet\s+Captions\s+(?:benchmark|dataset)|"
+    r"video\s+event\s+description)\b",
+    re.IGNORECASE,
+)
+_VIDDENSECAP_METRICS = re.compile(
+    r"\b(?:BLEU(?:-[0-9]+)?|METEOR|CIDEr|ROUGE(?:-[A-Z0-9]+)?|"
+    r"precision|recall)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:METEOR|CIDEr|BLEU)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_video_dense_captioning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VIDDENSECAP_VID, findings=[])
+    text = parsed.full_text
+    if not _VIDDENSECAP_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VIDDENSECAP_VID, findings=[])
+    if _VIDDENSECAP_METRICS.search(text):
+        return ValidationResult(validator_name=_VIDDENSECAP_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VIDDENSECAP_VID,
+        findings=[
+            Finding(
+                code=_VIDDENSECAP_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses dense video captioning but does not report "
+                    "BLEU, METEOR, or CIDEr on a captioning benchmark."
+                ),
+                location="full_text",
+                validator=_VIDDENSECAP_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 574 – document visual question answering evaluation
+# ---------------------------------------------------------------------------
+_DOCVQA_VID = "missing-document-vqa-metrics"
+
+_DOCVQA_TRIGGERS = re.compile(
+    r"\b(?:document\s+(?:VQA|visual\s+question\s+answering)|"
+    r"DocVQA\s+(?:benchmark|dataset)|document\s+understanding\s+QA|"
+    r"document\s+image\s+QA)\b",
+    re.IGNORECASE,
+)
+_DOCVQA_METRICS = re.compile(
+    r"\b(?:ANLS|average\s+normalized\s+levenshtein\s+similarity|"
+    r"accuracy|EM|exact\s+match)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:ANLS|accuracy|EM)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_document_vqa_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DOCVQA_VID, findings=[])
+    text = parsed.full_text
+    if not _DOCVQA_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_DOCVQA_VID, findings=[])
+    if _DOCVQA_METRICS.search(text):
+        return ValidationResult(validator_name=_DOCVQA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DOCVQA_VID,
+        findings=[
+            Finding(
+                code=_DOCVQA_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses document VQA but does not report "
+                    "ANLS, accuracy, or exact match on a DocVQA benchmark."
+                ),
+                location="full_text",
+                validator=_DOCVQA_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 575 – chart question answering evaluation
+# ---------------------------------------------------------------------------
+_CHARTQA_VID = "missing-chart-qa-metrics"
+
+_CHARTQA_TRIGGERS = re.compile(
+    r"\b(?:chart\s+(?:question\s+answering|QA|understanding)|"
+    r"ChartQA\s+(?:benchmark|dataset)|figure\s+understanding\s+QA|"
+    r"plot\s+QA|PlotQA)\b",
+    re.IGNORECASE,
+)
+_CHARTQA_METRICS = re.compile(
+    r"\b(?:accuracy|relaxed\s+accuracy|ANLS|exact\s+match|EM)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|ANLS|EM)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_chart_qa_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CHARTQA_VID, findings=[])
+    text = parsed.full_text
+    if not _CHARTQA_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CHARTQA_VID, findings=[])
+    if _CHARTQA_METRICS.search(text):
+        return ValidationResult(validator_name=_CHARTQA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CHARTQA_VID,
+        findings=[
+            Finding(
+                code=_CHARTQA_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses chart/figure QA but does not report "
+                    "accuracy, relaxed accuracy, or ANLS on a benchmark."
+                ),
+                location="full_text",
+                validator=_CHARTQA_VID,
             )
         ],
     )
