@@ -852,8 +852,64 @@ Current test count: **362 passing** (after phase 135)
 - Phase 239: `validate_longitudinal_followup_duration` → `missing-followup-duration` (moderate)
 - Phase 240: `validate_bayesian_reporting` → `missing-bayesian-reporting` (moderate)
 
-Current test count: **746 passing** (after phase 240)
-HEAD: `bcd2078`
+**Phases 241–245** (`5e7fe79`) — Five validators (766 tests)
+- Phase 241: `validate_author_conflict_disclosure` → `missing-conflict-of-interest-disclosure` (moderate)
+- Phase 242: `validate_citation_context_adequacy` → `insufficient-citation-context` (minor)
+- Phase 243: `validate_outlier_treatment_disclosure` → `missing-outlier-treatment` (moderate)
+- Phase 244: `validate_cross_sectional_causal_language` → `causal-language-cross-sectional` (moderate)
+- Phase 245: `validate_floor_ceiling_effect_check` → already existed; 4 supplemental tests added
+
+**Phases 246–250** (`6b20997`) — Five validators (786 tests)
+- Phase 246: `validate_secondary_data_disclosure` → `missing-secondary-data-disclosure` (minor)
+- Phase 247: `validate_primary_outcome_change_disclosure` → `missing-primary-outcome-change-disclosure` (moderate)
+- Phase 248: `validate_bootstrap_ci_method_disclosure` → `missing-bootstrap-method-disclosure` (minor)
+- Phase 249: `validate_null_result_discussion` → `missing-null-result-discussion` (minor)
+- Phase 250: `validate_racial_ethnic_composition_description` → `missing-racial-ethnic-composition` (minor)
+
+**Phases 251–255** (`1664cf1`) — Five validators (806 tests)
+- Phase 251: `validate_single_item_measure_reliability` → `missing-single-item-reliability-caveat` (minor)
+- Phase 252: `validate_mediator_temporality` → `missing-mediator-temporality` (moderate)
+- Phase 253: `validate_effect_size_interpretation` → `missing-effect-size-interpretation` (minor)
+- Phase 254: `validate_comparison_group_equivalence` → `missing-baseline-equivalence-check` (moderate)
+- Phase 255: `validate_implicit_theory_test` → `implicit-theory-test-correlational` (minor)
+
+**Phases 256–260** (`eedc9d5`) — Five validators (826 tests)
+- Phase 256: SKIPPED — `validate_multiple_comparison_correction` already exists; 4 supplemental tests added
+- Phase 257: `validate_non_normal_distribution_test` → `missing-normality-check` (minor)
+- Phase 258: `validate_regression_sample_size_adequacy` → `missing-regression-sample-adequacy` (minor)
+- Phase 259: `validate_scale_directionality_disclosure` → `missing-scale-directionality` (minor)
+- Phase 260: `validate_attrition_rate_reporting` → `missing-attrition-rate` (minor)
+
+**Phases 261–265** (`6b42664`) — Five validators (846 tests)
+- Phase 261: `validate_dichotomization_of_continuous_variable` → `unjustified-dichotomization` (moderate)
+- Phase 262: `validate_ecological_fallacy_warning` → `missing-ecological-fallacy-warning` (moderate)
+- Phase 263: `validate_standardised_mean_difference_units` → `missing-smd-original-unit-context` (minor)
+- Phase 264: `validate_retrospective_data_collection_disclosure` → `missing-retrospective-design-disclosure` (minor)
+- Phase 265: `validate_treatment_fidelity_reporting` → `missing-treatment-fidelity-report` (moderate)
+
+**Phases 266–270** (`f2b4231`) — Five validators (866 tests)
+- Phase 266: `validate_factorial_design_interaction_test` → `missing-factorial-interaction-test` (moderate)
+- Phase 267: `validate_regression_multicollinearity_check` → `missing-multicollinearity-check` (minor)
+- Phase 268: `validate_intention_to_treat_analysis` → `missing-itt-analysis` (major)
+- Phase 269: `validate_confidence_interval_direction_interpretation` → `missing-ci-direction-interpretation` (minor)
+- Phase 270: `validate_longitudinal_missing_data_method` → `missing-longitudinal-missing-data-method` (moderate)
+
+**Phases 271–275** (`1aed853`) — Five validators (886 tests)
+- Phase 271: `validate_cluster_sampling_correction` → `missing-cluster-sampling-correction` (moderate)
+- Phase 272: `validate_non_experimental_confound_discussion` → `missing-confound-discussion` (minor)
+- Phase 273: `validate_complete_case_analysis_bias` → `unjustified-complete-case-analysis` (moderate)
+- Phase 274: `validate_analytic_strategy_prespecification` → `unlabelled-exploratory-analysis` (minor)
+- Phase 275: `validate_self_report_bias_acknowledgement` → `missing-self-report-bias-acknowledgement` (minor)
+
+**Phases 276–280** (`907b239`) — Five validators (906 tests)
+- Phase 276: `validate_p_value_reporting_precision` → `imprecise-p-value-reporting` (minor)
+- Phase 277: `validate_moderator_analysis_interpretation` → `missing-moderator-follow-up` (minor)
+- Phase 278: `validate_measurement_occasion_labelling` → `unlabelled-measurement-occasions` (minor)
+- Phase 279: `validate_statistical_conclusion_validity` → `missing-null-result-power-discussion` (moderate)
+- Phase 280: reused existing `validate_author_contribution_statement` → `missing-author-contributions` (minor); 4 supplemental tests
+
+Current test count: **906 passing** (after phase 280)
+HEAD: `907b239`
 
 ## Critical technical gotchas (accumulated)
 
@@ -874,7 +930,13 @@ HEAD: `bcd2078`
 - **Existing validator function shadows**: confirmed existing at phases ~154: `validate_preregistration_statement`; phase ~156: `validate_sensitivity_analysis_reporting`. Rename new duplicates with distinct prefix/suffix
 - **`_EMPIRICAL_PAPER_TYPES`** = `frozenset({"empirical_paper", "applied_stats_paper", "software_workflow_paper"})`
   - `math_theory_paper` is NOT in this set (use as the "skip" type in tests)
-- **Trailing `\b` regex bug**: patterns ending in non-word characters (parens `)`, brackets `]`, `=`) cannot be followed by `\b`. Drop `\b` or rewrite with explicit word boundaries at start only
+- **`_NULL_RESULT_RE` shadowing (phases 249/279)**: Both phases defined `_NULL_RESULT_RE` at module level. Phase 279's copy shadows phase 249's, breaking phase 249's `validate_null_result_discussion`. Fix: rename later copies to specific names (e.g., `_NULL_POWER_TRIGGER_RE` for phase 279's version)
+- **Trailing `\b` after `to` in time-label patterns**: `T[123]\s+was\s+to` never fires since "was" is followed by content, not "to". Drop the final `\s+to` requirement: `T[123]\s+(?:was|corresponds?)` alone is sufficient
+- **Phase 280 `validate_author_contribution_statement` already existed** at line 4331 with single-argument signature `(parsed: ParsedManuscript)`. The new duplicate was removed; 4 supplemental tests were adapted to match the existing code (single arg, code `missing-author-contributions`, requires both `_CONTRIB_SECTION_RE` AND `_CONTRIB_KEYWORD_RE` to match)
+- **Helper function `_mcc_ms` at line ~9681**: takes 2 args — new helpers must be renamed (e.g., `_mcc256_ms`)
+- **Helper function `_dichot_ms` at line ~8938**: takes 2 args — rename new to `_dichot261_ms`
+- **Helper function `_attrition_ms` at line ~7128**: returns `ParsedManuscript` (not tuple) — rename new to `_attrition260_ms`
+
 - **Floor/ceiling regex**: use `effects?` not `effect` (plural form common)
 - **MULTILINE regex** needed when checking for line-anchored captions (`^Table N.`)
 - **Figure axis validator**: use distinct figure numbers (not raw occurrences); `_FIGURE_MENTION_RE` uses capturing group; threshold is `_FIGURE_MIN_DISTINCT = 2` distinct numbers
@@ -932,7 +994,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 240 with 746 tests passing
+- currently at phase 280 with 906 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 280)
+- update MEMORY.md after every 40 phases (next update due after phase 320)
