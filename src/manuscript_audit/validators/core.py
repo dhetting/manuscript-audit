@@ -7042,6 +7042,11 @@ def run_deterministic_validators(
         validate_gec_metrics(parsed, classification),
         validate_text_simplification_metrics(parsed, classification),
         validate_story_generation_metrics(parsed, classification),
+        validate_data_to_text_metrics(parsed, classification),
+        validate_paraphrase_detection_metrics(parsed, classification),
+        validate_wsd_metrics(parsed, classification),
+        validate_srl_scoring_metrics(parsed, classification),
+        validate_argument_mining_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -30620,6 +30625,229 @@ def validate_story_generation_metrics(
                 ),
                 severity="moderate",
                 validator=_STORYGEN_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 536 – Data-to-text generation metrics
+# ---------------------------------------------------------------------------
+_D2T_VID = "missing-data-to-text-metrics"
+_D2T_TRIGGER_RE = re.compile(
+    r"\b(?:data-?to-?text\s+generation|table-?to-?text\s+generation|"
+    r"graph-?to-?text|structured\s+data\s+generation)\b",
+    re.IGNORECASE,
+)
+_D2T_METRIC_RE = re.compile(
+    r"\b(?:BLEU|ROUGE-[12L]|METEOR|PARENT|TER|faithfulness)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_data_to_text_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when data-to-text generation papers omit BLEU/ROUGE/PARENT metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_D2T_VID, findings=[])
+    text = parsed.full_text
+    if not _D2T_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_D2T_VID, findings=[])
+    if _D2T_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_D2T_VID, findings=[])
+    return ValidationResult(
+        validator_name=_D2T_VID,
+        findings=[
+            Finding(
+                code=_D2T_VID,
+                message=(
+                    "Data-to-text generation paper detected but standard "
+                    "metrics (BLEU, ROUGE, PARENT) with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_D2T_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 537 – Paraphrase detection metrics
+# ---------------------------------------------------------------------------
+_PARAPH_VID = "missing-paraphrase-detection-metrics"
+_PARAPH_TRIGGER_RE = re.compile(
+    r"\b(?:paraphrase\s+detection|paraphrase\s+identification|"
+    r"paraphrase\s+recognition|semantic\s+textual\s+similarity)\b",
+    re.IGNORECASE,
+)
+_PARAPH_METRIC_RE = re.compile(
+    r"\b(?:accuracy|F1|Pearson|Spearman|correlation)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_paraphrase_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when paraphrase detection papers omit accuracy/F1/correlation metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PARAPH_VID, findings=[])
+    text = parsed.full_text
+    if not _PARAPH_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PARAPH_VID, findings=[])
+    if _PARAPH_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_PARAPH_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PARAPH_VID,
+        findings=[
+            Finding(
+                code=_PARAPH_VID,
+                message=(
+                    "Paraphrase detection paper detected but standard metrics "
+                    "(accuracy, F1, Pearson/Spearman correlation) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_PARAPH_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 538 – Word sense disambiguation metrics
+# ---------------------------------------------------------------------------
+_WSD_VID = "missing-wsd-metrics"
+_WSD_TRIGGER_RE = re.compile(
+    r"\b(?:word\s+sense\s+disambiguation|WSD|lexical\s+disambiguation|"
+    r"polysemy\s+resolution)\b",
+    re.IGNORECASE,
+)
+_WSD_METRIC_RE = re.compile(
+    r"\b(?:F1|accuracy|recall|precision)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_wsd_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when WSD papers omit F1/accuracy metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_WSD_VID, findings=[])
+    text = parsed.full_text
+    if not _WSD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_WSD_VID, findings=[])
+    if _WSD_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_WSD_VID, findings=[])
+    return ValidationResult(
+        validator_name=_WSD_VID,
+        findings=[
+            Finding(
+                code=_WSD_VID,
+                message=(
+                    "Word sense disambiguation paper detected but standard "
+                    "metrics (F1, accuracy) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_WSD_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 539 – Semantic role labeling scoring
+# ---------------------------------------------------------------------------
+_SRL539_VID = "missing-srl-scoring-metrics"
+_SRL539_TRIGGER_RE = re.compile(
+    r"\b(?:semantic\s+role\s+label(?:ing|ler)|SRL\s+system|"
+    r"predicate-?argument\s+structure)\b",
+    re.IGNORECASE,
+)
+_SRL539_METRIC_RE = re.compile(
+    r"\b(?:F1|precision|recall|span\s+F1|argument\s+F1)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_srl_scoring_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when SRL papers omit span F1/argument F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SRL539_VID, findings=[])
+    text = parsed.full_text
+    if not _SRL539_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SRL539_VID, findings=[])
+    if _SRL539_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SRL539_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SRL539_VID,
+        findings=[
+            Finding(
+                code=_SRL539_VID,
+                message=(
+                    "Semantic role labeling paper detected but standard metrics "
+                    "(F1, span F1, argument F1) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_SRL539_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 540 – Argument mining metrics
+# ---------------------------------------------------------------------------
+_ARGMINE_VID = "missing-argument-mining-metrics"
+_ARGMINE_TRIGGER_RE = re.compile(
+    r"\b(?:argument\s+mining|argumentation\s+mining|"
+    r"argumentative\s+component\s+detection|stance\s+detection)\b",
+    re.IGNORECASE,
+)
+_ARGMINE_METRIC_RE = re.compile(
+    r"\b(?:F1|macro\s+F1|micro\s+F1|accuracy|precision|recall)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_argument_mining_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when argument mining papers omit F1/accuracy metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ARGMINE_VID, findings=[])
+    text = parsed.full_text
+    if not _ARGMINE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ARGMINE_VID, findings=[])
+    if _ARGMINE_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_ARGMINE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ARGMINE_VID,
+        findings=[
+            Finding(
+                code=_ARGMINE_VID,
+                message=(
+                    "Argument mining paper detected but standard metrics "
+                    "(F1, accuracy) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_ARGMINE_VID,
             )
         ],
     )

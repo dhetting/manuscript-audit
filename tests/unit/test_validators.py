@@ -32376,3 +32376,242 @@ def test_storygen535_non_empirical_no_fire() -> None:
     )
     r = validate_story_generation_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 536 – validate_data_to_text_metrics
+# ---------------------------------------------------------------------------
+def _d2t536_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t536", source_path="t536.md", source_format="markdown",
+            title="Data-to-text", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_d2t536_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_data_to_text_metrics
+    ms, cl = _d2t536_ms("We address data-to-text generation on WebNLG.")
+    r = validate_data_to_text_metrics(ms, cl)
+    assert any(f.code == "missing-data-to-text-metrics" for f in r.findings)
+
+
+def test_d2t536_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_data_to_text_metrics
+    ms, cl = _d2t536_ms("Data-to-text generation: BLEU = 47.2 on WebNLG.")
+    r = validate_data_to_text_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_d2t536_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_data_to_text_metrics
+    ms, cl = _d2t536_ms("We train a model for named entity recognition.")
+    r = validate_data_to_text_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_d2t536_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_to_text_metrics
+    ms, _ = _d2t536_ms("Table-to-text theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_data_to_text_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 537 – validate_paraphrase_detection_metrics
+# ---------------------------------------------------------------------------
+def _paraph537_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t537", source_path="t537.md", source_format="markdown",
+            title="Paraphrase detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_paraph537_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_paraphrase_detection_metrics
+    ms, cl = _paraph537_ms("We address paraphrase detection on MRPC.")
+    r = validate_paraphrase_detection_metrics(ms, cl)
+    assert any(f.code == "missing-paraphrase-detection-metrics" for f in r.findings)
+
+
+def test_paraph537_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_paraphrase_detection_metrics
+    ms, cl = _paraph537_ms("Paraphrase detection: accuracy = 91.3% on MRPC.")
+    r = validate_paraphrase_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_paraph537_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_paraphrase_detection_metrics
+    ms, cl = _paraph537_ms("We present an object detection approach.")
+    r = validate_paraphrase_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_paraph537_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_paraphrase_detection_metrics
+    ms, _ = _paraph537_ms("Semantic textual similarity theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_paraphrase_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 538 – validate_wsd_metrics
+# ---------------------------------------------------------------------------
+def _wsd538_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t538", source_path="t538.md", source_format="markdown",
+            title="WSD", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_wsd538_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_wsd_metrics
+    ms, cl = _wsd538_ms("We propose a model for word sense disambiguation on SemEval.")
+    r = validate_wsd_metrics(ms, cl)
+    assert any(f.code == "missing-wsd-metrics" for f in r.findings)
+
+
+def test_wsd538_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_wsd_metrics
+    ms, cl = _wsd538_ms("WSD: F1 = 78.4% on SemEval-2015.")
+    r = validate_wsd_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_wsd538_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_wsd_metrics
+    ms, cl = _wsd538_ms("We study face recognition methods.")
+    r = validate_wsd_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_wsd538_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_wsd_metrics
+    ms, _ = _wsd538_ms("Polysemy resolution theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_wsd_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 539 – validate_srl_scoring_metrics
+# ---------------------------------------------------------------------------
+def _srl539_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t539", source_path="t539.md", source_format="markdown",
+            title="SRL scoring", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_srl539_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_srl_scoring_metrics
+    ms, cl = _srl539_ms("We address semantic role labeling on CoNLL-2005.")
+    r = validate_srl_scoring_metrics(ms, cl)
+    assert any(f.code == "missing-srl-scoring-metrics" for f in r.findings)
+
+
+def test_srl539_no_fire_when_span_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_srl_scoring_metrics
+    ms, cl = _srl539_ms("SRL system: span F1 = 86.7% on CoNLL-2005 WSJ.")
+    r = validate_srl_scoring_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_srl539_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_srl_scoring_metrics
+    ms, cl = _srl539_ms("We present a model for video classification.")
+    r = validate_srl_scoring_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_srl539_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_srl_scoring_metrics
+    ms, _ = _srl539_ms("Predicate-argument structure theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_srl_scoring_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 540 – validate_argument_mining_metrics
+# ---------------------------------------------------------------------------
+def _argmine540_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t540", source_path="t540.md", source_format="markdown",
+            title="Argument mining", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_argmine540_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_argument_mining_metrics
+    ms, cl = _argmine540_ms("We present a model for argument mining in essays.")
+    r = validate_argument_mining_metrics(ms, cl)
+    assert any(f.code == "missing-argument-mining-metrics" for f in r.findings)
+
+
+def test_argmine540_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_argument_mining_metrics
+    ms, cl = _argmine540_ms("Argument mining: macro F1 = 64.2% on PE corpus.")
+    r = validate_argument_mining_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_argmine540_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_argument_mining_metrics
+    ms, cl = _argmine540_ms("We propose a depth estimation network.")
+    r = validate_argument_mining_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_argmine540_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_argument_mining_metrics
+    ms, _ = _argmine540_ms("Stance detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_argument_mining_metrics(ms, cl)
+    assert r.findings == []
