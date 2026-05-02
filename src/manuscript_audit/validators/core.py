@@ -6812,6 +6812,11 @@ def run_deterministic_validators(
         validate_repeated_measures_sphericity(parsed, classification),
         validate_survey_sampling_weight(parsed, classification),
         validate_finite_population_correction(parsed, classification),
+        validate_mcmc_convergence_reporting(parsed, classification),
+        validate_bayes_factor_interpretation(parsed, classification),
+        validate_waic_looic_reporting(parsed, classification),
+        validate_informative_prior_justification(parsed, classification),
+        validate_posterior_predictive_check(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -18638,6 +18643,300 @@ def validate_finite_population_correction(
                     "The sample appears to constitute a substantial fraction of a "
                     "finite population but no finite population correction (FPC) is "
                     "mentioned. Consider applying FPC to avoid overstating precision."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 306 – validate_mcmc_convergence_reporting
+# ---------------------------------------------------------------------------
+
+_MCMC_TRIGGER_RE = re.compile(
+    r"\b(?:MCMC\b|Markov\s+chain\s+Monte\s+Carlo|Bayesian\s+(?:sampling|inference|"
+    r"estimation|analysis)|Stan\b|JAGS\b|PyMC\b|No[\s-]?U[\s-]?Turn\s+sampler|NUTS\b|"
+    r"posterior\s+(?:samples?|draws?|distribution))\b",
+    re.IGNORECASE,
+)
+_MCMC_CONVERGENCE_RE = re.compile(
+    r"\b(?:R[\s-]?hat\b|Rhat\b|potential\s+scale\s+reduction|Gelman[\s-]Rubin|"
+    r"Geweke\s+(?:test|diagnostic)|Heidelberger[\s-]Welch|Raftery[\s-]Lewis|"
+    r"effective\s+sample\s+size|ESS\b|trace\s+plot|MCMC\s+convergence|"
+    r"chains?\s+(?:converged?|mixed\s+well|showed\s+good\s+mixing))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mcmc_convergence_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Bayesian/MCMC analyses without convergence diagnostics.
+
+    Emits ``missing-mcmc-convergence-report`` (moderate) when MCMC sampling
+    is described but convergence diagnostics (R-hat, ESS, trace plots) are
+    not reported.
+    """
+    _vid = "validate_mcmc_convergence_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MCMC_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _MCMC_CONVERGENCE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-mcmc-convergence-report",
+                severity="moderate",
+                message=(
+                    "MCMC sampling is described but convergence diagnostics "
+                    "(e.g., R-hat, effective sample size, trace plots) are not "
+                    "reported. Include convergence checks to validate posterior "
+                    "estimates."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 307 – validate_bayes_factor_interpretation
+# ---------------------------------------------------------------------------
+
+_BF_TRIGGER_RE = re.compile(
+    r"\b(?:Bayes\s+factor|BF\s*(?:01|10|₀₁|₁₀)?\s*=|log\s+Bayes\s+factor|"
+    r"BF\s*[><=]\s*[0-9]|evidence\s+ratio)\b",
+    re.IGNORECASE,
+)
+_BF_INTERPRETED_RE = re.compile(
+    r"\b(?:anecdotal|moderate\s+evidence|strong\s+evidence|very\s+strong\s+evidence|"
+    r"extreme\s+evidence|decisive\s+evidence|"
+    r"substantial\s+evidence|"
+    r"Jeffreys|Kass\s+and\s+Raftery|Raftery\s+guideline|"
+    r"BF\s*(?:01|10)\s*(?:indicates?|suggests?|reflects?)\s+(?:moderate|strong|very\s+strong|extreme|decisive)|"
+    r"interpreted\s+as\s+(?:moderate|strong|very\s+strong|extreme)\s+evidence)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_bayes_factor_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Bayes factor reports without qualitative interpretation.
+
+    Emits ``missing-bayes-factor-interpretation`` (minor) when a Bayes factor
+    is reported but not interpreted using a standard evidence scale.
+    """
+    _vid = "validate_bayes_factor_interpretation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _BF_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _BF_INTERPRETED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-bayes-factor-interpretation",
+                severity="minor",
+                message=(
+                    "A Bayes factor is reported but is not interpreted using a "
+                    "standard evidence scale (e.g., Jeffreys, Kass & Raftery). "
+                    "Label the evidential category to aid reader interpretation."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 308 – validate_waic_looic_reporting
+# ---------------------------------------------------------------------------
+
+_LOO_TRIGGER_RE = re.compile(
+    r"\b(?:WAIC\b|LOOIC\b|LOO[\s-]?CV\b|leave[\s-]one[\s-]out\s+cross[\s-]?validation|"
+    r"widely\s+applicable\s+information\s+criterion|"
+    r"expected\s+log\s+predictive\s+density|ELPD\b|"
+    r"Bayesian\s+model\s+(?:comparison|selection|averaging))\b",
+    re.IGNORECASE,
+)
+_LOO_REPORTED_RE = re.compile(
+    r"\b(?:WAIC\s*=|LOOIC\s*=|ELPD\s*=|"
+    r"LOO\s+(?:estimate|result|difference|comparison)|"
+    r"WAIC\s+(?:showed?|indicated?|favoured?|preferred?)|"
+    r"model\s+with\s+(?:lower|smallest)\s+(?:WAIC|LOOIC)|"
+    r"Pareto[\s-]k\s+(?:diagnostic|values?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_waic_looic_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Bayesian model comparison without WAIC/LOOIC values.
+
+    Emits ``missing-loo-model-comparison`` (minor) when Bayesian model
+    comparison is described using WAIC or LOO-CV but no numeric values
+    are reported.
+    """
+    _vid = "validate_waic_looic_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _LOO_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _LOO_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-loo-model-comparison",
+                severity="minor",
+                message=(
+                    "Bayesian model comparison using WAIC or LOO-CV is mentioned "
+                    "but no numeric results (WAIC, ELPD, Pareto-k) are reported. "
+                    "Include model comparison statistics to support model selection."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 309 – validate_informative_prior_justification
+# ---------------------------------------------------------------------------
+
+_INFORMATIVE_PRIOR_TRIGGER_RE = re.compile(
+    r"\b(?:informative\s+prior|strongly\s+informative\s+prior|"
+    r"prior\s+distribution\s+(?:was|were|is)\s+(?:based\s+on|informed\s+by|derived\s+from)|"
+    r"expert\s+(?:prior|elicitation)|"
+    r"skeptical\s+prior|enthusiastic\s+prior|"
+    r"non[\s-]?default\s+prior)\b",
+    re.IGNORECASE,
+)
+_PRIOR_JUSTIFIED_RE = re.compile(
+    r"\b(?:prior\s+(?:was|is|were)\s+(?:justified|chosen|selected|based\s+on|"
+    r"derived\s+from|informed\s+by|calibrated)|"
+    r"we\s+(?:chose|selected|specified)\s+(?:an?\s+)?informative\s+prior\s+"
+    r"(?:because|based\s+on|to)|"
+    r"prior\s+sensitivity\s+(?:analysis|check)|"
+    r"vague\s+prior|weakly\s+informative\s+prior|diffuse\s+prior)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_informative_prior_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag informative priors without justification.
+
+    Emits ``missing-informative-prior-justification`` (minor) when an
+    informative prior is used but not justified or motivated.
+    Note: complements ``validate_bayesian_prior_justification`` which
+    checks any Bayesian analysis; this targets explicit informative priors.
+    """
+    _vid = "validate_informative_prior_justification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _INFORMATIVE_PRIOR_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PRIOR_JUSTIFIED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-informative-prior-justification",
+                severity="minor",
+                message=(
+                    "An informative prior is described but its selection is not "
+                    "justified. Explain the basis for the prior (e.g., previous "
+                    "data, expert elicitation) and conduct a prior sensitivity "
+                    "analysis."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 310 – validate_posterior_predictive_check
+# ---------------------------------------------------------------------------
+
+_POSTERIOR_MODEL_TRIGGER_RE = re.compile(
+    r"\b(?:Bayesian\s+(?:model|regression|analysis|inference|estimation)|"
+    r"posterior\s+(?:distribution|samples?|inference|estimate)|"
+    r"Stan\b|JAGS\b|PyMC\b|brms\b|rstanarm\b)\b",
+    re.IGNORECASE,
+)
+_PPC_PERFORMED_RE = re.compile(
+    r"\b(?:posterior\s+predictive\s+(?:checks?|distribution|p[\s-]?value)|"
+    r"PPC\b|graphical\s+posterior\s+(?:checks?|assessment)|"
+    r"model\s+(?:adequacy|fit)\s+was\s+(?:assessed|checked|evaluated)\s+"
+    r"(?:using\s+)?posterior|"
+    r"pp_check\b|bayesplot\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_posterior_predictive_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Bayesian models without posterior predictive checks.
+
+    Emits ``missing-posterior-predictive-check`` (minor) when a Bayesian
+    model is fitted but posterior predictive checks are not described.
+    """
+    _vid = "validate_posterior_predictive_check"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _POSTERIOR_MODEL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PPC_PERFORMED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-posterior-predictive-check",
+                severity="minor",
+                message=(
+                    "A Bayesian model is fitted but posterior predictive checks "
+                    "are not reported. Include graphical or quantitative posterior "
+                    "predictive checks to assess model adequacy."
                 ),
                 validator=_vid,
             )

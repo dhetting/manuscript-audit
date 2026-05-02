@@ -17760,3 +17760,355 @@ def test_fpc_non_empirical_no_fire() -> None:
     )
     result = validate_finite_population_correction(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 306 – validate_mcmc_convergence_reporting
+# ---------------------------------------------------------------------------
+
+def _mcmc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mcmc",
+            source_path="/tmp/mcmc.md",
+            source_format="markdown",
+            title="MCMC Convergence Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mcmc_without_convergence_fires() -> None:
+    from manuscript_audit.validators.core import validate_mcmc_convergence_reporting
+
+    ms, cl = _mcmc_ms(
+        "Bayesian analysis was conducted using Stan. We drew 4000 posterior "
+        "samples from each of 4 chains after a 1000-iteration warm-up."
+    )
+    result = validate_mcmc_convergence_reporting(ms, cl)
+    assert any(f.code == "missing-mcmc-convergence-report" for f in result.findings)
+
+
+def test_mcmc_with_rhat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mcmc_convergence_reporting
+
+    ms, cl = _mcmc_ms(
+        "Bayesian inference was performed with Stan. Convergence was confirmed "
+        "with R-hat < 1.01 for all parameters and effective sample size > 400."
+    )
+    result = validate_mcmc_convergence_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mcmc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mcmc_convergence_reporting
+
+    ms, cl = _mcmc_ms(
+        "Frequentist regression with maximum likelihood estimation was used."
+    )
+    result = validate_mcmc_convergence_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_mcmc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mcmc_convergence_reporting
+
+    ms, cl = _mcmc_ms("MCMC methods are discussed as a computational technique.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_mcmc_convergence_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 307 – validate_bayes_factor_interpretation
+# ---------------------------------------------------------------------------
+
+def _bf_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bf",
+            source_path="/tmp/bf.md",
+            source_format="markdown",
+            title="Bayes Factor Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bf_without_interpretation_fires() -> None:
+    from manuscript_audit.validators.core import validate_bayes_factor_interpretation
+
+    ms, cl = _bf_ms(
+        "A Bayes factor analysis yielded BF10 = 12.4, suggesting the data "
+        "favour the alternative hypothesis."
+    )
+    result = validate_bayes_factor_interpretation(ms, cl)
+    assert any(f.code == "missing-bayes-factor-interpretation" for f in result.findings)
+
+
+def test_bf_with_interpretation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayes_factor_interpretation
+
+    ms, cl = _bf_ms(
+        "The Bayes factor BF10 = 12.4, interpreted as strong evidence in "
+        "favour of the alternative hypothesis using the Jeffreys scale."
+    )
+    result = validate_bayes_factor_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_bf_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayes_factor_interpretation
+
+    ms, cl = _bf_ms(
+        "A frequentist t-test was conducted with a significance threshold of .05."
+    )
+    result = validate_bayes_factor_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_bf_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayes_factor_interpretation
+
+    ms, cl = _bf_ms(
+        "Bayes factors quantify the relative evidence for competing hypotheses."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_bayes_factor_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 308 – validate_waic_looic_reporting
+# ---------------------------------------------------------------------------
+
+def _waic_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-waic",
+            source_path="/tmp/waic.md",
+            source_format="markdown",
+            title="WAIC/LOOIC Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_loo_mentioned_without_values_fires() -> None:
+    from manuscript_audit.validators.core import validate_waic_looic_reporting
+
+    ms, cl = _waic_ms(
+        "Model comparison was conducted using leave-one-out cross-validation. "
+        "The preferred model was selected based on LOO-CV."
+    )
+    result = validate_waic_looic_reporting(ms, cl)
+    assert any(f.code == "missing-loo-model-comparison" for f in result.findings)
+
+
+def test_loo_with_values_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_waic_looic_reporting
+
+    ms, cl = _waic_ms(
+        "Model comparison used LOO-CV. The LOO difference was −4.2 (SE = 1.8), "
+        "favouring the interaction model."
+    )
+    result = validate_waic_looic_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_loo_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_waic_looic_reporting
+
+    ms, cl = _waic_ms(
+        "We used AIC and BIC for model comparison in a frequentist framework."
+    )
+    result = validate_waic_looic_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_waic_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_waic_looic_reporting
+
+    ms, cl = _waic_ms("WAIC is an information criterion for Bayesian models.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_waic_looic_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 309 – validate_informative_prior_justification
+# ---------------------------------------------------------------------------
+
+def _inf_prior_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-inf-prior",
+            source_path="/tmp/inf_prior.md",
+            source_format="markdown",
+            title="Informative Prior Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_informative_prior_without_justification_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_informative_prior_justification,
+    )
+
+    ms, cl = _inf_prior_ms(
+        "We used an informative prior distribution for the treatment effect "
+        "parameter based on our theoretical expectations."
+    )
+    result = validate_informative_prior_justification(ms, cl)
+    assert any(
+        f.code == "missing-informative-prior-justification" for f in result.findings
+    )
+
+
+def test_informative_prior_with_justification_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_informative_prior_justification,
+    )
+
+    ms, cl = _inf_prior_ms(
+        "We used an informative prior derived from a previous meta-analysis. "
+        "The prior was justified based on prior data and a prior sensitivity "
+        "analysis confirmed results were robust."
+    )
+    result = validate_informative_prior_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_informative_prior_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_informative_prior_justification,
+    )
+
+    ms, cl = _inf_prior_ms(
+        "We used standard weakly informative priors throughout the analysis."
+    )
+    result = validate_informative_prior_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_inf_prior_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_informative_prior_justification,
+    )
+
+    ms, cl = _inf_prior_ms(
+        "Informative priors encode prior beliefs about parameter distributions."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_informative_prior_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 310 – validate_posterior_predictive_check
+# ---------------------------------------------------------------------------
+
+def _ppc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ppc",
+            source_path="/tmp/ppc.md",
+            source_format="markdown",
+            title="Posterior Predictive Check Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bayesian_model_without_ppc_fires() -> None:
+    from manuscript_audit.validators.core import validate_posterior_predictive_check
+
+    ms, cl = _ppc_ms(
+        "A Bayesian regression model was fitted using Stan. Posterior "
+        "distributions were estimated for all parameters."
+    )
+    result = validate_posterior_predictive_check(ms, cl)
+    assert any(f.code == "missing-posterior-predictive-check" for f in result.findings)
+
+
+def test_bayesian_model_with_ppc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_posterior_predictive_check
+
+    ms, cl = _ppc_ms(
+        "A Bayesian model was fitted with Stan. Posterior predictive checks "
+        "confirmed the model reproduced the observed data distribution well."
+    )
+    result = validate_posterior_predictive_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_bayesian_model_no_ppc_fire() -> None:
+    from manuscript_audit.validators.core import validate_posterior_predictive_check
+
+    ms, cl = _ppc_ms(
+        "We used frequentist logistic regression with bootstrap confidence intervals."
+    )
+    result = validate_posterior_predictive_check(ms, cl)
+    assert result.findings == []
+
+
+def test_ppc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_posterior_predictive_check
+
+    ms, cl = _ppc_ms(
+        "Posterior predictive checks assess model fit using replicated datasets."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_posterior_predictive_check(ms, cl)
+    assert result.findings == []
