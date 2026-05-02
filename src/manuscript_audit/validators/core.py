@@ -6768,6 +6768,11 @@ def run_deterministic_validators(
         validate_regression_sample_size_adequacy(parsed, classification),
         validate_scale_directionality_disclosure(parsed, classification),
         validate_attrition_rate_reporting(parsed, classification),
+        validate_dichotomization_of_continuous_variable(parsed, classification),
+        validate_ecological_fallacy_warning(parsed, classification),
+        validate_standardised_mean_difference_units(parsed, classification),
+        validate_retrospective_data_collection_disclosure(parsed, classification),
+        validate_treatment_fidelity_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -15958,6 +15963,321 @@ def validate_attrition_rate_reporting(
                     "Report attrition rates and reasons for dropout."
                 ),
                 validator="validate_attrition_rate_reporting",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 261 – validate_dichotomization_of_continuous_variable
+# ---------------------------------------------------------------------------
+
+_DICHOTOMIZE_TRIGGER_RE = re.compile(
+    r"\b(?:dichotomis(?:ed|ing|ation)|median\s+split|mean\s+split|"
+    r"split\s+(?:at|by)\s+(?:the\s+)?(?:median|mean)|"
+    r"categoris(?:ed|ing)\s+(?:a\s+)?continuous\s+variable|"
+    r"binarised?|cut[\s-]?point\s+of\s+\d)\b",
+    re.IGNORECASE,
+)
+_DICHOTOMIZE_JUSTIFICATION_RE = re.compile(
+    r"\b(?:clinical\s+cut[\s-]?(?:off|point)|validated\s+(?:cut[\s-]?(?:off|point)|threshold)|"
+    r"established\s+(?:cut[\s-]?(?:off|point)|threshold|criterion)|"
+    r"justified?\s+(?:by|because|as)|"
+    r"ROC\s+analysis|optimal\s+cut[\s-]?(?:off|point))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_dichotomization_of_continuous_variable(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag arbitrary dichotomisation of continuous variables.
+
+    Emits ``unjustified-dichotomization`` (moderate) when continuous variables
+    are dichotomised (e.g., median split) without a clinically or empirically
+    justified cut-off.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_dichotomization_of_continuous_variable",
+            findings=[],
+        )
+
+    full = parsed.full_text
+    if not _DICHOTOMIZE_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_dichotomization_of_continuous_variable",
+            findings=[],
+        )
+
+    if _DICHOTOMIZE_JUSTIFICATION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_dichotomization_of_continuous_variable",
+            findings=[],
+        )
+
+    return ValidationResult(
+        validator_name="validate_dichotomization_of_continuous_variable",
+        findings=[
+            Finding(
+                code="unjustified-dichotomization",
+                severity="moderate",
+                message=(
+                    "A continuous variable is dichotomised without a justified cut-off. "
+                    "Median or mean splits reduce statistical power and introduce bias. "
+                    "Justify any cut-point or retain the continuous form."
+                ),
+                validator="validate_dichotomization_of_continuous_variable",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 262 – validate_ecological_fallacy_warning
+# ---------------------------------------------------------------------------
+
+_ECOLOGICAL_TRIGGER_RE = re.compile(
+    r"\b(?:aggregate\s+(?:data|level|measures?)|group[\s-]level\s+(?:analysis|data)|"
+    r"country[\s-]level|regional[\s-]level|community[\s-]level\s+(?:data|analysis)|"
+    r"ecological\s+(?:study|analysis|correlation))\b",
+    re.IGNORECASE,
+)
+_ECOLOGICAL_CAVEAT_RE = re.compile(
+    r"\b(?:ecological\s+fallacy|ecological\s+(?:bias|correlation)|"
+    r"cannot\s+(?:infer|make)\s+individual[\s-]level|"
+    r"aggregate\s+data\s+(?:cannot|should\s+not|do\s+not)\s+(?:imply|support|allow)|"
+    r"individual[\s-]level\s+(?:data|inference|conclusions?)\s+(?:cannot|should\s+not)|"
+    r"limitation\s+of\s+(?:aggregate|ecological|group[\s-]level))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ecological_fallacy_warning(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag aggregate-level analyses without ecological fallacy caveat.
+
+    Emits ``missing-ecological-fallacy-warning`` (moderate) when ecological or
+    aggregate-level data are used without a caveat against individual-level inference.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_ecological_fallacy_warning", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _ECOLOGICAL_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_ecological_fallacy_warning", findings=[]
+        )
+
+    if _ECOLOGICAL_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_ecological_fallacy_warning", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_ecological_fallacy_warning",
+        findings=[
+            Finding(
+                code="missing-ecological-fallacy-warning",
+                severity="moderate",
+                message=(
+                    "Aggregate or ecological data are used without acknowledging the "
+                    "ecological fallacy risk. Individual-level conclusions cannot be "
+                    "drawn from group-level data."
+                ),
+                validator="validate_ecological_fallacy_warning",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 263 – validate_standardised_mean_difference_units
+# ---------------------------------------------------------------------------
+
+_SMD_TRIGGER_RE = re.compile(
+    r"\b(?:standardised?\s+mean\s+difference|SMD\s*=|"
+    r"mean\s+difference\s*=\s*[-−]?\d+\.\d+)",
+    re.IGNORECASE,
+)
+_SMD_UNIT_RE = re.compile(
+    r"\b(?:original\s+(?:units?|scale)|raw\s+(?:units?|scale|difference)|"
+    r"(?:units?\s+of|on\s+the)\s+(?:the\s+)?original\s+scale|"
+    r"unstandardised?\s+(?:mean\s+)?difference|"
+    r"interpreted\s+in\s+(?:the\s+)?original|"
+    r"back[\s-]?transformed|clinically\s+meaningful\s+difference)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_standardised_mean_difference_units(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag standardised mean differences without original-unit interpretation.
+
+    Emits ``missing-smd-original-unit-context`` (minor) when an SMD is reported
+    without contextualising it in original measurement units.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_standardised_mean_difference_units", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _SMD_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_standardised_mean_difference_units", findings=[]
+        )
+
+    if _SMD_UNIT_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_standardised_mean_difference_units", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_standardised_mean_difference_units",
+        findings=[
+            Finding(
+                code="missing-smd-original-unit-context",
+                severity="minor",
+                message=(
+                    "A standardised mean difference is reported without contextualising "
+                    "the effect in original measurement units. Provide an unstandardised "
+                    "difference or equivalent interpretation for clinical relevance."
+                ),
+                validator="validate_standardised_mean_difference_units",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 264 – validate_retrospective_data_collection_disclosure
+# ---------------------------------------------------------------------------
+
+_RETRO_TRIGGER_RE = re.compile(
+    r"\b(?:retrospective(?:ly)?|chart\s+review|medical\s+records?|"
+    r"administrative\s+data|existing\s+(?:records?|data(?:base)?|dataset)|"
+    r"data\s+(?:were|was)\s+(?:collected|extracted)\s+(?:from|using)\s+"
+    r"(?:existing|archival|historical))\b",
+    re.IGNORECASE,
+)
+_RETRO_DISCLOSURE_RE = re.compile(
+    r"\b(?:retrospective\s+(?:design|study|analysis|nature)|"
+    r"limitation\s+of\s+retrospective|retrospective\s+(?:collection|data)|"
+    r"(?:bias|limitation)\s+(?:inherent|associated)\s+(?:to|with)\s+retrospective|"
+    r"we\s+acknowledge\s+(?:the\s+)?retrospective)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_retrospective_data_collection_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag retrospective data use without explicit disclosure.
+
+    Emits ``missing-retrospective-design-disclosure`` (minor) when retrospective
+    or archival data are used without disclosing this as a design limitation.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_retrospective_data_collection_disclosure",
+            findings=[],
+        )
+
+    full = parsed.full_text
+    if not _RETRO_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_retrospective_data_collection_disclosure",
+            findings=[],
+        )
+
+    if _RETRO_DISCLOSURE_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_retrospective_data_collection_disclosure",
+            findings=[],
+        )
+
+    return ValidationResult(
+        validator_name="validate_retrospective_data_collection_disclosure",
+        findings=[
+            Finding(
+                code="missing-retrospective-design-disclosure",
+                severity="minor",
+                message=(
+                    "Retrospective or archival data are used without explicitly disclosing "
+                    "the retrospective design as a limitation. Acknowledge limitations of "
+                    "retrospective data collection."
+                ),
+                validator="validate_retrospective_data_collection_disclosure",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 265 – validate_treatment_fidelity_reporting
+# ---------------------------------------------------------------------------
+
+_FIDELITY_TRIGGER_RE = re.compile(
+    r"\b(?:intervention|treatment\s+(?:group|condition|arm)|"
+    r"(?:CBT|cognitive[\s-]behavioral\s+therapy|psychotherapy|"
+    r"mindfulness[\s-]based|training\s+program|educational\s+intervention))\b",
+    re.IGNORECASE,
+)
+_FIDELITY_REPORTED_RE = re.compile(
+    r"\b(?:treatment\s+fidelity|intervention\s+fidelity|fidelity\s+(?:check|monitoring|assessment)|"
+    r"protocol\s+adherence|therapist\s+adherence|adherence\s+to\s+(?:the\s+)?protocol|"
+    r"treatment\s+integrity|implementation\s+fidelity|"
+    r"fidelity\s+(?:was|were)\s+(?:assessed|monitored|checked|ensured))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_treatment_fidelity_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag intervention studies without treatment fidelity reporting.
+
+    Emits ``missing-treatment-fidelity-report`` (moderate) when an intervention
+    is described but treatment fidelity or protocol adherence is not reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_treatment_fidelity_reporting", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _FIDELITY_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_treatment_fidelity_reporting", findings=[]
+        )
+
+    if _FIDELITY_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_treatment_fidelity_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_treatment_fidelity_reporting",
+        findings=[
+            Finding(
+                code="missing-treatment-fidelity-report",
+                severity="moderate",
+                message=(
+                    "An intervention is described but treatment fidelity or protocol "
+                    "adherence is not reported. Report fidelity checks to support "
+                    "internal validity."
+                ),
+                validator="validate_treatment_fidelity_reporting",
             )
         ],
     )

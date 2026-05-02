@@ -14536,3 +14536,364 @@ def test_attrition_non_empirical_no_fire() -> None:
     )
     result = validate_attrition_rate_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 261 – validate_dichotomization_of_continuous_variable
+# ---------------------------------------------------------------------------
+
+def _dichot261_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dichot",
+            source_path="/tmp/dichot.md",
+            source_format="markdown",
+            title="Dichotomization Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_median_split_without_justification_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_dichotomization_of_continuous_variable,
+    )
+
+    ms, cl = _dichot261_ms(
+        "Depression scores were dichotomised using a median split "
+        "into low and high groups."
+    )
+    result = validate_dichotomization_of_continuous_variable(ms, cl)
+    assert any(f.code == "unjustified-dichotomization" for f in result.findings)
+
+
+def test_dichotomization_with_clinical_cutoff_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_dichotomization_of_continuous_variable,
+    )
+
+    ms, cl = _dichot261_ms(
+        "Depression scores were dichotomised using a validated clinical cut-off "
+        "of 10 on the PHQ-9, consistent with established guidelines."
+    )
+    result = validate_dichotomization_of_continuous_variable(ms, cl)
+    assert result.findings == []
+
+
+def test_no_dichotomization_continuous_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_dichotomization_of_continuous_variable,
+    )
+
+    ms, cl = _dichot261_ms(
+        "Depression scores were analysed as a continuous outcome in all models."
+    )
+    result = validate_dichotomization_of_continuous_variable(ms, cl)
+    assert result.findings == []
+
+
+def test_dichotomization_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_dichotomization_of_continuous_variable,
+    )
+
+    ms, cl = _dichot261_ms("Median splits reduce statistical power.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_dichotomization_of_continuous_variable(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 262 – validate_ecological_fallacy_warning
+# ---------------------------------------------------------------------------
+
+def _eco_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-eco",
+            source_path="/tmp/eco.md",
+            source_format="markdown",
+            title="Ecological Fallacy Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_aggregate_data_without_fallacy_warning_fires() -> None:
+    from manuscript_audit.validators.core import validate_ecological_fallacy_warning
+
+    ms, cl = _eco_ms(
+        "Country-level data on income inequality were correlated with "
+        "mental health outcomes, suggesting that higher inequality causes poorer health."
+    )
+    result = validate_ecological_fallacy_warning(ms, cl)
+    assert any(f.code == "missing-ecological-fallacy-warning" for f in result.findings)
+
+
+def test_aggregate_data_with_fallacy_warning_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ecological_fallacy_warning
+
+    ms, cl = _eco_ms(
+        "Country-level data were used. We acknowledge the ecological fallacy risk; "
+        "individual-level conclusions cannot be drawn from these aggregate data."
+    )
+    result = validate_ecological_fallacy_warning(ms, cl)
+    assert result.findings == []
+
+
+def test_no_aggregate_data_no_fallacy_fire() -> None:
+    from manuscript_audit.validators.core import validate_ecological_fallacy_warning
+
+    ms, cl = _eco_ms(
+        "Individual-level survey data were collected from 500 participants."
+    )
+    result = validate_ecological_fallacy_warning(ms, cl)
+    assert result.findings == []
+
+
+def test_eco_fallacy_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ecological_fallacy_warning
+
+    ms, cl = _eco_ms("Aggregate-level analyses risk ecological fallacy.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ecological_fallacy_warning(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 263 – validate_standardised_mean_difference_units
+# ---------------------------------------------------------------------------
+
+def _smd_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-smd",
+            source_path="/tmp/smd.md",
+            source_format="markdown",
+            title="SMD Units Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_smd_without_original_units_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_standardised_mean_difference_units,
+    )
+
+    ms, cl = _smd_ms(
+        "The intervention effect was SMD = 0.42 (95% CI [0.21, 0.63])."
+    )
+    result = validate_standardised_mean_difference_units(ms, cl)
+    assert any(f.code == "missing-smd-original-unit-context" for f in result.findings)
+
+
+def test_smd_with_original_units_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_standardised_mean_difference_units,
+    )
+
+    ms, cl = _smd_ms(
+        "The intervention effect was SMD = 0.42. This corresponds to an unstandardised "
+        "difference of 3.2 points on the depression scale in original units."
+    )
+    result = validate_standardised_mean_difference_units(ms, cl)
+    assert result.findings == []
+
+
+def test_no_smd_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_standardised_mean_difference_units,
+    )
+
+    ms, cl = _smd_ms(
+        "The intervention improved outcomes (Cohen's d = 0.45, medium effect)."
+    )
+    result = validate_standardised_mean_difference_units(ms, cl)
+    assert result.findings == []
+
+
+def test_smd_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_standardised_mean_difference_units,
+    )
+
+    ms, cl = _smd_ms("SMD is used in meta-analysis to combine effects.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_standardised_mean_difference_units(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 264 – validate_retrospective_data_collection_disclosure
+# ---------------------------------------------------------------------------
+
+def _retro_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-retro",
+            source_path="/tmp/retro.md",
+            source_format="markdown",
+            title="Retrospective Design Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_retrospective_without_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_retrospective_data_collection_disclosure,
+    )
+
+    ms, cl = _retro_ms(
+        "Data were collected from existing medical records of 500 patients "
+        "admitted between 2018 and 2022."
+    )
+    result = validate_retrospective_data_collection_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-retrospective-design-disclosure" for f in result.findings
+    )
+
+
+def test_retrospective_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_retrospective_data_collection_disclosure,
+    )
+
+    ms, cl = _retro_ms(
+        "Data were extracted from existing medical records. "
+        "We acknowledge the retrospective design as a limitation of this study."
+    )
+    result = validate_retrospective_data_collection_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_prospective_data_no_retro_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_retrospective_data_collection_disclosure,
+    )
+
+    ms, cl = _retro_ms(
+        "Data were prospectively collected from participants at three time points."
+    )
+    result = validate_retrospective_data_collection_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_retrospective_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_retrospective_data_collection_disclosure,
+    )
+
+    ms, cl = _retro_ms("Retrospective designs are discussed in the methodology literature.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_retrospective_data_collection_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 265 – validate_treatment_fidelity_reporting
+# ---------------------------------------------------------------------------
+
+def _fidelity_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fidelity",
+            source_path="/tmp/fidelity.md",
+            source_format="markdown",
+            title="Treatment Fidelity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_intervention_without_fidelity_report_fires() -> None:
+    from manuscript_audit.validators.core import validate_treatment_fidelity_reporting
+
+    ms, cl = _fidelity_ms(
+        "Participants in the CBT group received 12 sessions of cognitive-behavioral therapy "
+        "delivered by trained therapists."
+    )
+    result = validate_treatment_fidelity_reporting(ms, cl)
+    assert any(f.code == "missing-treatment-fidelity-report" for f in result.findings)
+
+
+def test_intervention_with_fidelity_report_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_treatment_fidelity_reporting
+
+    ms, cl = _fidelity_ms(
+        "Participants received CBT over 12 sessions. "
+        "Treatment fidelity was assessed by independent raters who reviewed 20% "
+        "of sessions; mean adherence to the protocol was 94%."
+    )
+    result = validate_treatment_fidelity_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_observational_no_intervention_no_fidelity_fire() -> None:
+    from manuscript_audit.validators.core import validate_treatment_fidelity_reporting
+
+    ms, cl = _fidelity_ms(
+        "This cross-sectional study examined naturally occurring variation in "
+        "physical activity and its association with depression."
+    )
+    result = validate_treatment_fidelity_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_fidelity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_treatment_fidelity_reporting
+
+    ms, cl = _fidelity_ms("Treatment fidelity is important in intervention research.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_treatment_fidelity_reporting(ms, cl)
+    assert result.findings == []
