@@ -1316,8 +1316,61 @@ HEAD: `89d9637`
 - Phase 559: `validate_multi_task_learning_evaluation` → `missing-multi-task-learning-evaluation` (moderate)
 - Phase 560: `validate_speech_synthesis_evaluation` → `missing-speech-synthesis-evaluation` (moderate)
 
-Current test count: **2026 passing** (after phase 560)
-HEAD: `b29fee7`
+**Phases 561–565** (`84ad8f5`, 2046 tests)
+- Phase 561: `validate_music_generation_evaluation` → `missing-music-generation-evaluation` (moderate)
+- Phase 562: `validate_audio_source_separation_metrics` → `missing-audio-source-separation-metrics` (moderate)
+- Phase 563: `validate_speaker_verification_metrics` → `missing-speaker-verification-metrics` (moderate)
+- Phase 564: `validate_audio_captioning_metrics` → `missing-audio-captioning-metrics` (moderate)
+- Phase 565: `validate_singing_voice_synthesis_metrics` → `missing-singing-voice-synthesis-metrics` (moderate)
+
+**Phases 566–570** (`bbe3d7f`, 2066 tests)
+- Phase 566: `validate_sound_event_detection_metrics` → `missing-sound-event-detection-metrics` (moderate)
+- Phase 567: `validate_video_grounding_metrics` → `missing-video-grounding-metrics` (moderate)
+- Phase 568: `validate_3d_scene_understanding_metrics` → `missing-3d-scene-understanding-metrics` (moderate)
+- Phase 569: `validate_table_to_text_metrics` → `missing-table-to-text-metrics` (moderate)
+- Phase 570: `validate_scene_text_recognition_metrics` → `missing-scene-text-recognition-metrics` (moderate)
+
+**Phases 571–575** (`4a429b0`, 2086 tests)
+- Phase 571: `validate_visual_dialog_metrics` → `missing-visual-dialog-metrics` (moderate)
+- Phase 572: `validate_visual_commonsense_reasoning_metrics` → `missing-visual-commonsense-reasoning-metrics` (moderate)
+- Phase 573: `validate_video_dense_captioning_metrics` → `missing-video-dense-captioning-metrics` (moderate)
+- Phase 574: `validate_document_vqa_metrics` → `missing-document-vqa-metrics` (moderate)
+- Phase 575: `validate_chart_qa_metrics` → `missing-chart-qa-metrics` (moderate)
+
+**Phases 576–580** (`bb88dcf`, 2106 tests)
+- Phase 576: `validate_crosslingual_summarization_metrics` → `missing-crosslingual-summarization-metrics` (moderate)
+- Phase 577: `validate_multilingual_mt_metrics` → `missing-multilingual-mt-metrics` (moderate)
+- Phase 578: `validate_code_translation_metrics` → `missing-code-translation-metrics` (moderate)
+- Phase 579: `validate_formal_verification_metrics` → `missing-formal-verification-metrics` (moderate)
+- Phase 580: `validate_program_synthesis_metrics` → `missing-program-synthesis-metrics` (moderate)
+
+**Phases 581–585** (`aa5a88d`, 2126 tests)
+- Phase 581: `validate_srl_benchmark_metrics` → `missing-srl-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_srl_evaluation_metrics` — phase 492 already defines that name
+- Phase 582: `validate_entity_linking_metrics` → `missing-entity-linking-metrics` (moderate)
+- Phase 583: `validate_coreference_benchmark_metrics` → `missing-coreference-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_coreference_resolution_metrics` — phase 491 already defines that name
+- Phase 584: `validate_semantic_textual_similarity_metrics` → `missing-semantic-textual-similarity-metrics` (moderate)
+- Phase 585: `validate_open_ie_metrics` → `missing-open-ie-metrics` (moderate)
+
+**Phases 586–590** (`f2fac56`, 2146 tests)
+- Phase 586: `validate_multimodal_sentiment_metrics` → `missing-multimodal-sentiment-metrics` (moderate)
+- Phase 587: `validate_multimodal_mt_metrics` → `missing-multimodal-mt-metrics` (moderate)
+- Phase 588: `validate_grounded_language_learning_metrics` → `missing-grounded-language-learning-metrics` (moderate)
+- Phase 589: `validate_text_to_sql_metrics` → `missing-text-to-sql-metrics` (moderate)
+- Phase 590: `validate_commonsense_kg_completion_metrics` → `missing-commonsense-kg-completion-metrics` (moderate)
+
+**Phases 591–595** (`3af5de2`, 2166 tests)
+- Phase 591: `validate_temporal_action_detection_metrics` → `missing-temporal-action-detection-metrics` (moderate)
+- Phase 592: `validate_video_moment_retrieval_metrics` → `missing-video-moment-retrieval-metrics` (moderate)
+- Phase 593: `validate_vos_benchmark_metrics` → `missing-vos-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_video_object_segmentation_metrics` — phase ~568 already defines that name
+- Phase 594: `validate_video_retrieval_metrics` → `missing-video-retrieval-metrics` (moderate)
+  - NOTE: trigger fixed to match `text-to-video retrieval` (uses `text[- ](?:to[- ])?video`)
+- Phase 595: `validate_3d_object_detection_metrics` → `missing-3d-object-detection-metrics` (moderate)
+
+Current test count: **2166 passing** (after phase 595)
+HEAD: `3af5de2`
 
 ## Critical technical gotchas (accumulated)
 
@@ -1408,4 +1461,4 @@ Assume:
 - currently at phase 560 with 2026 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 600)
+- update MEMORY.md after every 40 phases (next update due after phase 640)
