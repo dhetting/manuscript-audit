@@ -18792,3 +18792,336 @@ def test_no_cv_no_fire() -> None:
     )
     result = validate_cross_validation_strategy(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 321 – validate_text_preprocessing_disclosure
+# ---------------------------------------------------------------------------
+
+def _tp321_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-tp321",
+            source_path="/tmp/tp321.md",
+            source_format="markdown",
+            title="Text Preprocessing Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nlp_without_preprocessing_fires() -> None:
+    from manuscript_audit.validators.core import validate_text_preprocessing_disclosure
+
+    ms, cl = _tp321_ms(
+        "We applied TF-IDF to the corpus of 5000 documents for text classification."
+    )
+    result = validate_text_preprocessing_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-text-preprocessing-disclosure" for f in result.findings
+    )
+
+
+def test_nlp_with_preprocessing_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_text_preprocessing_disclosure
+
+    ms, cl = _tp321_ms(
+        "The corpus was preprocessed via tokenization, lemmatization, and "
+        "stop-word removal before TF-IDF feature extraction."
+    )
+    result = validate_text_preprocessing_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_text_preprocessing_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_text_preprocessing_disclosure
+
+    ms, cl = _tp321_ms("We applied TF-IDF to the corpus.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_text_preprocessing_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_text_analysis_no_fire_tp321() -> None:
+    from manuscript_audit.validators.core import validate_text_preprocessing_disclosure
+
+    ms, cl = _tp321_ms(
+        "Participants completed a questionnaire measuring depression symptoms."
+    )
+    result = validate_text_preprocessing_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 322 – validate_word_embedding_details
+# ---------------------------------------------------------------------------
+
+def _we322_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-we322",
+            source_path="/tmp/we322.md",
+            source_format="markdown",
+            title="Word Embedding Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_word_embedding_without_details_fires() -> None:
+    from manuscript_audit.validators.core import validate_word_embedding_details
+
+    ms, cl = _we322_ms(
+        "We used Word2Vec representations as input features to the classifier."
+    )
+    result = validate_word_embedding_details(ms, cl)
+    assert any(f.code == "missing-word-embedding-details" for f in result.findings)
+
+
+def test_word_embedding_with_details_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_word_embedding_details
+
+    ms, cl = _we322_ms(
+        "We used 300-dimensional Word2Vec word vectors pretrained on Google News "
+        "corpus as input features."
+    )
+    result = validate_word_embedding_details(ms, cl)
+    assert result.findings == []
+
+
+def test_word_embedding_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_word_embedding_details
+
+    ms, cl = _we322_ms("We used Word2Vec representations as input features.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_word_embedding_details(ms, cl)
+    assert result.findings == []
+
+
+def test_no_word_embedding_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_word_embedding_details
+
+    ms, cl = _we322_ms(
+        "We applied linear regression to predict outcomes from demographic covariates."
+    )
+    result = validate_word_embedding_details(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 323 – validate_topic_model_parameter_disclosure
+# ---------------------------------------------------------------------------
+
+def _tm323_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-tm323",
+            source_path="/tmp/tm323.md",
+            source_format="markdown",
+            title="Topic Model Parameter Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lda_without_params_fires() -> None:
+    from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
+
+    ms, cl = _tm323_ms(
+        "We applied latent Dirichlet allocation to identify themes in the corpus."
+    )
+    result = validate_topic_model_parameter_disclosure(ms, cl)
+    assert any(f.code == "missing-topic-model-parameters" for f in result.findings)
+
+
+def test_lda_with_topic_count_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
+
+    ms, cl = _tm323_ms(
+        "We applied LDA with 20 topics selected based on topic coherence scores."
+    )
+    result = validate_topic_model_parameter_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_topic_model_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
+
+    ms, cl = _tm323_ms("We applied LDA to identify themes in the corpus.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_topic_model_parameter_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_topic_model_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
+
+    ms, cl = _tm323_ms(
+        "We used structural equation modelling to test hypothesised pathways."
+    )
+    result = validate_topic_model_parameter_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 324 – validate_inter_annotator_agreement
+# ---------------------------------------------------------------------------
+
+def _iaa324_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-iaa324",
+            source_path="/tmp/iaa324.md",
+            source_format="markdown",
+            title="Inter-Annotator Agreement Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_annotation_without_iaa_fires() -> None:
+    from manuscript_audit.validators.core import validate_inter_annotator_agreement
+
+    ms, cl = _iaa324_ms(
+        "Two independent coders manually annotated 500 tweets for sentiment."
+    )
+    result = validate_inter_annotator_agreement(ms, cl)
+    assert any(f.code == "missing-inter-annotator-agreement" for f in result.findings)
+
+
+def test_annotation_with_kappa_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_inter_annotator_agreement
+
+    ms, cl = _iaa324_ms(
+        "Two independent coders annotated 500 tweets. Inter-rater agreement "
+        "was assessed using Cohen's kappa (κ = 0.82)."
+    )
+    result = validate_inter_annotator_agreement(ms, cl)
+    assert result.findings == []
+
+
+def test_iaa_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_inter_annotator_agreement
+
+    ms, cl = _iaa324_ms(
+        "Two independent coders manually annotated 500 documents."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_inter_annotator_agreement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_annotation_no_fire_iaa() -> None:
+    from manuscript_audit.validators.core import validate_inter_annotator_agreement
+
+    ms, cl = _iaa324_ms(
+        "We trained a random forest to classify images from the dataset."
+    )
+    result = validate_inter_annotator_agreement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 325 – validate_sentiment_lexicon_disclosure
+# ---------------------------------------------------------------------------
+
+def _sl325_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sl325",
+            source_path="/tmp/sl325.md",
+            source_format="markdown",
+            title="Sentiment Lexicon Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sentiment_analysis_without_lexicon_fires() -> None:
+    from manuscript_audit.validators.core import validate_sentiment_lexicon_disclosure
+
+    ms, cl = _sl325_ms(
+        "Sentiment analysis was performed on the collected Twitter data."
+    )
+    result = validate_sentiment_lexicon_disclosure(ms, cl)
+    assert any(f.code == "missing-sentiment-lexicon" for f in result.findings)
+
+
+def test_sentiment_analysis_with_vader_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sentiment_lexicon_disclosure
+
+    ms, cl = _sl325_ms(
+        "Sentiment analysis was performed using VADER, a lexicon-based approach "
+        "designed for social media text."
+    )
+    result = validate_sentiment_lexicon_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_sentiment_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sentiment_lexicon_disclosure
+
+    ms, cl = _sl325_ms("Sentiment analysis was performed on the collected Twitter data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sentiment_lexicon_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sentiment_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sentiment_lexicon_disclosure
+
+    ms, cl = _sl325_ms(
+        "We conducted a multi-level regression analysis on survey data."
+    )
+    result = validate_sentiment_lexicon_disclosure(ms, cl)
+    assert result.findings == []

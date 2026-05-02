@@ -6827,6 +6827,11 @@ def run_deterministic_validators(
         validate_fairness_metric_reporting(parsed, classification),
         validate_transfer_learning_disclosure(parsed, classification),
         validate_cross_validation_strategy(parsed, classification),
+        validate_text_preprocessing_disclosure(parsed, classification),
+        validate_word_embedding_details(parsed, classification),
+        validate_topic_model_parameter_disclosure(parsed, classification),
+        validate_inter_annotator_agreement(parsed, classification),
+        validate_sentiment_lexicon_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -19543,6 +19548,309 @@ def validate_cross_validation_strategy(
                     "Cross-validation is used but the strategy is not described. "
                     "Specify the type (e.g., 5-fold, stratified k-fold, leave-one-out) "
                     "and any special considerations (e.g., temporal ordering, grouping)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 321 – validate_text_preprocessing_disclosure
+# ---------------------------------------------------------------------------
+
+_TEXT_ANALYSIS_TRIGGER_RE = re.compile(
+    r"\b(?:text\s+(?:analysis|mining|classification|categorization)|"
+    r"natural\s+language\s+processing|NLP\b|"
+    r"corpus\b|document[\s-]term\s+matrix|"
+    r"bag[\s-]of[\s-]words|TF[\s-]IDF\b|n[\s-]gram|"
+    r"tokeniz(?:ation|ing|ed)|lemmatiz(?:ation|ing|ed)|stemm(?:ing|ed))\b",
+    re.IGNORECASE,
+)
+_TEXT_PREPROCESS_DISCLOSED_RE = re.compile(
+    r"\b(?:tokeniz(?:ation|ing|ed)|lemmatiz(?:ation|ing|ed)|stemm(?:ing|ed)|"
+    r"stop[\s-]?word\s+removal|lowercas(?:ing|ed)|"
+    r"punctuation\s+(?:removal|stripped?)|"
+    r"text\s+(?:cleaning|normaliz(?:ation|ing|ed)|preprocessing)|"
+    r"preprocessed?\s+(?:the\s+)?(?:text|corpus|documents?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_text_preprocessing_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag NLP/text-analysis studies without preprocessing disclosure.
+
+    Emits ``missing-text-preprocessing-disclosure`` (minor) when text
+    analysis methods are used but the preprocessing pipeline is not
+    described.
+    """
+    _vid = "validate_text_preprocessing_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _TEXT_ANALYSIS_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _TEXT_PREPROCESS_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-text-preprocessing-disclosure",
+                severity="minor",
+                message=(
+                    "Text analysis methods are used but the preprocessing pipeline "
+                    "is not described. Report tokenization, stemming/lemmatization, "
+                    "stop-word removal, and normalization steps."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 322 – validate_word_embedding_details
+# ---------------------------------------------------------------------------
+
+_WORD_EMBED_TRIGGER_RE = re.compile(
+    r"\b(?:word\s+embedding|word2vec|Word2Vec|GloVe|fastText|FastText|"
+    r"word\s+vector|distributed\s+representation|"
+    r"sentence\s+embedding|document\s+embedding|"
+    r"BERT\s+embedding|contextual\s+embedding|"
+    r"dense\s+(?:word|token)\s+representation)\b",
+    re.IGNORECASE,
+)
+_EMBED_DETAILS_DISCLOSED_RE = re.compile(
+    r"\b(?:(?:pre[\s-])?trained\s+(?:on|using|from)\s+|"
+    r"embedding\s+(?:dimension|size|layer)\s+(?:of\s+)?(?:\d+)|"
+    r"vector\s+(?:dimension|size)\s+(?:of\s+)?(?:\d+)|"
+    r"(?:\d+)[\s-]dimensional\s+(?:word\s+)?(?:embedding|vector)|"
+    r"vocabulary\s+size|context\s+window\s+(?:of\s+)?(?:\d+)|"
+    r"pretrained\s+(?:on|from)\s+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_word_embedding_details(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag word embedding use without sufficient methodological detail.
+
+    Emits ``missing-word-embedding-details`` (minor) when word embeddings
+    are used but embedding dimensionality, training corpus, or model source
+    is not disclosed.
+    """
+    _vid = "validate_word_embedding_details"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _WORD_EMBED_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _EMBED_DETAILS_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-word-embedding-details",
+                severity="minor",
+                message=(
+                    "Word embeddings are used but embedding dimensionality, training "
+                    "corpus, or model source is not disclosed. Report the embedding "
+                    "model, its training data, and vector dimensions."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 323 – validate_topic_model_parameter_disclosure
+# ---------------------------------------------------------------------------
+
+_TOPIC_MODEL_TRIGGER_RE = re.compile(
+    r"\b(?:topic\s+model(?:l?ing)?|latent\s+Dirichlet\s+allocation|LDA\b|"
+    r"non[\s-]negative\s+matrix\s+factorization|NMF\b|"
+    r"probabilistic\s+topic\s+model|"
+    r"correlated\s+topic\s+model|structural\s+topic\s+model|"
+    r"biterm\s+topic\s+model)\b",
+    re.IGNORECASE,
+)
+_TOPIC_PARAMS_DISCLOSED_RE = re.compile(
+    r"\b(?:number\s+of\s+topics?\s+(?:was|were|set|chosen|selected|=)\s*(?:\d+)|"
+    r"(?:\d+)\s+topics?\s+(?:were|was)\s+(?:selected|identified|used|extracted)|"
+    r"alpha\s*=\s*(?:\d)|"
+    r"beta\s*=\s*(?:\d)|"
+    r"topic\s+coherence|perplexity\s+(?:score|was|=)|"
+    r"optimal\s+number\s+of\s+topics?|"
+    r"hyperparameter\s+(?:alpha|beta|eta))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_topic_model_parameter_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag topic models without parameter disclosure.
+
+    Emits ``missing-topic-model-parameters`` (minor) when topic modelling
+    is used but the number of topics and key hyperparameters are not
+    reported.
+    """
+    _vid = "validate_topic_model_parameter_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _TOPIC_MODEL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _TOPIC_PARAMS_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-topic-model-parameters",
+                severity="minor",
+                message=(
+                    "Topic modelling is used but the number of topics and key "
+                    "hyperparameters (e.g., alpha, beta) are not reported. "
+                    "Disclose model parameters and the selection rationale."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 324 – validate_inter_annotator_agreement
+# ---------------------------------------------------------------------------
+
+_ANNOTATION_TRIGGER_RE = re.compile(
+    r"\b(?:manual\s+(?:annotation|coding|labelling|classification)|"
+    r"human\s+(?:annotation|coding|labelling|rater|judge)|"
+    r"content\s+analysis|coded?\s+by\s+(?:\w+\s+){0,3}(?:coders?|raters?|annotators?)|"
+    r"two\s+(?:independent\s+)?(?:coders?|raters?|annotators?)|"
+    r"inter[\s-]?rater|inter[\s-]?annotator)\b",
+    re.IGNORECASE,
+)
+_IAA_REPORTED_RE = re.compile(
+    r"\b(?:inter[\s-]?(?:rater|annotator|coder)\s+(?:agreement|reliability)|"
+    r"Cohen.s\s+kappa|Fleiss.s\s+kappa|Krippendorff.s\s+alpha|"
+    r"kappa\s*=\s*(?:0\.\d+|\d+)|"
+    r"agreement\s+(?:was|of)\s+(?:0\.\d+|\d+%)|"
+    r"intraclass\s+correlation\s+coefficient|ICC\b|"
+    r"percent(?:age)?\s+agreement\s*=\s*(?:\d+%|0\.\d+))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_inter_annotator_agreement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag human annotation studies without inter-annotator agreement.
+
+    Emits ``missing-inter-annotator-agreement`` (moderate) when human
+    annotation/coding is performed by multiple raters but no
+    inter-annotator agreement metric is reported.
+    """
+    _vid = "validate_inter_annotator_agreement"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ANNOTATION_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _IAA_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-inter-annotator-agreement",
+                severity="moderate",
+                message=(
+                    "Human annotation is performed but no inter-annotator agreement "
+                    "metric is reported. Report Cohen's kappa, Krippendorff's alpha, "
+                    "or percentage agreement to establish annotation reliability."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 325 – validate_sentiment_lexicon_disclosure
+# ---------------------------------------------------------------------------
+
+_SENTIMENT_TRIGGER_RE = re.compile(
+    r"\b(?:sentiment\s+(?:analysis|classification|scoring|detection)|"
+    r"sentiment\s+(?:of\s+the\s+)?(?:text|data|tweets?|reviews?|documents?)|"
+    r"positive\s+and\s+negative\s+sentiment|opinion\s+mining|"
+    r"emotional\s+tone|polarity\s+(?:classification|scoring))\b",
+    re.IGNORECASE,
+)
+_SENTIMENT_LEXICON_DISCLOSED_RE = re.compile(
+    r"\b(?:VADER\b|AFINN\b|SentiWordNet\b|LIWC\b|"
+    r"sentiment\s+lexicon|lexicon[\s-]based\s+(?:approach|method|sentiment)|"
+    r"sentiment\s+dictionary|opinion\s+lexicon|"
+    r"SentiStrength\b|TextBlob\b|"
+    r"fine[\s-]tuned\s+(?:for\s+)?sentiment|"
+    r"trained\s+(?:sentiment\s+)?classifier\s+(?:on|using))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sentiment_lexicon_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag sentiment analysis without lexicon or model disclosure.
+
+    Emits ``missing-sentiment-lexicon`` (minor) when sentiment analysis
+    is performed but the lexicon or model used is not identified.
+    """
+    _vid = "validate_sentiment_lexicon_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _SENTIMENT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SENTIMENT_LEXICON_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-sentiment-lexicon",
+                severity="minor",
+                message=(
+                    "Sentiment analysis is performed but the lexicon or model used "
+                    "(e.g., VADER, AFINN, fine-tuned classifier) is not identified. "
+                    "Disclose the sentiment scoring approach to support reproducibility."
                 ),
                 validator=_vid,
             )
