@@ -969,8 +969,70 @@ HEAD: `907b239`
 - Phase 319: `validate_transfer_learning_disclosure` → `missing-transfer-learning-disclosure` (minor)
 - Phase 320: `validate_cross_validation_strategy` → `missing-cv-strategy` (minor)
 
-Current test count: **1066 passing** (after phase 320)
-HEAD: `d59cd48`
+**Phases 321–325** (`69cf17e`, 1086 tests)
+- Phase 321: `validate_text_preprocessing_disclosure` → `missing-text-preprocessing-disclosure` (minor)
+- Phase 322: `validate_word_embedding_details` → `missing-word-embedding-details` (minor)
+- Phase 323: `validate_topic_model_parameter_disclosure` → `missing-topic-model-parameters` (minor)
+- Phase 324: `validate_inter_annotator_agreement` → `missing-inter-annotator-agreement` (moderate)
+- Phase 325: `validate_sentiment_lexicon_disclosure` → `missing-sentiment-lexicon` (minor)
+
+**Phases 326–330** (`90731ae`, 1106 tests)
+- Phase 326: `validate_mri_acquisition_parameters` → `missing-mri-acquisition-parameters` (minor)
+- Phase 327: `validate_fmri_preprocessing_pipeline` → `missing-fmri-preprocessing-pipeline` (minor)
+- Phase 328: `validate_neuroimaging_atlas_disclosure` → `missing-neuroimaging-atlas` (minor)
+- Phase 329: `validate_multiple_comparisons_neuroimaging` → `missing-neuroimaging-multiple-comparisons` (moderate)
+- Phase 330: `validate_roi_definition_disclosure` → `missing-roi-definition` (minor)
+- Bug fix: `_ROI_DEFINED_RE` word-order: added `(?:\w+\s+)?` to handle "defined anatomically using"
+
+**Phases 331–335** (`132c73f`, 1126 tests)
+- Phase 331: `validate_rna_seq_normalization_disclosure` → `missing-rna-seq-normalization` (minor)
+- Phase 332: `validate_batch_effect_correction` → `missing-batch-effect-correction` (minor)
+- Phase 333: `validate_multiple_testing_genomics` → `missing-genomics-multiple-testing` (moderate)
+- Phase 334: `validate_pathway_enrichment_method` → `missing-pathway-enrichment-method` (minor)
+- Phase 335: `validate_genome_reference_disclosure` → `missing-genome-reference` (minor)
+- Bug fix: `_BATCH_EFFECT_TRIGGER_RE` added `(?:were\s+|was\s+)?` for "samples were collected"
+
+**Phases 336–340** (`887910f`, 1146 tests)
+- Phase 336: `validate_strobe_observational_reporting` → `missing-strobe-elements` (minor)
+- Phase 337: `validate_selection_bias_discussion` → `missing-selection-bias-discussion` (minor)
+- Phase 338: `validate_information_bias_discussion` → `missing-information-bias-discussion` (minor)
+- Phase 339: `validate_dose_response_relationship` → `missing-dose-response-analysis` (minor)
+- Phase 340: `validate_follow_up_rate_reporting` → `missing-follow-up-rate` (minor)
+- Bug fixes: removed outer `\b` after `%`; tightened follow-up rate regex to require numeric %; plural `assessments?`
+
+**Phases 341–345** (`24c8cb3`, 1166 tests)
+- Phase 341: `validate_cost_effectiveness_perspective` → `missing-cea-perspective` (minor)
+- Phase 342: `validate_discount_rate_disclosure` → `missing-discount-rate` (minor)
+- Phase 343: `validate_uncertainty_analysis_health_economic` → `missing-health-economic-uncertainty` (minor)
+- Phase 344: `validate_qaly_utility_source` → `missing-qaly-utility-source` (minor)
+- Phase 345: `validate_markov_model_cycle_length` → `missing-markov-cycle-length` (minor)
+- Bug fixes: `(?:\w+\s+){0,3}` for "costs and QALYs were discounted"; `QALYs?\b` (not `QALY\b`)
+
+**Phases 346–350** (`4e0da15`, 1186 tests)
+- Phase 346: `validate_measurement_invariance_testing` → `missing-measurement-invariance-test` (moderate)
+- Phase 347: `validate_convergent_discriminant_validity` → `missing-convergent-discriminant-validity` (minor)
+- Phase 348: `validate_irt_model_fit` → `missing-irt-model-fit` (minor)
+- Phase 349: `validate_test_retest_reliability` → `missing-test-retest-reliability` (minor)
+- Phase 350: `validate_norm_reference_group` → `missing-norm-reference-group` (minor)
+- Bug fix: `_TEST_RETEST_REPORTED_RE` rewrote to require actual numeric coefficient (not "was examined")
+
+**Phases 351–355** (`f278680`, 1206 tests)
+- Phase 351: `validate_theoretical_saturation_claim` → `missing-saturation-evidence` (minor)
+- Phase 352: `validate_member_checking_disclosure` → `missing-member-checking` (minor)
+- Phase 353: `validate_reflexivity_statement` → `missing-reflexivity-statement` (minor)
+- Phase 354: `validate_negative_case_analysis` → `missing-negative-case-analysis` (minor)
+- Phase 355: `validate_thick_description_transferability` → `missing-thick-description` (minor)
+
+**Phases 356–360** (`a85e7c3`, 1226 tests)
+- Phase 356: `validate_mixed_methods_design_rationale` → `missing-mixed-methods-rationale` (minor)
+- Phase 357: `validate_simulation_parameter_justification` → `missing-simulation-parameters` (minor)
+- Phase 358: `validate_bootstrap_sample_size` → `missing-bootstrap-sample-size` (minor)
+- Phase 359: `validate_monte_carlo_replications` → `missing-monte-carlo-replications` (minor)
+- Phase 360: `validate_agent_based_model_validation` → `missing-abm-validation` (minor)
+- Golden: `minor` count updated from 14 → 15 (Monte Carlo trigger fires on latex_equivalence.tex)
+
+Current test count: **1226 passing** (after phase 360)
+HEAD: `a85e7c3`
 
 ## Critical technical gotchas (accumulated)
 
@@ -998,6 +1060,8 @@ HEAD: `d59cd48`
 - **`_ML_UNCERTAINTY_RE` plural (phase 315)**: `confidence interval` needed `intervals?` to match plural "confidence intervals". Apply plural-form discipline to ALL content nouns in match patterns.
 - **`pathway="theory"` is invalid** — valid values: `"math_stats_theory"`, `"applied_stats"`, `"data_science"`, `"unknown"`. Always use `"math_stats_theory"` for non-empirical (math_theory_paper) no-fire tests.
 - **`_replication_ms` helper at line ~6955**: returns `ParsedManuscript` (not tuple) — rename new to `_replication285_ms`
+
+- **Phase 356-360 return type**: new validators must use `ValidationResult(validator_name=_vid, findings=[...])` — NOT `ValidatorModuleResult`. The `ValidatorModuleResult` name does not exist in the codebase.
 
 - **Floor/ceiling regex**: use `effects?` not `effect` (plural form common)
 - **MULTILINE regex** needed when checking for line-anchored captions (`^Table N.`)
@@ -1056,7 +1120,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 280 with 906 tests passing
+- currently at phase 360 with 1226 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 360)
+- update MEMORY.md after every 40 phases (next update due after phase 400)
