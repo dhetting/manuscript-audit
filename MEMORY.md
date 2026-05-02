@@ -1531,7 +1531,9 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 640 with 2346 tests passing
-- continue adding batches of 5 deterministic validators per phase group
+- Phase 12: CLOSED — domain-specific validators removed; repository now scoped to statistics & data-science methodology.
+- Current test count: **1414 passing** (post-cleanup; validated with pixi run test)
+- HEAD: `0eb18f4` (Add ENGINEERING_MANIFEST.md: audit summary and next steps)
+- Next phase: phase 13 — finalize bibliography confidence rollups integration, add missing tests and report synthesis updates; begin work now.
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
 - update MEMORY.md after every 40 phases (next update due after phase 680)
