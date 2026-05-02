@@ -20811,3 +20811,337 @@ def test_no_norm_reference_no_fire() -> None:
     )
     result = validate_norm_reference_group(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 351 – validate_theoretical_saturation_claim
+# ---------------------------------------------------------------------------
+
+def _sat351_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sat351",
+            source_path="/tmp/sat351.md",
+            source_format="markdown",
+            title="Theoretical Saturation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_saturation_claim_without_evidence_fires() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_saturation_claim
+
+    ms, cl = _sat351_ms(
+        "Data saturation was reached and no further interviews were conducted."
+    )
+    result = validate_theoretical_saturation_claim(ms, cl)
+    assert any(f.code == "missing-saturation-evidence" for f in result.findings)
+
+
+def test_saturation_claim_with_evidence_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_saturation_claim
+
+    ms, cl = _sat351_ms(
+        "No new themes were emerging after the 15th interview. Saturation was "
+        "reached after 18 participants and confirmed by two additional interviews."
+    )
+    result = validate_theoretical_saturation_claim(ms, cl)
+    assert result.findings == []
+
+
+def test_saturation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_saturation_claim
+
+    ms, cl = _sat351_ms("Data saturation was reached and no further interviews conducted.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_theoretical_saturation_claim(ms, cl)
+    assert result.findings == []
+
+
+def test_no_saturation_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_saturation_claim
+
+    ms, cl = _sat351_ms(
+        "We used logistic regression to predict binary outcomes."
+    )
+    result = validate_theoretical_saturation_claim(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 352 – validate_member_checking_disclosure
+# ---------------------------------------------------------------------------
+
+def _mc352_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mc352",
+            source_path="/tmp/mc352.md",
+            source_format="markdown",
+            title="Member Checking Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_member_check_without_detail_fires() -> None:
+    from manuscript_audit.validators.core import validate_member_checking_disclosure
+
+    ms, cl = _mc352_ms(
+        "Participant validation was undertaken to enhance credibility."
+    )
+    result = validate_member_checking_disclosure(ms, cl)
+    assert any(f.code == "missing-member-checking" for f in result.findings)
+
+
+def test_member_check_with_detail_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_member_checking_disclosure
+
+    ms, cl = _mc352_ms(
+        "Member checking was conducted: participants reviewed and confirmed "
+        "the emerging themes and provided feedback on the interpretations."
+    )
+    result = validate_member_checking_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_member_check_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_member_checking_disclosure
+
+    ms, cl = _mc352_ms("Participant validation was conducted for the qualitative study.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_member_checking_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_member_checking_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_member_checking_disclosure
+
+    ms, cl = _mc352_ms(
+        "We used ANOVA to compare group means across three treatment conditions."
+    )
+    result = validate_member_checking_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 353 – validate_reflexivity_statement
+# ---------------------------------------------------------------------------
+
+def _ref353_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ref353",
+            source_path="/tmp/ref353.md",
+            source_format="markdown",
+            title="Reflexivity Statement Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_qualitative_study_without_reflexivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_reflexivity_statement
+
+    ms, cl = _ref353_ms(
+        "We conducted a qualitative study using in-depth interviews with 20 participants."
+    )
+    result = validate_reflexivity_statement(ms, cl)
+    assert any(f.code == "missing-reflexivity-statement" for f in result.findings)
+
+
+def test_qualitative_study_with_reflexivity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reflexivity_statement
+
+    ms, cl = _ref353_ms(
+        "We conducted a qualitative study. Researcher positionality: the lead "
+        "researcher's background in clinical psychology may have influenced "
+        "the interpretation of findings."
+    )
+    result = validate_reflexivity_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_reflexivity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reflexivity_statement
+
+    ms, cl = _ref353_ms(
+        "We conducted a qualitative study using in-depth interviews."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_reflexivity_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_qualitative_method_no_fire_reflexivity() -> None:
+    from manuscript_audit.validators.core import validate_reflexivity_statement
+
+    ms, cl = _ref353_ms(
+        "We used mixed-effects models to analyse the longitudinal data."
+    )
+    result = validate_reflexivity_statement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 354 – validate_negative_case_analysis
+# ---------------------------------------------------------------------------
+
+def _nca354_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-nca354",
+            source_path="/tmp/nca354.md",
+            source_format="markdown",
+            title="Negative Case Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_thematic_analysis_without_negative_cases_fires() -> None:
+    from manuscript_audit.validators.core import validate_negative_case_analysis
+
+    ms, cl = _nca354_ms(
+        "Thematic analysis identified four main themes across all participants."
+    )
+    result = validate_negative_case_analysis(ms, cl)
+    assert any(f.code == "missing-negative-case-analysis" for f in result.findings)
+
+
+def test_thematic_analysis_with_negative_cases_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_negative_case_analysis
+
+    ms, cl = _nca354_ms(
+        "Thematic analysis identified four themes. Negative case analysis was "
+        "conducted; cases that contradicted the emerging themes were examined "
+        "to refine the interpretations."
+    )
+    result = validate_negative_case_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_negative_case_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_negative_case_analysis
+
+    ms, cl = _nca354_ms("Thematic analysis identified four main themes.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_negative_case_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_no_thematic_coding_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_negative_case_analysis
+
+    ms, cl = _nca354_ms(
+        "We used structural equation modelling to test the hypothesised model."
+    )
+    result = validate_negative_case_analysis(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 355 – validate_thick_description_transferability
+# ---------------------------------------------------------------------------
+
+def _td355_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-td355",
+            source_path="/tmp/td355.md",
+            source_format="markdown",
+            title="Thick Description Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_qualitative_study_without_thick_description_fires() -> None:
+    from manuscript_audit.validators.core import validate_thick_description_transferability
+
+    ms, cl = _td355_ms(
+        "The qualitative findings may have limited transferability to other settings."
+    )
+    result = validate_thick_description_transferability(ms, cl)
+    assert any(f.code == "missing-thick-description" for f in result.findings)
+
+
+def test_qualitative_study_with_thick_description_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_thick_description_transferability
+
+    ms, cl = _td355_ms(
+        "Transferability is supported by thick description of the setting, "
+        "participant demographics, and contextual information provided throughout."
+    )
+    result = validate_thick_description_transferability(ms, cl)
+    assert result.findings == []
+
+
+def test_thick_description_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_thick_description_transferability
+
+    ms, cl = _td355_ms("The qualitative findings may have limited transferability.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_thick_description_transferability(ms, cl)
+    assert result.findings == []
+
+
+def test_no_transferability_concern_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_thick_description_transferability
+
+    ms, cl = _td355_ms(
+        "The sample was nationally representative with 5000 participants."
+    )
+    result = validate_thick_description_transferability(ms, cl)
+    assert result.findings == []

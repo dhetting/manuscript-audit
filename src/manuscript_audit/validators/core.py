@@ -6857,6 +6857,11 @@ def run_deterministic_validators(
         validate_irt_model_fit(parsed, classification),
         validate_test_retest_reliability(parsed, classification),
         validate_norm_reference_group(parsed, classification),
+        validate_theoretical_saturation_claim(parsed, classification),
+        validate_member_checking_disclosure(parsed, classification),
+        validate_reflexivity_statement(parsed, classification),
+        validate_negative_case_analysis(parsed, classification),
+        validate_thick_description_transferability(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -21382,6 +21387,307 @@ def validate_norm_reference_group(
                     "Scores are compared to population norms but the norm reference "
                     "group is not described. Specify the sample used to derive norms "
                     "(size, demographics, collection date)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 351 – validate_theoretical_saturation_claim
+# ---------------------------------------------------------------------------
+
+_SATURATION_TRIGGER_RE = re.compile(
+    r"\b(?:theoretical\s+saturation|thematic\s+saturation|data\s+saturation|"
+    r"saturation\s+(?:was|is|of|point|reached|achieved)|"
+    r"no\s+new\s+(?:themes?|codes?|categories?)\s+(?:were\s+)?(?:emerging|emerged))\b",
+    re.IGNORECASE,
+)
+_SATURATION_EVIDENCED_RE = re.compile(
+    r"\b(?:saturation\s+was\s+(?:reached|achieved|confirmed|determined)\s+"
+    r"(?:after|at|by|following)\s+(?:\d+|the)|"
+    r"(?:\d+|no)\s+new\s+(?:themes?|codes?|categories?)\s+(?:were\s+)?(?:emerging|emerged)"
+    r"\s+(?:after|beyond|from)\s+(?:\d+|the)|"
+    r"additional\s+(?:interviews?|participants?)\s+(?:were\s+)?(?:recruited|added)\s+"
+    r"(?:until|to\s+confirm\s+)?saturation|"
+    r"saturation\s+criterion\s+(?:was|of))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_theoretical_saturation_claim(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag saturation claims without supporting evidence.
+
+    Emits ``missing-saturation-evidence`` (minor) when theoretical or
+    data saturation is claimed but no evidence (e.g., when it was reached,
+    verification procedure) is provided.
+    """
+    _vid = "validate_theoretical_saturation_claim"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _SATURATION_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SATURATION_EVIDENCED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-saturation-evidence",
+                severity="minor",
+                message=(
+                    "Data or theoretical saturation is claimed but no evidence "
+                    "of when or how saturation was determined is provided. "
+                    "Report at which point saturation was reached and the verification "
+                    "procedure used."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 352 – validate_member_checking_disclosure
+# ---------------------------------------------------------------------------
+
+_MEMBER_CHECK_TRIGGER_RE = re.compile(
+    r"\b(?:member\s+(?:checking?|validation|review)|"
+    r"participant\s+(?:validation|review|feedback)|"
+    r"respondent\s+validation|communicative\s+validity|"
+    r"participants?\s+(?:were\s+)?(?:asked\s+to\s+)?review(?:ed)?\s+(?:the\s+)?"
+    r"(?:themes?|findings?|transcripts?|summaries?|results?))\b",
+    re.IGNORECASE,
+)
+_MEMBER_CHECK_DISCLOSED_RE = re.compile(
+    r"\b(?:member\s+(?:checking?|validation|review)\s+(?:was|were)\s+"
+    r"(?:conducted|performed|undertaken|used|carried\s+out)|"
+    r"participants?\s+(?:were\s+asked\s+to|reviewed)\s+(?:and\s+)?(?:confirmed|validated|"
+    r"agreed\s+with|provided\s+feedback\s+on)\s+(?:the\s+)?(?:themes?|findings?)|"
+    r"results\s+were\s+shared\s+with\s+participants?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_member_checking_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag qualitative studies claiming member checking without method detail.
+
+    Emits ``missing-member-checking`` (minor) when member checking is claimed
+    but no detail on how it was conducted is provided.
+    """
+    _vid = "validate_member_checking_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MEMBER_CHECK_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _MEMBER_CHECK_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-member-checking",
+                severity="minor",
+                message=(
+                    "Member checking is mentioned but no detail on how it was "
+                    "conducted is provided. Describe the process: who reviewed what, "
+                    "and how participant feedback was incorporated."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 353 – validate_reflexivity_statement
+# ---------------------------------------------------------------------------
+
+_QUALITATIVE_TRIGGER_RE = re.compile(
+    r"\b(?:qualitative\s+(?:research|study|approach|methodology|data|analysis)|"
+    r"grounded\s+theory|phenomenolog(?:y|ical)|thematic\s+analysis|"
+    r"ethnograph(?:y|ic)|interpretive\s+(?:approach|phenomenological)|"
+    r"in[\s-]depth\s+interview|focus\s+group)\b",
+    re.IGNORECASE,
+)
+_REFLEXIVITY_PRESENT_RE = re.compile(
+    r"\b(?:reflexivity|reflexive\s+(?:account|process|stance|position)|"
+    r"researcher\s+(?:position|positionality|perspective|background|influence)|"
+    r"positionality\s+(?:statement|of\s+the\s+researcher)|"
+    r"potential\s+bias(?:es)?\s+(?:of|from)\s+(?:the\s+)?researcher|"
+    r"my\s+(?:position|background|experience|perspective)\s+as\s+a\s+researcher)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_reflexivity_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag qualitative studies without researcher reflexivity statement.
+
+    Emits ``missing-reflexivity-statement`` (minor) when qualitative
+    methods are used but researcher positionality or reflexivity is not
+    addressed.
+    """
+    _vid = "validate_reflexivity_statement"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _QUALITATIVE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _REFLEXIVITY_PRESENT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-reflexivity-statement",
+                severity="minor",
+                message=(
+                    "Qualitative methods are used but researcher reflexivity or "
+                    "positionality is not addressed. Include a reflexivity statement "
+                    "describing how the researcher's background may have influenced "
+                    "data collection and interpretation."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 354 – validate_negative_case_analysis
+# ---------------------------------------------------------------------------
+
+_QUALITATIVE_THEME_TRIGGER_RE = re.compile(
+    r"\b(?:thematic\s+analysis|themes?\s+(?:were\s+)?(?:identified|emerged?|developed)|"
+    r"coding\s+process|code(?:s)?\s+(?:were\s+)?(?:developed|identified|applied)|"
+    r"interpretive\s+(?:findings?|results?)|main\s+themes?|"
+    r"categories?\s+(?:were\s+)?(?:identified|derived|emerged?))\b",
+    re.IGNORECASE,
+)
+_NEGATIVE_CASE_ADDRESSED_RE = re.compile(
+    r"\b(?:negative\s+case\s+(?:analysis|examination|review)|"
+    r"disconfirming\s+(?:evidence|cases?|examples?)|"
+    r"deviant\s+case\s+(?:analysis|review)|"
+    r"cases?\s+that\s+(?:did\s+not\s+fit|contradict(?:ed)?|challenged?)\s+"
+    r"(?:the\s+)?(?:emerging\s+)?(?:themes?|theory|interpretation)|"
+    r"contradictory\s+(?:evidence|data|cases?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_negative_case_analysis(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag thematic analyses without negative case consideration.
+
+    Emits ``missing-negative-case-analysis`` (minor) when qualitative
+    thematic coding is performed but negative or disconfirming cases are
+    not addressed.
+    """
+    _vid = "validate_negative_case_analysis"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _QUALITATIVE_THEME_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _NEGATIVE_CASE_ADDRESSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-negative-case-analysis",
+                severity="minor",
+                message=(
+                    "Qualitative thematic coding is performed but negative or "
+                    "disconfirming cases are not addressed. Consider negative "
+                    "case analysis to strengthen credibility of interpretations."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 355 – validate_thick_description_transferability
+# ---------------------------------------------------------------------------
+
+_TRANSFERABILITY_TRIGGER_RE = re.compile(
+    r"\b(?:qualitative\s+(?:research|study|findings?)|"
+    r"transferability|generalizability\s+(?:of\s+(?:qualitative|the)\s+)?findings?|"
+    r"applicability\s+(?:of\s+(?:the\s+)?findings?|to\s+other\s+settings?)|"
+    r"whether\s+(?:the\s+)?findings?\s+(?:can\s+be|are)\s+transferable)\b",
+    re.IGNORECASE,
+)
+_THICK_DESCRIPTION_PRESENT_RE = re.compile(
+    r"\b(?:thick\s+description|contextual\s+(?:information|detail)|"
+    r"detailed\s+description\s+of\s+(?:the\s+)?(?:setting|context|sample|participants?)|"
+    r"transferability\s+(?:is\s+(?:supported|enhanced|facilitated)\s+by|"
+    r"(?:was\s+)?addressed\s+(?:through|by|via))|"
+    r"readers?\s+(?:to\s+)?(?:judge|assess|determine)\s+(?:the\s+)?transferability|"
+    r"purposive\s+sampling\s+(?:was\s+used\s+to\s+)?(?:enhance|support|ensure)\s+"
+    r"(?:the\s+)?(?:diversity|range|variation))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_thick_description_transferability(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag qualitative studies not addressing transferability.
+
+    Emits ``missing-thick-description`` (minor) when qualitative findings
+    are presented without sufficient contextual detail or transferability
+    discussion to allow readers to judge applicability.
+    """
+    _vid = "validate_thick_description_transferability"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _TRANSFERABILITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _THICK_DESCRIPTION_PRESENT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-thick-description",
+                severity="minor",
+                message=(
+                    "Qualitative findings are presented without sufficient contextual "
+                    "description to support transferability judgements. Provide thick "
+                    "description of the setting, context, and participants."
                 ),
                 validator=_vid,
             )
