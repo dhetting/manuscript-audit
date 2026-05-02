@@ -17389,3 +17389,374 @@ def test_iv_non_empirical_no_fire() -> None:
     )
     result = validate_instrumental_variable_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 301 – validate_multilevel_random_effects_justification
+# ---------------------------------------------------------------------------
+
+def _multilevel_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-multilevel",
+            source_path="/tmp/multilevel.md",
+            source_format="markdown",
+            title="Multilevel Random Effects Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multilevel_without_re_justification_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_multilevel_random_effects_justification,
+    )
+
+    ms, cl = _multilevel_ms(
+        "We used a multilevel model to account for the nested structure "
+        "of students within schools. Fixed effects were estimated."
+    )
+    result = validate_multilevel_random_effects_justification(ms, cl)
+    assert any(
+        f.code == "missing-random-effects-justification" for f in result.findings
+    )
+
+
+def test_multilevel301_with_icc_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_multilevel_random_effects_justification,
+    )
+
+    ms, cl = _multilevel_ms(
+        "A multilevel model was justified by the non-trivial ICC = .18, "
+        "indicating substantial between-school variance in outcomes."
+    )
+    result = validate_multilevel_random_effects_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_multilevel_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_multilevel_random_effects_justification,
+    )
+
+    ms, cl = _multilevel_ms(
+        "We used ordinary least squares regression with robust standard errors."
+    )
+    result = validate_multilevel_random_effects_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_multilevel_re_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_multilevel_random_effects_justification,
+    )
+
+    ms, cl = _multilevel_ms(
+        "Multilevel models handle nested data structures through random effects."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multilevel_random_effects_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 302 – validate_cross_level_interaction_interpretation
+# ---------------------------------------------------------------------------
+
+def _cross_level_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cross-level",
+            source_path="/tmp/cross_level.md",
+            source_format="markdown",
+            title="Cross-Level Interaction Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cross_level_without_interpretation_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_level_interaction_interpretation,
+    )
+
+    ms, cl = _cross_level_ms(
+        "A significant cross-level interaction was found between individual "
+        "autonomy (Level 1) and leadership style (Level 2)."
+    )
+    result = validate_cross_level_interaction_interpretation(ms, cl)
+    assert any(
+        f.code == "missing-cross-level-interaction-interpretation"
+        for f in result.findings
+    )
+
+
+def test_cross_level_with_interpretation_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_level_interaction_interpretation,
+    )
+
+    ms, cl = _cross_level_ms(
+        "The cross-level interaction was significant. Simple slopes were "
+        "examined at high and low levels of leadership style to interpret "
+        "how the Level-2 variable moderated the relationship."
+    )
+    result = validate_cross_level_interaction_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cross_level_interaction_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_level_interaction_interpretation,
+    )
+
+    ms, cl = _cross_level_ms(
+        "Main effects were examined with no interaction terms included."
+    )
+    result = validate_cross_level_interaction_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_cross_level_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_level_interaction_interpretation,
+    )
+
+    ms, cl = _cross_level_ms(
+        "Cross-level interactions require random slopes to be estimated."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cross_level_interaction_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 303 – validate_repeated_measures_sphericity
+# ---------------------------------------------------------------------------
+
+def _rm_anova_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rm-anova",
+            source_path="/tmp/rm_anova.md",
+            source_format="markdown",
+            title="Repeated Measures Sphericity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rm_anova_without_sphericity_fires() -> None:
+    from manuscript_audit.validators.core import validate_repeated_measures_sphericity
+
+    ms, cl = _rm_anova_ms(
+        "A repeated-measures ANOVA was conducted to assess change across "
+        "three time points. A significant main effect of time was found, "
+        "F(2, 196) = 14.2, p < .001."
+    )
+    result = validate_repeated_measures_sphericity(ms, cl)
+    assert any(f.code == "missing-sphericity-correction" for f in result.findings)
+
+
+def test_rm_anova_with_sphericity_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_repeated_measures_sphericity
+
+    ms, cl = _rm_anova_ms(
+        "A repeated-measures ANOVA was conducted. Mauchly's test indicated "
+        "that sphericity was violated; therefore, Greenhouse-Geisser correction "
+        "was applied."
+    )
+    result = validate_repeated_measures_sphericity(ms, cl)
+    assert result.findings == []
+
+
+def test_no_rm_anova_no_sphericity_fire() -> None:
+    from manuscript_audit.validators.core import validate_repeated_measures_sphericity
+
+    ms, cl = _rm_anova_ms(
+        "A between-subjects ANOVA was used to compare three conditions."
+    )
+    result = validate_repeated_measures_sphericity(ms, cl)
+    assert result.findings == []
+
+
+def test_rm_sphericity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_repeated_measures_sphericity
+
+    ms, cl = _rm_anova_ms(
+        "Sphericity is an assumption of repeated-measures ANOVA."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_repeated_measures_sphericity(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 304 – validate_survey_sampling_weight
+# ---------------------------------------------------------------------------
+
+def _survey_weight_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-survey-weight",
+            source_path="/tmp/survey_weight.md",
+            source_format="markdown",
+            title="Survey Sampling Weight Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_complex_survey_without_weights_fires() -> None:
+    from manuscript_audit.validators.core import validate_survey_sampling_weight
+
+    ms, cl = _survey_weight_ms(
+        "Data were drawn from a nationally representative survey of households. "
+        "Logistic regression was used to predict health outcomes."
+    )
+    result = validate_survey_sampling_weight(ms, cl)
+    assert any(f.code == "missing-survey-weight-disclosure" for f in result.findings)
+
+
+def test_complex_survey_with_weights_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_survey_sampling_weight
+
+    ms, cl = _survey_weight_ms(
+        "Data were from a nationally representative survey. Sampling weights "
+        "were applied using design-based analysis to account for the complex "
+        "survey design."
+    )
+    result = validate_survey_sampling_weight(ms, cl)
+    assert result.findings == []
+
+
+def test_no_complex_survey_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_survey_sampling_weight
+
+    ms, cl = _survey_weight_ms(
+        "Participants were recruited from two university campuses."
+    )
+    result = validate_survey_sampling_weight(ms, cl)
+    assert result.findings == []
+
+
+def test_survey_weight_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_survey_sampling_weight
+
+    ms, cl = _survey_weight_ms(
+        "Complex survey design requires the application of sampling weights."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_survey_sampling_weight(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 305 – validate_finite_population_correction
+# ---------------------------------------------------------------------------
+
+def _finite_pop_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-finite-pop",
+            source_path="/tmp/finite_pop.md",
+            source_format="markdown",
+            title="Finite Population Correction Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_census_data_without_fpc_fires() -> None:
+    from manuscript_audit.validators.core import validate_finite_population_correction
+
+    ms, cl = _finite_pop_ms(
+        "We surveyed all employees in the organization. Complete population "
+        "data were analysed using standard regression."
+    )
+    result = validate_finite_population_correction(ms, cl)
+    assert any(f.code == "missing-finite-population-correction" for f in result.findings)
+
+
+def test_census_data_with_fpc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_finite_population_correction
+
+    ms, cl = _finite_pop_ms(
+        "All students in the school were surveyed (complete population data). "
+        "The finite population correction (FPC) was applied because the sampling "
+        "fraction exceeded 20%."
+    )
+    result = validate_finite_population_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_no_census_no_fpc_fire() -> None:
+    from manuscript_audit.validators.core import validate_finite_population_correction
+
+    ms, cl = _finite_pop_ms(
+        "A random sample of 200 participants was recruited from a large registry."
+    )
+    result = validate_finite_population_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_fpc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_finite_population_correction
+
+    ms, cl = _finite_pop_ms(
+        "Finite population correction adjusts variance estimates for large samples."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_finite_population_correction(ms, cl)
+    assert result.findings == []

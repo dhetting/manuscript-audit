@@ -6807,6 +6807,11 @@ def run_deterministic_validators(
         validate_competing_risks_disclosure(parsed, classification),
         validate_propensity_score_balance(parsed, classification),
         validate_instrumental_variable_disclosure(parsed, classification),
+        validate_multilevel_random_effects_justification(parsed, classification),
+        validate_cross_level_interaction_interpretation(parsed, classification),
+        validate_repeated_measures_sphericity(parsed, classification),
+        validate_survey_sampling_weight(parsed, classification),
+        validate_finite_population_correction(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -18344,6 +18349,295 @@ def validate_instrumental_variable_disclosure(
                     "is used but instrument validity (relevance and exclusion "
                     "restriction) is not argued or tested. Report the first-stage "
                     "F-statistic and argue for the exclusion restriction."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 301 – validate_multilevel_random_effects_justification
+# ---------------------------------------------------------------------------
+
+_MULTILEVEL_TRIGGER_RE = re.compile(
+    r"\b(?:multilevel\s+model|hierarchical\s+(?:linear|logistic)\s+model|"
+    r"mixed[\s-]?effects?\s+model|random[\s-]?effects?\s+model|"
+    r"linear\s+mixed[\s-]?model|LMM\b|GLMM\b|HLM\b|nested\s+data)\b",
+    re.IGNORECASE,
+)
+_RANDOM_EFFECTS_JUSTIFIED_RE = re.compile(
+    r"\b(?:ICC\b|intraclass\s+correlation|"
+    r"random\s+(?:intercept|slope)\s+(?:was|were|is|are)\s+(?:included|modelled|estimated)|"
+    r"between[\s-]group\s+variance|clustering\s+(?:was|were)\s+(?:accounted\s+for|addressed)|"
+    r"school\s+(?:level|effect)|clinic\s+(?:level|effect)|"
+    r"nested\s+(?:within|structure|design)\s+(?:was|is)\s+(?:accounted|modelled))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multilevel_random_effects_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag multilevel models without random effects justification.
+
+    Emits ``missing-random-effects-justification`` (minor) when a multilevel
+    or mixed-effects model is used but the inclusion of random effects is not
+    justified (e.g., via ICC or description of clustering).
+    """
+    _vid = "validate_multilevel_random_effects_justification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MULTILEVEL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _RANDOM_EFFECTS_JUSTIFIED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-random-effects-justification",
+                severity="minor",
+                message=(
+                    "A multilevel or mixed-effects model is used but the rationale "
+                    "for including random effects (e.g., ICC, nested structure) is "
+                    "not provided. Justify random effects inclusion and report the ICC."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 302 – validate_cross_level_interaction_interpretation
+# ---------------------------------------------------------------------------
+
+_CROSS_LEVEL_TRIGGER_RE = re.compile(
+    r"\b(?:cross[\s-]?level\s+interaction|cross[\s-]level\s+moderation|"
+    r"level[\s-]?1\s+(?:predictor|variable)\s+(?:×|x)\s+level[\s-]?2|"
+    r"level[\s-]?2\s+moderating\s+(?:the\s+)?level[\s-]?1|"
+    r"between[\s-]group\s+moderator\s+of\s+within[\s-]group)\b",
+    re.IGNORECASE,
+)
+_CROSS_LEVEL_INTERPRETED_RE = re.compile(
+    r"\b(?:cross[\s-]?level\s+interaction\s+(?:was|is|were)\s+"
+    r"(?:significant|interpreted|examined|plotted)|"
+    r"simple\s+slopes?\s+(?:were|was)\s+(?:examined|plotted|computed)\s+(?:at|for)|"
+    r"level[\s-]?2\s+(?:variable|moderator)\s+moderated\s+the\s+relationship\s+between|"
+    r"the\s+relationship\s+between.{0,60}varied\s+(?:across|by)\s+(?:group|context|school|site))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cross_level_interaction_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag cross-level interactions without slope decomposition.
+
+    Emits ``missing-cross-level-interaction-interpretation`` (minor) when a
+    cross-level interaction is reported but not interpreted with simple slopes
+    or equivalent follow-up.
+    """
+    _vid = "validate_cross_level_interaction_interpretation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _CROSS_LEVEL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _CROSS_LEVEL_INTERPRETED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cross-level-interaction-interpretation",
+                severity="minor",
+                message=(
+                    "A cross-level interaction is reported but is not interpreted "
+                    "with simple slopes or a description of how the Level-2 variable "
+                    "modifies the Level-1 relationship."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 303 – validate_repeated_measures_sphericity
+# ---------------------------------------------------------------------------
+
+_REPEATED_MEASURES_TRIGGER_RE = re.compile(
+    r"\b(?:repeated[\s-]?measures\s+ANOVA|within[\s-]?subjects?\s+ANOVA|"
+    r"within[\s-]?subjects?\s+(?:factor|design|effect)|"
+    r"doubly\s+multivariate|RM[\s-]?ANOVA)\b",
+    re.IGNORECASE,
+)
+_SPHERICITY_HANDLED_RE = re.compile(
+    r"\b(?:Mauchly(?:'s)?\s+test|sphericity\s+(?:assumption|test|violated?|"
+    r"was\s+met|was\s+not\s+violated)|Greenhouse[\s-]Geisser|Huynh[\s-]Feldt|"
+    r"epsilon\s+correction|sphericity\s+correction|Lower\s+Bound\s+correction)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_repeated_measures_sphericity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag repeated-measures ANOVA without sphericity check.
+
+    Emits ``missing-sphericity-correction`` (moderate) when a repeated-measures
+    ANOVA is used but the sphericity assumption is neither tested nor corrected.
+    """
+    _vid = "validate_repeated_measures_sphericity"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _REPEATED_MEASURES_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SPHERICITY_HANDLED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-sphericity-correction",
+                severity="moderate",
+                message=(
+                    "A repeated-measures ANOVA is used but sphericity is not "
+                    "tested (Mauchly's test) or corrected (Greenhouse-Geisser, "
+                    "Huynh-Feldt). Report the sphericity test and apply a correction "
+                    "if the assumption is violated."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 304 – validate_survey_sampling_weight
+# ---------------------------------------------------------------------------
+
+_SURVEY_WEIGHT_TRIGGER_RE = re.compile(
+    r"\b(?:complex\s+survey|survey\s+(?:design|sampling|data)|"
+    r"nationally\s+representative\s+(?:survey|sample)|"
+    r"probability\s+sampling|stratified\s+random\s+sampling|"
+    r"multi[\s-]?stage\s+(?:sampling|cluster\s+sampling)|"
+    r"population[\s-]?based\s+survey)\b",
+    re.IGNORECASE,
+)
+_SURVEY_WEIGHT_HANDLED_RE = re.compile(
+    r"\b(?:sampling\s+weight|survey\s+weight|post[\s-]?stratification\s+weight|"
+    r"design\s+weight|weighted\s+(?:analysis|estimate|regression)|"
+    r"svyglm|svydesign|Taylor\s+series\s+(?:linearisation|linearization)|"
+    r"design[\s-]?based\s+(?:analysis|standard\s+error|inference))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_survey_sampling_weight(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag complex survey analyses without sampling weight disclosure.
+
+    Emits ``missing-survey-weight-disclosure`` (minor) when a complex survey
+    or nationally representative sample is analysed but sampling weights are
+    not mentioned or applied.
+    """
+    _vid = "validate_survey_sampling_weight"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _SURVEY_WEIGHT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SURVEY_WEIGHT_HANDLED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-survey-weight-disclosure",
+                severity="minor",
+                message=(
+                    "A complex survey or nationally representative sample is used "
+                    "but sampling weights and design-based analysis are not mentioned. "
+                    "Apply and report sampling weights to produce unbiased estimates."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 305 – validate_finite_population_correction
+# ---------------------------------------------------------------------------
+
+_FINITE_POP_TRIGGER_RE = re.compile(
+    r"\b(?:finite\s+population|census\s+(?:data|sample)|"
+    r"all\s+(?:employees?|members?|students?|residents?)\s+in\s+(?:the\s+)?(?:organization|company|school|city)|"
+    r"complete\s+population\s+data|surveyed\s+(?:all|the\s+entire)\s+(?:population|organisation|cohort))\b",
+    re.IGNORECASE,
+)
+_FPC_APPLIED_RE = re.compile(
+    r"\b(?:finite\s+population\s+correction|FPC\b|"
+    r"(?:sampling\s+)?fraction\s+(?:exceeds?|is\s+greater\s+than|was)\s+(?:[1-9]\d|0\.[2-9])|"
+    r"population\s+size\s+was\s+(?:small|taken\s+into\s+account)|"
+    r"hypergeometric|without\s+replacement\s+from\s+(?:a\s+)?(?:small|finite)\s+population)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_finite_population_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag large-fraction sampling without finite population correction.
+
+    Emits ``missing-finite-population-correction`` (minor) when a sample
+    constitutes a substantial fraction of a small finite population but no
+    finite population correction is applied or discussed.
+    """
+    _vid = "validate_finite_population_correction"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _FINITE_POP_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _FPC_APPLIED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-finite-population-correction",
+                severity="minor",
+                message=(
+                    "The sample appears to constitute a substantial fraction of a "
+                    "finite population but no finite population correction (FPC) is "
+                    "mentioned. Consider applying FPC to avoid overstating precision."
                 ),
                 validator=_vid,
             )
