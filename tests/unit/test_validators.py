@@ -23783,3 +23783,336 @@ def test_no_split_trigger_no_fire() -> None:
     )
     result = validate_dataset_split_seed(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 396 – validate_hardware_compute_disclosure
+# ---------------------------------------------------------------------------
+
+def _hw396_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-hw396",
+            source_path="/tmp/hw396.md",
+            source_format="markdown",
+            title="Hardware Compute Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gpu_training_without_hw_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_hardware_compute_disclosure
+
+    ms, cl = _hw396_ms(
+        "We trained a deep learning model using GPU acceleration for 100 epochs."
+    )
+    result = validate_hardware_compute_disclosure(ms, cl)
+    assert any(f.code == "missing-hardware-compute-disclosure" for f in result.findings)
+
+
+def test_gpu_training_with_hw_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hardware_compute_disclosure
+
+    ms, cl = _hw396_ms(
+        "We trained a deep learning model using GPU acceleration. "
+        "All experiments were run on an NVIDIA A100 GPU with 80 GB VRAM."
+    )
+    result = validate_hardware_compute_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_hw_disclosure_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hardware_compute_disclosure
+
+    ms, cl = _hw396_ms("We trained a neural network using GPU acceleration.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_hardware_compute_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_compute_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hardware_compute_disclosure
+
+    ms, cl = _hw396_ms(
+        "We applied a linear regression to evaluate the relationship between variables."
+    )
+    result = validate_hardware_compute_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 397 – validate_carbon_footprint_reporting
+# ---------------------------------------------------------------------------
+
+def _carbon397_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-carbon397",
+            source_path="/tmp/carbon397.md",
+            source_format="markdown",
+            title="Carbon Footprint Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_llm_without_carbon_reporting_fires() -> None:
+    from manuscript_audit.validators.core import validate_carbon_footprint_reporting
+
+    ms, cl = _carbon397_ms(
+        "We fine-tuned a large language model for the downstream task."
+    )
+    result = validate_carbon_footprint_reporting(ms, cl)
+    assert any(f.code == "missing-carbon-footprint-reporting" for f in result.findings)
+
+
+def test_llm_with_carbon_reporting_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_carbon_footprint_reporting
+
+    ms, cl = _carbon397_ms(
+        "We fine-tuned a large language model for the downstream task. "
+        "The training consumed approximately 100 GPU-hours and emitted 5 kg CO2."
+    )
+    result = validate_carbon_footprint_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_carbon_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_carbon_footprint_reporting
+
+    ms, cl = _carbon397_ms("We fine-tuned a large language model on our corpus.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_carbon_footprint_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_expensive_model_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_carbon_footprint_reporting
+
+    ms, cl = _carbon397_ms(
+        "We used a logistic regression model for binary classification."
+    )
+    result = validate_carbon_footprint_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 398 – validate_benchmark_baseline_comparison
+# ---------------------------------------------------------------------------
+
+def _bench398_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bench398",
+            source_path="/tmp/bench398.md",
+            source_format="markdown",
+            title="Benchmark Baseline Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sota_without_baseline_fires() -> None:
+    from manuscript_audit.validators.core import validate_benchmark_baseline_comparison
+
+    ms, cl = _bench398_ms(
+        "Our model outperforms state-of-the-art methods on the benchmark task."
+    )
+    result = validate_benchmark_baseline_comparison(ms, cl)
+    assert any(f.code == "missing-benchmark-baseline" for f in result.findings)
+
+
+def test_sota_with_baseline_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_benchmark_baseline_comparison
+
+    ms, cl = _bench398_ms(
+        "Our model outperforms state-of-the-art methods on the benchmark task. "
+        "We include a majority class baseline and a prior work baseline for comparison."
+    )
+    result = validate_benchmark_baseline_comparison(ms, cl)
+    assert result.findings == []
+
+
+def test_benchmark_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_benchmark_baseline_comparison
+
+    ms, cl = _bench398_ms(
+        "Our model outperforms state-of-the-art methods on benchmark tasks."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_benchmark_baseline_comparison(ms, cl)
+    assert result.findings == []
+
+
+def test_no_benchmark_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_benchmark_baseline_comparison
+
+    ms, cl = _bench398_ms(
+        "We report descriptive statistics and confidence intervals for all outcomes."
+    )
+    result = validate_benchmark_baseline_comparison(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 399 – validate_dataset_version_disclosure
+# ---------------------------------------------------------------------------
+
+def _dver399_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dver399",
+            source_path="/tmp/dver399.md",
+            source_format="markdown",
+            title="Dataset Version Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_dataset_without_version_fires() -> None:
+    from manuscript_audit.validators.core import validate_dataset_version_disclosure
+
+    ms, cl = _dver399_ms(
+        "We used the MNIST dataset for our image classification experiments."
+    )
+    result = validate_dataset_version_disclosure(ms, cl)
+    assert any(f.code == "missing-dataset-version" for f in result.findings)
+
+
+def test_dataset_with_doi_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dataset_version_disclosure
+
+    ms, cl = _dver399_ms(
+        "We used the MNIST dataset (doi.org/10.1234/mnist-v1) for image classification."
+    )
+    result = validate_dataset_version_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_dataset_version_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dataset_version_disclosure
+
+    ms, cl = _dver399_ms("We used the MNIST dataset for experiments.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_dataset_version_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_dataset_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dataset_version_disclosure
+
+    ms, cl = _dver399_ms(
+        "We conducted a survey of 200 participants recruited from a university campus."
+    )
+    result = validate_dataset_version_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 400 – validate_hyperparameter_sensitivity
+# ---------------------------------------------------------------------------
+
+def _hparam400_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-hparam400",
+            source_path="/tmp/hparam400.md",
+            source_format="markdown",
+            title="Hyperparameter Sensitivity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_hyperparams_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_sensitivity
+
+    ms, cl = _hparam400_ms(
+        "We set the learning rate to 0.001, batch size to 32, and dropout rate to 0.1."
+    )
+    result = validate_hyperparameter_sensitivity(ms, cl)
+    assert any(f.code == "missing-hyperparameter-sensitivity" for f in result.findings)
+
+
+def test_hyperparams_with_grid_search_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_sensitivity
+
+    ms, cl = _hparam400_ms(
+        "We set the learning rate to 0.001. A grid search was conducted over "
+        "learning rates {0.01, 0.001, 0.0001} and batch sizes {16, 32, 64}."
+    )
+    result = validate_hyperparameter_sensitivity(ms, cl)
+    assert result.findings == []
+
+
+def test_hyperparams_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_sensitivity
+
+    ms, cl = _hparam400_ms(
+        "We set the learning rate and batch size for our neural network."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_hyperparameter_sensitivity(ms, cl)
+    assert result.findings == []
+
+
+def test_no_hyperparameter_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_sensitivity
+
+    ms, cl = _hparam400_ms(
+        "We used ordinary least squares regression to estimate the coefficients."
+    )
+    result = validate_hyperparameter_sensitivity(ms, cl)
+    assert result.findings == []

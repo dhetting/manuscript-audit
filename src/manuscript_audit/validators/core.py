@@ -6902,6 +6902,11 @@ def run_deterministic_validators(
         validate_data_augmentation_description(parsed, classification),
         validate_model_interpretability_reporting(parsed, classification),
         validate_dataset_split_seed(parsed, classification),
+        validate_hardware_compute_disclosure(parsed, classification),
+        validate_carbon_footprint_reporting(parsed, classification),
+        validate_benchmark_baseline_comparison(parsed, classification),
+        validate_dataset_version_disclosure(parsed, classification),
+        validate_hyperparameter_sensitivity(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -23954,6 +23959,233 @@ def validate_dataset_split_seed(
                 message=(
                     "A train-test data split is described but no random seed "
                     "for reproducibility is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 396 – Hardware and compute environment disclosure
+# ---------------------------------------------------------------------------
+
+_HW_TRIGGER_RE = re.compile(
+    r"\b(?:GPU|TPU|HPC|high[- ]performance\s+comput|compute\s+cluster|"
+    r"neural\s+network|deep\s+learning|model\s+train(?:ing|ed))\b",
+    re.IGNORECASE,
+)
+_HW_REPORTED_RE = re.compile(
+    r"\b(?:NVIDIA|AMD|Intel|hardware\s+(?:setup|configuration|environment|specification)|"
+    r"memory:\s*\d+|VRAM|RAM:\s*\d+|processor\s+(?:type|speed|core)|"
+    r"training\s+time[:\s]\d+|computation\s+time[:\s]\d+|"
+    r"(?:\d+\s+)?GPU[s]?\s+(?:with|each|per)|"
+    r"run\s+on\s+(?:an?\s+)?(?:NVIDIA|AMD|Intel|GPU|TPU|cluster|server|HPC)|"
+    r"compute\s+(?:node|cluster|environment|infrastructure))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_hardware_compute_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_hardware_compute_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _HW_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _HW_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-hardware-compute-disclosure",
+                message=(
+                    "Computational models or deep learning were reported but hardware "
+                    "and compute environment details were not disclosed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 397 – Carbon footprint / compute cost reporting
+# ---------------------------------------------------------------------------
+
+_CARBON_TRIGGER_RE = re.compile(
+    r"\b(?:large\s+language\s+model|LLM|foundation\s+model|pre[- ]train(?:ing|ed)\s+model|"
+    r"neural\s+architecture\s+search|NAS|hyperparameter\s+(?:tuning|optimization)|"
+    r"extensive\s+training|training\s+cost)\b",
+    re.IGNORECASE,
+)
+_CARBON_REPORTED_RE = re.compile(
+    r"\b(?:carbon|CO2|energy\s+consumption|compute\s+cost|FLOPs?|GPU[- ]hours?|"
+    r"carbon\s+footprint|environmental\s+impact|electricity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_carbon_footprint_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_carbon_footprint_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CARBON_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CARBON_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-carbon-footprint-reporting",
+                message=(
+                    "Large or computationally expensive models were used but energy "
+                    "consumption or compute cost was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 398 – Benchmark baseline comparison
+# ---------------------------------------------------------------------------
+
+_BENCH_TRIGGER_RE = re.compile(
+    r"\b(?:benchmark|state[- ]of[- ]the[- ]art|SOTA|leaderboard|task\s+evaluation|"
+    r"comparison\s+with|compared\s+(?:to|against)|outperform(?:s|ed)?|surpass(?:es|ed)?)\b",
+    re.IGNORECASE,
+)
+_BENCH_BASELINE_RE = re.compile(
+    r"\b(?:baseline|base(?:line)?\s+model|random\s+(?:baseline|chance)|"
+    r"majority\s+class|trivial\s+(?:predictor|baseline)|simple\s+(?:model|heuristic)|"
+    r"zero[- ]shot\s+baseline|prior\s+work)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_benchmark_baseline_comparison(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_benchmark_baseline_comparison"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _BENCH_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _BENCH_BASELINE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-benchmark-baseline",
+                message=(
+                    "Performance comparisons or benchmarking were reported but no "
+                    "baseline or trivial predictor comparison was included."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 399 – Dataset version and DOI disclosure
+# ---------------------------------------------------------------------------
+
+_DATASET_TRIGGER_RE = re.compile(
+    r"\b(?:dataset|data\s+set|corpus|benchmark\s+dataset|publicly\s+available\s+data|"
+    r"open[\s-]source\s+dataset|we\s+use[sd]?\s+the\s+\w+\s+dataset)\b",
+    re.IGNORECASE,
+)
+_DATASET_VERSION_RE = re.compile(
+    r"\b(?:version|v\d+\.\d+|DOI|doi\.org|zenodo|figshare|Harvard\s+Dataverse|"
+    r"UCI\s+Machine\s+Learning|data\s+version|dataset\s+version|accessed\s+on)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_dataset_version_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_dataset_version_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _DATASET_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _DATASET_VERSION_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-dataset-version",
+                message=(
+                    "A named dataset was referenced but no version, DOI, or "
+                    "persistent identifier was provided."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 400 – Hyperparameter sensitivity / ablation of hyperparameters
+# ---------------------------------------------------------------------------
+
+_HPARAM_TRIGGER_RE = re.compile(
+    r"\b(?:hyperparameter|hyper[- ]parameter|learning\s+rate|batch\s+size|"
+    r"dropout\s+rate|weight\s+decay|momentum|optimizer|Adam|SGD|RMSProp)\b",
+    re.IGNORECASE,
+)
+_HPARAM_SENSITIVITY_RE = re.compile(
+    r"\b(?:hyperparameter\s+(?:sensitivity|tuning|search|optimization|sweep)|"
+    r"grid\s+search|random\s+search|Bayesian\s+optimization|Optuna|Ray\s+Tune|"
+    r"sensitivity\s+analysis|ablation.*hyperparameter|hyperparameter.*ablation)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_hyperparameter_sensitivity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_hyperparameter_sensitivity"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _HPARAM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _HPARAM_SENSITIVITY_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-hyperparameter-sensitivity",
+                message=(
+                    "Hyperparameters were mentioned but no sensitivity analysis, "
+                    "search strategy, or tuning procedure was described."
                 ),
                 severity="minor",
                 validator=_vid,
