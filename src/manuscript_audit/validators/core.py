@@ -7047,6 +7047,11 @@ def run_deterministic_validators(
         validate_wsd_metrics(parsed, classification),
         validate_srl_scoring_metrics(parsed, classification),
         validate_argument_mining_metrics(parsed, classification),
+        validate_commonsense_reasoning_metrics(parsed, classification),
+        validate_semantic_parsing_metrics(parsed, classification),
+        validate_code_summarization_metrics(parsed, classification),
+        validate_api_usage_prediction_metrics(parsed, classification),
+        validate_multilingual_ner_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -30848,6 +30853,237 @@ def validate_argument_mining_metrics(
                 ),
                 severity="moderate",
                 validator=_ARGMINE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 541 – commonsense reasoning metrics
+# ---------------------------------------------------------------------------
+_CSREASON_VID = "missing-commonsense-reasoning-metrics"
+
+_CSREASON_TRIGGERS = re.compile(
+    r"\b(?:commonsense\s+reasoning|winograd\s+schema|hellaswag|"
+    r"commonsense\s+inference|abductive\s+reasoning)\b",
+    re.IGNORECASE,
+)
+_CSREASON_METRICS = re.compile(
+    r"\b(?:accuracy|acc)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|acc)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_commonsense_reasoning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CSREASON_VID, findings=[])
+    text = parsed.full_text
+    if not _CSREASON_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CSREASON_VID, findings=[])
+    if _CSREASON_METRICS.search(text):
+        return ValidationResult(validator_name=_CSREASON_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CSREASON_VID,
+        findings=[
+            Finding(
+                code=_CSREASON_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses commonsense reasoning but does not report "
+                    "accuracy metrics on a benchmark (e.g., WinoGrad, HellaSwag)."
+                ),
+                location="full_text",
+                validator=_CSREASON_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 542 – semantic parsing / text-to-SQL metrics
+# ---------------------------------------------------------------------------
+_SEMPARSE_VID = "missing-semantic-parsing-metrics"
+
+_SEMPARSE_TRIGGERS = re.compile(
+    r"\b(?:semantic\s+pars(?:ing|er)|text[- ]to[- ]sql|spider\s+(?:benchmark|dataset)|"
+    r"atis\s+(?:benchmark|dataset)|nl[- ]to[- ]sql)\b",
+    re.IGNORECASE,
+)
+_SEMPARSE_METRICS = re.compile(
+    r"\b(?:exact\s+match|execution\s+accuracy|denotation\s+accuracy|EM)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:exact\s+match|execution\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_semantic_parsing_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SEMPARSE_VID, findings=[])
+    text = parsed.full_text
+    if not _SEMPARSE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SEMPARSE_VID, findings=[])
+    if _SEMPARSE_METRICS.search(text):
+        return ValidationResult(validator_name=_SEMPARSE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SEMPARSE_VID,
+        findings=[
+            Finding(
+                code=_SEMPARSE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses semantic parsing / text-to-SQL but does not "
+                    "report exact-match or execution accuracy on a benchmark "
+                    "(e.g., SPIDER, ATIS)."
+                ),
+                location="full_text",
+                validator=_SEMPARSE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 543 – code summarization metrics
+# ---------------------------------------------------------------------------
+_CODESUM_VID = "missing-code-summarization-metrics"
+
+_CODESUM_TRIGGERS = re.compile(
+    r"\b(?:code\s+summar(?:ization|ization\s+model)|source\s+code\s+summar|"
+    r"code\s+documentation\s+generation|code\s+comment\s+generation)\b",
+    re.IGNORECASE,
+)
+_CODESUM_METRICS = re.compile(
+    r"\b(?:BLEU(?:-[0-9]+)?|ROUGE(?:-[A-Z0-9]+)?|METEOR|CodeBLEU)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:BLEU|ROUGE|METEOR|CodeBLEU)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_code_summarization_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CODESUM_VID, findings=[])
+    text = parsed.full_text
+    if not _CODESUM_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CODESUM_VID, findings=[])
+    if _CODESUM_METRICS.search(text):
+        return ValidationResult(validator_name=_CODESUM_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CODESUM_VID,
+        findings=[
+            Finding(
+                code=_CODESUM_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses code summarization but does not report "
+                    "BLEU, ROUGE, METEOR, or CodeBLEU on a standard benchmark."
+                ),
+                location="full_text",
+                validator=_CODESUM_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 544 – API usage prediction metrics
+# ---------------------------------------------------------------------------
+_APIUSAGE_VID = "missing-api-usage-prediction-metrics"
+
+_APIUSAGE_TRIGGERS = re.compile(
+    r"\bapi\s+(?:usage|sequence|recommendation|call)\s+(?:predict|generat|recommend)\w*|"
+    r"\bapi\s+completion\b|"
+    r"\bcode\s+completion\s+for\s+api\b|"
+    r"\blibrary\s+api\s+suggest\w*",
+    re.IGNORECASE,
+)
+_APIUSAGE_METRICS = re.compile(
+    r"\b(?:top[- ][0-9]+\s+accuracy|MRR|MAP|exact\s+match|success@[0-9]+)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:top[- ][0-9]+|MRR|MAP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_api_usage_prediction_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_APIUSAGE_VID, findings=[])
+    text = parsed.full_text
+    if not _APIUSAGE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_APIUSAGE_VID, findings=[])
+    if _APIUSAGE_METRICS.search(text):
+        return ValidationResult(validator_name=_APIUSAGE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_APIUSAGE_VID,
+        findings=[
+            Finding(
+                code=_APIUSAGE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses API usage prediction but does not report "
+                    "top-k accuracy, MRR, or success@k on a benchmark."
+                ),
+                location="full_text",
+                validator=_APIUSAGE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 545 – multilingual NER metrics
+# ---------------------------------------------------------------------------
+_MLNER_VID = "missing-multilingual-ner-metrics"
+
+_MLNER_TRIGGERS = re.compile(
+    r"\b(?:multilingual\s+(?:named\s+entity|NER)|cross[- ]lingual\s+NER|"
+    r"multilingual\s+NER|NER\s+(?:on|for)\s+(?:multiple|multi(?:ple)?\s*)languages?)\b",
+    re.IGNORECASE,
+)
+_MLNER_METRICS = re.compile(
+    r"\b(?:F[- ]?1|precision|recall)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:F[- ]?1|precision|recall)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multilingual_ner_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MLNER_VID, findings=[])
+    text = parsed.full_text
+    if not _MLNER_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MLNER_VID, findings=[])
+    if _MLNER_METRICS.search(text):
+        return ValidationResult(validator_name=_MLNER_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MLNER_VID,
+        findings=[
+            Finding(
+                code=_MLNER_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses multilingual NER but does not report "
+                    "F1, precision, or recall on a cross-lingual benchmark."
+                ),
+                location="full_text",
+                validator=_MLNER_VID,
             )
         ],
     )

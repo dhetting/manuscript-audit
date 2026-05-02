@@ -32615,3 +32615,242 @@ def test_argmine540_non_empirical_no_fire() -> None:
     )
     r = validate_argument_mining_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 541 – validate_commonsense_reasoning_metrics
+# ---------------------------------------------------------------------------
+def _csreason541_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t541", source_path="t541.md", source_format="markdown",
+            title="Commonsense reasoning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_csreason541_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_reasoning_metrics
+    ms, cl = _csreason541_ms("We address commonsense reasoning on HellaSwag.")
+    r = validate_commonsense_reasoning_metrics(ms, cl)
+    assert any(f.code == "missing-commonsense-reasoning-metrics" for f in r.findings)
+
+
+def test_csreason541_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_reasoning_metrics
+    ms, cl = _csreason541_ms("Commonsense reasoning: accuracy = 89.2% on HellaSwag.")
+    r = validate_commonsense_reasoning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_csreason541_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_reasoning_metrics
+    ms, cl = _csreason541_ms("We propose a speech synthesis model.")
+    r = validate_commonsense_reasoning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_csreason541_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_commonsense_reasoning_metrics
+    ms, _ = _csreason541_ms("Winograd schema theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_commonsense_reasoning_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 542 – validate_semantic_parsing_metrics
+# ---------------------------------------------------------------------------
+def _semparse542_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t542", source_path="t542.md", source_format="markdown",
+            title="Semantic parsing", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_semparse542_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_semantic_parsing_metrics
+    ms, cl = _semparse542_ms("We address text-to-SQL on the SPIDER benchmark.")
+    r = validate_semantic_parsing_metrics(ms, cl)
+    assert any(f.code == "missing-semantic-parsing-metrics" for f in r.findings)
+
+
+def test_semparse542_no_fire_when_exact_match_reported() -> None:
+    from manuscript_audit.validators.core import validate_semantic_parsing_metrics
+    ms, cl = _semparse542_ms("Text-to-SQL: exact match = 72.3% on SPIDER.")
+    r = validate_semantic_parsing_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_semparse542_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_semantic_parsing_metrics
+    ms, cl = _semparse542_ms("We study lane detection in autonomous driving.")
+    r = validate_semantic_parsing_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_semparse542_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_semantic_parsing_metrics
+    ms, _ = _semparse542_ms("Semantic parsing theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_semantic_parsing_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 543 – validate_code_summarization_metrics
+# ---------------------------------------------------------------------------
+def _codesum543_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t543", source_path="t543.md", source_format="markdown",
+            title="Code summarization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_codesum543_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_code_summarization_metrics
+    ms, cl = _codesum543_ms("We propose a code summarization model on CodeSearchNet.")
+    r = validate_code_summarization_metrics(ms, cl)
+    assert any(f.code == "missing-code-summarization-metrics" for f in r.findings)
+
+
+def test_codesum543_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_code_summarization_metrics
+    ms, cl = _codesum543_ms("Code summarization: BLEU = 19.8 on CodeSearchNet Python.")
+    r = validate_code_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_codesum543_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_code_summarization_metrics
+    ms, cl = _codesum543_ms("We present a medical image segmentation model.")
+    r = validate_code_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_codesum543_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_code_summarization_metrics
+    ms, _ = _codesum543_ms("Source code documentation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_code_summarization_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 544 – validate_api_usage_prediction_metrics
+# ---------------------------------------------------------------------------
+def _apiusage544_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t544", source_path="t544.md", source_format="markdown",
+            title="API usage prediction", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_apiusage544_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_api_usage_prediction_metrics
+    ms, cl = _apiusage544_ms("We address API usage prediction for code completion.")
+    r = validate_api_usage_prediction_metrics(ms, cl)
+    assert any(f.code == "missing-api-usage-prediction-metrics" for f in r.findings)
+
+
+def test_apiusage544_no_fire_when_mrr_reported() -> None:
+    from manuscript_audit.validators.core import validate_api_usage_prediction_metrics
+    ms, cl = _apiusage544_ms("API usage prediction: MRR = 0.72 on the benchmark.")
+    r = validate_api_usage_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_apiusage544_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_api_usage_prediction_metrics
+    ms, cl = _apiusage544_ms("We study visual question answering methods.")
+    r = validate_api_usage_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_apiusage544_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_api_usage_prediction_metrics
+    ms, _ = _apiusage544_ms("API sequence prediction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_api_usage_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 545 – validate_multilingual_ner_metrics
+# ---------------------------------------------------------------------------
+def _mlner545_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t545", source_path="t545.md", source_format="markdown",
+            title="Multilingual NER", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mlner545_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_ner_metrics
+    ms, cl = _mlner545_ms("We address multilingual NER across 10 languages.")
+    r = validate_multilingual_ner_metrics(ms, cl)
+    assert any(f.code == "missing-multilingual-ner-metrics" for f in r.findings)
+
+
+def test_mlner545_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_ner_metrics
+    ms, cl = _mlner545_ms("Multilingual NER: F1 = 83.5% averaged across 10 languages.")
+    r = validate_multilingual_ner_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_mlner545_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_ner_metrics
+    ms, cl = _mlner545_ms("We present a monocular depth estimation approach.")
+    r = validate_multilingual_ner_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_mlner545_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multilingual_ner_metrics
+    ms, _ = _mlner545_ms("Cross-lingual NER theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_multilingual_ner_metrics(ms, cl)
+    assert r.findings == []
