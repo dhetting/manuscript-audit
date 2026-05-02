@@ -7002,6 +7002,11 @@ def run_deterministic_validators(
         validate_dependency_parsing_metrics(parsed, classification),
         validate_cross_lingual_per_language_results(parsed, classification),
         validate_multimodal_modality_ablation(parsed, classification),
+        validate_ocr_evaluation_metrics(parsed, classification),
+        validate_3d_pose_estimation_metrics(parsed, classification),
+        validate_panoptic_segmentation_metrics(parsed, classification),
+        validate_medical_report_generation_metrics(parsed, classification),
+        validate_kg_completion_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -28781,6 +28786,226 @@ def validate_multimodal_modality_ablation(
                 ),
                 severity="moderate",
                 validator=_MULTIMODAL_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 496 – OCR evaluation metrics
+# ---------------------------------------------------------------------------
+_OCR_VID = "missing-ocr-evaluation-metrics"
+_OCR_TRIGGER_RE = re.compile(
+    r"\b(?:optical\s+character\s+recognition|OCR\s+system|OCR\s+model|text\s+recognition)\b",
+    re.IGNORECASE,
+)
+_OCR_METRIC_RE = re.compile(
+    r"\b(?:character\s+error\s+rate|CER|word\s+error\s+rate|WER|recognition\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_ocr_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when OCR papers omit standard evaluation metrics (CER/WER)."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_OCR_VID, findings=[])
+    text = parsed.full_text
+    if not _OCR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_OCR_VID, findings=[])
+    if _OCR_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_OCR_VID, findings=[])
+    return ValidationResult(
+        validator_name=_OCR_VID,
+        findings=[
+            Finding(
+                code=_OCR_VID,
+                message=(
+                    "OCR system paper detected but standard recognition metrics "
+                    "(CER, WER) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_OCR_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 497 – 3D human pose estimation metrics
+# ---------------------------------------------------------------------------
+_POSE3D_VID = "missing-3d-pose-estimation-metrics"
+_POSE3D_TRIGGER_RE = re.compile(
+    r"\b(?:3[Dd]\s+(?:human\s+)?pose\s+estimation|human\s+body\s+pose|skeleton\s+estimation)\b",
+    re.IGNORECASE,
+)
+_POSE3D_METRIC_RE = re.compile(
+    r"\b(?:MPJPE|mean\s+per\s+joint\s+position\s+error|PA-MPJPE|PCK|percentage\s+of\s+correct\s+keypoints)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_3d_pose_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when 3D pose estimation papers omit MPJPE/PCK metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_POSE3D_VID, findings=[])
+    text = parsed.full_text
+    if not _POSE3D_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_POSE3D_VID, findings=[])
+    if _POSE3D_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_POSE3D_VID, findings=[])
+    return ValidationResult(
+        validator_name=_POSE3D_VID,
+        findings=[
+            Finding(
+                code=_POSE3D_VID,
+                message=(
+                    "3D pose estimation paper detected but standard metrics "
+                    "(MPJPE, PA-MPJPE, PCK) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_POSE3D_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 498 – Panoptic segmentation metrics
+# ---------------------------------------------------------------------------
+_PANOPTIC_VID = "missing-panoptic-segmentation-metrics"
+_PANOPTIC_TRIGGER_RE = re.compile(
+    r"\b(?:panoptic\s+segmentation|panoptic\s+quality|stuff\s+and\s+things\s+segmentation)\b",
+    re.IGNORECASE,
+)
+_PANOPTIC_METRIC_RE = re.compile(
+    r"\b(?:PQ|panoptic\s+quality|SQ|segmentation\s+quality|RQ|recognition\s+quality)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_panoptic_segmentation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when panoptic segmentation papers omit PQ/SQ/RQ metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PANOPTIC_VID, findings=[])
+    text = parsed.full_text
+    if not _PANOPTIC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PANOPTIC_VID, findings=[])
+    if _PANOPTIC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_PANOPTIC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PANOPTIC_VID,
+        findings=[
+            Finding(
+                code=_PANOPTIC_VID,
+                message=(
+                    "Panoptic segmentation paper detected but standard metrics "
+                    "(PQ, SQ, RQ) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_PANOPTIC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 499 – Medical report generation evaluation
+# ---------------------------------------------------------------------------
+_MEDREP_VID = "missing-medical-report-generation-metrics"
+_MEDREP_TRIGGER_RE = re.compile(
+    r"\b(?:radiology\s+report\s+generation|medical\s+report\s+generation|"
+    r"clinical\s+report\s+generation|chest\s+X-ray\s+report)\b",
+    re.IGNORECASE,
+)
+_MEDREP_METRIC_RE = re.compile(
+    r"\b(?:CheXbert|RadGraph|clinical\s+efficacy|CE\s+score|"
+    r"BLEU(?:-[14])?|ROUGE-L|CIDEr)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_medical_report_generation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when medical report generation papers omit domain-specific metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MEDREP_VID, findings=[])
+    text = parsed.full_text
+    if not _MEDREP_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_MEDREP_VID, findings=[])
+    if _MEDREP_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_MEDREP_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MEDREP_VID,
+        findings=[
+            Finding(
+                code=_MEDREP_VID,
+                message=(
+                    "Medical report generation paper detected but domain-specific "
+                    "evaluation metrics (CheXbert, RadGraph, clinical efficacy) "
+                    "were not reported."
+                ),
+                severity="moderate",
+                validator=_MEDREP_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 500 – Knowledge graph completion metrics
+# ---------------------------------------------------------------------------
+_KGC_VID = "missing-kg-completion-metrics"
+_KGC_TRIGGER_RE = re.compile(
+    r"\b(?:knowledge\s+graph\s+completion|link\s+prediction\s+on\s+(?:a\s+)?knowledge|"
+    r"KG\s+completion|entity\s+ranking|relation\s+prediction)\b",
+    re.IGNORECASE,
+)
+_KGC_METRIC_RE = re.compile(
+    r"\b(?:MRR|mean\s+reciprocal\s+rank|Hits@[1-9]\d*|H@[1-9]\d*|"
+    r"mean\s+rank|MR)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_kg_completion_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when KG completion papers omit MRR/Hits@k metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_KGC_VID, findings=[])
+    text = parsed.full_text
+    if not _KGC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_KGC_VID, findings=[])
+    if _KGC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_KGC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_KGC_VID,
+        findings=[
+            Finding(
+                code=_KGC_VID,
+                message=(
+                    "Knowledge graph completion paper detected but standard "
+                    "ranking metrics (MRR, Hits@1/3/10) with numeric values "
+                    "were not reported."
+                ),
+                severity="moderate",
+                validator=_KGC_VID,
             )
         ],
     )

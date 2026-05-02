@@ -30456,3 +30456,246 @@ def test_no_multimodal_trigger_no_fire() -> None:
     ms, cl = _mm495_ms("We used a generalized estimating equations model.")
     result = validate_multimodal_modality_ablation(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Phase 496 – validate_ocr_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _ocr496_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t496", source_path="t496.md", source_format="markdown",
+            title="OCR eval", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ocr496_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_ocr_evaluation_metrics
+    ms, cl = _ocr496_ms("We built an OCR system for historical documents.")
+    r = validate_ocr_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-ocr-evaluation-metrics" for f in r.findings)
+
+
+def test_ocr496_no_fire_when_cer_reported() -> None:
+    from manuscript_audit.validators.core import validate_ocr_evaluation_metrics
+    ms, cl = _ocr496_ms("OCR system achieved CER = 3.2% on the test set.")
+    r = validate_ocr_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_ocr496_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_ocr_evaluation_metrics
+    ms, cl = _ocr496_ms("We propose a graph neural network for node classification.")
+    r = validate_ocr_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_ocr496_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ocr_evaluation_metrics
+    ms, _ = _ocr496_ms("OCR system detected, but theoretical paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_ocr_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 497 – validate_3d_pose_estimation_metrics
+# ---------------------------------------------------------------------------
+def _pose497_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t497", source_path="t497.md", source_format="markdown",
+            title="3D pose", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pose497_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_3d_pose_estimation_metrics
+    ms, cl = _pose497_ms("We propose a method for 3D human pose estimation.")
+    r = validate_3d_pose_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-3d-pose-estimation-metrics" for f in r.findings)
+
+
+def test_pose497_no_fire_when_mpjpe_reported() -> None:
+    from manuscript_audit.validators.core import validate_3d_pose_estimation_metrics
+    ms, cl = _pose497_ms("3D human pose estimation: MPJPE = 42.1 mm on Human3.6M.")
+    r = validate_3d_pose_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_pose497_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_3d_pose_estimation_metrics
+    ms, cl = _pose497_ms("We train a transformer for image classification.")
+    r = validate_3d_pose_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_pose497_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_3d_pose_estimation_metrics
+    ms, _ = _pose497_ms("Skeleton estimation studied theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_3d_pose_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 498 – validate_panoptic_segmentation_metrics
+# ---------------------------------------------------------------------------
+def _panoptic498_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t498", source_path="t498.md", source_format="markdown",
+            title="Panoptic seg", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_panoptic498_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_panoptic_segmentation_metrics
+    ms, cl = _panoptic498_ms("We tackle panoptic segmentation on COCO.")
+    r = validate_panoptic_segmentation_metrics(ms, cl)
+    assert any(f.code == "missing-panoptic-segmentation-metrics" for f in r.findings)
+
+
+def test_panoptic498_no_fire_when_pq_reported() -> None:
+    from manuscript_audit.validators.core import validate_panoptic_segmentation_metrics
+    ms, cl = _panoptic498_ms("Panoptic quality PQ = 52.3 on COCO val2017.")
+    r = validate_panoptic_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_panoptic498_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_panoptic_segmentation_metrics
+    ms, cl = _panoptic498_ms("We study language model scaling laws.")
+    r = validate_panoptic_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_panoptic498_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panoptic_segmentation_metrics
+    ms, _ = _panoptic498_ms("Panoptic segmentation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_panoptic_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 499 – validate_medical_report_generation_metrics
+# ---------------------------------------------------------------------------
+def _medrep499_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t499", source_path="t499.md", source_format="markdown",
+            title="Medical report gen", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_medrep499_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_medical_report_generation_metrics
+    ms, cl = _medrep499_ms("We propose a chest X-ray report generation model.")
+    r = validate_medical_report_generation_metrics(ms, cl)
+    assert any(f.code == "missing-medical-report-generation-metrics" for f in r.findings)
+
+
+def test_medrep499_no_fire_when_chexbert_reported() -> None:
+    from manuscript_audit.validators.core import validate_medical_report_generation_metrics
+    ms, cl = _medrep499_ms(
+        "Radiology report generation: CheXbert = 0.47 on MIMIC-CXR."
+    )
+    r = validate_medical_report_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_medrep499_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_medical_report_generation_metrics
+    ms, cl = _medrep499_ms("We introduce a reinforcement learning agent.")
+    r = validate_medical_report_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_medrep499_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_medical_report_generation_metrics
+    ms, _ = _medrep499_ms("Medical report generation theoretical analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_medical_report_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 500 – validate_kg_completion_metrics
+# ---------------------------------------------------------------------------
+def _kgc500_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t500", source_path="t500.md", source_format="markdown",
+            title="KG completion", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_kgc500_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_kg_completion_metrics
+    ms, cl = _kgc500_ms("We address knowledge graph completion on FB15k-237.")
+    r = validate_kg_completion_metrics(ms, cl)
+    assert any(f.code == "missing-kg-completion-metrics" for f in r.findings)
+
+
+def test_kgc500_no_fire_when_mrr_reported() -> None:
+    from manuscript_audit.validators.core import validate_kg_completion_metrics
+    ms, cl = _kgc500_ms("KG completion: MRR = 0.341 and Hits@10 = 0.531.")
+    r = validate_kg_completion_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_kgc500_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_kg_completion_metrics
+    ms, cl = _kgc500_ms("We design a new optimizer for deep learning.")
+    r = validate_kg_completion_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_kgc500_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_kg_completion_metrics
+    ms, _ = _kgc500_ms("Knowledge graph completion theoretical bounds.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_kg_completion_metrics(ms, cl)
+    assert r.findings == []
