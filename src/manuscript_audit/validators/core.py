@@ -6847,6 +6847,11 @@ def run_deterministic_validators(
         validate_information_bias_discussion(parsed, classification),
         validate_dose_response_relationship(parsed, classification),
         validate_follow_up_rate_reporting(parsed, classification),
+        validate_cost_effectiveness_perspective(parsed, classification),
+        validate_discount_rate_disclosure(parsed, classification),
+        validate_uncertainty_analysis_health_economic(parsed, classification),
+        validate_qaly_utility_source(parsed, classification),
+        validate_markov_model_cycle_length(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -20772,6 +20777,302 @@ def validate_follow_up_rate_reporting(
                     "A longitudinal study with follow-up assessments is described "
                     "but the follow-up or retention rate is not reported. "
                     "Report the proportion of participants completing each follow-up."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 341 – validate_cost_effectiveness_perspective
+# ---------------------------------------------------------------------------
+
+_CEA_TRIGGER_RE = re.compile(
+    r"\b(?:cost[\s-]effectiveness\s+(?:analysis|ratio|threshold|model)|"
+    r"cost[\s-]utility\s+analysis|cost[\s-]benefit\s+analysis|"
+    r"economic\s+evaluation|health\s+economic\s+(?:model|analysis)|"
+    r"QALY\b|quality[\s-]adjusted\s+life[\s-]year|"
+    r"incremental\s+cost[\s-]effectiveness|ICER\b)\b",
+    re.IGNORECASE,
+)
+_CEA_PERSPECTIVE_DISCLOSED_RE = re.compile(
+    r"\b(?:(?:health\s+)?(?:care\s+)?(?:payer|system|societal|provider|patient)\s+"
+    r"perspective|perspective\s+of\s+(?:the\s+)?(?:health\s+)?(?:payer|system|society)|"
+    r"analysis\s+(?:was\s+)?(?:conducted|performed|undertaken)\s+from\s+(?:a|the)\s+"
+    r"(?:health|societal|payer|provider)\s+perspective|"
+    r"costs?\s+(?:were\s+)?considered\s+from\s+(?:a|the)\s+perspective)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cost_effectiveness_perspective(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag CEA studies without analytic perspective disclosure.
+
+    Emits ``missing-cea-perspective`` (minor) when a cost-effectiveness or
+    health economic analysis is performed but the analytic perspective
+    (payer, societal, health system) is not stated.
+    """
+    _vid = "validate_cost_effectiveness_perspective"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _CEA_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _CEA_PERSPECTIVE_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cea-perspective",
+                severity="minor",
+                message=(
+                    "A cost-effectiveness analysis is performed but the analytic "
+                    "perspective (e.g., payer, health system, societal) is not stated. "
+                    "Specify the perspective to clarify which costs are included."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 342 – validate_discount_rate_disclosure
+# ---------------------------------------------------------------------------
+
+_DISCOUNTING_TRIGGER_RE = re.compile(
+    r"\b(?:discount(?:ing|ed|s)?\s+(?:rate|costs?|outcomes?|QALYs?|benefits?)|"
+    r"(?:costs?|QALYs?|benefits?|outcomes?)\s+(?:\w+\s+){0,3}(?:were|was)\s+"
+    r"discount(?:ed|ing)|"
+    r"time\s+horizon\s+(?:of\s+)?(?:\d+)\s+years?)\b",
+    re.IGNORECASE,
+)
+_DISCOUNT_RATE_DISCLOSED_RE = re.compile(
+    r"\b(?:discount(?:ed|ing)?\s+(?:at\s+)?(?:\d+(?:\.\d+)?)\s*%|"
+    r"annual\s+discount\s+rate\s+of\s+(?:\d+(?:\.\d+)?)\s*%|"
+    r"(?:\d+(?:\.\d+)?)\s*%\s+(?:annual\s+)?discount\s+rate|"
+    r"no\s+discounting\s+(?:was|were)\s+applied|"
+    r"costs?\s+and\s+(?:benefits?|outcomes?|QALYs?)\s+were\s+discounted\s+at)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_discount_rate_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag health economic models without discount rate disclosure.
+
+    Emits ``missing-discount-rate`` (minor) when future costs or outcomes
+    are discounted but the discount rate is not reported.
+    """
+    _vid = "validate_discount_rate_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _DISCOUNTING_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _DISCOUNT_RATE_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-discount-rate",
+                severity="minor",
+                message=(
+                    "Future costs or outcomes are discounted but the discount rate "
+                    "is not reported. Specify the annual discount rate applied to "
+                    "costs and outcomes."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 343 – validate_uncertainty_analysis_health_economic
+# ---------------------------------------------------------------------------
+
+_HE_UNCERTAINTY_TRIGGER_RE = re.compile(
+    r"\b(?:cost[\s-]effectiveness\s+(?:analysis|model)|"
+    r"health\s+economic\s+(?:model|analysis)|"
+    r"decision\s+(?:analytic\s+)?(?:model|tree|analysis)|"
+    r"Markov\s+model|microsimulation\s+model)\b",
+    re.IGNORECASE,
+)
+_HE_UNCERTAINTY_REPORTED_RE = re.compile(
+    r"\b(?:(?:deterministic|probabilistic)\s+sensitivity\s+analysis|"
+    r"PSA\b|one[\s-]way\s+sensitivity\s+analysis|"
+    r"tornado\s+(?:diagram|plot)|"
+    r"Monte\s+Carlo\s+simulation|"
+    r"uncertainty\s+(?:was|is)\s+(?:explored|assessed|quantified|characterised)|"
+    r"cost[\s-]effectiveness\s+acceptability\s+curve|"
+    r"credible\s+(?:interval|range)\s+for\s+(?:the\s+)?ICER)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_uncertainty_analysis_health_economic(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag health economic models without uncertainty analysis.
+
+    Emits ``missing-health-economic-uncertainty`` (minor) when a health
+    economic model is presented but no sensitivity or uncertainty analysis
+    is reported.
+    """
+    _vid = "validate_uncertainty_analysis_health_economic"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _HE_UNCERTAINTY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _HE_UNCERTAINTY_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-health-economic-uncertainty",
+                severity="minor",
+                message=(
+                    "A health economic model is presented but no sensitivity or "
+                    "uncertainty analysis is reported. Include deterministic or "
+                    "probabilistic sensitivity analysis."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 344 – validate_qaly_utility_source
+# ---------------------------------------------------------------------------
+
+_QALY_TRIGGER_RE = re.compile(
+    r"\b(?:QALYs?\b|quality[\s-]adjusted\s+life[\s-]year|"
+    r"health\s+state\s+utility|utility\s+(?:weight|value|score)|"
+    r"health\s+utility\s+(?:index|measure)|"
+    r"EQ[\s-]?5D\b|SF[\s-]?6D\b|HUI\b)",
+    re.IGNORECASE,
+)
+_QALY_SOURCE_DISCLOSED_RE = re.compile(
+    r"\b(?:utility\s+(?:values?|weights?)\s+(?:were|was)\s+"
+    r"(?:obtained|derived|sourced|taken|estimated)\s+(?:from|using)|"
+    r"EQ[\s-]?5D[\s-]?(?:3L|5L)?\s+(?:was|were)\s+(?:used|administered)|"
+    r"utility\s+(?:elicitation|measurement)\s+(?:method|approach)|"
+    r"time\s+trade[\s-]off|standard\s+gamble\s+(?:was\s+)?(?:used|elicited)|"
+    r"preference[\s-]based\s+(?:measure|instrument|utility))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_qaly_utility_source(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag QALY-based analyses without utility source disclosure.
+
+    Emits ``missing-qaly-utility-source`` (minor) when QALYs or health
+    state utilities are used but the source of utility values is not stated.
+    """
+    _vid = "validate_qaly_utility_source"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _QALY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _QALY_SOURCE_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-qaly-utility-source",
+                severity="minor",
+                message=(
+                    "QALYs or health state utilities are used but the source of "
+                    "utility values is not stated. Specify how utilities were "
+                    "obtained (e.g., EQ-5D, time trade-off, published literature)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 345 – validate_markov_model_cycle_length
+# ---------------------------------------------------------------------------
+
+_MARKOV_TRIGGER_RE = re.compile(
+    r"\b(?:Markov\s+(?:model|chain|cohort\s+model|state\s+transition)|"
+    r"state\s+transition\s+model|"
+    r"transition\s+probabilities?\s+(?:between|among|for)\s+(?:health\s+)?states?|"
+    r"Markov\s+cycle|tunnel\s+state)\b",
+    re.IGNORECASE,
+)
+_MARKOV_CYCLE_DISCLOSED_RE = re.compile(
+    r"\b(?:cycle\s+length\s+(?:of\s+)?(?:\d+)\s+(?:month|week|year|day)|"
+    r"(?:\d+)[\s-](?:month|week|year|day)[\s-](?:Markov\s+)?cycle|"
+    r"Markov\s+cycle\s+length\s+(?:was|of)\s+(?:\d+)|"
+    r"half[\s-]cycle\s+correction|"
+    r"annual\s+transition\s+probability|monthly\s+transition\s+probability)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_markov_model_cycle_length(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Markov models without cycle length disclosure.
+
+    Emits ``missing-markov-cycle-length`` (minor) when a Markov model is
+    used but the cycle length is not reported.
+    """
+    _vid = "validate_markov_model_cycle_length"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MARKOV_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _MARKOV_CYCLE_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-markov-cycle-length",
+                severity="minor",
+                message=(
+                    "A Markov model is used but the cycle length is not reported. "
+                    "Specify the cycle length (e.g., monthly, annual) and apply "
+                    "half-cycle correction if appropriate."
                 ),
                 validator=_vid,
             )

@@ -20130,3 +20130,348 @@ def test_no_follow_up_no_fire() -> None:
     )
     result = validate_follow_up_rate_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 341 – validate_cost_effectiveness_perspective
+# ---------------------------------------------------------------------------
+
+def _cea341_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cea341",
+            source_path="/tmp/cea341.md",
+            source_format="markdown",
+            title="CEA Perspective Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cea_without_perspective_fires() -> None:
+    from manuscript_audit.validators.core import validate_cost_effectiveness_perspective
+
+    ms, cl = _cea341_ms(
+        "A cost-effectiveness analysis was conducted to compare two treatments "
+        "over a 5-year time horizon. The ICER was $15,000 per QALY gained."
+    )
+    result = validate_cost_effectiveness_perspective(ms, cl)
+    assert any(f.code == "missing-cea-perspective" for f in result.findings)
+
+
+def test_cea_with_perspective_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cost_effectiveness_perspective
+
+    ms, cl = _cea341_ms(
+        "A cost-effectiveness analysis was conducted from the health care payer "
+        "perspective. The ICER was $15,000 per QALY gained."
+    )
+    result = validate_cost_effectiveness_perspective(ms, cl)
+    assert result.findings == []
+
+
+def test_cea_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cost_effectiveness_perspective
+
+    ms, cl = _cea341_ms("A cost-effectiveness analysis was conducted. ICER was $15,000/QALY.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cost_effectiveness_perspective(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cea_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cost_effectiveness_perspective
+
+    ms, cl = _cea341_ms(
+        "We conducted a randomised controlled trial with 200 participants."
+    )
+    result = validate_cost_effectiveness_perspective(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 342 – validate_discount_rate_disclosure
+# ---------------------------------------------------------------------------
+
+def _dr342_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dr342",
+            source_path="/tmp/dr342.md",
+            source_format="markdown",
+            title="Discount Rate Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_discounting_without_rate_fires() -> None:
+    from manuscript_audit.validators.core import validate_discount_rate_disclosure
+
+    ms, cl = _dr342_ms(
+        "Future costs and QALYs were discounted to present value "
+        "over a 10-year time horizon."
+    )
+    result = validate_discount_rate_disclosure(ms, cl)
+    assert any(f.code == "missing-discount-rate" for f in result.findings)
+
+
+def test_discounting_with_rate_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_discount_rate_disclosure
+
+    ms, cl = _dr342_ms(
+        "Future costs and QALYs were discounted at 3.5% annually "
+        "over a 10-year time horizon."
+    )
+    result = validate_discount_rate_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_discount_rate_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_discount_rate_disclosure
+
+    ms, cl = _dr342_ms("Future costs were discounted over a 10-year time horizon.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_discount_rate_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_discounting_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_discount_rate_disclosure
+
+    ms, cl = _dr342_ms(
+        "We compared mean blood pressure between treatment groups using a t-test."
+    )
+    result = validate_discount_rate_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 343 – validate_uncertainty_analysis_health_economic
+# ---------------------------------------------------------------------------
+
+def _heu343_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-heu343",
+            source_path="/tmp/heu343.md",
+            source_format="markdown",
+            title="Health Economic Uncertainty Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_markov_model_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_uncertainty_analysis_health_economic,
+    )
+
+    ms, cl = _heu343_ms(
+        "A Markov model with three health states was used to estimate lifetime costs "
+        "and QALYs for each strategy."
+    )
+    result = validate_uncertainty_analysis_health_economic(ms, cl)
+    assert any(f.code == "missing-health-economic-uncertainty" for f in result.findings)
+
+
+def test_markov_model_with_psa_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_uncertainty_analysis_health_economic,
+    )
+
+    ms, cl = _heu343_ms(
+        "A Markov model was used to estimate costs and QALYs. Probabilistic "
+        "sensitivity analysis (PSA) was conducted using Monte Carlo simulation "
+        "with 10,000 iterations."
+    )
+    result = validate_uncertainty_analysis_health_economic(ms, cl)
+    assert result.findings == []
+
+
+def test_heu_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_uncertainty_analysis_health_economic,
+    )
+
+    ms, cl = _heu343_ms("A Markov model was used to estimate costs and QALYs.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_uncertainty_analysis_health_economic(ms, cl)
+    assert result.findings == []
+
+
+def test_no_health_economic_model_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_uncertainty_analysis_health_economic,
+    )
+
+    ms, cl = _heu343_ms(
+        "Participants were randomised to one of two treatment arms."
+    )
+    result = validate_uncertainty_analysis_health_economic(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 344 – validate_qaly_utility_source
+# ---------------------------------------------------------------------------
+
+def _qaly344_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-qaly344",
+            source_path="/tmp/qaly344.md",
+            source_format="markdown",
+            title="QALY Utility Source Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_qaly_without_utility_source_fires() -> None:
+    from manuscript_audit.validators.core import validate_qaly_utility_source
+
+    ms, cl = _qaly344_ms(
+        "The intervention generated 0.15 additional QALYs compared to standard care."
+    )
+    result = validate_qaly_utility_source(ms, cl)
+    assert any(f.code == "missing-qaly-utility-source" for f in result.findings)
+
+
+def test_qaly_with_utility_source_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_qaly_utility_source
+
+    ms, cl = _qaly344_ms(
+        "Utility values were obtained from EQ-5D-3L administered at baseline. "
+        "The intervention generated 0.15 additional QALYs."
+    )
+    result = validate_qaly_utility_source(ms, cl)
+    assert result.findings == []
+
+
+def test_qaly_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_qaly_utility_source
+
+    ms, cl = _qaly344_ms("The intervention generated 0.15 additional QALYs.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_qaly_utility_source(ms, cl)
+    assert result.findings == []
+
+
+def test_no_qaly_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_qaly_utility_source
+
+    ms, cl = _qaly344_ms(
+        "The primary outcome was systolic blood pressure at 12 weeks."
+    )
+    result = validate_qaly_utility_source(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 345 – validate_markov_model_cycle_length
+# ---------------------------------------------------------------------------
+
+def _markov345_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-markov345",
+            source_path="/tmp/markov345.md",
+            source_format="markdown",
+            title="Markov Cycle Length Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_markov_model_without_cycle_length_fires() -> None:
+    from manuscript_audit.validators.core import validate_markov_model_cycle_length
+
+    ms, cl = _markov345_ms(
+        "A Markov model with three health states was used to simulate disease "
+        "progression over a lifetime horizon."
+    )
+    result = validate_markov_model_cycle_length(ms, cl)
+    assert any(f.code == "missing-markov-cycle-length" for f in result.findings)
+
+
+def test_markov_model_with_cycle_length_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_markov_model_cycle_length
+
+    ms, cl = _markov345_ms(
+        "A Markov model with cycle length of 3 months was used to simulate disease "
+        "progression. A half-cycle correction was applied."
+    )
+    result = validate_markov_model_cycle_length(ms, cl)
+    assert result.findings == []
+
+
+def test_markov_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_markov_model_cycle_length
+
+    ms, cl = _markov345_ms(
+        "A Markov model with three health states was used."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_markov_model_cycle_length(ms, cl)
+    assert result.findings == []
+
+
+def test_no_markov_model_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_markov_model_cycle_length
+
+    ms, cl = _markov345_ms(
+        "We used Cox proportional hazards regression to model time to event."
+    )
+    result = validate_markov_model_cycle_length(ms, cl)
+    assert result.findings == []
