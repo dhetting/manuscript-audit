@@ -6759,6 +6759,11 @@ def run_deterministic_validators(
         validate_primary_outcome_change_disclosure(parsed, classification),
         validate_null_result_discussion(parsed, classification),
         validate_racial_ethnic_composition(parsed, classification),
+        validate_single_item_measure_reliability(parsed, classification),
+        validate_mediator_temporality(parsed, classification),
+        validate_effect_size_interpretation(parsed, classification),
+        validate_comparison_group_equivalence(parsed, classification),
+        validate_implicit_theory_test(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -15421,6 +15426,292 @@ def validate_racial_ethnic_composition(
                 validator="racial_ethnic_composition",
                 location="Participants",
                 evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 251 – validate_single_item_measure_reliability
+# ---------------------------------------------------------------------------
+
+_SINGLE_ITEM_TRIGGER_RE = re.compile(
+    r"\b(?:measured\s+with\s+(?:a\s+)?single[\s-]item|"
+    r"single[\s-]item\s+(?:measure|scale|question|indicator)|"
+    r"assessed\s+(?:using|with)\s+(?:a\s+)?single\s+(?:question|item))\b",
+    re.IGNORECASE,
+)
+_SINGLE_ITEM_CAVEAT_RE = re.compile(
+    r"\b(?:reliability\s+(?:of\s+)?(?:single[\s-]item|this\s+measure)|"
+    r"limitation\s+of\s+(?:single[\s-]item|this\s+approach)|"
+    r"single[\s-]item\s+measures?\s+(?:may|can|do\s+not)\b|"
+    r"acknowledged?\s+(?:that\s+)?single[\s-]item|"
+    r"validated\s+(?:single[\s-]item|this\s+(?:measure|scale)))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_single_item_measure_reliability(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag single-item measures used without a reliability caveat.
+
+    Emits ``missing-single-item-reliability-caveat`` (minor) when a single-item
+    measure is used without acknowledging or justifying its reliability limitations.
+    """
+    _vid = "validate_single_item_measure_reliability"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _SINGLE_ITEM_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SINGLE_ITEM_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-single-item-reliability-caveat",
+                severity="minor",
+                message=(
+                    "A single-item measure is used without discussing its reliability"
+                    " limitations. Single-item measures often have lower reliability;"
+                    " acknowledge this as a limitation."
+                ),
+                validator="validate_single_item_measure_reliability",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 252 – validate_mediator_temporality
+# ---------------------------------------------------------------------------
+
+_MEDIATION_TRIGGER_RE = re.compile(
+    r"\b(?:mediat(?:ed|es|ion|or|ing)|indirect\s+effect\s+(?:of|through))\b",
+    re.IGNORECASE,
+)
+_TEMPORAL_ORDER_RE = re.compile(
+    r"\b(?:temporal\s+(?:order|precedence|sequence)|"
+    r"(?:measured|assessed|collected)\s+(?:at\s+)?(?:baseline|time\s*1|wave\s*1|T1)|"
+    r"(?:before|prior\s+to)\s+(?:the\s+)?(?:mediator|outcome|intervention)|"
+    r"longitudinal|cross-lagged|time-lagged|prospective\s+design)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mediator_temporality(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag mediation claims without temporal ordering evidence.
+
+    Emits ``missing-mediator-temporality`` (moderate) when mediation is claimed
+    but there is no indication that temporal ordering was established.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="validate_mediator_temporality", findings=[])
+
+    full = parsed.full_text
+    if not _MEDIATION_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_mediator_temporality", findings=[])
+
+    if _TEMPORAL_ORDER_RE.search(full):
+        return ValidationResult(validator_name="validate_mediator_temporality", findings=[])
+
+    return ValidationResult(
+        validator_name="validate_mediator_temporality",
+        findings=[
+            Finding(
+                code="missing-mediator-temporality",
+                severity="moderate",
+                message=(
+                    "Mediation is claimed but temporal ordering of variables is not discussed. "
+                    "Establish that the mediator was measured before the outcome to support"
+                    " causal inference."
+                ),
+                validator="validate_mediator_temporality",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 253 – validate_effect_size_interpretation
+# ---------------------------------------------------------------------------
+
+_ES_VALUE_RE = re.compile(
+    r"\b(?:Cohen'?s?\s+[dDfg]|Hedges'?\s+g|eta[\s-]squared|partial\s+eta[\s-]squared|"
+    r"omega[\s-]squared|Cramér'?s?\s+V|Glass'?\s+delta|"
+    r"[dDfg]\s*=\s*[-−]?\d+\.\d+|eta\^?2\s*=\s*\d+\.\d+)\b",
+    re.IGNORECASE,
+)
+_ES_INTERP_RE = re.compile(
+    r"\b(?:small|medium|large|negligible|trivial|substantial|"
+    r"practically\s+(?:significant|meaningful|important)|"
+    r"clinically\s+(?:meaningful|significant|relevant)|"
+    r"effect\s+(?:was|is)\s+(?:small|medium|large|negligible|trivial|substantial))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_effect_size_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag effect sizes reported without verbal interpretation.
+
+    Emits ``missing-effect-size-interpretation`` (minor) when a standardised
+    effect size is reported without describing its practical magnitude.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="validate_effect_size_interpretation", findings=[])
+
+    full = parsed.full_text
+    if not _ES_VALUE_RE.search(full):
+        return ValidationResult(validator_name="validate_effect_size_interpretation", findings=[])
+
+    if _ES_INTERP_RE.search(full):
+        return ValidationResult(validator_name="validate_effect_size_interpretation", findings=[])
+
+    return ValidationResult(
+        validator_name="validate_effect_size_interpretation",
+        findings=[
+            Finding(
+                code="missing-effect-size-interpretation",
+                severity="minor",
+                message=(
+                    "Effect sizes are reported without verbal interpretation of practical"
+                    " magnitude (e.g., small, medium, large). Contextualise effect sizes"
+                    " for readers."
+                ),
+                validator="validate_effect_size_interpretation",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 254 – validate_comparison_group_equivalence
+# ---------------------------------------------------------------------------
+
+_GROUP_COMPARISON_TRIGGER_RE = re.compile(
+    r"\b(?:compar(?:ed|ing)\s+(?:groups?|conditions?|arms?)|"
+    r"between[\s-]group|group\s+differences?|"
+    r"(?:treatment|control|experimental)\s+(?:vs\.?|versus|and)\s+(?:control|placebo|comparison))\b",
+    re.IGNORECASE,
+)
+_BASELINE_EQUIVALENCE_RE = re.compile(
+    r"\b(?:baseline\s+(?:characteristics?|equivalence|balance|differences?|comparison)|"
+    r"groups?\s+(?:were|did\s+not\s+differ|were\s+comparable|were\s+equivalent)\s+(?:at\s+)?baseline|"
+    r"no\s+significant\s+(?:baseline|pre-test|pretest)\s+differences?|"
+    r"Table\s+\d+\s+(?:shows?|presents?|displays?)\s+baseline|"
+    r"chi[\s-]square\s+test\s+for\s+(?:group\s+)?equivalence|"
+    r"randomis(?:ation|ation|ed)\s+successfully\s+balanced)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_comparison_group_equivalence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag group comparisons without baseline equivalence checks.
+
+    Emits ``missing-baseline-equivalence-check`` (moderate) when groups are
+    compared without verifying or reporting baseline equivalence.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="validate_comparison_group_equivalence", findings=[])
+
+    full = parsed.full_text
+    if not _GROUP_COMPARISON_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_comparison_group_equivalence", findings=[])
+
+    if _BASELINE_EQUIVALENCE_RE.search(full):
+        return ValidationResult(validator_name="validate_comparison_group_equivalence", findings=[])
+
+    return ValidationResult(
+        validator_name="validate_comparison_group_equivalence",
+        findings=[
+            Finding(
+                code="missing-baseline-equivalence-check",
+                severity="moderate",
+                message=(
+                    "Groups are compared but baseline equivalence is not reported or checked."
+                    " Report baseline characteristics or equivalence tests to support"
+                    " valid comparisons."
+                ),
+                validator="validate_comparison_group_equivalence",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 255 – validate_implicit_theory_test
+# ---------------------------------------------------------------------------
+
+_THEORY_TEST_TRIGGER_RE = re.compile(
+    r"\b(?:(?:tests?|testing|tested|examines?|examining|examined)\s+(?:the\s+)?theory|"
+    r"theory\s+(?:predicts?|suggests?|posits?|proposes?)\s+(?:that\s+)?(?:\w+\s+){1,4}"
+    r"(?:would|will|should|is\s+expected))\b",
+    re.IGNORECASE,
+)
+_CAUSAL_DESIGN_RE = re.compile(
+    r"\b(?:experiment(?:al|ally)?|randomis(?:ed|ation)|manipulat(?:ed|ion)|"
+    r"quasi[\s-]experiment(?:al|ally)?|longitudinal\s+test|cross[\s-]lagged\s+panel|"
+    r"structural\s+equation\s+model(?:ling|ing)|instrumental\s+variable)\b",
+    re.IGNORECASE,
+)
+_CORRELATIONAL_DESIGN_RE = re.compile(
+    r"\b(?:cross[\s-]sectional|correlational\s+study|correlation\s+between|"
+    r"Pearson'?s?\s+r|Spearman'?s?\s+rho|regression\s+analysis|"
+    r"survey\s+(?:study|design|data))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_implicit_theory_test(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag theoretical predictions tested with correlational data only.
+
+    Emits ``implicit-theory-test-correlational`` (minor) when a manuscript
+    claims to test theory using correlational or survey-based designs only,
+    without causal or longitudinal methods.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name="validate_implicit_theory_test", findings=[])
+
+    full = parsed.full_text
+    if not _THEORY_TEST_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_implicit_theory_test", findings=[])
+
+    if _CAUSAL_DESIGN_RE.search(full):
+        return ValidationResult(validator_name="validate_implicit_theory_test", findings=[])
+
+    if not _CORRELATIONAL_DESIGN_RE.search(full):
+        return ValidationResult(validator_name="validate_implicit_theory_test", findings=[])
+
+    return ValidationResult(
+        validator_name="validate_implicit_theory_test",
+        findings=[
+            Finding(
+                code="implicit-theory-test-correlational",
+                severity="minor",
+                message=(
+                    "Theoretical predictions are tested using correlational data. "
+                    "Correlational designs cannot confirm causal theoretical predictions; "
+                    "acknowledge this limitation."
+                ),
+                validator="validate_implicit_theory_test",
             )
         ],
     )

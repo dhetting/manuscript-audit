@@ -13870,3 +13870,338 @@ def test_race_non_empirical_no_fire() -> None:
     )
     result = validate_racial_ethnic_composition(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 251 – validate_single_item_measure_reliability
+# ---------------------------------------------------------------------------
+
+def _single_item_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-si",
+            source_path="/tmp/si.md",
+            source_format="markdown",
+            title="Single Item Measure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_single_item_without_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_single_item_measure_reliability
+
+    ms, cl = _single_item_ms(
+        "Happiness was measured with a single-item scale: "
+        "'Overall, how happy are you?' (1–10)."
+    )
+    result = validate_single_item_measure_reliability(ms, cl)
+    assert any(f.code == "missing-single-item-reliability-caveat" for f in result.findings)
+
+
+def test_single_item_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_single_item_measure_reliability
+
+    ms, cl = _single_item_ms(
+        "Happiness was measured with a single-item scale. "
+        "A limitation of single-item measures is lower reliability compared to multi-item scales."
+    )
+    result = validate_single_item_measure_reliability(ms, cl)
+    assert result.findings == []
+
+
+def test_no_single_item_use_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_single_item_measure_reliability
+
+    ms, cl = _single_item_ms(
+        "Depression was assessed with the PHQ-9, a validated nine-item scale."
+    )
+    result = validate_single_item_measure_reliability(ms, cl)
+    assert result.findings == []
+
+
+def test_single_item_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_single_item_measure_reliability
+
+    ms, cl = _single_item_ms("Single-item measures are discussed in the literature.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_single_item_measure_reliability(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 252 – validate_mediator_temporality
+# ---------------------------------------------------------------------------
+
+def _mediator_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mediator",
+            source_path="/tmp/mediator.md",
+            source_format="markdown",
+            title="Mediator Temporality Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mediation_without_temporal_order_fires() -> None:
+    from manuscript_audit.validators.core import validate_mediator_temporality
+
+    ms, cl = _mediator_ms(
+        "Self-efficacy mediated the relationship between stress and burnout "
+        "(indirect effect = 0.23, 95% CI [0.11, 0.35])."
+    )
+    result = validate_mediator_temporality(ms, cl)
+    assert any(f.code == "missing-mediator-temporality" for f in result.findings)
+
+
+def test_mediation_with_temporal_evidence_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediator_temporality
+
+    ms, cl = _mediator_ms(
+        "Self-efficacy mediated the relationship between stress and burnout. "
+        "Stress was assessed at baseline (T1), self-efficacy at T2, and burnout at T3, "
+        "ensuring temporal ordering of the mediator."
+    )
+    result = validate_mediator_temporality(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mediation_claimed_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediator_temporality
+
+    ms, cl = _mediator_ms(
+        "Stress was positively correlated with burnout (r = 0.45, p < 0.001)."
+    )
+    result = validate_mediator_temporality(ms, cl)
+    assert result.findings == []
+
+
+def test_mediator_temporality_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediator_temporality
+
+    ms, cl = _mediator_ms("Mediation analysis requires temporal ordering.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_mediator_temporality(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 253 – validate_effect_size_interpretation
+# ---------------------------------------------------------------------------
+
+def _es_interp_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-es-interp",
+            source_path="/tmp/es_interp.md",
+            source_format="markdown",
+            title="Effect Size Interpretation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_effect_size_without_interpretation_fires() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_interpretation
+
+    ms, cl = _es_interp_ms(
+        "The intervention improved outcomes (Cohen's d = 0.45)."
+    )
+    result = validate_effect_size_interpretation(ms, cl)
+    assert any(f.code == "missing-effect-size-interpretation" for f in result.findings)
+
+
+def test_effect_size_with_interpretation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_interpretation
+
+    ms, cl = _es_interp_ms(
+        "The intervention improved outcomes (Cohen's d = 0.45), "
+        "representing a medium effect by Cohen's (1988) conventions."
+    )
+    result = validate_effect_size_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_effect_size_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_interpretation
+
+    ms, cl = _es_interp_ms(
+        "The intervention improved outcomes significantly (p = 0.002)."
+    )
+    result = validate_effect_size_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_effect_size_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_effect_size_interpretation
+
+    ms, cl = _es_interp_ms("Cohen's d is a measure of effect size.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_effect_size_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 254 – validate_comparison_group_equivalence
+# ---------------------------------------------------------------------------
+
+def _group_equiv_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-grp-equiv",
+            source_path="/tmp/grp_equiv.md",
+            source_format="markdown",
+            title="Group Equivalence Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_group_comparison_without_baseline_fires() -> None:
+    from manuscript_audit.validators.core import validate_comparison_group_equivalence
+
+    ms, cl = _group_equiv_ms(
+        "Comparing groups, the treatment arm showed significantly lower depression "
+        "scores than the control arm at post-test."
+    )
+    result = validate_comparison_group_equivalence(ms, cl)
+    assert any(f.code == "missing-baseline-equivalence-check" for f in result.findings)
+
+
+def test_group_comparison_with_baseline_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_comparison_group_equivalence
+
+    ms, cl = _group_equiv_ms(
+        "Comparing groups, the treatment arm showed lower depression. "
+        "Baseline characteristics were reported in Table 1; "
+        "groups did not differ at baseline on any demographic variable."
+    )
+    result = validate_comparison_group_equivalence(ms, cl)
+    assert result.findings == []
+
+
+def test_no_group_comparison_equiv_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_comparison_group_equivalence
+
+    ms, cl = _group_equiv_ms(
+        "Depression scores decreased over time in a single-group pre-post design."
+    )
+    result = validate_comparison_group_equivalence(ms, cl)
+    assert result.findings == []
+
+
+def test_group_equivalence_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_comparison_group_equivalence
+
+    ms, cl = _group_equiv_ms("Comparing groups requires baseline equivalence checks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_comparison_group_equivalence(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 255 – validate_implicit_theory_test
+# ---------------------------------------------------------------------------
+
+def _impl_theory_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-theory-test",
+            source_path="/tmp/theory_test.md",
+            source_format="markdown",
+            title="Implicit Theory Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_theory_test_correlational_fires() -> None:
+    from manuscript_audit.validators.core import validate_implicit_theory_test
+
+    ms, cl = _impl_theory_ms(
+        "This study tests the theory that self-efficacy would predict burnout. "
+        "We conducted a cross-sectional survey study with regression analysis."
+    )
+    result = validate_implicit_theory_test(ms, cl)
+    assert any(f.code == "implicit-theory-test-correlational" for f in result.findings)
+
+
+def test_theory_test_with_experimental_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_implicit_theory_test
+
+    ms, cl = _impl_theory_ms(
+        "This study tests the theory that self-efficacy would predict burnout. "
+        "We used a randomised experimental design to evaluate this."
+    )
+    result = validate_implicit_theory_test(ms, cl)
+    assert result.findings == []
+
+
+def test_no_theory_test_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_implicit_theory_test
+
+    ms, cl = _impl_theory_ms(
+        "We explored the relationship between stress and health in a cross-sectional survey."
+    )
+    result = validate_implicit_theory_test(ms, cl)
+    assert result.findings == []
+
+
+def test_implicit_theory_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_implicit_theory_test
+
+    ms, cl = _impl_theory_ms("Testing theory with correlational data is problematic.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_implicit_theory_test(ms, cl)
+    assert result.findings == []
