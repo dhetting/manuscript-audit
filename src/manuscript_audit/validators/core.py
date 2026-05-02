@@ -7032,6 +7032,11 @@ def run_deterministic_validators(
         validate_table_structure_recognition_metrics(parsed, classification),
         validate_handwriting_recognition_metrics(parsed, classification),
         validate_entity_normalization_metrics(parsed, classification),
+        validate_relation_extraction_metrics(parsed, classification),
+        validate_event_extraction_metrics(parsed, classification),
+        validate_kbqa_metrics(parsed, classification),
+        validate_dialogue_state_tracking_metrics(parsed, classification),
+        validate_conversational_qa_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -30162,6 +30167,229 @@ def validate_entity_normalization_metrics(
                 ),
                 severity="moderate",
                 validator=_NENORM_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 526 – Relation extraction metrics
+# ---------------------------------------------------------------------------
+_RELEXT_VID = "missing-relation-extraction-metrics"
+_RELEXT_TRIGGER_RE = re.compile(
+    r"\b(?:relation\s+extraction|RE\s+task|relationship\s+extraction|"
+    r"relation\s+classification)\b",
+    re.IGNORECASE,
+)
+_RELEXT_METRIC_RE = re.compile(
+    r"\b(?:micro\s+F1|macro\s+F1|F1|precision|recall)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_relation_extraction_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when relation extraction papers omit micro/macro F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_RELEXT_VID, findings=[])
+    text = parsed.full_text
+    if not _RELEXT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_RELEXT_VID, findings=[])
+    if _RELEXT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_RELEXT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_RELEXT_VID,
+        findings=[
+            Finding(
+                code=_RELEXT_VID,
+                message=(
+                    "Relation extraction paper detected but standard metrics "
+                    "(micro F1, macro F1) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_RELEXT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 527 – Event extraction metrics
+# ---------------------------------------------------------------------------
+_EVTEXT_VID = "missing-event-extraction-metrics"
+_EVTEXT_TRIGGER_RE = re.compile(
+    r"\b(?:event\s+extraction|event\s+detection|argument\s+extraction|"
+    r"event\s+argument\s+role)\b",
+    re.IGNORECASE,
+)
+_EVTEXT_METRIC_RE = re.compile(
+    r"\b(?:trigger\s+F1|argument\s+F1|micro\s+F1|event\s+identification\s+F1|"
+    r"F1)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_event_extraction_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when event extraction papers omit trigger/argument F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_EVTEXT_VID, findings=[])
+    text = parsed.full_text
+    if not _EVTEXT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_EVTEXT_VID, findings=[])
+    if _EVTEXT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_EVTEXT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_EVTEXT_VID,
+        findings=[
+            Finding(
+                code=_EVTEXT_VID,
+                message=(
+                    "Event extraction paper detected but standard metrics "
+                    "(trigger F1, argument F1) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_EVTEXT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 528 – Knowledge base QA metrics
+# ---------------------------------------------------------------------------
+_KBQA_VID = "missing-kbqa-metrics"
+_KBQA_TRIGGER_RE = re.compile(
+    r"\b(?:knowledge\s+base\s+question\s+answering|KBQA|"
+    r"knowledge\s+graph\s+QA|KGQA|multi-?hop\s+QA)\b",
+    re.IGNORECASE,
+)
+_KBQA_METRIC_RE = re.compile(
+    r"\b(?:exact\s+match|F1|Hits@1|accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_kbqa_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when KBQA papers omit exact match/F1/accuracy metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_KBQA_VID, findings=[])
+    text = parsed.full_text
+    if not _KBQA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_KBQA_VID, findings=[])
+    if _KBQA_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_KBQA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_KBQA_VID,
+        findings=[
+            Finding(
+                code=_KBQA_VID,
+                message=(
+                    "KBQA paper detected but standard metrics (exact match, "
+                    "F1, Hits@1) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_KBQA_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 529 – Dialogue state tracking metrics
+# ---------------------------------------------------------------------------
+_DST_VID = "missing-dialogue-state-tracking-metrics"
+_DST_TRIGGER_RE = re.compile(
+    r"\b(?:dialogue\s+state\s+tracking|DST|task-?oriented\s+dialogue|"
+    r"belief\s+state\s+tracking)\b",
+    re.IGNORECASE,
+)
+_DST_METRIC_RE = re.compile(
+    r"\b(?:joint\s+goal\s+accuracy|JGA|slot\s+accuracy|"
+    r"inform\s+rate|success\s+rate)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_dialogue_state_tracking_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when DST papers omit joint goal accuracy/slot accuracy metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DST_VID, findings=[])
+    text = parsed.full_text
+    if not _DST_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_DST_VID, findings=[])
+    if _DST_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_DST_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DST_VID,
+        findings=[
+            Finding(
+                code=_DST_VID,
+                message=(
+                    "Dialogue state tracking paper detected but standard "
+                    "metrics (JGA, slot accuracy, inform rate) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_DST_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 530 – Conversational QA metrics
+# ---------------------------------------------------------------------------
+_CONVQA_VID = "missing-conversational-qa-metrics"
+_CONVQA_TRIGGER_RE = re.compile(
+    r"\b(?:conversational\s+question\s+answering|conversational\s+QA|"
+    r"multi-?turn\s+QA|history-?aware\s+QA)\b",
+    re.IGNORECASE,
+)
+_CONVQA_METRIC_RE = re.compile(
+    r"\b(?:F1|exact\s+match|BLEU|HEQ-Q|HEQ-D)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_conversational_qa_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when conversational QA papers omit F1/exact match metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CONVQA_VID, findings=[])
+    text = parsed.full_text
+    if not _CONVQA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CONVQA_VID, findings=[])
+    if _CONVQA_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CONVQA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CONVQA_VID,
+        findings=[
+            Finding(
+                code=_CONVQA_VID,
+                message=(
+                    "Conversational QA paper detected but standard metrics "
+                    "(F1, exact match) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_CONVQA_VID,
             )
         ],
     )

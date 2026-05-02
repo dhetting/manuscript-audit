@@ -31898,3 +31898,242 @@ def test_nenorm525_non_empirical_no_fire() -> None:
     )
     r = validate_entity_normalization_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 526 – validate_relation_extraction_metrics
+# ---------------------------------------------------------------------------
+def _relext526_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t526", source_path="t526.md", source_format="markdown",
+            title="Relation extraction", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_relext526_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_relation_extraction_metrics
+    ms, cl = _relext526_ms("We propose a model for relation extraction on TACRED.")
+    r = validate_relation_extraction_metrics(ms, cl)
+    assert any(f.code == "missing-relation-extraction-metrics" for f in r.findings)
+
+
+def test_relext526_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_relation_extraction_metrics
+    ms, cl = _relext526_ms("Relation extraction: micro F1 = 73.1% on TACRED.")
+    r = validate_relation_extraction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_relext526_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_relation_extraction_metrics
+    ms, cl = _relext526_ms("We propose a model for image segmentation.")
+    r = validate_relation_extraction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_relext526_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_relation_extraction_metrics
+    ms, _ = _relext526_ms("Relation classification theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_relation_extraction_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 527 – validate_event_extraction_metrics
+# ---------------------------------------------------------------------------
+def _evtext527_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t527", source_path="t527.md", source_format="markdown",
+            title="Event extraction", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_evtext527_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_event_extraction_metrics
+    ms, cl = _evtext527_ms("We tackle event extraction on ACE 2005.")
+    r = validate_event_extraction_metrics(ms, cl)
+    assert any(f.code == "missing-event-extraction-metrics" for f in r.findings)
+
+
+def test_evtext527_no_fire_when_trigger_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_event_extraction_metrics
+    ms, cl = _evtext527_ms("Event detection: trigger F1 = 74.5% on ACE 2005.")
+    r = validate_event_extraction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_evtext527_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_event_extraction_metrics
+    ms, cl = _evtext527_ms("We study protein structure prediction.")
+    r = validate_event_extraction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_evtext527_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_event_extraction_metrics
+    ms, _ = _evtext527_ms("Event detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_event_extraction_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 528 – validate_kbqa_metrics
+# ---------------------------------------------------------------------------
+def _kbqa528_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t528", source_path="t528.md", source_format="markdown",
+            title="KBQA", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_kbqa528_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_kbqa_metrics
+    ms, cl = _kbqa528_ms("We address knowledge base question answering on WebQSP.")
+    r = validate_kbqa_metrics(ms, cl)
+    assert any(f.code == "missing-kbqa-metrics" for f in r.findings)
+
+
+def test_kbqa528_no_fire_when_hits_reported() -> None:
+    from manuscript_audit.validators.core import validate_kbqa_metrics
+    ms, cl = _kbqa528_ms("KBQA: Hits@1 = 76.4% on WebQSP.")
+    r = validate_kbqa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_kbqa528_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_kbqa_metrics
+    ms, cl = _kbqa528_ms("We propose a model for image super-resolution.")
+    r = validate_kbqa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_kbqa528_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_kbqa_metrics
+    ms, _ = _kbqa528_ms("Multi-hop QA theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_kbqa_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 529 – validate_dialogue_state_tracking_metrics
+# ---------------------------------------------------------------------------
+def _dst529_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t529", source_path="t529.md", source_format="markdown",
+            title="DST", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_dst529_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_dialogue_state_tracking_metrics
+    ms, cl = _dst529_ms("We propose a model for dialogue state tracking on MultiWOZ.")
+    r = validate_dialogue_state_tracking_metrics(ms, cl)
+    assert any(f.code == "missing-dialogue-state-tracking-metrics" for f in r.findings)
+
+
+def test_dst529_no_fire_when_jga_reported() -> None:
+    from manuscript_audit.validators.core import validate_dialogue_state_tracking_metrics
+    ms, cl = _dst529_ms("DST: joint goal accuracy JGA = 55.3% on MultiWOZ 2.1.")
+    r = validate_dialogue_state_tracking_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_dst529_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_dialogue_state_tracking_metrics
+    ms, cl = _dst529_ms("We present a model for video generation.")
+    r = validate_dialogue_state_tracking_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_dst529_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dialogue_state_tracking_metrics
+    ms, _ = _dst529_ms("Belief state tracking theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_dialogue_state_tracking_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 530 – validate_conversational_qa_metrics
+# ---------------------------------------------------------------------------
+def _convqa530_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t530", source_path="t530.md", source_format="markdown",
+            title="Conversational QA", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_convqa530_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_conversational_qa_metrics
+    ms, cl = _convqa530_ms("We address conversational question answering on QuAC.")
+    r = validate_conversational_qa_metrics(ms, cl)
+    assert any(f.code == "missing-conversational-qa-metrics" for f in r.findings)
+
+
+def test_convqa530_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_conversational_qa_metrics
+    ms, cl = _convqa530_ms("Conversational QA: F1 = 64.1% on QuAC.")
+    r = validate_conversational_qa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_convqa530_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_conversational_qa_metrics
+    ms, cl = _convqa530_ms("We introduce a new graph learning algorithm.")
+    r = validate_conversational_qa_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_convqa530_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conversational_qa_metrics
+    ms, _ = _convqa530_ms("Multi-turn QA theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_conversational_qa_metrics(ms, cl)
+    assert r.findings == []
