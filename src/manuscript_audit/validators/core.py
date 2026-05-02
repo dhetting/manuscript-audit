@@ -7087,6 +7087,11 @@ def run_deterministic_validators(
         validate_code_translation_metrics(parsed, classification),
         validate_formal_verification_metrics(parsed, classification),
         validate_program_synthesis_metrics(parsed, classification),
+        validate_srl_benchmark_metrics(parsed, classification),
+        validate_entity_linking_metrics(parsed, classification),
+        validate_coreference_benchmark_metrics(parsed, classification),
+        validate_semantic_textual_similarity_metrics(parsed, classification),
+        validate_open_ie_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -32756,6 +32761,239 @@ def validate_program_synthesis_metrics(
                 ),
                 location="full_text",
                 validator=_PROGSYN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 581 – semantic role labeling evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_SRL581_VID = "missing-srl-benchmark-metrics"
+
+_SRL581_TRIGGERS = re.compile(
+    r"\b(?:semantic\s+role\s+label\w+|SRL\s+(?:system|model|approach)|"
+    r"PropBank\s+(?:benchmark|evaluation)|FrameNet\s+(?:benchmark|evaluation)|"
+    r"argument\s+identification)\b",
+    re.IGNORECASE,
+)
+_SRL581_METRICS = re.compile(
+    r"\b(?:F1|precision|recall|labeled\s+F1|unlabeled\s+F1)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:F1|precision|recall)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_srl_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SRL581_VID, findings=[])
+    text = parsed.full_text
+    if not _SRL581_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SRL581_VID, findings=[])
+    if _SRL581_METRICS.search(text):
+        return ValidationResult(validator_name=_SRL581_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SRL581_VID,
+        findings=[
+            Finding(
+                code=_SRL581_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses semantic role labeling but does not report "
+                    "F1, precision, or recall on PropBank/FrameNet."
+                ),
+                location="full_text",
+                validator=_SRL581_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 582 – entity linking evaluation
+# ---------------------------------------------------------------------------
+_ENTLINK_VID = "missing-entity-linking-metrics"
+
+_ENTLINK_TRIGGERS = re.compile(
+    r"\b(?:entity\s+link\w+|entity\s+disambigu\w+|EL\s+(?:system|model)|"
+    r"named\s+entity\s+disambigu\w+|Wikification|entity\s+resolution)\b",
+    re.IGNORECASE,
+)
+_ENTLINK_METRICS = re.compile(
+    r"\b(?:micro[-\s]F1|macro[-\s]F1|in-KB\s+accuracy|accuracy|precision|recall|F1)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:F1|accuracy|precision)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_entity_linking_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ENTLINK_VID, findings=[])
+    text = parsed.full_text
+    if not _ENTLINK_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ENTLINK_VID, findings=[])
+    if _ENTLINK_METRICS.search(text):
+        return ValidationResult(validator_name=_ENTLINK_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ENTLINK_VID,
+        findings=[
+            Finding(
+                code=_ENTLINK_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses entity linking but does not report "
+                    "micro/macro F1, accuracy, or in-KB accuracy."
+                ),
+                location="full_text",
+                validator=_ENTLINK_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 583 – coreference resolution evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_COREF583_VID = "missing-coreference-benchmark-metrics"
+
+_COREF583_TRIGGERS = re.compile(
+    r"\b(?:coreference\s+resolution|coref\s+(?:system|model)|anaphora\s+resolution|"
+    r"CoNLL\s+(?:coref|coreference)|mention\s+detection)\b",
+    re.IGNORECASE,
+)
+_COREF583_METRICS = re.compile(
+    r"\b(?:MUC|B-CUBED|CEAF|CoNLL\s+F1|avg(?:erage)?\s+F1|"
+    r"mention\s+recall|mention\s+precision)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:MUC|B-CUBED|CEAF|CoNLL)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_coreference_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_COREF583_VID, findings=[])
+    text = parsed.full_text
+    if not _COREF583_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_COREF583_VID, findings=[])
+    if _COREF583_METRICS.search(text):
+        return ValidationResult(validator_name=_COREF583_VID, findings=[])
+    return ValidationResult(
+        validator_name=_COREF583_VID,
+        findings=[
+            Finding(
+                code=_COREF583_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses coreference resolution but does not report "
+                    "MUC, B-CUBED, CEAF, or CoNLL average F1."
+                ),
+                location="full_text",
+                validator=_COREF583_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 584 – semantic textual similarity evaluation
+# ---------------------------------------------------------------------------
+_STS584_VID = "missing-semantic-textual-similarity-metrics"
+
+_STS584_TRIGGERS = re.compile(
+    r"\b(?:semantic\s+textual\s+similarity|STS\s+(?:benchmark|task)|"
+    r"sentence\s+similarity|paraphrase\s+similarity|STSB)\b",
+    re.IGNORECASE,
+)
+_STS584_METRICS = re.compile(
+    r"\b(?:Pearson|Spearman|correlation|r\s*=\s*[\d.]+|Spearman[\s\']*s\s+rho)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:Pearson|Spearman)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_semantic_textual_similarity_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_STS584_VID, findings=[])
+    text = parsed.full_text
+    if not _STS584_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_STS584_VID, findings=[])
+    if _STS584_METRICS.search(text):
+        return ValidationResult(validator_name=_STS584_VID, findings=[])
+    return ValidationResult(
+        validator_name=_STS584_VID,
+        findings=[
+            Finding(
+                code=_STS584_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses semantic textual similarity but does not "
+                    "report Pearson or Spearman correlation on an STS benchmark."
+                ),
+                location="full_text",
+                validator=_STS584_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 585 – open information extraction evaluation
+# ---------------------------------------------------------------------------
+_OPENIE_VID = "missing-open-ie-metrics"
+
+_OPENIE_TRIGGERS = re.compile(
+    r"\b(?:open\s+information\s+extraction|Open\s+IE|OpenIE|"
+    r"open[- ]domain\s+IE|relation\s+triple\s+extraction|"
+    r"open[- ]domain\s+relation\s+extraction)\b",
+    re.IGNORECASE,
+)
+_OPENIE_METRICS = re.compile(
+    r"\b(?:F1|precision|recall|AUC|yield|exact\s+match)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:F1|precision|recall)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_open_ie_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_OPENIE_VID, findings=[])
+    text = parsed.full_text
+    if not _OPENIE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_OPENIE_VID, findings=[])
+    if _OPENIE_METRICS.search(text):
+        return ValidationResult(validator_name=_OPENIE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_OPENIE_VID,
+        findings=[
+            Finding(
+                code=_OPENIE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses open information extraction but does not "
+                    "report F1, precision, recall, or AUC on a benchmark."
+                ),
+                location="full_text",
+                validator=_OPENIE_VID,
             )
         ],
     )

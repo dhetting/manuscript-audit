@@ -34555,3 +34555,248 @@ def test_progsyn580_non_empirical_no_fire() -> None:
     )
     r = validate_program_synthesis_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 581 – validate_srl_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _srl581_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t581", source_path="t581.md", source_format="markdown",
+            title="SRL evaluation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_srl581_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_srl_benchmark_metrics
+    ms, cl = _srl581_ms(
+        "We propose a semantic role labeling system trained on PropBank."
+    )
+    r = validate_srl_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-srl-benchmark-metrics" for f in r.findings)
+
+
+def test_srl581_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_srl_benchmark_metrics
+    ms, cl = _srl581_ms("Semantic role labeling: F1 = 87.4 on CoNLL-2005.")
+    r = validate_srl_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_srl581_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_srl_benchmark_metrics
+    ms, cl = _srl581_ms("We present an image captioning model.")
+    r = validate_srl_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_srl581_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_srl_benchmark_metrics
+    ms, _ = _srl581_ms("Argument identification theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_srl_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 582 – validate_entity_linking_metrics
+# ---------------------------------------------------------------------------
+def _entlink582_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t582", source_path="t582.md", source_format="markdown",
+            title="Entity linking", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_entlink582_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_entity_linking_metrics
+    ms, cl = _entlink582_ms("We propose an entity linking approach using Wikification.")
+    r = validate_entity_linking_metrics(ms, cl)
+    assert any(f.code == "missing-entity-linking-metrics" for f in r.findings)
+
+
+def test_entlink582_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_entity_linking_metrics
+    ms, cl = _entlink582_ms("Entity linking: micro-F1 = 85.3 on AIDA-CoNLL.")
+    r = validate_entity_linking_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_entlink582_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_entity_linking_metrics
+    ms, cl = _entlink582_ms("We study depth estimation methods.")
+    r = validate_entity_linking_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_entlink582_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_entity_linking_metrics
+    ms, _ = _entlink582_ms("Entity disambiguation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_entity_linking_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 583 – validate_coreference_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _coref583_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t583", source_path="t583.md", source_format="markdown",
+            title="Coreference resolution", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_coref583_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_coreference_benchmark_metrics
+    ms, cl = _coref583_ms("We propose a coreference resolution model with mention detection.")
+    r = validate_coreference_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-coreference-benchmark-metrics" for f in r.findings)
+
+
+def test_coref583_no_fire_when_conll_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_coreference_benchmark_metrics
+    ms, cl = _coref583_ms(
+        "Coreference resolution: CoNLL F1 = 79.6 on OntoNotes 5.0."
+    )
+    r = validate_coreference_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_coref583_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_coreference_benchmark_metrics
+    ms, cl = _coref583_ms("We present a speech recognition approach.")
+    r = validate_coreference_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_coref583_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coreference_benchmark_metrics
+    ms, _ = _coref583_ms("Anaphora resolution theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_coreference_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 584 – validate_semantic_textual_similarity_metrics
+# ---------------------------------------------------------------------------
+def _sts584_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t584", source_path="t584.md", source_format="markdown",
+            title="Semantic textual similarity", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sts584_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_semantic_textual_similarity_metrics
+    ms, cl = _sts584_ms("We propose a model for semantic textual similarity on the STSB.")
+    r = validate_semantic_textual_similarity_metrics(ms, cl)
+    assert any(f.code == "missing-semantic-textual-similarity-metrics" for f in r.findings)
+
+
+def test_sts584_no_fire_when_correlation_reported() -> None:
+    from manuscript_audit.validators.core import validate_semantic_textual_similarity_metrics
+    ms, cl = _sts584_ms("STS benchmark: Spearman = 0.887 on the STS-B test set.")
+    r = validate_semantic_textual_similarity_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_sts584_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_semantic_textual_similarity_metrics
+    ms, cl = _sts584_ms("We study 3D point cloud classification.")
+    r = validate_semantic_textual_similarity_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_sts584_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_semantic_textual_similarity_metrics
+    ms, _ = _sts584_ms("Sentence similarity theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_semantic_textual_similarity_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 585 – validate_open_ie_metrics
+# ---------------------------------------------------------------------------
+def _openie585_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t585", source_path="t585.md", source_format="markdown",
+            title="Open IE", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_openie585_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_open_ie_metrics
+    ms, cl = _openie585_ms(
+        "We propose an Open IE system for open-domain relation extraction."
+    )
+    r = validate_open_ie_metrics(ms, cl)
+    assert any(f.code == "missing-open-ie-metrics" for f in r.findings)
+
+
+def test_openie585_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_open_ie_metrics
+    ms, cl = _openie585_ms("Open information extraction: F1 = 62.3 on CaRB benchmark.")
+    r = validate_open_ie_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_openie585_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_open_ie_metrics
+    ms, cl = _openie585_ms("We propose a chart understanding model.")
+    r = validate_open_ie_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_openie585_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_open_ie_metrics
+    ms, _ = _openie585_ms("Relation triple extraction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_open_ie_metrics(ms, cl)
+    assert r.findings == []
