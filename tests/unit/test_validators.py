@@ -29792,3 +29792,327 @@ def test_no_captioning_trigger_no_fire() -> None:
     ms, cl = _caption485_ms("We used negative binomial regression for overdispersed data.")
     result = validate_image_captioning_metrics(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 486 – validate_vqa_accuracy_split
+# ---------------------------------------------------------------------------
+
+def _vqa486_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-vqa486",
+            source_path="/tmp/vqa486.md",
+            source_format="markdown",
+            title="VQA Accuracy Split Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vqa_without_split_fires() -> None:
+    from manuscript_audit.validators.core import validate_vqa_accuracy_split
+
+    ms, cl = _vqa486_ms(
+        "We evaluated a transformer model on the VQA v2 benchmark."
+    )
+    result = validate_vqa_accuracy_split(ms, cl)
+    assert any(f.code == "missing-vqa-accuracy-split" for f in result.findings)
+
+
+def test_vqa_with_split_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vqa_accuracy_split
+
+    ms, cl = _vqa486_ms(
+        "We evaluated a transformer model on the VQA benchmark. "
+        "VQA accuracy and yes-no accuracy split were reported."
+    )
+    result = validate_vqa_accuracy_split(ms, cl)
+    assert result.findings == []
+
+
+def test_vqa_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vqa_accuracy_split
+
+    ms, cl = _vqa486_ms("We evaluated a model on the VQA v2 benchmark.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_vqa_accuracy_split(ms, cl)
+    assert result.findings == []
+
+
+def test_no_vqa_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vqa_accuracy_split
+
+    ms, cl = _vqa486_ms("We used a random effects model for panel survey data.")
+    result = validate_vqa_accuracy_split(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 487 – validate_sgg_recall_metrics
+# ---------------------------------------------------------------------------
+
+def _sgg487_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sgg487",
+            source_path="/tmp/sgg487.md",
+            source_format="markdown",
+            title="SGG Recall Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sgg_without_recall_fires() -> None:
+    from manuscript_audit.validators.core import validate_sgg_recall_metrics
+
+    ms, cl = _sgg487_ms(
+        "We trained a scene graph generation model on Visual Genome."
+    )
+    result = validate_sgg_recall_metrics(ms, cl)
+    assert any(f.code == "missing-sgg-recall-metrics" for f in result.findings)
+
+
+def test_sgg_with_recall_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sgg_recall_metrics
+
+    ms, cl = _sgg487_ms(
+        "We trained a scene graph generation model on Visual Genome. "
+        "Recall@50 and Recall@100 were reported for predicate classification."
+    )
+    result = validate_sgg_recall_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_sgg_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sgg_recall_metrics
+
+    ms, cl = _sgg487_ms("We trained a scene graph generation model.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sgg_recall_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sgg_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sgg_recall_metrics
+
+    ms, cl = _sgg487_ms("We applied a Cox proportional hazards model on patient data.")
+    result = validate_sgg_recall_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 488 – validate_audio_event_detection_metrics
+# ---------------------------------------------------------------------------
+
+def _aed488_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-aed488",
+            source_path="/tmp/aed488.md",
+            source_format="markdown",
+            title="Audio Event Detection Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_aed_without_metrics_fires() -> None:
+    from manuscript_audit.validators.core import validate_audio_event_detection_metrics
+
+    ms, cl = _aed488_ms(
+        "A sound event detection (SED) system was trained on the DCASE 2020 task."
+    )
+    result = validate_audio_event_detection_metrics(ms, cl)
+    assert any(
+        f.code == "missing-audio-event-detection-metrics" for f in result.findings
+    )
+
+
+def test_aed_with_segment_f1_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_audio_event_detection_metrics
+
+    ms, cl = _aed488_ms(
+        "A sound event detection (SED) system was trained on DCASE. "
+        "Segment-based F1 and event-based F1 were reported."
+    )
+    result = validate_audio_event_detection_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_aed_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_audio_event_detection_metrics
+
+    ms, cl = _aed488_ms("A sound event detection system was evaluated on the DCASE task.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_audio_event_detection_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_aed_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_audio_event_detection_metrics
+
+    ms, cl = _aed488_ms("We used a hurdle model for zero-inflated count data.")
+    result = validate_audio_event_detection_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 489 – validate_table_qa_execution_accuracy
+# ---------------------------------------------------------------------------
+
+def _tableqa489_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-tableqa489",
+            source_path="/tmp/tableqa489.md",
+            source_format="markdown",
+            title="Table QA Execution Accuracy Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_tableqa_without_execution_fires() -> None:
+    from manuscript_audit.validators.core import validate_table_qa_execution_accuracy
+
+    ms, cl = _tableqa489_ms(
+        "We evaluated a semantic parsing model on the SPIDER benchmark."
+    )
+    result = validate_table_qa_execution_accuracy(ms, cl)
+    assert any(
+        f.code == "missing-table-qa-execution-accuracy" for f in result.findings
+    )
+
+
+def test_tableqa_with_execution_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_qa_execution_accuracy
+
+    ms, cl = _tableqa489_ms(
+        "We evaluated a semantic parsing model on the SPIDER benchmark. "
+        "Execution accuracy and exact match for SQL were reported."
+    )
+    result = validate_table_qa_execution_accuracy(ms, cl)
+    assert result.findings == []
+
+
+def test_tableqa_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_qa_execution_accuracy
+
+    ms, cl = _tableqa489_ms("We evaluated a semantic parsing model on SPIDER.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_table_qa_execution_accuracy(ms, cl)
+    assert result.findings == []
+
+
+def test_no_tableqa_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_qa_execution_accuracy
+
+    ms, cl = _tableqa489_ms("We used a mixed-effects ANOVA for between-group comparisons.")
+    result = validate_table_qa_execution_accuracy(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 490 – validate_code_gen_pass_at_k
+# ---------------------------------------------------------------------------
+
+def _codegen490_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-codegen490",
+            source_path="/tmp/codegen490.md",
+            source_format="markdown",
+            title="Code Generation Pass@k Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_codegen_without_pass_at_k_fires() -> None:
+    from manuscript_audit.validators.core import validate_code_gen_pass_at_k
+
+    ms, cl = _codegen490_ms(
+        "We evaluated a code generation model on the HumanEval benchmark."
+    )
+    result = validate_code_gen_pass_at_k(ms, cl)
+    assert any(f.code == "missing-code-gen-pass-at-k" for f in result.findings)
+
+
+def test_codegen_with_pass_at_k_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_code_gen_pass_at_k
+
+    ms, cl = _codegen490_ms(
+        "We evaluated a code generation model on HumanEval. "
+        "pass@1 and pass@10 were reported for functional correctness."
+    )
+    result = validate_code_gen_pass_at_k(ms, cl)
+    assert result.findings == []
+
+
+def test_codegen_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_code_gen_pass_at_k
+
+    ms, cl = _codegen490_ms("We evaluated code generation on the HumanEval benchmark.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_code_gen_pass_at_k(ms, cl)
+    assert result.findings == []
+
+
+def test_no_codegen_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_code_gen_pass_at_k
+
+    ms, cl = _codegen490_ms("We applied a latent growth curve model to panel data.")
+    result = validate_code_gen_pass_at_k(ms, cl)
+    assert result.findings == []

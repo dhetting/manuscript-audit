@@ -6992,6 +6992,11 @@ def run_deterministic_validators(
         validate_credit_scorecard_calibration(parsed, classification),
         validate_nli_artifact_evaluation(parsed, classification),
         validate_image_captioning_metrics(parsed, classification),
+        validate_vqa_accuracy_split(parsed, classification),
+        validate_sgg_recall_metrics(parsed, classification),
+        validate_audio_event_detection_metrics(parsed, classification),
+        validate_table_qa_execution_accuracy(parsed, classification),
+        validate_code_gen_pass_at_k(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -28306,6 +28311,238 @@ def validate_image_captioning_metrics(
                 ),
                 severity="moderate",
                 validator=_CAPTION_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 486 – Visual question answering: VQA accuracy split reporting
+# ---------------------------------------------------------------------------
+_VQA_TRIGGER_RE = re.compile(
+    r"\b(?:visual\s+question\s+answering|VQA\b|visual\s+QA\b|"
+    r"VQA\s+(?:dataset|benchmark|v2)|image.based\s+question\s+answering)\b",
+    re.IGNORECASE,
+)
+_VQA_METRIC_RE = re.compile(
+    r"\b(?:VQA\s+accuracy|overall\s+VQA\s+score|"
+    r"yes.no\s+accuracy|number\s+accuracy|other\s+accuracy|"
+    r"per.type\s+accuracy\s+for\s+VQA)\b",
+    re.IGNORECASE,
+)
+
+_VQA_VID = "missing-vqa-accuracy-split"
+
+
+def validate_vqa_accuracy_split(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when VQA papers lack per-type accuracy (yes/no, number, other) reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VQA_VID, findings=[])
+    text = parsed.full_text
+    if not _VQA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_VQA_VID, findings=[])
+    if _VQA_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_VQA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VQA_VID,
+        findings=[
+            Finding(
+                code=_VQA_VID,
+                message=(
+                    "VQA paper detected but per-type accuracy split (yes/no, "
+                    "number, other) was not reported."
+                ),
+                severity="minor",
+                validator=_VQA_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 487 – Scene graph generation: Recall@k reporting
+# ---------------------------------------------------------------------------
+_SGG_TRIGGER_RE = re.compile(
+    r"\b(?:scene\s+graph\s+generation|scene\s+graph\s+prediction|"
+    r"SGG\b|visual\s+relationship\s+detection|"
+    r"predicate\s+classification\s+in\s+(?:scene|visual))\b",
+    re.IGNORECASE,
+)
+_SGG_METRIC_RE = re.compile(
+    r"\b(?:Recall@\d+|R@\d+\s+for\s+(?:scene|SGG)|mean\s+Recall|mR@\d+|"
+    r"predicate\s+detection\s+recall|relationship\s+detection\s+metric)\b",
+    re.IGNORECASE,
+)
+
+_SGG_VID = "missing-sgg-recall-metrics"
+
+
+def validate_sgg_recall_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when scene graph generation papers lack Recall@k metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SGG_VID, findings=[])
+    text = parsed.full_text
+    if not _SGG_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SGG_VID, findings=[])
+    if _SGG_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SGG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SGG_VID,
+        findings=[
+            Finding(
+                code=_SGG_VID,
+                message=(
+                    "Scene graph generation paper detected but no Recall@k or "
+                    "mean Recall metrics were reported."
+                ),
+                severity="moderate",
+                validator=_SGG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 488 – Audio event detection: segment-level F1 reporting
+# ---------------------------------------------------------------------------
+_AED_TRIGGER_RE = re.compile(
+    r"\b(?:audio\s+event\s+detection|sound\s+event\s+detection|SED\b|"
+    r"acoustic\s+event\s+detection|audio\s+tagging\s+evaluation)\b",
+    re.IGNORECASE,
+)
+_AED_METRIC_RE = re.compile(
+    r"\b(?:segment.based\s+(?:F1|precision|recall)|event.based\s+F1|"
+    r"error\s+rate\s+for\s+(?:SED|audio)|collar\s+tolerance|"
+    r"polyphonic\s+sound\s+detection\s+score|PSDS\b)\b",
+    re.IGNORECASE,
+)
+
+_AED_VID = "missing-audio-event-detection-metrics"
+
+
+def validate_audio_event_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when audio event detection papers lack segment-level F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AED_VID, findings=[])
+    text = parsed.full_text
+    if not _AED_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_AED_VID, findings=[])
+    if _AED_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_AED_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AED_VID,
+        findings=[
+            Finding(
+                code=_AED_VID,
+                message=(
+                    "Audio event detection paper detected but no segment-based "
+                    "F1 or event-based detection metrics were reported."
+                ),
+                severity="moderate",
+                validator=_AED_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 489 – Table question answering: execution accuracy reporting
+# ---------------------------------------------------------------------------
+_TABLE_QA_TRIGGER_RE = re.compile(
+    r"\b(?:table\s+question\s+answering|tabular\s+QA\b|"
+    r"semantic\s+parsing\s+on\s+tables?|WikiTableQuestions|WikiSQL|"
+    r"SPIDER\s+(?:dataset|benchmark)|NL2SQL)\b",
+    re.IGNORECASE,
+)
+_TABLE_QA_METRIC_RE = re.compile(
+    r"\b(?:execution\s+accuracy|denotation\s+accuracy|exact\s+match\s+for\s+SQL|"
+    r"logical\s+form\s+accuracy|valid\s+SQL\s+ratio|"
+    r"test.suite\s+execution\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+_TABLE_QA_VID = "missing-table-qa-execution-accuracy"
+
+
+def validate_table_qa_execution_accuracy(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when table QA papers lack execution accuracy reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TABLE_QA_VID, findings=[])
+    text = parsed.full_text
+    if not _TABLE_QA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_TABLE_QA_VID, findings=[])
+    if _TABLE_QA_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_TABLE_QA_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TABLE_QA_VID,
+        findings=[
+            Finding(
+                code=_TABLE_QA_VID,
+                message=(
+                    "Table question answering paper detected but no execution "
+                    "accuracy or exact match metric was reported."
+                ),
+                severity="moderate",
+                validator=_TABLE_QA_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 490 – Code generation: pass@k reporting
+# ---------------------------------------------------------------------------
+_CODE_GEN_TRIGGER_RE = re.compile(
+    r"\b(?:code\s+generation\s+(?:model|evaluation)|neural\s+code\s+synthesis|"
+    r"HumanEval\s+benchmark|MBPP\s+benchmark|CodeBLEU|"
+    r"program\s+synthesis\s+(?:model|evaluation))\b",
+    re.IGNORECASE,
+)
+_CODE_GEN_METRIC_RE = re.compile(
+    r"\b(?:pass@\d+|pass\s+at\s+\d+|functional\s+correctness|"
+    r"test\s+case\s+pass\s+rate|code\s+execution\s+accuracy|"
+    r"CodeBLEU\s*=)\b",
+    re.IGNORECASE,
+)
+
+_CODE_GEN_VID = "missing-code-gen-pass-at-k"
+
+
+def validate_code_gen_pass_at_k(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when code generation papers lack pass@k or functional correctness reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CODE_GEN_VID, findings=[])
+    text = parsed.full_text
+    if not _CODE_GEN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CODE_GEN_VID, findings=[])
+    if _CODE_GEN_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CODE_GEN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CODE_GEN_VID,
+        findings=[
+            Finding(
+                code=_CODE_GEN_VID,
+                message=(
+                    "Code generation paper detected but no pass@k or functional "
+                    "correctness metric was reported."
+                ),
+                severity="moderate",
+                validator=_CODE_GEN_VID,
             )
         ],
     )
