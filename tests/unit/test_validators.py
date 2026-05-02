@@ -27147,3 +27147,335 @@ def test_no_rl_trigger_no_fire() -> None:
     ms, cl = _rl445_ms("We applied principal component analysis to genomic data.")
     result = validate_rl_reward_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 446 – validate_multitask_per_task_performance
+# ---------------------------------------------------------------------------
+
+def _mtl446_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mtl446",
+            source_path="/tmp/mtl446.md",
+            source_format="markdown",
+            title="Multi-task Learning Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mtl_without_per_task_fires() -> None:
+    from manuscript_audit.validators.core import validate_multitask_per_task_performance
+
+    ms, cl = _mtl446_ms(
+        "We used multi-task learning with an auxiliary task on NLP benchmarks."
+    )
+    result = validate_multitask_per_task_performance(ms, cl)
+    assert any(f.code == "missing-per-task-performance" for f in result.findings)
+
+
+def test_mtl_with_per_task_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multitask_per_task_performance
+
+    ms, cl = _mtl446_ms(
+        "We used multi-task learning with an auxiliary task. "
+        "Per-task performance for each task was reported on all benchmarks."
+    )
+    result = validate_multitask_per_task_performance(ms, cl)
+    assert result.findings == []
+
+
+def test_mtl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multitask_per_task_performance
+
+    ms, cl = _mtl446_ms("We used multi-task learning with auxiliary tasks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multitask_per_task_performance(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mtl_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multitask_per_task_performance
+
+    ms, cl = _mtl446_ms("We fit a linear mixed effects model to the data.")
+    result = validate_multitask_per_task_performance(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 447 – validate_few_shot_setup_details
+# ---------------------------------------------------------------------------
+
+def _fewshot447_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fewshot447",
+            source_path="/tmp/fewshot447.md",
+            source_format="markdown",
+            title="Few-shot Setup Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_fewshot_without_details_fires() -> None:
+    from manuscript_audit.validators.core import validate_few_shot_setup_details
+
+    ms, cl = _fewshot447_ms(
+        "We evaluated GPT-4 using few-shot learning on classification tasks."
+    )
+    result = validate_few_shot_setup_details(ms, cl)
+    assert any(f.code == "missing-few-shot-setup-details" for f in result.findings)
+
+
+def test_fewshot_with_k_details_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_few_shot_setup_details
+
+    ms, cl = _fewshot447_ms(
+        "We evaluated GPT-4 using few-shot learning. "
+        "5-shot in-context examples were provided per task."
+    )
+    result = validate_few_shot_setup_details(ms, cl)
+    assert result.findings == []
+
+
+def test_fewshot_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_few_shot_setup_details
+
+    ms, cl = _fewshot447_ms("We evaluated using few-shot evaluation on benchmarks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_few_shot_setup_details(ms, cl)
+    assert result.findings == []
+
+
+def test_no_fewshot_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_few_shot_setup_details
+
+    ms, cl = _fewshot447_ms("We applied ANOVA to compare group means in the experiment.")
+    result = validate_few_shot_setup_details(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 448 – validate_knowledge_distillation_setup
+# ---------------------------------------------------------------------------
+
+def _kd448_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-kd448",
+            source_path="/tmp/kd448.md",
+            source_format="markdown",
+            title="Knowledge Distillation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_kd_without_setup_fires() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_setup
+
+    ms, cl = _kd448_ms(
+        "We applied knowledge distillation to compress the large BERT model."
+    )
+    result = validate_knowledge_distillation_setup(ms, cl)
+    assert any(f.code == "missing-distillation-setup" for f in result.findings)
+
+
+def test_kd_with_teacher_student_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_setup
+
+    ms, cl = _kd448_ms(
+        "We applied knowledge distillation. "
+        "The teacher model was BERT-large and the student model was BERT-small."
+    )
+    result = validate_knowledge_distillation_setup(ms, cl)
+    assert result.findings == []
+
+
+def test_kd_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_setup
+
+    ms, cl = _kd448_ms("We applied knowledge distillation to compress large models.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_knowledge_distillation_setup(ms, cl)
+    assert result.findings == []
+
+
+def test_no_kd_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_setup
+
+    ms, cl = _kd448_ms("We used principal component analysis for dimensionality reduction.")
+    result = validate_knowledge_distillation_setup(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 449 – validate_federated_learning_setup
+# ---------------------------------------------------------------------------
+
+def _fl449_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fl449",
+            source_path="/tmp/fl449.md",
+            source_format="markdown",
+            title="Federated Learning Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_fl_without_rounds_fires() -> None:
+    from manuscript_audit.validators.core import validate_federated_learning_setup
+
+    ms, cl = _fl449_ms(
+        "We used federated learning to train a model across distributed hospitals."
+    )
+    result = validate_federated_learning_setup(ms, cl)
+    assert any(f.code == "missing-federated-setup" for f in result.findings)
+
+
+def test_fl_with_rounds_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_federated_learning_setup
+
+    ms, cl = _fl449_ms(
+        "We used federated learning across distributed hospitals. "
+        "Training ran for 100 communication rounds with 50 participating clients."
+    )
+    result = validate_federated_learning_setup(ms, cl)
+    assert result.findings == []
+
+
+def test_fl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_federated_learning_setup
+
+    ms, cl = _fl449_ms(
+        "We used federated learning to train a model across distributed nodes."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_federated_learning_setup(ms, cl)
+    assert result.findings == []
+
+
+def test_no_fl_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_federated_learning_setup
+
+    ms, cl = _fl449_ms("We used gradient descent to train a neural network model.")
+    result = validate_federated_learning_setup(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 450 – validate_continual_learning_forgetting_metric
+# ---------------------------------------------------------------------------
+
+def _cl450_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cl450",
+            source_path="/tmp/cl450.md",
+            source_format="markdown",
+            title="Continual Learning Forgetting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cl_without_forgetting_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continual_learning_forgetting_metric,
+    )
+
+    ms, cl = _cl450_ms(
+        "We proposed a continual learning method for sequential task learning."
+    )
+    result = validate_continual_learning_forgetting_metric(ms, cl)
+    assert any(f.code == "missing-forgetting-metric" for f in result.findings)
+
+
+def test_cl_with_backward_transfer_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continual_learning_forgetting_metric,
+    )
+
+    ms, cl = _cl450_ms(
+        "We proposed a continual learning method. "
+        "Backward transfer and the forgetting measure were reported across all tasks."
+    )
+    result = validate_continual_learning_forgetting_metric(ms, cl)
+    assert result.findings == []
+
+
+def test_cl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continual_learning_forgetting_metric,
+    )
+
+    ms, cl = _cl450_ms("We proposed a continual learning method for sequential tasks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_continual_learning_forgetting_metric(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cl_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_continual_learning_forgetting_metric,
+    )
+
+    ms, cl = _cl450_ms(
+        "We performed survival analysis using a Cox proportional hazards model."
+    )
+    result = validate_continual_learning_forgetting_metric(ms, cl)
+    assert result.findings == []

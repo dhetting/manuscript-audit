@@ -6952,6 +6952,11 @@ def run_deterministic_validators(
         validate_object_detection_metrics(parsed, classification),
         validate_gnn_evaluation_metrics(parsed, classification),
         validate_rl_reward_reporting(parsed, classification),
+        validate_multitask_per_task_performance(parsed, classification),
+        validate_few_shot_setup_details(parsed, classification),
+        validate_knowledge_distillation_setup(parsed, classification),
+        validate_federated_learning_setup(parsed, classification),
+        validate_continual_learning_forgetting_metric(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -26385,6 +26390,234 @@ def validate_rl_reward_reporting(
                 ),
                 severity="moderate",
                 validator=_RL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 446 – Multi-task learning: task-specific performance reporting
+# ---------------------------------------------------------------------------
+_MTL_TRIGGER_RE = re.compile(
+    r"\b(?:multi-task\s+learning|multitask\s+learning|joint\s+training|"
+    r"shared\s+representation\s+learning|auxiliary\s+task|auxiliary\s+loss)\b",
+    re.IGNORECASE,
+)
+_MTL_METRIC_RE = re.compile(
+    r"\b(?:per-task\s+(?:performance|accuracy|F1|score)|task-specific\s+(?:result|metric)|"
+    r"each\s+task(?:'s)?\s+(?:accuracy|F1|score|performance)|"
+    r"individual\s+task\s+(?:result|performance))\b",
+    re.IGNORECASE,
+)
+
+_MTL_VID = "missing-per-task-performance"
+
+
+def validate_multitask_per_task_performance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when multi-task learning papers lack per-task performance breakdowns."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MTL_VID, findings=[])
+    text = parsed.full_text
+    if not _MTL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_MTL_VID, findings=[])
+    if _MTL_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_MTL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MTL_VID,
+        findings=[
+            Finding(
+                code=_MTL_VID,
+                message=(
+                    "Multi-task learning paper detected but no per-task performance "
+                    "breakdown was reported."
+                ),
+                severity="minor",
+                validator=_MTL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 447 – Zero-shot / few-shot: prompt / example count disclosure
+# ---------------------------------------------------------------------------
+_ZFS_TRIGGER_RE = re.compile(
+    r"\b(?:zero-shot|zero\s+shot|few-shot|few\s+shot)\s+"
+    r"(?:learning|classification|evaluation|prompting|inference)\b",
+    re.IGNORECASE,
+)
+_ZFS_DETAIL_RE = re.compile(
+    r"\b(?:\d+-shot|zero-shot\s+prompt|\d+\s+examples?\s+per\s+class|"
+    r"k\s*=\s*\d+\s+examples?|in-context\s+examples?|demonstration\s+examples?)\b",
+    re.IGNORECASE,
+)
+
+_ZFS_VID = "missing-few-shot-setup-details"
+
+
+def validate_few_shot_setup_details(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when zero/few-shot papers lack example count or prompt details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ZFS_VID, findings=[])
+    text = parsed.full_text
+    if not _ZFS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ZFS_VID, findings=[])
+    if _ZFS_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_ZFS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ZFS_VID,
+        findings=[
+            Finding(
+                code=_ZFS_VID,
+                message=(
+                    "Zero-shot or few-shot paper detected but prompt construction "
+                    "or example count details were not reported."
+                ),
+                severity="moderate",
+                validator=_ZFS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 448 – Knowledge distillation: teacher/student architecture disclosure
+# ---------------------------------------------------------------------------
+_KD_TRIGGER_RE = re.compile(
+    r"\b(?:knowledge\s+distillation|teacher[-\s]student\s+training|"
+    r"model\s+compression\s+via\s+distillation|soft\s+label\s+distillation)\b",
+    re.IGNORECASE,
+)
+_KD_DETAIL_RE = re.compile(
+    r"\b(?:teacher\s+model|student\s+model|distillation\s+temperature|"
+    r"soft\s+target|temperature\s+scaling\s+for\s+distillation|KL\s+divergence\s+loss)\b",
+    re.IGNORECASE,
+)
+
+_KD_VID = "missing-distillation-setup"
+
+
+def validate_knowledge_distillation_setup(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when knowledge distillation papers lack teacher/student setup details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_KD_VID, findings=[])
+    text = parsed.full_text
+    if not _KD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_KD_VID, findings=[])
+    if _KD_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_KD_VID, findings=[])
+    return ValidationResult(
+        validator_name=_KD_VID,
+        findings=[
+            Finding(
+                code=_KD_VID,
+                message=(
+                    "Knowledge distillation paper detected but teacher/student "
+                    "architecture or temperature details were not reported."
+                ),
+                severity="minor",
+                validator=_KD_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 449 – Federated learning: communication round / privacy reporting
+# ---------------------------------------------------------------------------
+_FL_TRIGGER_RE = re.compile(
+    r"\b(?:federated\s+learning|federated\s+optimization|"
+    r"FedAvg|FedProx|cross-silo\s+federated|cross-device\s+federated)\b",
+    re.IGNORECASE,
+)
+_FL_DETAIL_RE = re.compile(
+    r"\b(?:communication\s+rounds?|number\s+of\s+clients?|client\s+participation|"
+    r"differential\s+privacy|privacy\s+budget|epsilon-delta\s+privacy|"
+    r"local\s+epochs?)\b",
+    re.IGNORECASE,
+)
+
+_FL_VID = "missing-federated-setup"
+
+
+def validate_federated_learning_setup(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when federated learning papers lack communication round or privacy details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FL_VID, findings=[])
+    text = parsed.full_text
+    if not _FL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_FL_VID, findings=[])
+    if _FL_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_FL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FL_VID,
+        findings=[
+            Finding(
+                code=_FL_VID,
+                message=(
+                    "Federated learning paper detected but communication rounds, "
+                    "client count, or privacy budget details were not reported."
+                ),
+                severity="moderate",
+                validator=_FL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 450 – Continual learning: forgetting metric reporting
+# ---------------------------------------------------------------------------
+_CL_TRIGGER_RE = re.compile(
+    r"\b(?:continual\s+learning|incremental\s+learning|lifelong\s+learning|"
+    r"sequential\s+task\s+learning|catastrophic\s+forgetting)\b",
+    re.IGNORECASE,
+)
+_CL_METRIC_RE = re.compile(
+    r"\b(?:backward\s+transfer|forward\s+transfer|average\s+accuracy|"
+    r"forgetting\s+measure|intransigence|plasticity[-–]stability|"
+    r"catastrophic\s+forgetting\s+(?:was|is)\s+(?:measured|evaluated|reported|mitigated))\b",
+    re.IGNORECASE,
+)
+
+_CL_VID = "missing-forgetting-metric"
+
+
+def validate_continual_learning_forgetting_metric(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when continual learning papers lack forgetting metric reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CL_VID, findings=[])
+    text = parsed.full_text
+    if not _CL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CL_VID, findings=[])
+    if _CL_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CL_VID,
+        findings=[
+            Finding(
+                code=_CL_VID,
+                message=(
+                    "Continual learning paper detected but no forgetting metric "
+                    "(backward transfer, forgetting measure) was reported."
+                ),
+                severity="moderate",
+                validator=_CL_VID,
             )
         ],
     )
