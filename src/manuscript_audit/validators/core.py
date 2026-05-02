@@ -6744,6 +6744,11 @@ def run_deterministic_validators(
         validate_convenience_sample_generalization(parsed, classification),
         validate_icc_reliability_reporting(parsed, classification),
         validate_anova_post_hoc_reporting(parsed, classification),
+        validate_adverse_events_reporting(parsed, classification),
+        validate_construct_operationalization(parsed, classification),
+        validate_regression_coefficient_ci(parsed, classification),
+        validate_longitudinal_followup_duration(parsed, classification),
+        validate_bayesian_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -14332,6 +14337,359 @@ def validate_anova_post_hoc_reporting(
                     "Report follow-up comparisons to identify which groups differ."
                 ),
                 validator="anova_post_hoc_reporting",
+                location="Statistical Analysis / Results",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 236 – Missing adverse events reporting (clinical trials)
+# ---------------------------------------------------------------------------
+
+_CLINICAL_TRIAL_RE = re.compile(
+    r"\b(?:clinical\s+trial|randomised?\s+controlled\s+trial|RCT\b|"
+    r"intervention\s+(?:arm|group|condition)|control\s+(?:arm|group|condition)|"
+    r"treatment\s+(?:group|arm|condition)|experimental\s+(?:group|arm|condition)|"
+    r"participants?\s+were\s+randomis(?:ed|ed)\s+to)\b",
+    re.IGNORECASE,
+)
+_ADVERSE_EVENT_RE = re.compile(
+    r"\b(?:adverse\s+(?:event|effect|reaction|outcome)|side\s+effect|"
+    r"safety\s+(?:outcome|endpoint|data|report(?:ing)?)|"
+    r"harm(?:ful\s+(?:event|effect))?|"
+    r"no\s+adverse\s+events?\s+(?:were\s+)?(?:reported?|observed?|occurred?|detected?)|"
+    r"adverse\s+events?\s+(?:were|was)\s+(?:monitored?|recorded?|tracked?|collected?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_adverse_events_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag clinical trial manuscripts without adverse events reporting.
+
+    Emits ``missing-adverse-events-report`` (major) when an RCT or intervention
+    study is detected but no adverse events or safety outcomes are reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="adverse_events_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="adverse_events_reporting", findings=[]
+        )
+
+    if not _CLINICAL_TRIAL_RE.search(full):
+        return ValidationResult(
+            validator_name="adverse_events_reporting", findings=[]
+        )
+
+    if _ADVERSE_EVENT_RE.search(full):
+        return ValidationResult(
+            validator_name="adverse_events_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="adverse_events_reporting",
+        findings=[
+            Finding(
+                code="missing-adverse-events-report",
+                severity="major",
+                message=(
+                    "Clinical trial or RCT detected but no adverse events or safety "
+                    "outcomes are reported. Report adverse events (or explicitly state "
+                    "none occurred) in compliance with CONSORT guidelines."
+                ),
+                validator="adverse_events_reporting",
+                location="Results / Safety",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 237 – Ambiguous pronoun for measured construct
+# ---------------------------------------------------------------------------
+
+_PRONOUN_CONSTRUCT_RE = re.compile(
+    r"\b(?:it\s+was\s+(?:measured?|assessed?|evaluated?|quantified?)|"
+    r"they\s+were\s+(?:measured?|assessed?|evaluated?|quantified?)|"
+    r"this\s+was\s+(?:measured?|assessed?|evaluated?|operationalized?)|"
+    r"it\s+(?:measures?|assesses?|captures?|reflects?)\s+(?:the\s+level|"
+    r"participant|subject|respondent))\b",
+    re.IGNORECASE,
+)
+_CONSTRUCT_DEFINITION_RE = re.compile(
+    r"\b(?:was\s+operationalized?|was\s+defined?\s+as|was\s+conceptualised?\s+as|"
+    r"was\s+measured?\s+using|was\s+assessed?\s+(?:with|using|by\s+means\s+of)|"
+    r"was\s+quantified?\s+(?:as|by|through)|"
+    r"(?:measure|scale|instrument|questionnaire|index|composite)\s+of\s+\w+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_construct_operationalization(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts using vague pronoun references for measured constructs.
+
+    Emits ``ambiguous-construct-operationalization`` (minor) when vague
+    pronouns (it, they) are used to refer to measured constructs without
+    explicit operationalisation statements.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="construct_operationalization", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="construct_operationalization", findings=[]
+        )
+
+    if not _PRONOUN_CONSTRUCT_RE.search(full):
+        return ValidationResult(
+            validator_name="construct_operationalization", findings=[]
+        )
+
+    if _CONSTRUCT_DEFINITION_RE.search(full):
+        return ValidationResult(
+            validator_name="construct_operationalization", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="construct_operationalization",
+        findings=[
+            Finding(
+                code="ambiguous-construct-operationalization",
+                severity="minor",
+                message=(
+                    "Vague pronoun reference used for a measured construct without "
+                    "an explicit operationalisation statement. "
+                    "Define each construct with a clear operational definition."
+                ),
+                validator="construct_operationalization",
+                location="Methods / Measures",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 238 – Failure to report confidence interval for regression coefficient
+# ---------------------------------------------------------------------------
+
+_REGRESSION_COEFF_RE = re.compile(
+    r"\b(?:regression\s+coefficient|unstandardized?\s+(?:coefficient|beta)|"
+    r"standardized?\s+(?:coefficient|beta)|B\s*=\s*[-\d\.]+|"
+    r"beta\s*=\s*[-\d\.]+|\bβ\s*=\s*[-\d\.]+)\b",
+    re.IGNORECASE,
+)
+_COEFF_CI_RE = re.compile(
+    r"\b(?:95\s*%\s*CI\s*(?:for\s+(?:the\s+)?(?:coefficient|beta|B))?|"
+    r"confidence\s+interval\s+(?:for\s+(?:the\s+)?(?:coefficient|beta|B)|"
+    r"around\s+(?:the\s+)?(?:coefficient|estimate))|"
+    r"\[[-\d\.\s]+,\s*[-\d\.\s]+\]|"
+    r"CI\s*[:=\[]\s*[-\d\.]+\s*(?:to|,)\s*[-\d\.]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_regression_coefficient_ci(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression analyses that report coefficients without confidence intervals.
+
+    Emits ``missing-regression-coefficient-ci`` (minor) when regression
+    coefficients are reported but no confidence intervals are given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="regression_coefficient_ci", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="regression_coefficient_ci", findings=[]
+        )
+
+    if not _REGRESSION_COEFF_RE.search(full):
+        return ValidationResult(
+            validator_name="regression_coefficient_ci", findings=[]
+        )
+
+    if _COEFF_CI_RE.search(full):
+        return ValidationResult(
+            validator_name="regression_coefficient_ci", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="regression_coefficient_ci",
+        findings=[
+            Finding(
+                code="missing-regression-coefficient-ci",
+                severity="minor",
+                message=(
+                    "Regression coefficients reported without confidence intervals. "
+                    "Report 95% CIs for all regression coefficients to convey precision."
+                ),
+                validator="regression_coefficient_ci",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 239 – Missing follow-up duration for longitudinal study
+# ---------------------------------------------------------------------------
+
+_LONGITUDINAL_FOLLOWUP_RE = re.compile(
+    r"\b(?:longitudinal\s+(?:study|design|data|analysis|follow.?up)|"
+    r"prospective\s+(?:study|cohort|design)|"
+    r"followed?\s+(?:participants?|subjects?|patients?)\s+(?:over|for|during)|"
+    r"follow.?up\s+(?:assessment|measurement|wave|data\s+collection))\b",
+    re.IGNORECASE,
+)
+_FOLLOWUP_DURATION_RE = re.compile(
+    r"\b(?:followed?\s+(?:for|over)\s+\d+\s*(?:weeks?|months?|years?)|"
+    r"\d+.?(?:week|month|year).?follow.?up|"
+    r"follow.?up\s+(?:period|duration|interval)\s+(?:was|of)\s+\d+\s*"
+    r"(?:weeks?|months?|years?)|"
+    r"at\s+(?:\d+|one|two|three|four|five|six|twelve|eighteen|twenty.four)\s*"
+    r"(?:weeks?|months?|years?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_longitudinal_followup_duration(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag longitudinal studies that do not report the follow-up duration.
+
+    Emits ``missing-followup-duration`` (moderate) when a longitudinal or
+    prospective study is described but no follow-up duration is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="longitudinal_followup_duration", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="longitudinal_followup_duration", findings=[]
+        )
+
+    if not _LONGITUDINAL_FOLLOWUP_RE.search(full):
+        return ValidationResult(
+            validator_name="longitudinal_followup_duration", findings=[]
+        )
+
+    if _FOLLOWUP_DURATION_RE.search(full):
+        return ValidationResult(
+            validator_name="longitudinal_followup_duration", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="longitudinal_followup_duration",
+        findings=[
+            Finding(
+                code="missing-followup-duration",
+                severity="moderate",
+                message=(
+                    "Longitudinal or prospective study detected but no follow-up "
+                    "duration or assessment interval is specified. "
+                    "Report the length of the follow-up period explicitly."
+                ),
+                validator="longitudinal_followup_duration",
+                location="Methods / Participants",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 240 – Missing Bayes factor or credible interval for Bayesian analysis
+# ---------------------------------------------------------------------------
+
+_BAYESIAN_RE = re.compile(
+    r"\b(?:Bayesian\s+(?:analysis|inference|statistics?|approach|framework|model|"
+    r"regression|ANOVA|t.?test|factor\s+analysis)|"
+    r"Bayes\s+(?:factor|theorem|rule)|prior\s+(?:distribution|probability|belief)|"
+    r"posterior\s+(?:distribution|probability|estimate)|"
+    r"MCMC\b|Markov\s+chain\s+Monte\s+Carlo|Stan\b|JAGS\b|"
+    r"credible\s+interval|"
+    r"we\s+used?\s+a\s+Bayesian)\b",
+    re.IGNORECASE,
+)
+_BAYESIAN_REPORT_RE = re.compile(
+    r"\b(?:Bayes\s+factor\s*(?:\(\s*BF\s*\))?\s*=|"
+    r"BF\s*(?:10|01|incl|excl)?\s*=\s*\d|"
+    r"credible\s+interval\s*[:=\[]\s*[-\d\.]+|"
+    r"\d+\s*%\s*(?:highest\s+posterior\s+density|HPD|credible\s+interval)|"
+    r"HDI\s*[:=\[]\s*[-\d\.]|"
+    r"posterior\s+(?:mean|median|mode)\s*=\s*[-\d\.])\b",
+    re.IGNORECASE,
+)
+
+
+def validate_bayesian_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Bayesian analyses without Bayes factor or credible interval reporting.
+
+    Emits ``missing-bayesian-reporting`` (moderate) when Bayesian analysis is
+    used but no Bayes factor, credible interval, or HDI is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="bayesian_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="bayesian_reporting", findings=[]
+        )
+
+    if not _BAYESIAN_RE.search(full):
+        return ValidationResult(
+            validator_name="bayesian_reporting", findings=[]
+        )
+
+    if _BAYESIAN_REPORT_RE.search(full):
+        return ValidationResult(
+            validator_name="bayesian_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="bayesian_reporting",
+        findings=[
+            Finding(
+                code="missing-bayesian-reporting",
+                severity="moderate",
+                message=(
+                    "Bayesian analysis is used but no Bayes factor, credible interval, "
+                    "or HDI is reported. "
+                    "Report Bayes factors (BF) and/or credible intervals for all key estimates."
+                ),
+                validator="bayesian_reporting",
                 location="Statistical Analysis / Results",
                 evidence=[],
             )

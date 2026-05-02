@@ -12858,3 +12858,340 @@ def test_anova_non_empirical_no_fire() -> None:
     )
     result = validate_anova_post_hoc_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 236 – validate_adverse_events_reporting
+# ---------------------------------------------------------------------------
+
+def _ae_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ae",
+            source_path="/tmp/ae.md",
+            source_format="markdown",
+            title="Adverse Events Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rct_without_adverse_events_fires() -> None:
+    from manuscript_audit.validators.core import validate_adverse_events_reporting
+
+    ms, cl = _ae_ms(
+        "A randomised controlled trial compared CBT to waitlist control. "
+        "Participants were randomised to the treatment group or control group. "
+        "Outcomes were assessed at 8 weeks post-randomisation."
+    )
+    result = validate_adverse_events_reporting(ms, cl)
+    assert any(f.code == "missing-adverse-events-report" for f in result.findings)
+
+
+def test_rct_with_adverse_events_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adverse_events_reporting
+
+    ms, cl = _ae_ms(
+        "A randomised controlled trial compared CBT to waitlist control. "
+        "No adverse events were reported by participants in either group."
+    )
+    result = validate_adverse_events_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_observational_no_adverse_events_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adverse_events_reporting
+
+    ms, cl = _ae_ms(
+        "This cross-sectional survey examined sleep quality among university students."
+    )
+    result = validate_adverse_events_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_adverse_events_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adverse_events_reporting
+
+    ms, cl = _ae_ms(
+        "This RCT compared two interventions."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_adverse_events_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 237 – validate_construct_operationalization
+# ---------------------------------------------------------------------------
+
+def _construct_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-construct",
+            source_path="/tmp/construct.md",
+            source_format="markdown",
+            title="Construct Operationalization Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pronoun_construct_without_definition_fires() -> None:
+    from manuscript_audit.validators.core import validate_construct_operationalization
+
+    ms, cl = _construct_ms(
+        "Anxiety was the primary outcome. It was assessed and participants completed "
+        "the measure at two time points."
+    )
+    result = validate_construct_operationalization(ms, cl)
+    assert any(f.code == "ambiguous-construct-operationalization" for f in result.findings)
+
+
+def test_construct_with_operationalization_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_construct_operationalization
+
+    ms, cl = _construct_ms(
+        "Anxiety was operationalized using the GAD-7 scale (Spitzer et al., 2006). "
+        "It was measured at baseline and 8-week follow-up."
+    )
+    result = validate_construct_operationalization(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pronoun_construct_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_construct_operationalization
+
+    ms, cl = _construct_ms(
+        "Depressive symptoms were assessed using the PHQ-9. "
+        "Anxiety was assessed using the GAD-7."
+    )
+    result = validate_construct_operationalization(ms, cl)
+    assert result.findings == []
+
+
+def test_construct_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_construct_operationalization
+
+    ms, cl = _construct_ms("It was measured using a scale.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_construct_operationalization(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 238 – validate_regression_coefficient_ci
+# ---------------------------------------------------------------------------
+
+def _coeff_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-coeff",
+            source_path="/tmp/coeff.md",
+            source_format="markdown",
+            title="Regression Coefficient CI Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_coefficient_without_ci_fires() -> None:
+    from manuscript_audit.validators.core import validate_regression_coefficient_ci
+
+    ms, cl = _coeff_ms(
+        "The regression coefficient for hours of study was B = 0.43 (p = 0.01)."
+    )
+    result = validate_regression_coefficient_ci(ms, cl)
+    assert any(f.code == "missing-regression-coefficient-ci" for f in result.findings)
+
+
+def test_coefficient_with_ci_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_coefficient_ci
+
+    ms, cl = _coeff_ms(
+        "The regression coefficient for hours of study was B = 0.43 "
+        "(95% CI [0.18, 0.68], p = 0.01)."
+    )
+    result = validate_regression_coefficient_ci(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_coefficient_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_coefficient_ci
+
+    ms, cl = _coeff_ms(
+        "Descriptive statistics and correlations were computed for all study variables."
+    )
+    result = validate_regression_coefficient_ci(ms, cl)
+    assert result.findings == []
+
+
+def test_coefficient_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_coefficient_ci
+
+    ms, cl = _coeff_ms("The regression coefficient B = 0.5 is discussed theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_regression_coefficient_ci(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 239 – validate_longitudinal_followup_duration
+# ---------------------------------------------------------------------------
+
+def _followup_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-followup",
+            source_path="/tmp/followup.md",
+            source_format="markdown",
+            title="Follow-Up Duration Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_longitudinal_without_duration_fires() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_followup_duration
+
+    ms, cl = _followup_ms(
+        "This longitudinal study followed participants across multiple time points. "
+        "Data were collected at baseline, mid-point, and follow-up assessment."
+    )
+    result = validate_longitudinal_followup_duration(ms, cl)
+    assert any(f.code == "missing-followup-duration" for f in result.findings)
+
+
+def test_longitudinal_with_duration_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_followup_duration
+
+    ms, cl = _followup_ms(
+        "This longitudinal study followed participants for 12 months. "
+        "Data were collected at baseline, 6-month, and 12-month follow-up."
+    )
+    result = validate_longitudinal_followup_duration(ms, cl)
+    assert result.findings == []
+
+
+def test_cross_sectional_no_followup_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_followup_duration
+
+    ms, cl = _followup_ms(
+        "This cross-sectional survey assessed anxiety and depression in a single session."
+    )
+    result = validate_longitudinal_followup_duration(ms, cl)
+    assert result.findings == []
+
+
+def test_longitudinal_followup_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_longitudinal_followup_duration
+
+    ms, cl = _followup_ms("This longitudinal study is discussed theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_longitudinal_followup_duration(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 240 – validate_bayesian_reporting
+# ---------------------------------------------------------------------------
+
+def _bayesian_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bayesian",
+            source_path="/tmp/bayesian.md",
+            source_format="markdown",
+            title="Bayesian Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bayesian_without_bf_fires() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_reporting
+
+    ms, cl = _bayesian_ms(
+        "We used a Bayesian analysis to test the hypothesis that mindfulness "
+        "reduces anxiety. Prior distributions were specified based on prior literature."
+    )
+    result = validate_bayesian_reporting(ms, cl)
+    assert any(f.code == "missing-bayesian-reporting" for f in result.findings)
+
+
+def test_bayesian_with_bf_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_reporting
+
+    ms, cl = _bayesian_ms(
+        "We used a Bayesian analysis to test our hypothesis. "
+        "The Bayes factor BF10 = 8.3 indicated strong evidence for the alternative."
+    )
+    result = validate_bayesian_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_frequentist_no_bayesian_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_reporting
+
+    ms, cl = _bayesian_ms(
+        "We used linear regression with NHST to test group differences."
+    )
+    result = validate_bayesian_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_bayesian_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_reporting
+
+    ms, cl = _bayesian_ms("Bayesian analysis is discussed in this framework.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_bayesian_reporting(ms, cl)
+    assert result.findings == []
