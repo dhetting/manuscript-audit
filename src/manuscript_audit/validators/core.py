@@ -6872,6 +6872,11 @@ def run_deterministic_validators(
         validate_structural_break_test(parsed, classification),
         validate_variance_inflation_factor_reporting(parsed, classification),
         validate_ordinal_regression_assumption(parsed, classification),
+        validate_granger_causality_disclosure(parsed, classification),
+        validate_cointegration_test_disclosure(parsed, classification),
+        validate_unit_root_test_disclosure(parsed, classification),
+        validate_arch_garch_specification(parsed, classification),
+        validate_panel_effects_justification(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -22239,6 +22244,287 @@ def validate_ordinal_regression_assumption(
                 message=(
                     "Ordinal logistic regression is described but no check of the "
                     "proportional odds assumption is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 366 – Granger causality test disclosure
+# ---------------------------------------------------------------------------
+
+_GRANGER_TRIGGER_RE = re.compile(
+    r"\b(?:Granger\s+(?:caus(?:ality|es)|test)"
+    r"|Granger[\s-]causal"
+    r"|predictive\s+causality\s+test)\b",
+    re.IGNORECASE,
+)
+
+_GRANGER_DISCLOSED_RE = re.compile(
+    r"\b(?:lag\s+(?:length|order|selection)"
+    r"|optimal\s+lag"
+    r"|AIC\b|BIC\b|Akaike|Schwarz"
+    r"|F[\s-]statistic\s+(?:for|of)\s+Granger"
+    r"|Granger\s+causality\s+test\s+(?:result|showed|indicated|was\s+significant))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_granger_causality_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Granger causality tests without lag length disclosure.
+
+    Emits ``missing-granger-lag-disclosure`` (minor) when a Granger causality
+    test is mentioned but the lag length or selection criterion is not reported.
+    """
+    _vid = "validate_granger_causality_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _GRANGER_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _GRANGER_DISCLOSED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-granger-lag-disclosure",
+                message=(
+                    "A Granger causality test is reported but the lag length or "
+                    "lag selection criterion is not disclosed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 367 – cointegration test disclosure
+# ---------------------------------------------------------------------------
+
+_COINT_TRIGGER_RE = re.compile(
+    r"\b(?:cointegrat(?:ion|ed|ing)"
+    r"|long[\s-]run\s+equilibrium\s+relationship"
+    r"|error[\s-]correction\s+model"
+    r"|ECM\b"
+    r"|VECM\b)\b",
+    re.IGNORECASE,
+)
+
+_COINT_TESTED_RE = re.compile(
+    r"\b(?:Johansen\s+(?:test|cointegration)"
+    r"|Engle[\s-]Granger\s+(?:test|procedure)"
+    r"|bounds\s+test"
+    r"|ARDL\s+bounds"
+    r"|trace\s+(?:statistic|test)"
+    r"|cointegration\s+test\s+(?:result|showed|confirmed|indicated))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cointegration_test_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag cointegration analyses without explicit test disclosure.
+
+    Emits ``missing-cointegration-test`` (minor) when cointegration or
+    error-correction models are used but no cointegration test is mentioned.
+    """
+    _vid = "validate_cointegration_test_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _COINT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _COINT_TESTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cointegration-test",
+                message=(
+                    "Cointegration or error-correction modelling is described but "
+                    "no cointegration test (e.g., Johansen, Engle-Granger) is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 368 – unit root test disclosure
+# ---------------------------------------------------------------------------
+
+_UNIT_ROOT_TRIGGER_RE = re.compile(
+    r"\b(?:time[\s-]series\s+(?:data|model|regression)"
+    r"|stationarity"
+    r"|non[\s-]?stationary\s+(?:data|series|variable)"
+    r"|integrated\s+process)\b",
+    re.IGNORECASE,
+)
+
+_UNIT_ROOT_TESTED_RE = re.compile(
+    r"\b(?:Augmented\s+Dickey[\s-]Fuller"
+    r"|ADF\s+test"
+    r"|Phillips[\s-]Perron\s+test"
+    r"|PP\s+test"
+    r"|KPSS\s+test"
+    r"|unit[\s-]root\s+test"
+    r"|stationarity\s+(?:test|was\s+(?:tested|confirmed|rejected)))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_unit_root_test_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag time-series analyses without unit root testing.
+
+    Emits ``missing-unit-root-test`` (minor) when time-series data are
+    analysed but no unit root or stationarity test is mentioned.
+    """
+    _vid = "validate_unit_root_test_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _UNIT_ROOT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _UNIT_ROOT_TESTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-unit-root-test",
+                message=(
+                    "Time-series data are analysed but no unit root or stationarity "
+                    "test (e.g., ADF, KPSS) is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 369 – ARCH/GARCH volatility model disclosure
+# ---------------------------------------------------------------------------
+
+_ARCH_TRIGGER_RE = re.compile(
+    r"\b(?:ARCH\b|GARCH\b|EGARCH\b|DCC[\s-]GARCH"
+    r"|volatility\s+(?:model(?:ling|ing)?|clustering|forecasting)"
+    r"|conditional\s+heteroscedasticity)\b",
+    re.IGNORECASE,
+)
+
+_ARCH_SPEC_RE = re.compile(
+    r"(?:GARCH\s*\(\s*\d+\s*,\s*\d+\s*\)"
+    r"|ARCH\s*\(\s*\d+\s*\)"
+    r"|\border\s+(?:p|q)\s*=\s*\d"
+    r"|\blag\s+order\s+(?:of\s+)?\d"
+    r"|\binformation\s+criterion\s+(?:AIC|BIC|AICC)"
+    r"|\bAIC\b|\bBIC\b)",
+    re.IGNORECASE,
+)
+
+
+def validate_arch_garch_specification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ARCH/GARCH models without order specification.
+
+    Emits ``missing-arch-order-specification`` (minor) when ARCH or GARCH
+    models are described but the model order is not specified.
+    """
+    _vid = "validate_arch_garch_specification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ARCH_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ARCH_SPEC_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-arch-order-specification",
+                message=(
+                    "ARCH or GARCH modelling is described but the model order "
+                    "specification (e.g., GARCH(1,1)) is not provided."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 370 – panel data fixed/random effects justification
+# ---------------------------------------------------------------------------
+
+_PANEL_TRIGGER_RE = re.compile(
+    r"\b(?:panel\s+(?:data|regression|model|analysis)"
+    r"|fixed[\s-]effects?\s+(?:model|regression|estimator)"
+    r"|random[\s-]effects?\s+(?:model|regression|estimator)"
+    r"|within[\s-]estimator"
+    r"|between[\s-]estimator)\b",
+    re.IGNORECASE,
+)
+
+_PANEL_JUSTIFIED_RE = re.compile(
+    r"\b(?:Hausman\s+test"
+    r"|fixed\s+vs\.?\s+random\s+effects?"
+    r"|random\s+vs\.?\s+fixed\s+effects?"
+    r"|choice\s+(?:of|between)\s+(?:fixed|random)\s+effects?"
+    r"|FE\s+(?:vs\.?|or)\s+RE\b"
+    r"|correlated\s+with\s+the\s+(?:unit|individual|time)\s+effects?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_panel_effects_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag panel data models without fixed/random effects justification.
+
+    Emits ``missing-panel-effects-justification`` (minor) when panel data
+    fixed or random effects are used but no justification or Hausman test
+    is provided.
+    """
+    _vid = "validate_panel_effects_justification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _PANEL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _PANEL_JUSTIFIED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-panel-effects-justification",
+                message=(
+                    "Panel data fixed or random effects are used but no Hausman "
+                    "test or theoretical justification for the choice is provided."
                 ),
                 severity="minor",
                 validator=_vid,

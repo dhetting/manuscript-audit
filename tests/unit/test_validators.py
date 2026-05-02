@@ -21805,3 +21805,331 @@ def test_no_ordinal_trigger_no_fire() -> None:
     )
     result = validate_ordinal_regression_assumption(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 366 – validate_granger_causality_disclosure
+# ---------------------------------------------------------------------------
+
+def _gra366_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gra366",
+            source_path="/tmp/gra366.md",
+            source_format="markdown",
+            title="Granger Causality Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_granger_without_lag_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_granger_causality_disclosure
+
+    ms, cl = _gra366_ms(
+        "Granger causality tests were conducted to examine predictive relationships."
+    )
+    result = validate_granger_causality_disclosure(ms, cl)
+    assert any(f.code == "missing-granger-lag-disclosure" for f in result.findings)
+
+
+def test_granger_with_lag_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_granger_causality_disclosure
+
+    ms, cl = _gra366_ms(
+        "Granger causality tests were conducted with lag length selected by AIC."
+    )
+    result = validate_granger_causality_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_granger_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_granger_causality_disclosure
+
+    ms, cl = _gra366_ms("Granger causality tests were conducted.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_granger_causality_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_granger_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_granger_causality_disclosure
+
+    ms, cl = _gra366_ms(
+        "We used Pearson correlations to examine pairwise relationships."
+    )
+    result = validate_granger_causality_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 367 – validate_cointegration_test_disclosure
+# ---------------------------------------------------------------------------
+
+def _coi367_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-coi367",
+            source_path="/tmp/coi367.md",
+            source_format="markdown",
+            title="Cointegration Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cointegration_without_test_fires() -> None:
+    from manuscript_audit.validators.core import validate_cointegration_test_disclosure
+
+    ms, cl = _coi367_ms(
+        "An error correction model was estimated to capture cointegration dynamics."
+    )
+    result = validate_cointegration_test_disclosure(ms, cl)
+    assert any(f.code == "missing-cointegration-test" for f in result.findings)
+
+
+def test_cointegration_with_johansen_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cointegration_test_disclosure
+
+    ms, cl = _coi367_ms(
+        "An error correction model was estimated. The Johansen cointegration test "
+        "confirmed two cointegrating vectors."
+    )
+    result = validate_cointegration_test_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_cointegration_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cointegration_test_disclosure
+
+    ms, cl = _coi367_ms("An error correction model (ECM) was estimated.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cointegration_test_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cointegration_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cointegration_test_disclosure
+
+    ms, cl = _coi367_ms(
+        "OLS regression was used to model linear relationships."
+    )
+    result = validate_cointegration_test_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 368 – validate_unit_root_test_disclosure
+# ---------------------------------------------------------------------------
+
+def _ur368_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ur368",
+            source_path="/tmp/ur368.md",
+            source_format="markdown",
+            title="Unit Root Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_time_series_without_unit_root_test_fires() -> None:
+    from manuscript_audit.validators.core import validate_unit_root_test_disclosure
+
+    ms, cl = _ur368_ms(
+        "Time-series data from 1990 to 2020 were used to model inflation dynamics."
+    )
+    result = validate_unit_root_test_disclosure(ms, cl)
+    assert any(f.code == "missing-unit-root-test" for f in result.findings)
+
+
+def test_time_series_with_adf_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_unit_root_test_disclosure
+
+    ms, cl = _ur368_ms(
+        "Time-series data were analysed. The Augmented Dickey-Fuller test confirmed "
+        "stationarity after first differencing."
+    )
+    result = validate_unit_root_test_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_unit_root_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_unit_root_test_disclosure
+
+    ms, cl = _ur368_ms("Time-series data were used to model inflation dynamics.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_unit_root_test_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_time_series_trigger_no_fire_unit_root() -> None:
+    from manuscript_audit.validators.core import validate_unit_root_test_disclosure
+
+    ms, cl = _ur368_ms(
+        "We used structural equation modelling to test mediation hypotheses."
+    )
+    result = validate_unit_root_test_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 369 – validate_arch_garch_specification
+# ---------------------------------------------------------------------------
+
+def _ag369_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ag369",
+            source_path="/tmp/ag369.md",
+            source_format="markdown",
+            title="ARCH/GARCH Specification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_garch_without_order_fires() -> None:
+    from manuscript_audit.validators.core import validate_arch_garch_specification
+
+    ms, cl = _ag369_ms(
+        "A GARCH model was estimated to capture volatility clustering in returns."
+    )
+    result = validate_arch_garch_specification(ms, cl)
+    assert any(f.code == "missing-arch-order-specification" for f in result.findings)
+
+
+def test_garch_with_order_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_arch_garch_specification
+
+    ms, cl = _ag369_ms(
+        "A GARCH(1,1) model was estimated to capture volatility clustering."
+    )
+    result = validate_arch_garch_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_garch_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_arch_garch_specification
+
+    ms, cl = _ag369_ms("A GARCH model was estimated to capture volatility.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_arch_garch_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_arch_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_arch_garch_specification
+
+    ms, cl = _ag369_ms(
+        "We used ordinary least squares regression to model GDP growth."
+    )
+    result = validate_arch_garch_specification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 370 – validate_panel_effects_justification
+# ---------------------------------------------------------------------------
+
+def _pan370_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pan370",
+            source_path="/tmp/pan370.md",
+            source_format="markdown",
+            title="Panel Effects Justification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_panel_fixed_effects_without_justification_fires() -> None:
+    from manuscript_audit.validators.core import validate_panel_effects_justification
+
+    ms, cl = _pan370_ms(
+        "Panel data fixed-effects regression was used to control for unobserved heterogeneity."
+    )
+    result = validate_panel_effects_justification(ms, cl)
+    assert any(f.code == "missing-panel-effects-justification" for f in result.findings)
+
+
+def test_panel_with_hausman_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panel_effects_justification
+
+    ms, cl = _pan370_ms(
+        "Panel data fixed-effects regression was used. The Hausman test confirmed "
+        "that fixed effects were preferred over random effects."
+    )
+    result = validate_panel_effects_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_panel_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panel_effects_justification
+
+    ms, cl = _pan370_ms("Panel data regression was used to model outcomes.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_panel_effects_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_panel_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_panel_effects_justification
+
+    ms, cl = _pan370_ms(
+        "We used multilevel modelling with students nested within schools."
+    )
+    result = validate_panel_effects_justification(ms, cl)
+    assert result.findings == []
