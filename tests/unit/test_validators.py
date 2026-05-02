@@ -25446,3 +25446,347 @@ def test_no_recurrent_event_trigger_no_fire() -> None:
     )
     result = validate_recurrent_event_modeling(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 421 – validate_prior_specification_justification
+# ---------------------------------------------------------------------------
+
+def _prior421_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-prior421",
+            source_path="/tmp/prior421.md",
+            source_format="markdown",
+            title="Prior Specification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bayesian_without_prior_justification_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_prior_specification_justification,
+    )
+
+    ms, cl = _prior421_ms(
+        "A Bayesian regression was estimated using Stan with 4 MCMC chains."
+    )
+    result = validate_prior_specification_justification(ms, cl)
+    assert any(f.code == "missing-prior-justification" for f in result.findings)
+
+
+def test_prior421_with_justification_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_prior_specification_justification,
+    )
+
+    ms, cl = _prior421_ms(
+        "A Bayesian regression was estimated using Stan. Weakly informative priors "
+        "were specified following Gelman et al. (2017) recommendations."
+    )
+    result = validate_prior_specification_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_prior_spec_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_prior_specification_justification,
+    )
+
+    ms, cl = _prior421_ms("A Bayesian regression was estimated using Stan.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_prior_specification_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_bayesian_prior_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_prior_specification_justification,
+    )
+
+    ms, cl = _prior421_ms(
+        "We used a frequentist OLS regression to estimate the effect."
+    )
+    result = validate_prior_specification_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 422 – validate_credible_interval_interpretation
+# ---------------------------------------------------------------------------
+
+def _cri422_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cri422",
+            source_path="/tmp/cri422.md",
+            source_format="markdown",
+            title="Credible Interval Interpretation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_credible_interval_without_interpretation_fires() -> None:
+    from manuscript_audit.validators.core import validate_credible_interval_interpretation
+
+    ms, cl = _cri422_ms(
+        "The 95% credible interval for the effect was [0.12, 0.45]."
+    )
+    result = validate_credible_interval_interpretation(ms, cl)
+    assert any(
+        f.code == "missing-credible-interval-interpretation" for f in result.findings
+    )
+
+
+def test_credible_interval_with_interpretation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_credible_interval_interpretation
+
+    ms, cl = _cri422_ms(
+        "The 95% credible interval was [0.12, 0.45], indicating there is a 95% "
+        "probability that the true effect lies within this range."
+    )
+    result = validate_credible_interval_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_cri_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_credible_interval_interpretation
+
+    ms, cl = _cri422_ms("The 95% credible interval for the effect was [0.12, 0.45].")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_credible_interval_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_credible_interval_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_credible_interval_interpretation
+
+    ms, cl = _cri422_ms(
+        "The 95% confidence interval for the coefficient was [0.12, 0.45]."
+    )
+    result = validate_credible_interval_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 423 – validate_bayesian_sequential_stopping_rule
+# ---------------------------------------------------------------------------
+
+def _bsq423_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bsq423",
+            source_path="/tmp/bsq423.md",
+            source_format="markdown",
+            title="Bayesian Sequential Stopping Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bayesian_sequential_without_stopping_rule_fires() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
+
+    ms, cl = _bsq423_ms(
+        "We used sequential Bayesian analysis to update our evidence continuously."
+    )
+    result = validate_bayesian_sequential_stopping_rule(ms, cl)
+    assert any(f.code == "missing-bayesian-stopping-rule" for f in result.findings)
+
+
+def test_bayesian_sequential_with_stopping_rule_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
+
+    ms, cl = _bsq423_ms(
+        "We used sequential Bayesian analysis. The maximum N was prespecified at 300 "
+        "and a Bayes factor threshold of 10 was used as the stopping rule."
+    )
+    result = validate_bayesian_sequential_stopping_rule(ms, cl)
+    assert result.findings == []
+
+
+def test_bayes_seq_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
+
+    ms, cl = _bsq423_ms(
+        "We used sequential Bayesian analysis to update our evidence."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_bayesian_sequential_stopping_rule(ms, cl)
+    assert result.findings == []
+
+
+def test_no_bayes_seq_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
+
+    ms, cl = _bsq423_ms(
+        "We used a standard Bayesian regression with a fixed sample."
+    )
+    result = validate_bayesian_sequential_stopping_rule(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 424 – validate_variational_inference_elbo
+# ---------------------------------------------------------------------------
+
+def _vi424_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-vi424",
+            source_path="/tmp/vi424.md",
+            source_format="markdown",
+            title="Variational Inference ELBO Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vi_without_elbo_fires() -> None:
+    from manuscript_audit.validators.core import validate_variational_inference_elbo
+
+    ms, cl = _vi424_ms(
+        "Variational inference was used to approximate the posterior distribution."
+    )
+    result = validate_variational_inference_elbo(ms, cl)
+    assert any(f.code == "missing-elbo-reporting" for f in result.findings)
+
+
+def test_vi_with_elbo_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variational_inference_elbo
+
+    ms, cl = _vi424_ms(
+        "Variational inference was used. ELBO convergence was monitored across "
+        "iterations and the evidence lower bound converged at iteration 450."
+    )
+    result = validate_variational_inference_elbo(ms, cl)
+    assert result.findings == []
+
+
+def test_vi_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variational_inference_elbo
+
+    ms, cl = _vi424_ms(
+        "Variational inference was used to approximate the posterior."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_variational_inference_elbo(ms, cl)
+    assert result.findings == []
+
+
+def test_no_vi_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variational_inference_elbo
+
+    ms, cl = _vi424_ms(
+        "We used MCMC sampling to obtain posterior draws from the full model."
+    )
+    result = validate_variational_inference_elbo(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 425 – validate_hierarchical_shrinkage_reporting
+# ---------------------------------------------------------------------------
+
+def _hs425_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-hs425",
+            source_path="/tmp/hs425.md",
+            source_format="markdown",
+            title="Hierarchical Shrinkage Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_hierarchical_without_shrinkage_reporting_fires() -> None:
+    from manuscript_audit.validators.core import validate_hierarchical_shrinkage_reporting
+
+    ms, cl = _hs425_ms(
+        "A hierarchical model was estimated with partial pooling across sites."
+    )
+    result = validate_hierarchical_shrinkage_reporting(ms, cl)
+    assert any(f.code == "missing-hierarchical-shrinkage" for f in result.findings)
+
+
+def test_hierarchical_with_icc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hierarchical_shrinkage_reporting
+
+    ms, cl = _hs425_ms(
+        "A hierarchical model was estimated. The intraclass correlation ICC = .18, "
+        "indicating substantial between-group variance."
+    )
+    result = validate_hierarchical_shrinkage_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_hier_shrinkage_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hierarchical_shrinkage_reporting
+
+    ms, cl = _hs425_ms("A hierarchical model was estimated with partial pooling.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_hierarchical_shrinkage_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_hierarchical_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hierarchical_shrinkage_reporting
+
+    ms, cl = _hs425_ms(
+        "We used an OLS regression with fixed effects for all predictors."
+    )
+    result = validate_hierarchical_shrinkage_reporting(ms, cl)
+    assert result.findings == []

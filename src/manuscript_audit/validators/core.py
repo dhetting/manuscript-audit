@@ -6927,6 +6927,11 @@ def run_deterministic_validators(
         validate_propensity_score_overlap(parsed, classification),
         validate_cure_model_fraction_reporting(parsed, classification),
         validate_recurrent_event_modeling(parsed, classification),
+        validate_prior_specification_justification(parsed, classification),
+        validate_credible_interval_interpretation(parsed, classification),
+        validate_bayesian_sequential_stopping_rule(parsed, classification),
+        validate_variational_inference_elbo(parsed, classification),
+        validate_hierarchical_shrinkage_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -25149,6 +25154,257 @@ def validate_recurrent_event_modeling(
                 message=(
                     "Recurrent event data were analyzed but the specific recurrent "
                     "event method (WLW, AG, PWP) was not described."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 421 – Prior specification justification
+# ---------------------------------------------------------------------------
+
+_PRIOR_SPEC_TRIGGER_RE = re.compile(
+    r"\b(?:Bayesian\s+(?:analysis|inference|model|approach|regression|estimation)|"
+    r"prior\s+(?:distribution|probability|belief)|"
+    r"posterior\s+(?:distribution|probability|inference)|"
+    r"Stan|BUGS|JAGS|brms|PyMC|MCMC\s+chain)\b",
+    re.IGNORECASE,
+)
+_PRIOR_JUSTIFIED_RE = re.compile(
+    r"\b(?:prior\s+(?:was|were|is|are)\s+(?:specified|chosen|selected|"
+    r"based\s+on|informed\s+by|set\s+to|justified)|"
+    r"priors?\s+(?:were|was)\s+(?:specified|chosen|selected|"
+    r"based\s+on|informed\s+by|set\s+to|justified)|"
+    r"weakly\s+informative\s+priors?|"
+    r"non[- ]informative\s+priors?|diffuse\s+priors?|"
+    r"prior\s+(?:choice|specification|distribution)\s+(?:is|was|follows)|"
+    r"sensitivity\s+(?:to|of)\s+(?:the\s+)?prior)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_prior_specification_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_prior_specification_justification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _PRIOR_SPEC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _PRIOR_JUSTIFIED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-prior-justification",
+                message=(
+                    "Bayesian analysis was performed but the prior distributions "
+                    "were not justified or described."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 422 – Credible interval interpretation
+# ---------------------------------------------------------------------------
+
+_CREDIBLE_TRIGGER_RE = re.compile(
+    r"\b(?:credible\s+interval|CrI|HDI|highest\s+density\s+interval|"
+    r"posterior\s+interval|Bayesian\s+interval|"
+    r"equal[- ]tailed\s+interval|ETI)\b",
+    re.IGNORECASE,
+)
+_CREDIBLE_INTERP_RE = re.compile(
+    r"\b(?:probability\s+(?:that|of)\s+(?:the\s+)?(?:parameter|effect|value)|"
+    r"there\s+is\s+a\s+\d+%\s+(?:probability|chance)\s+that|"
+    r"credible\s+interval\s+(?:indicates|shows|means|reflects)|"
+    r"posterior\s+probability\s+(?:that|of)|"
+    r"we\s+are\s+\d+%\s+(?:confident|certain)\s+that\s+the\s+(?:parameter|true))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_credible_interval_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_credible_interval_interpretation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CREDIBLE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CREDIBLE_INTERP_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-credible-interval-interpretation",
+                message=(
+                    "Credible intervals were reported but were not interpreted "
+                    "in terms of posterior probability for the parameter."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 423 – Bayesian updating / sequential analysis disclosure
+# ---------------------------------------------------------------------------
+
+_BAYES_SEQ_TRIGGER_RE = re.compile(
+    r"\b(?:sequential\s+Bayesian|Bayesian\s+sequential|"
+    r"optional\s+stopping|Bayes\s+factor\s+(?:monitoring|sequential)|"
+    r"Bayesian\s+adaptive\s+(?:design|trial)|"
+    r"adaptive\s+Bayesian|interim\s+Bayesian)\b",
+    re.IGNORECASE,
+)
+_BAYES_SEQ_REPORTED_RE = re.compile(
+    r"\b(?:stopping\s+(?:rule|criterion|boundary)|"
+    r"alpha\s+(?:spending|correction)\s+(?:for|with)\s+sequential|"
+    r"error\s+(?:control|rate)\s+(?:for|with)\s+(?:sequential|interim)|"
+    r"Bayes\s+factor\s+threshold|"
+    r"maximum\s+(?:N|sample\s+size)\s+(?:was|is)\s+(?:set|prespecified|pre[- ]specified))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_bayesian_sequential_stopping_rule(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_bayesian_sequential_stopping_rule"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _BAYES_SEQ_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _BAYES_SEQ_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-bayesian-stopping-rule",
+                message=(
+                    "Sequential Bayesian analysis was performed but the stopping "
+                    "rule or maximum sample size was not specified."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 424 – Variational inference ELBO reporting
+# ---------------------------------------------------------------------------
+
+_VI_TRIGGER_RE = re.compile(
+    r"\b(?:variational\s+(?:inference|Bayes|autoencoder|EM)|"
+    r"mean[- ]field\s+(?:approximation|variational)|"
+    r"ELBO|evidence\s+lower\s+bound|"
+    r"stochastic\s+variational\s+inference|SVI|"
+    r"amortized\s+(?:inference|variational)|"
+    r"variational\s+(?:posterior|distribution|family))\b",
+    re.IGNORECASE,
+)
+_VI_REPORTED_RE = re.compile(
+    r"\b(?:ELBO\s+(?:value|convergence|was|trace|curve)|"
+    r"evidence\s+lower\s+bound\s+(?:converged|was|reached)|"
+    r"KL\s+divergence\s+(?:term|penalty)|"
+    r"variational\s+(?:gap|bound|free\s+energy)|"
+    r"ELBO[= ]\s*-?\d|lower\s+bound\s+converged)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_variational_inference_elbo(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_variational_inference_elbo"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _VI_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _VI_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-elbo-reporting",
+                message=(
+                    "Variational inference was used but the ELBO convergence "
+                    "or evidence lower bound was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 425 – Hierarchical model shrinkage reporting
+# ---------------------------------------------------------------------------
+
+_HIER_SHRINK_TRIGGER_RE = re.compile(
+    r"\b(?:hierarchical\s+(?:model|Bayes|prior|regression)|"
+    r"partial\s+pooling|random\s+effects?\s+model|"
+    r"mixed[- ]effects?\s+model|multi[- ]level\s+model|"
+    r"shrinkage\s+(?:prior|estimator|toward))\b",
+    re.IGNORECASE,
+)
+_HIER_SHRINK_REPORTED_RE = re.compile(
+    r"\b(?:shrinkage\s+(?:was|is)\s+(?:applied|observed|estimated|"
+    r"toward\s+the\s+(?:grand\s+)?mean)|"
+    r"partial\s+pooling\s+(?:was|is)\s+(?:applied|used)|"
+    r"random\s+effect\s+variance|"
+    r"between[- ]group\s+variance|"
+    r"intraclass\s+correlation|ICC\s*=|"
+    r"variance\s+partition\s+coefficient|VPC)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_hierarchical_shrinkage_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_hierarchical_shrinkage_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _HIER_SHRINK_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _HIER_SHRINK_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-hierarchical-shrinkage",
+                message=(
+                    "A hierarchical or mixed-effects model was used but the "
+                    "random effect variance or ICC was not reported."
                 ),
                 severity="minor",
                 validator=_vid,
