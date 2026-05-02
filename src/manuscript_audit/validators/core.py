@@ -6967,6 +6967,11 @@ def run_deterministic_validators(
         validate_causal_discovery_assumptions(parsed, classification),
         validate_domain_adaptation_description(parsed, classification),
         validate_meta_learning_task_setup(parsed, classification),
+        validate_forecasting_metrics(parsed, classification),
+        validate_anomaly_detection_threshold(parsed, classification),
+        validate_generative_model_metrics(parsed, classification),
+        validate_tts_evaluation(parsed, classification),
+        validate_video_evaluation_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -27094,6 +27099,240 @@ def validate_meta_learning_task_setup(
                 ),
                 severity="moderate",
                 validator=_META_LEARN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 461 – Time-series forecasting: horizon and metric disclosure
+# ---------------------------------------------------------------------------
+_TS_FORE_TRIGGER_RE = re.compile(
+    r"\b(?:time.series\s+forecasting|sequence\s+forecasting|"
+    r"temporal\s+forecasting|univariate\s+forecasting|multivariate\s+forecasting|"
+    r"forecast\s+horizon)\b",
+    re.IGNORECASE,
+)
+_TS_FORE_METRIC_RE = re.compile(
+    r"(?:\bMAE\b|\bRMSE\b|\bMASE\b|\bSMAPE\b)\s*=|"
+    r"\b(?:mean\s+absolute\s+(?:error|scaled\s+error)|"
+    r"root\s+mean\s+squared\s+error|mean\s+absolute\s+percentage\s+error)\b",
+    re.IGNORECASE,
+)
+
+_TS_FORE_VID = "missing-forecasting-metrics"
+
+
+def validate_forecasting_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when time-series forecasting papers lack error metric reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TS_FORE_VID, findings=[])
+    text = parsed.full_text
+    if not _TS_FORE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_TS_FORE_VID, findings=[])
+    if _TS_FORE_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_TS_FORE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TS_FORE_VID,
+        findings=[
+            Finding(
+                code=_TS_FORE_VID,
+                message=(
+                    "Time-series forecasting paper detected but no error metrics "
+                    "(MAE, RMSE, MASE, SMAPE) were reported."
+                ),
+                severity="moderate",
+                validator=_TS_FORE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 462 – Anomaly detection: threshold and evaluation protocol
+# ---------------------------------------------------------------------------
+_ANOMALY_TRIGGER_RE = re.compile(
+    r"\b(?:anomaly\s+detection|outlier\s+detection|novelty\s+detection|"
+    r"one-class\s+classification|out-of-distribution\s+detection)\b",
+    re.IGNORECASE,
+)
+_ANOMALY_DETAIL_RE = re.compile(
+    r"\b(?:decision\s+threshold|anomaly\s+score\s+threshold|AUROC\s*=|"
+    r"F1\s+at\s+threshold|precision-recall\s+(?:curve|AUC)|"
+    r"area\s+under\s+(?:ROC|precision.recall)\s+curve)\b",
+    re.IGNORECASE,
+)
+
+_ANOMALY_VID = "missing-anomaly-detection-threshold"
+
+
+def validate_anomaly_detection_threshold(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when anomaly detection papers lack threshold or evaluation details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ANOMALY_VID, findings=[])
+    text = parsed.full_text
+    if not _ANOMALY_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ANOMALY_VID, findings=[])
+    if _ANOMALY_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_ANOMALY_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ANOMALY_VID,
+        findings=[
+            Finding(
+                code=_ANOMALY_VID,
+                message=(
+                    "Anomaly detection paper detected but no decision threshold "
+                    "or AUROC/PR-AUC evaluation details were reported."
+                ),
+                severity="moderate",
+                validator=_ANOMALY_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 463 – Generative model evaluation: FID / IS reporting
+# ---------------------------------------------------------------------------
+_GEN_EVAL_TRIGGER_RE = re.compile(
+    r"\b(?:generative\s+(?:adversarial\s+network|model\s+evaluation)|"
+    r"image\s+generation\s+(?:quality|evaluation)|"
+    r"GAN\s+(?:training|evaluation)|VAE\s+(?:generation|evaluation)|"
+    r"diffusion\s+model\s+(?:sampling|evaluation))\b",
+    re.IGNORECASE,
+)
+_GEN_EVAL_METRIC_RE = re.compile(
+    r"\b(?:FID\s*=|Fréchet\s+Inception\s+Distance|Inception\s+Score|IS\s*=|"
+    r"FID\s+score|precision\s+and\s+recall\s+for\s+(?:images?|generation)|"
+    r"LPIPS\s*=)\b",
+    re.IGNORECASE,
+)
+
+_GEN_EVAL_VID = "missing-generative-model-metrics"
+
+
+def validate_generative_model_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when generative model papers lack FID or Inception Score reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_GEN_EVAL_VID, findings=[])
+    text = parsed.full_text
+    if not _GEN_EVAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_GEN_EVAL_VID, findings=[])
+    if _GEN_EVAL_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_GEN_EVAL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_GEN_EVAL_VID,
+        findings=[
+            Finding(
+                code=_GEN_EVAL_VID,
+                message=(
+                    "Generative model paper detected but no FID, IS, or image "
+                    "quality metrics were reported."
+                ),
+                severity="moderate",
+                validator=_GEN_EVAL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 464 – Speech synthesis: MOS / naturalness evaluation
+# ---------------------------------------------------------------------------
+_TTS_TRIGGER_RE = re.compile(
+    r"\b(?:text.to.speech|speech\s+synthesis|TTS\s+(?:model|system|evaluation)|"
+    r"neural\s+TTS|vocoder\s+evaluation|waveform\s+synthesis)\b",
+    re.IGNORECASE,
+)
+_TTS_EVAL_RE = re.compile(
+    r"\b(?:mean\s+opinion\s+score|MOS\s*=|MOS\s+score|naturalness\s+MOS|"
+    r"intelligibility\s+score|MUSHRA\s+score|subjective\s+evaluation\s+(?:of|for)\s+speech)\b",
+    re.IGNORECASE,
+)
+
+_TTS_VID = "missing-tts-evaluation"
+
+
+def validate_tts_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when speech synthesis papers lack MOS or naturalness evaluation."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TTS_VID, findings=[])
+    text = parsed.full_text
+    if not _TTS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_TTS_VID, findings=[])
+    if _TTS_EVAL_RE.search(text):
+        return ValidationResult(validator_name=_TTS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TTS_VID,
+        findings=[
+            Finding(
+                code=_TTS_VID,
+                message=(
+                    "Speech synthesis paper detected but no MOS or naturalness "
+                    "evaluation was reported."
+                ),
+                severity="moderate",
+                validator=_TTS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 465 – Video understanding: temporal evaluation metric disclosure
+# ---------------------------------------------------------------------------
+_VIDEO_TRIGGER_RE = re.compile(
+    r"\b(?:video\s+(?:classification|understanding|action\s+recognition)|"
+    r"temporal\s+action\s+(?:detection|localization)|"
+    r"video\s+captioning|video\s+question\s+answering|"
+    r"activity\s+recognition\s+in\s+video)\b",
+    re.IGNORECASE,
+)
+_VIDEO_METRIC_RE = re.compile(
+    r"\b(?:top-1\s+accuracy|top-5\s+accuracy|mean\s+average\s+precision\s+for\s+video|"
+    r"temporal\s+IoU|tIoU|video\s+mAP|GFLOPs\s+per\s+clip|"
+    r"frames?\s+per\s+(?:second|clip))\b",
+    re.IGNORECASE,
+)
+
+_VIDEO_VID = "missing-video-evaluation-metrics"
+
+
+def validate_video_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when video understanding papers lack temporal evaluation metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VIDEO_VID, findings=[])
+    text = parsed.full_text
+    if not _VIDEO_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_VIDEO_VID, findings=[])
+    if _VIDEO_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_VIDEO_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VIDEO_VID,
+        findings=[
+            Finding(
+                code=_VIDEO_VID,
+                message=(
+                    "Video understanding paper detected but no temporal or "
+                    "top-k evaluation metrics were reported."
+                ),
+                severity="moderate",
+                validator=_VIDEO_VID,
             )
         ],
     )

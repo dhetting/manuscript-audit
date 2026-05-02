@@ -28146,3 +28146,331 @@ def test_no_meta_learning_trigger_no_fire() -> None:
     ms, cl = _meta460_ms("We applied a generalized estimating equations model.")
     result = validate_meta_learning_task_setup(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 461 – validate_forecasting_metrics
+# ---------------------------------------------------------------------------
+
+def _tsf461_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-tsf461",
+            source_path="/tmp/tsf461.md",
+            source_format="markdown",
+            title="Forecasting Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_forecasting_without_metrics_fires() -> None:
+    from manuscript_audit.validators.core import validate_forecasting_metrics
+
+    ms, cl = _tsf461_ms(
+        "We evaluated time-series forecasting models on the M4 competition dataset."
+    )
+    result = validate_forecasting_metrics(ms, cl)
+    assert any(f.code == "missing-forecasting-metrics" for f in result.findings)
+
+
+def test_forecasting_with_mae_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_forecasting_metrics
+
+    ms, cl = _tsf461_ms(
+        "We evaluated time-series forecasting models. "
+        "MAE = 2.3 and RMSE = 3.1 were reported on the test set."
+    )
+    result = validate_forecasting_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_forecasting_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_forecasting_metrics
+
+    ms, cl = _tsf461_ms("We evaluated time-series forecasting on the M4 dataset.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_forecasting_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_forecasting_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_forecasting_metrics
+
+    ms, cl = _tsf461_ms("We applied logistic regression to predict disease outcomes.")
+    result = validate_forecasting_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 462 – validate_anomaly_detection_threshold
+# ---------------------------------------------------------------------------
+
+def _anom462_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-anom462",
+            source_path="/tmp/anom462.md",
+            source_format="markdown",
+            title="Anomaly Detection Threshold Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_anomaly_without_threshold_fires() -> None:
+    from manuscript_audit.validators.core import validate_anomaly_detection_threshold
+
+    ms, cl = _anom462_ms(
+        "We used one-class classification for anomaly detection on industrial sensors."
+    )
+    result = validate_anomaly_detection_threshold(ms, cl)
+    assert any(
+        f.code == "missing-anomaly-detection-threshold" for f in result.findings
+    )
+
+
+def test_anomaly_with_auroc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_anomaly_detection_threshold
+
+    ms, cl = _anom462_ms(
+        "We used one-class classification for anomaly detection. "
+        "AUROC = 0.97 and the precision-recall curve were reported."
+    )
+    result = validate_anomaly_detection_threshold(ms, cl)
+    assert result.findings == []
+
+
+def test_anomaly_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_anomaly_detection_threshold
+
+    ms, cl = _anom462_ms(
+        "We applied anomaly detection to industrial sensor data."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_anomaly_detection_threshold(ms, cl)
+    assert result.findings == []
+
+
+def test_no_anomaly_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_anomaly_detection_threshold
+
+    ms, cl = _anom462_ms("We used principal component regression on economic data.")
+    result = validate_anomaly_detection_threshold(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 463 – validate_generative_model_metrics
+# ---------------------------------------------------------------------------
+
+def _gen463_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gen463",
+            source_path="/tmp/gen463.md",
+            source_format="markdown",
+            title="Generative Model Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gan_without_fid_fires() -> None:
+    from manuscript_audit.validators.core import validate_generative_model_metrics
+
+    ms, cl = _gen463_ms(
+        "GAN training was used for image generation on the CelebA dataset."
+    )
+    result = validate_generative_model_metrics(ms, cl)
+    assert any(
+        f.code == "missing-generative-model-metrics" for f in result.findings
+    )
+
+
+def test_gan_with_fid_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generative_model_metrics
+
+    ms, cl = _gen463_ms(
+        "GAN training was used for image generation. "
+        "FID = 4.3 and Inception Score were reported on CelebA."
+    )
+    result = validate_generative_model_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_gan_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generative_model_metrics
+
+    ms, cl = _gen463_ms("GAN training was used for image generation evaluation.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_generative_model_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_gan_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_generative_model_metrics
+
+    ms, cl = _gen463_ms("We ran a randomized controlled trial on a clinical sample.")
+    result = validate_generative_model_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 464 – validate_tts_evaluation
+# ---------------------------------------------------------------------------
+
+def _tts464_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-tts464",
+            source_path="/tmp/tts464.md",
+            source_format="markdown",
+            title="TTS Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_tts_without_mos_fires() -> None:
+    from manuscript_audit.validators.core import validate_tts_evaluation
+
+    ms, cl = _tts464_ms(
+        "A neural TTS system was evaluated on LJSpeech with human raters."
+    )
+    result = validate_tts_evaluation(ms, cl)
+    assert any(f.code == "missing-tts-evaluation" for f in result.findings)
+
+
+def test_tts_with_mos_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_tts_evaluation
+
+    ms, cl = _tts464_ms(
+        "A neural TTS system was evaluated. "
+        "Mean opinion score (MOS = 4.2) was reported from 50 listeners."
+    )
+    result = validate_tts_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_tts_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_tts_evaluation
+
+    ms, cl = _tts464_ms("A neural TTS system was evaluated for speech quality.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_tts_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_tts_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_tts_evaluation
+
+    ms, cl = _tts464_ms("We applied a random forest to classify medical images.")
+    result = validate_tts_evaluation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 465 – validate_video_evaluation_metrics
+# ---------------------------------------------------------------------------
+
+def _video465_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-video465",
+            source_path="/tmp/video465.md",
+            source_format="markdown",
+            title="Video Evaluation Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_video_without_metrics_fires() -> None:
+    from manuscript_audit.validators.core import validate_video_evaluation_metrics
+
+    ms, cl = _video465_ms(
+        "We trained a video classification model on the Kinetics-400 dataset."
+    )
+    result = validate_video_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-video-evaluation-metrics" for f in result.findings)
+
+
+def test_video_with_top1_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_evaluation_metrics
+
+    ms, cl = _video465_ms(
+        "We trained a video classification model on Kinetics-400. "
+        "Top-1 accuracy and top-5 accuracy were reported on the test split."
+    )
+    result = validate_video_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_video_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_evaluation_metrics
+
+    ms, cl = _video465_ms(
+        "We trained a video classification model on the Kinetics dataset."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_video_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_video_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_evaluation_metrics
+
+    ms, cl = _video465_ms("We used a multilevel Poisson regression on count data.")
+    result = validate_video_evaluation_metrics(ms, cl)
+    assert result.findings == []
