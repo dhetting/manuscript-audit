@@ -21475,3 +21475,333 @@ def test_no_abm_trigger_no_fire() -> None:
     )
     result = validate_agent_based_model_validation(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 361 – validate_network_analysis_density_reporting
+# ---------------------------------------------------------------------------
+
+def _net361_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-net361",
+            source_path="/tmp/net361.md",
+            source_format="markdown",
+            title="Network Analysis Density Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_network_analysis_without_density_fires() -> None:
+    from manuscript_audit.validators.core import validate_network_analysis_density_reporting
+
+    ms, cl = _net361_ms(
+        "Social network analysis was conducted on the email communication network."
+    )
+    result = validate_network_analysis_density_reporting(ms, cl)
+    assert any(f.code == "missing-network-density" for f in result.findings)
+
+
+def test_network_analysis_with_density_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_network_analysis_density_reporting
+
+    ms, cl = _net361_ms(
+        "Social network analysis was conducted. Network density was 0.23 "
+        "with an average clustering coefficient of 0.41."
+    )
+    result = validate_network_analysis_density_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_network_analysis_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_network_analysis_density_reporting
+
+    ms, cl = _net361_ms("Network analysis was conducted on the data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_network_analysis_density_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_network_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_network_analysis_density_reporting
+
+    ms, cl = _net361_ms(
+        "We used hierarchical clustering to identify participant groups."
+    )
+    result = validate_network_analysis_density_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 362 – validate_spatial_autocorrelation_check
+# ---------------------------------------------------------------------------
+
+def _spa362_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-spa362",
+            source_path="/tmp/spa362.md",
+            source_format="markdown",
+            title="Spatial Autocorrelation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spatial_without_autocorrelation_fires() -> None:
+    from manuscript_audit.validators.core import validate_spatial_autocorrelation_check
+
+    ms, cl = _spa362_ms(
+        "Spatial regression analysis was conducted using GIS data from 200 counties."
+    )
+    result = validate_spatial_autocorrelation_check(ms, cl)
+    assert any(f.code == "missing-spatial-autocorrelation" for f in result.findings)
+
+
+def test_spatial_with_morans_i_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_autocorrelation_check
+
+    ms, cl = _spa362_ms(
+        "Spatial regression analysis was conducted. Moran's I confirmed significant "
+        "spatial autocorrelation (I = 0.34, p < 0.001)."
+    )
+    result = validate_spatial_autocorrelation_check(ms, cl)
+    assert result.findings == []
+
+
+def test_spatial_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_autocorrelation_check
+
+    ms, cl = _spa362_ms("Spatial analysis was conducted on GIS data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_spatial_autocorrelation_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_spatial_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_spatial_autocorrelation_check
+
+    ms, cl = _spa362_ms(
+        "We used multilevel modelling with participants nested in schools."
+    )
+    result = validate_spatial_autocorrelation_check(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 363 – validate_structural_break_test
+# ---------------------------------------------------------------------------
+
+def _sb363_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sb363",
+            source_path="/tmp/sb363.md",
+            source_format="markdown",
+            title="Structural Break Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_time_series_regression_without_break_test_fires() -> None:
+    from manuscript_audit.validators.core import validate_structural_break_test
+
+    ms, cl = _sb363_ms(
+        "Time-series regression was used to model quarterly GDP growth over 30 years."
+    )
+    result = validate_structural_break_test(ms, cl)
+    assert any(f.code == "missing-structural-break-test" for f in result.findings)
+
+
+def test_time_series_with_chow_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_structural_break_test
+
+    ms, cl = _sb363_ms(
+        "Time-series regression was used. A Chow test confirmed no structural break "
+        "at the 2008 financial crisis point."
+    )
+    result = validate_structural_break_test(ms, cl)
+    assert result.findings == []
+
+
+def test_structural_break_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_structural_break_test
+
+    ms, cl = _sb363_ms("Time-series regression was used to model GDP growth.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_structural_break_test(ms, cl)
+    assert result.findings == []
+
+
+def test_no_time_series_trigger_no_fire_break() -> None:
+    from manuscript_audit.validators.core import validate_structural_break_test
+
+    ms, cl = _sb363_ms(
+        "We used logistic regression to predict binary health outcomes."
+    )
+    result = validate_structural_break_test(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 364 – validate_variance_inflation_factor_reporting
+# ---------------------------------------------------------------------------
+
+def _vif364_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-vif364",
+            source_path="/tmp/vif364.md",
+            source_format="markdown",
+            title="VIF Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multiple_regression_without_vif_fires() -> None:
+    from manuscript_audit.validators.core import validate_variance_inflation_factor_reporting
+
+    ms, cl = _vif364_ms(
+        "Multiple regression analysis was conducted with five predictors."
+    )
+    result = validate_variance_inflation_factor_reporting(ms, cl)
+    assert any(f.code == "missing-vif-reporting" for f in result.findings)
+
+
+def test_multiple_regression_with_vif_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variance_inflation_factor_reporting
+
+    ms, cl = _vif364_ms(
+        "Multiple regression analysis was conducted. VIF values for all predictors "
+        "were below 3.0, indicating no multicollinearity concerns."
+    )
+    result = validate_variance_inflation_factor_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_vif_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variance_inflation_factor_reporting
+
+    ms, cl = _vif364_ms("Multiple regression analysis was conducted with five predictors.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_variance_inflation_factor_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_trigger_no_fire_vif() -> None:
+    from manuscript_audit.validators.core import validate_variance_inflation_factor_reporting
+
+    ms, cl = _vif364_ms(
+        "We used paired-sample t-tests to compare pre- and post-intervention scores."
+    )
+    result = validate_variance_inflation_factor_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 365 – validate_ordinal_regression_assumption
+# ---------------------------------------------------------------------------
+
+def _ord365_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ord365",
+            source_path="/tmp/ord365.md",
+            source_format="markdown",
+            title="Ordinal Regression Assumption Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ordinal_regression_without_po_assumption_fires() -> None:
+    from manuscript_audit.validators.core import validate_ordinal_regression_assumption
+
+    ms, cl = _ord365_ms(
+        "Ordinal logistic regression was used to model the five-point outcome scale."
+    )
+    result = validate_ordinal_regression_assumption(ms, cl)
+    assert any(f.code == "missing-ordinal-regression-check" for f in result.findings)
+
+
+def test_ordinal_regression_with_brant_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ordinal_regression_assumption
+
+    ms, cl = _ord365_ms(
+        "Ordinal logistic regression was used. The Brant test confirmed the "
+        "proportional odds assumption was satisfied."
+    )
+    result = validate_ordinal_regression_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_ordinal_regression_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ordinal_regression_assumption
+
+    ms, cl = _ord365_ms("Ordinal logistic regression was used to model the outcome.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ordinal_regression_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ordinal_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ordinal_regression_assumption
+
+    ms, cl = _ord365_ms(
+        "Binary logistic regression was used to predict the dichotomous outcome."
+    )
+    result = validate_ordinal_regression_assumption(ms, cl)
+    assert result.findings == []

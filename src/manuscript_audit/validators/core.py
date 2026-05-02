@@ -6867,6 +6867,11 @@ def run_deterministic_validators(
         validate_bootstrap_sample_size(parsed, classification),
         validate_monte_carlo_replications(parsed, classification),
         validate_agent_based_model_validation(parsed, classification),
+        validate_network_analysis_density_reporting(parsed, classification),
+        validate_spatial_autocorrelation_check(parsed, classification),
+        validate_structural_break_test(parsed, classification),
+        validate_variance_inflation_factor_reporting(parsed, classification),
+        validate_ordinal_regression_assumption(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -21954,6 +21959,286 @@ def validate_agent_based_model_validation(
                 message=(
                     "An agent-based model (ABM) is described but no model validation "
                     "or calibration procedure is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 361 – network analysis density reporting
+# ---------------------------------------------------------------------------
+
+_NET_TRIGGER_RE = re.compile(
+    r"\b(?:network\s+(?:analysis|structure|topology|centrality)"
+    r"|social\s+network\s+analysis"
+    r"|SNA\b"
+    r"|graph[\s-]theoretic"
+    r"|adjacency\s+matrix)\b",
+    re.IGNORECASE,
+)
+
+_NET_DENSITY_RE = re.compile(
+    r"\b(?:network\s+density"
+    r"|density\s*=\s*0\.\d+"
+    r"|density\s+(?:was|of|is)\s*(?:\d|0\.)"
+    r"|average\s+(?:degree|path\s+length|clustering\s+coefficient)"
+    r"|clustering\s+coefficient\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_network_analysis_density_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag network analyses without key structural statistics.
+
+    Emits ``missing-network-density`` (minor) when a network analysis is
+    described but no density, clustering coefficient, or average degree
+    statistic is reported.
+    """
+    _vid = "validate_network_analysis_density_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _NET_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _NET_DENSITY_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-network-density",
+                message=(
+                    "Network analysis is reported but key structural statistics "
+                    "(density, clustering coefficient, average degree) are absent."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 362 – spatial autocorrelation check
+# ---------------------------------------------------------------------------
+
+_SPATIAL_TRIGGER_RE = re.compile(
+    r"\b(?:spatial\s+(?:analysis|data|regression|econometrics|model)"
+    r"|geographic(?:al)?\s+(?:data|unit|variation|clustering)"
+    r"|spatially[\s-](?:lagged|clustered|distributed)"
+    r"|GIS\b"
+    r"|point\s+pattern\s+analysis)\b",
+    re.IGNORECASE,
+)
+
+_SPATIAL_AC_RE = re.compile(
+    r"\b(?:Moran['']?s?\s+I"
+    r"|Geary['']?s?\s+C"
+    r"|spatial\s+autocorrelation"
+    r"|spatial\s+dependence"
+    r"|LISA\b"
+    r"|local\s+indicators\s+of\s+spatial\s+association)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_spatial_autocorrelation_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag spatial studies that do not test for spatial autocorrelation.
+
+    Emits ``missing-spatial-autocorrelation`` (minor) when spatial data are
+    analysed but no spatial autocorrelation test (e.g., Moran's I) is reported.
+    """
+    _vid = "validate_spatial_autocorrelation_check"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _SPATIAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SPATIAL_AC_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-spatial-autocorrelation",
+                message=(
+                    "Spatial data analysis is described but no spatial autocorrelation "
+                    "test (e.g., Moran's I, Geary's C) is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 363 – structural break test
+# ---------------------------------------------------------------------------
+
+_STRUCT_BREAK_TRIGGER_RE = re.compile(
+    r"\b(?:time[\s-]series\s+(?:regression|model|analysis|data)"
+    r"|panel\s+(?:data\s+)?(?:regression|model|analysis)"
+    r"|longitudinal\s+time[\s-]series"
+    r"|economic\s+time[\s-]series)\b",
+    re.IGNORECASE,
+)
+
+_STRUCT_BREAK_TESTED_RE = re.compile(
+    r"\b(?:structural\s+break"
+    r"|Chow\s+test"
+    r"|CUSUM\s+test"
+    r"|Bai[\s-]Perron"
+    r"|breakpoint\s+(?:test|detection|analysis)"
+    r"|regime\s+(?:change|switch(?:ing)?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_structural_break_test(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag time-series analyses that omit structural break testing.
+
+    Emits ``missing-structural-break-test`` (minor) when time-series or panel
+    data regression is described but no structural break test is mentioned.
+    """
+    _vid = "validate_structural_break_test"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _STRUCT_BREAK_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _STRUCT_BREAK_TESTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-structural-break-test",
+                message=(
+                    "Time-series regression is described but no structural break test "
+                    "(e.g., Chow test, CUSUM, Bai-Perron) is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 364 – VIF reporting for regression
+# ---------------------------------------------------------------------------
+
+_VIF_TRIGGER_RE = re.compile(
+    r"\b(?:multiple\s+(?:regression|linear\s+regression|logistic\s+regression)"
+    r"|OLS\s+regression"
+    r"|hierarchical\s+regression"
+    r"|regression\s+analysis\s+(?:was|were)\s+(?:conducted|performed|run|used))\b",
+    re.IGNORECASE,
+)
+
+_VIF_REPORTED_RE = re.compile(
+    r"\b(?:VIF\b"
+    r"|variance\s+inflation\s+factor"
+    r"|tolerance\s+(?:value|statistic)"
+    r"|condition\s+(?:number|index)"
+    r"|multicollinearity\s+(?:was|were)\s+(?:assessed|checked|tested|examined))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_variance_inflation_factor_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression analyses missing multicollinearity diagnostics.
+
+    Emits ``missing-vif-reporting`` (minor) when multiple regression is
+    described but no VIF or tolerance check is reported.
+    """
+    _vid = "validate_variance_inflation_factor_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _VIF_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _VIF_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-vif-reporting",
+                message=(
+                    "Multiple regression is reported but no variance inflation "
+                    "factor (VIF) or multicollinearity check is described."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 365 – ordinal regression assumption check
+# ---------------------------------------------------------------------------
+
+_ORDINAL_TRIGGER_RE = re.compile(
+    r"\b(?:ordinal\s+(?:regression|logistic\s+regression|outcome)"
+    r"|proportional\s+odds\s+(?:model|assumption)"
+    r"|cumulative\s+logit\s+model"
+    r"|polytomous\s+logistic\s+regression)\b",
+    re.IGNORECASE,
+)
+
+_ORDINAL_ASSUMPTION_RE = re.compile(
+    r"\b(?:proportional\s+odds\s+assumption"
+    r"|parallel\s+regression\s+assumption"
+    r"|Brant\s+test"
+    r"|score\s+test\s+(?:of\s+)?proportional\s+odds"
+    r"|assumption\s+(?:was|were)\s+(?:tested|checked|met|satisfied|violated))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ordinal_regression_assumption(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ordinal regression without checking the proportional odds assumption.
+
+    Emits ``missing-ordinal-regression-check`` (minor) when ordinal logistic
+    regression is described but no proportional odds assumption check is reported.
+    """
+    _vid = "validate_ordinal_regression_assumption"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ORDINAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ORDINAL_ASSUMPTION_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ordinal-regression-check",
+                message=(
+                    "Ordinal logistic regression is described but no check of the "
+                    "proportional odds assumption is reported."
                 ),
                 severity="minor",
                 validator=_vid,
