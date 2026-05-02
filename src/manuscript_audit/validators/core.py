@@ -6897,6 +6897,11 @@ def run_deterministic_validators(
         validate_confusion_matrix_reporting(parsed, classification),
         validate_learning_curve_reporting(parsed, classification),
         validate_ablation_study_reporting(parsed, classification),
+        validate_attention_mechanism_analysis(parsed, classification),
+        validate_pretrained_weight_disclosure(parsed, classification),
+        validate_data_augmentation_description(parsed, classification),
+        validate_model_interpretability_reporting(parsed, classification),
+        validate_dataset_split_seed(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -23668,6 +23673,287 @@ def validate_ablation_study_reporting(
                 message=(
                     "A complex multi-component model is described but no ablation "
                     "study demonstrating component contributions is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 391 – attention mechanism visualization or analysis
+# ---------------------------------------------------------------------------
+
+_ATTN_TRIGGER_RE = re.compile(
+    r"\b(?:attention\s+(?:mechanism|weight|head|map|layer)"
+    r"|self[\s-]attention"
+    r"|multi[\s-]head\s+attention"
+    r"|transformer\s+(?:model|architecture|encoder|decoder))\b",
+    re.IGNORECASE,
+)
+
+_ATTN_ANALYSIS_RE = re.compile(
+    r"\b(?:attention\s+(?:visualization|analysis|weight\s+analysis|map)"
+    r"|attention\s+heads?\s+(?:attend(?:ed)?|focus(?:ed)?|capture(?:d)?)"
+    r"|attention\s+rollout"
+    r"|gradient[\s-]weighted\s+attention"
+    r"|probing\s+(?:the\s+)?attention)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_attention_mechanism_analysis(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag transformer/attention models without attention analysis.
+
+    Emits ``missing-attention-analysis`` (minor) when attention mechanisms
+    are central to the proposed model but no attention analysis is reported.
+    """
+    _vid = "validate_attention_mechanism_analysis"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ATTN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ATTN_ANALYSIS_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-attention-analysis",
+                message=(
+                    "An attention mechanism is central to the model but no "
+                    "attention visualization or analysis is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 392 – pre-trained weight disclosure for transfer learning
+# ---------------------------------------------------------------------------
+
+_PRETRAIN_TRIGGER_RE = re.compile(
+    r"\b(?:pre[\s-]trained\s+(?:model|weights?|representation)"
+    r"|fine[\s-]tuning\s+(?:a\s+)?pre[\s-]trained"
+    r"|BERT\b|GPT\b|RoBERTa\b|ViT\b|ResNet\b|VGG\b|EfficientNet\b"
+    r"|ImageNet\s+pre[\s-]trained)\b",
+    re.IGNORECASE,
+)
+
+_PRETRAIN_DISCLOSED_RE = re.compile(
+    r"\b(?:pre[\s-]trained\s+on"
+    r"|pre[\s-]training\s+dataset"
+    r"|fine[\s-]tuned\s+(?:from|on)\s+\w"
+    r"|initialized\s+(?:from|with)\s+pre[\s-]trained"
+    r"|checkpoint\s+(?:from|downloaded\s+from)"
+    r"|model\s+version\s*:?\s*\w)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_pretrained_weight_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag transfer learning without pre-training source disclosure.
+
+    Emits ``missing-pretrained-weight-disclosure`` (minor) when pre-trained
+    weights are used but the pre-training dataset or model version is not
+    disclosed.
+    """
+    _vid = "validate_pretrained_weight_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _PRETRAIN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _PRETRAIN_DISCLOSED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-pretrained-weight-disclosure",
+                message=(
+                    "Pre-trained weights are used but the pre-training dataset "
+                    "or model version is not disclosed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 393 – data augmentation description
+# ---------------------------------------------------------------------------
+
+_AUGMENT_TRIGGER_RE = re.compile(
+    r"\b(?:data\s+augmentation"
+    r"|augmented\s+(?:training\s+)?(?:data|dataset|samples?)"
+    r"|synthetic\s+(?:data|sample|image)\s+generation"
+    r"|SMOTE\b|oversampling\s+(?:technique|method)"
+    r"|image\s+augmentation)\b",
+    re.IGNORECASE,
+)
+
+_AUGMENT_DESCRIBED_RE = re.compile(
+    r"\b(?:augmentation\s+(?:technique|strategy|include(?:d|s)?|consist(?:ed)?)"
+    r"|(?:flip(?:ping)?|rotation|crop(?:ping)?|jitter|noise\s+addition|mixup|cutout)\s+(?:was|were)\s+(?:applied|used)"
+    r"|augment(?:ed)?\s+(?:by|with)\s+(?:random|horizontal|vertical)"
+    r"|augmentation\s+parameter)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_data_augmentation_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag data augmentation without technique description.
+
+    Emits ``missing-augmentation-description`` (minor) when data augmentation
+    is mentioned but the specific augmentation techniques are not described.
+    """
+    _vid = "validate_data_augmentation_description"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _AUGMENT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _AUGMENT_DESCRIBED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-augmentation-description",
+                message=(
+                    "Data augmentation is mentioned but the specific augmentation "
+                    "techniques are not described."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 394 – model interpretability for high-stakes decisions
+# ---------------------------------------------------------------------------
+
+_INTERP_TRIGGER_RE = re.compile(
+    r"\b(?:clinical\s+(?:decision\s+support|prediction\s+model)"
+    r"|high[\s-]stakes\s+(?:decision|prediction|classification)"
+    r"|patient\s+(?:risk\s+score|outcome\s+prediction)"
+    r"|medical\s+(?:diagnosis|imaging\s+classification))\b",
+    re.IGNORECASE,
+)
+
+_INTERP_REPORTED_RE = re.compile(
+    r"\b(?:SHAP\b|LIME\b|GRAD[\s-]?CAM\b"
+    r"|saliency\s+map"
+    r"|feature\s+importance\s+(?:analysis|plot|score)"
+    r"|interpretability\s+(?:analysis|method)"
+    r"|explainability\s+(?:analysis|method)"
+    r"|model\s+explanation)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_model_interpretability_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag high-stakes ML models without interpretability analysis.
+
+    Emits ``missing-model-interpretability`` (minor) when a clinical or
+    high-stakes ML prediction model is described but no interpretability
+    or explainability analysis is reported.
+    """
+    _vid = "validate_model_interpretability_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _INTERP_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _INTERP_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-model-interpretability",
+                message=(
+                    "A high-stakes clinical or predictive model is described but "
+                    "no interpretability or explainability analysis is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 395 – dataset split reproducibility (random seed)
+# ---------------------------------------------------------------------------
+
+_SPLIT_TRIGGER_RE = re.compile(
+    r"\b(?:train[\s-]test\s+split"
+    r"|training\s+(?:and\s+test|test\s+and\s+validation|validation)\s+(?:set|split)"
+    r"|data\s+(?:partition(?:ing)?|split(?:ting)?)\s+(?:into|for\s+training)"
+    r"|(?:80|70|90|75)[\s-]?(?:20|30|10|25)\s+split)\b",
+    re.IGNORECASE,
+)
+
+_SPLIT_SEED_RE = re.compile(
+    r"\b(?:random\s+(?:seed|state)"
+    r"|seed\s*=\s*\d"
+    r"|numpy\.random\.seed"
+    r"|torch\.manual_seed"
+    r"|sklearn.*random_state\s*=\s*\d"
+    r"|set\.seed\s*\(\s*\d"
+    r"|reproducible\s+split)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_dataset_split_seed(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag train-test splits without a reported random seed.
+
+    Emits ``missing-split-seed`` (minor) when a train-test or data partition
+    is described but no random seed for reproducibility is reported.
+    """
+    _vid = "validate_dataset_split_seed"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _SPLIT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SPLIT_SEED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-split-seed",
+                message=(
+                    "A train-test data split is described but no random seed "
+                    "for reproducibility is reported."
                 ),
                 severity="minor",
                 validator=_vid,

@@ -23453,3 +23453,333 @@ def test_no_ablation_trigger_no_fire() -> None:
     )
     result = validate_ablation_study_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 391 – validate_attention_mechanism_analysis
+# ---------------------------------------------------------------------------
+
+def _attn391_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-attn391",
+            source_path="/tmp/attn391.md",
+            source_format="markdown",
+            title="Attention Mechanism Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_attention_without_analysis_fires() -> None:
+    from manuscript_audit.validators.core import validate_attention_mechanism_analysis
+
+    ms, cl = _attn391_ms(
+        "A transformer model with multi-head attention was used for sequence classification."
+    )
+    result = validate_attention_mechanism_analysis(ms, cl)
+    assert any(f.code == "missing-attention-analysis" for f in result.findings)
+
+
+def test_attention_with_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attention_mechanism_analysis
+
+    ms, cl = _attn391_ms(
+        "A transformer model with multi-head attention was used. Attention visualization "
+        "revealed that attention heads attended to key syntactic positions."
+    )
+    result = validate_attention_mechanism_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_attention_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attention_mechanism_analysis
+
+    ms, cl = _attn391_ms("A transformer model with self-attention was used.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_attention_mechanism_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_no_attention_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attention_mechanism_analysis
+
+    ms, cl = _attn391_ms(
+        "We used a convolutional neural network without attention mechanisms."
+    )
+    result = validate_attention_mechanism_analysis(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 392 – validate_pretrained_weight_disclosure
+# ---------------------------------------------------------------------------
+
+def _ptw392_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ptw392",
+            source_path="/tmp/ptw392.md",
+            source_format="markdown",
+            title="Pretrained Weight Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pretrained_without_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_pretrained_weight_disclosure
+
+    ms, cl = _ptw392_ms(
+        "We fine-tuned a pre-trained BERT model for sentiment classification."
+    )
+    result = validate_pretrained_weight_disclosure(ms, cl)
+    assert any(f.code == "missing-pretrained-weight-disclosure" for f in result.findings)
+
+
+def test_pretrained_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pretrained_weight_disclosure
+
+    ms, cl = _ptw392_ms(
+        "We fine-tuned a pre-trained BERT model. The model was pre-trained on "
+        "the BookCorpus and English Wikipedia datasets."
+    )
+    result = validate_pretrained_weight_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_pretrained_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pretrained_weight_disclosure
+
+    ms, cl = _ptw392_ms("We fine-tuned a pre-trained BERT model.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_pretrained_weight_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pretrained_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pretrained_weight_disclosure
+
+    ms, cl = _ptw392_ms(
+        "We trained a random forest classifier from scratch on our dataset."
+    )
+    result = validate_pretrained_weight_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 393 – validate_data_augmentation_description
+# ---------------------------------------------------------------------------
+
+def _aug393_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-aug393",
+            source_path="/tmp/aug393.md",
+            source_format="markdown",
+            title="Data Augmentation Description Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_augmentation_without_description_fires() -> None:
+    from manuscript_audit.validators.core import validate_data_augmentation_description
+
+    ms, cl = _aug393_ms(
+        "Data augmentation was applied to increase the size of the training dataset."
+    )
+    result = validate_data_augmentation_description(ms, cl)
+    assert any(f.code == "missing-augmentation-description" for f in result.findings)
+
+
+def test_augmentation_with_description_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_augmentation_description
+
+    ms, cl = _aug393_ms(
+        "Data augmentation was applied. Flipping was applied horizontally and "
+        "rotation was applied up to 15 degrees."
+    )
+    result = validate_data_augmentation_description(ms, cl)
+    assert result.findings == []
+
+
+def test_augmentation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_augmentation_description
+
+    ms, cl = _aug393_ms("Data augmentation was applied to the training data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_data_augmentation_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_augmentation_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_augmentation_description
+
+    ms, cl = _aug393_ms(
+        "We used a standard k-fold cross-validation procedure."
+    )
+    result = validate_data_augmentation_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 394 – validate_model_interpretability_reporting
+# ---------------------------------------------------------------------------
+
+def _mir394_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mir394",
+            source_path="/tmp/mir394.md",
+            source_format="markdown",
+            title="Model Interpretability Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_clinical_model_without_interpretability_fires() -> None:
+    from manuscript_audit.validators.core import validate_model_interpretability_reporting
+
+    ms, cl = _mir394_ms(
+        "A clinical decision support model was developed to predict patient outcomes."
+    )
+    result = validate_model_interpretability_reporting(ms, cl)
+    assert any(f.code == "missing-model-interpretability" for f in result.findings)
+
+
+def test_clinical_model_with_shap_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_model_interpretability_reporting
+
+    ms, cl = _mir394_ms(
+        "A clinical decision support model was developed. SHAP values were used "
+        "to explain individual predictions."
+    )
+    result = validate_model_interpretability_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_interpretability_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_model_interpretability_reporting
+
+    ms, cl = _mir394_ms("A clinical decision support model was developed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_model_interpretability_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_high_stakes_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_model_interpretability_reporting
+
+    ms, cl = _mir394_ms(
+        "We developed a topic model for document classification."
+    )
+    result = validate_model_interpretability_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 395 – validate_dataset_split_seed
+# ---------------------------------------------------------------------------
+
+def _dss395_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dss395",
+            source_path="/tmp/dss395.md",
+            source_format="markdown",
+            title="Dataset Split Seed Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_train_test_split_without_seed_fires() -> None:
+    from manuscript_audit.validators.core import validate_dataset_split_seed
+
+    ms, cl = _dss395_ms(
+        "An 80-20 train-test split was used for model development and evaluation."
+    )
+    result = validate_dataset_split_seed(ms, cl)
+    assert any(f.code == "missing-split-seed" for f in result.findings)
+
+
+def test_train_test_split_with_seed_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dataset_split_seed
+
+    ms, cl = _dss395_ms(
+        "An 80-20 train-test split was used. The random seed was set to 42 "
+        "to ensure reproducibility."
+    )
+    result = validate_dataset_split_seed(ms, cl)
+    assert result.findings == []
+
+
+def test_split_seed_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dataset_split_seed
+
+    ms, cl = _dss395_ms("An 80-20 train-test split was used for evaluation.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_dataset_split_seed(ms, cl)
+    assert result.findings == []
+
+
+def test_no_split_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dataset_split_seed
+
+    ms, cl = _dss395_ms(
+        "We used leave-one-out cross-validation for all model comparisons."
+    )
+    result = validate_dataset_split_seed(ms, cl)
+    assert result.findings == []
