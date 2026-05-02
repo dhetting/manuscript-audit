@@ -35314,3 +35314,252 @@ def test_3ddet595_non_empirical_no_fire() -> None:
     )
     r = validate_3d_object_detection_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 596 – validate_3d_point_cloud_segmentation_metrics
+# ---------------------------------------------------------------------------
+def _3dseg596_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t596", source_path="t596.md", source_format="markdown",
+            title="3D point cloud segmentation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_3dseg596_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_3d_point_cloud_segmentation_metrics
+    ms, cl = _3dseg596_ms(
+        "We propose a 3D semantic segmentation model evaluated on S3DIS."
+    )
+    r = validate_3d_point_cloud_segmentation_metrics(ms, cl)
+    assert any(f.code == "missing-3d-point-cloud-segmentation-metrics" for f in r.findings)
+
+
+def test_3dseg596_no_fire_when_miou_reported() -> None:
+    from manuscript_audit.validators.core import validate_3d_point_cloud_segmentation_metrics
+    ms, cl = _3dseg596_ms("3D semantic segmentation: mIoU = 68.4 on S3DIS Area-5.")
+    r = validate_3d_point_cloud_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_3dseg596_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_3d_point_cloud_segmentation_metrics
+    ms, cl = _3dseg596_ms("We present a language generation model.")
+    r = validate_3d_point_cloud_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_3dseg596_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_3d_point_cloud_segmentation_metrics
+    ms, _ = _3dseg596_ms("LiDAR segmentation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_3d_point_cloud_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 597 – validate_lane_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _lanedet597_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t597", source_path="t597.md", source_format="markdown",
+            title="Lane detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lanedet597_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_lane_benchmark_metrics
+    ms, cl = _lanedet597_ms("We propose a lane detection model on the CULane benchmark.")
+    r = validate_lane_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-lane-benchmark-metrics" for f in r.findings)
+
+
+def test_lanedet597_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_lane_benchmark_metrics
+    ms, cl = _lanedet597_ms("Lane detection: F1 = 76.3 on CULane test set.")
+    r = validate_lane_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lanedet597_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_lane_benchmark_metrics
+    ms, cl = _lanedet597_ms("We present a video dense captioning model.")
+    r = validate_lane_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lanedet597_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_lane_benchmark_metrics
+    ms, _ = _lanedet597_ms("Lane marking detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_lane_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 598 – validate_pedestrian_detection_metrics
+# ---------------------------------------------------------------------------
+def _peddet598_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t598", source_path="t598.md", source_format="markdown",
+            title="Pedestrian detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_peddet598_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_pedestrian_detection_metrics
+    ms, cl = _peddet598_ms(
+        "We propose a pedestrian detection model on CrowdHuman benchmark."
+    )
+    r = validate_pedestrian_detection_metrics(ms, cl)
+    assert any(f.code == "missing-pedestrian-detection-metrics" for f in r.findings)
+
+
+def test_peddet598_no_fire_when_miss_rate_reported() -> None:
+    from manuscript_audit.validators.core import validate_pedestrian_detection_metrics
+    ms, cl = _peddet598_ms("Pedestrian detection: MR = 7.3% on Caltech test.")
+    r = validate_pedestrian_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_peddet598_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_pedestrian_detection_metrics
+    ms, cl = _peddet598_ms("We present a commonsense reasoning model.")
+    r = validate_pedestrian_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_peddet598_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pedestrian_detection_metrics
+    ms, _ = _peddet598_ms("Person detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_pedestrian_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 599 – validate_optical_flow_estimation_metrics
+# ---------------------------------------------------------------------------
+def _optflow599_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t599", source_path="t599.md", source_format="markdown",
+            title="Optical flow estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_optflow599_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_estimation_metrics
+    ms, cl = _optflow599_ms(
+        "We propose an optical flow estimation model on the Sintel benchmark."
+    )
+    r = validate_optical_flow_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-optical-flow-estimation-metrics" for f in r.findings)
+
+
+def test_optflow599_no_fire_when_epe_reported() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_estimation_metrics
+    ms, cl = _optflow599_ms("Optical flow: EPE = 1.43 on Sintel Clean pass.")
+    r = validate_optical_flow_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_optflow599_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_estimation_metrics
+    ms, cl = _optflow599_ms("We present an entity linking model.")
+    r = validate_optical_flow_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_optflow599_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_estimation_metrics
+    ms, _ = _optflow599_ms("Dense flow estimation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_optical_flow_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 600 – validate_stereo_matching_metrics
+# ---------------------------------------------------------------------------
+def _stereomatch600_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t600", source_path="t600.md", source_format="markdown",
+            title="Stereo matching", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_stereomatch600_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_stereo_matching_metrics
+    ms, cl = _stereomatch600_ms(
+        "We propose a disparity estimation model on KITTI stereo benchmark."
+    )
+    r = validate_stereo_matching_metrics(ms, cl)
+    assert any(f.code == "missing-stereo-matching-metrics" for f in r.findings)
+
+
+def test_stereomatch600_no_fire_when_d1_reported() -> None:
+    from manuscript_audit.validators.core import validate_stereo_matching_metrics
+    ms, cl = _stereomatch600_ms(
+        "Stereo matching: D1-all = 2.03% on KITTI 2015 test set."
+    )
+    r = validate_stereo_matching_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_stereomatch600_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_stereo_matching_metrics
+    ms, cl = _stereomatch600_ms("We study video-text retrieval approaches.")
+    r = validate_stereo_matching_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_stereomatch600_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_stereo_matching_metrics
+    ms, _ = _stereomatch600_ms("Stereo depth estimation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_stereo_matching_metrics(ms, cl)
+    assert r.findings == []

@@ -7102,6 +7102,11 @@ def run_deterministic_validators(
         validate_vos_benchmark_metrics(parsed, classification),
         validate_video_retrieval_metrics(parsed, classification),
         validate_3d_object_detection_metrics(parsed, classification),
+        validate_3d_point_cloud_segmentation_metrics(parsed, classification),
+        validate_lane_benchmark_metrics(parsed, classification),
+        validate_pedestrian_detection_metrics(parsed, classification),
+        validate_optical_flow_estimation_metrics(parsed, classification),
+        validate_stereo_matching_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -33471,6 +33476,241 @@ def validate_3d_object_detection_metrics(
                 ),
                 location="full_text",
                 validator=_3DDET_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 596 – 3D point cloud segmentation evaluation
+# ---------------------------------------------------------------------------
+_3DSEG_VID = "missing-3d-point-cloud-segmentation-metrics"
+
+_3DSEG_TRIGGERS = re.compile(
+    r"\b(?:3D\s+point\s+cloud\s+segmentation|3D\s+semantic\s+segmentation|"
+    r"LiDAR\s+segmentation|S3DIS\s+(?:benchmark|dataset)|"
+    r"ScanNet\s+segmentation|ShapeNet\s+part\s+segmentation)\b",
+    re.IGNORECASE,
+)
+_3DSEG_METRICS = re.compile(
+    r"\b(?:mIoU|mean\s+IoU|OA|overall\s+accuracy|mAcc|mean\s+accuracy|"
+    r"part\s+IoU|instance\s+mIoU)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:mIoU|OA|mAcc)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_3d_point_cloud_segmentation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_3DSEG_VID, findings=[])
+    text = parsed.full_text
+    if not _3DSEG_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_3DSEG_VID, findings=[])
+    if _3DSEG_METRICS.search(text):
+        return ValidationResult(validator_name=_3DSEG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_3DSEG_VID,
+        findings=[
+            Finding(
+                code=_3DSEG_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses 3D point cloud segmentation but does not "
+                    "report mIoU, overall accuracy, or mean accuracy."
+                ),
+                location="full_text",
+                validator=_3DSEG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 597 – lane detection evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_LANEDET597_VID = "missing-lane-benchmark-metrics"
+
+_LANEDET597_TRIGGERS = re.compile(
+    r"\b(?:lane\s+detection|lane\s+segmentation|lane\s+keeping|"
+    r"CULane\s+(?:benchmark|dataset)|TuSimple\s+(?:benchmark|dataset)|"
+    r"lane\s+marking\s+detection)\b",
+    re.IGNORECASE,
+)
+_LANEDET597_METRICS = re.compile(
+    r"\b(?:F1|accuracy|FP\s+rate|FN\s+rate|mF1|IoU|"
+    r"lane\s+detection\s+rate)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:F1|accuracy|IoU)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_lane_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_LANEDET597_VID, findings=[])
+    text = parsed.full_text
+    if not _LANEDET597_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_LANEDET597_VID, findings=[])
+    if _LANEDET597_METRICS.search(text):
+        return ValidationResult(validator_name=_LANEDET597_VID, findings=[])
+    return ValidationResult(
+        validator_name=_LANEDET597_VID,
+        findings=[
+            Finding(
+                code=_LANEDET597_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses lane detection but does not report "
+                    "F1, accuracy, or IoU on CULane/TuSimple."
+                ),
+                location="full_text",
+                validator=_LANEDET597_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 598 – pedestrian detection evaluation
+# ---------------------------------------------------------------------------
+_PEDDET_VID = "missing-pedestrian-detection-metrics"
+
+_PEDDET_TRIGGERS = re.compile(
+    r"\b(?:pedestrian\s+detection|person\s+detection|crowd\s+counting|"
+    r"Caltech\s+pedestrian|CrowdHuman\s+(?:benchmark|dataset)|"
+    r"CityPersons\s+(?:benchmark|dataset))\b",
+    re.IGNORECASE,
+)
+_PEDDET_METRICS = re.compile(
+    r"\b(?:MR(?:-2)?|miss\s+rate|AP|average\s+precision|mAP|JI|Jaccard\s+index)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:MR|miss\s+rate|AP|mAP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_pedestrian_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PEDDET_VID, findings=[])
+    text = parsed.full_text
+    if not _PEDDET_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_PEDDET_VID, findings=[])
+    if _PEDDET_METRICS.search(text):
+        return ValidationResult(validator_name=_PEDDET_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PEDDET_VID,
+        findings=[
+            Finding(
+                code=_PEDDET_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses pedestrian detection but does not report "
+                    "miss rate, AP, or mAP on Caltech/CrowdHuman."
+                ),
+                location="full_text",
+                validator=_PEDDET_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 599 – optical flow estimation evaluation
+# ---------------------------------------------------------------------------
+_OPTFLOW599_VID = "missing-optical-flow-estimation-metrics"
+
+_OPTFLOW599_TRIGGERS = re.compile(
+    r"\b(?:optical\s+flow\s+(?:estimation|prediction)|dense\s+flow\s+estimation|"
+    r"Sintel\s+(?:benchmark|dataset)|KITTI\s+flow|FlyingChairs|PWCNet)\b",
+    re.IGNORECASE,
+)
+_OPTFLOW599_METRICS = re.compile(
+    r"\b(?:EPE|average\s+end[- ]point\s+error|AEPE|outlier\s+rate|F1[- ]all|"
+    r"Fl[- ]all|1[- ]px\s+error)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:EPE|AEPE|F1-all)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_optical_flow_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_OPTFLOW599_VID, findings=[])
+    text = parsed.full_text
+    if not _OPTFLOW599_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_OPTFLOW599_VID, findings=[])
+    if _OPTFLOW599_METRICS.search(text):
+        return ValidationResult(validator_name=_OPTFLOW599_VID, findings=[])
+    return ValidationResult(
+        validator_name=_OPTFLOW599_VID,
+        findings=[
+            Finding(
+                code=_OPTFLOW599_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses optical flow estimation but does not report "
+                    "EPE or outlier rate on Sintel/KITTI."
+                ),
+                location="full_text",
+                validator=_OPTFLOW599_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 600 – stereo matching evaluation
+# ---------------------------------------------------------------------------
+_STEREOMATCH_VID = "missing-stereo-matching-metrics"
+
+_STEREOMATCH_TRIGGERS = re.compile(
+    r"\b(?:stereo\s+matching|stereo\s+depth\s+estimation|disparity\s+estimation|"
+    r"KITTI\s+stereo|SceneFlow\s+(?:dataset|benchmark)|"
+    r"Middlebury\s+stereo)\b",
+    re.IGNORECASE,
+)
+_STEREOMATCH_METRICS = re.compile(
+    r"\b(?:D1[- ](?:all|bg|fg)|EPE|end[- ]point\s+error|bad[- ][0-9]+px|"
+    r"disparity\s+error|percentage\s+of\s+bad\s+pixels)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:D1-all|EPE|bad[0-9]+px)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_stereo_matching_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_STEREOMATCH_VID, findings=[])
+    text = parsed.full_text
+    if not _STEREOMATCH_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_STEREOMATCH_VID, findings=[])
+    if _STEREOMATCH_METRICS.search(text):
+        return ValidationResult(validator_name=_STEREOMATCH_VID, findings=[])
+    return ValidationResult(
+        validator_name=_STEREOMATCH_VID,
+        findings=[
+            Finding(
+                code=_STEREOMATCH_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses stereo matching but does not report "
+                    "D1-all, EPE, or bad-pixel percentage on KITTI/Middlebury."
+                ),
+                location="full_text",
+                validator=_STEREOMATCH_VID,
             )
         ],
     )
