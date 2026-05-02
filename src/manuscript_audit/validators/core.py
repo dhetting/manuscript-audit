@@ -6922,6 +6922,11 @@ def run_deterministic_validators(
         validate_omega_reliability(parsed, classification),
         validate_criterion_validity_evidence(parsed, classification),
         validate_irt_dif_reporting(parsed, classification),
+        validate_robust_standard_errors(parsed, classification),
+        validate_cluster_robust_inference(parsed, classification),
+        validate_propensity_score_overlap(parsed, classification),
+        validate_cure_model_fraction_reporting(parsed, classification),
+        validate_recurrent_event_modeling(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -24904,6 +24909,246 @@ def validate_irt_dif_reporting(
                 message=(
                     "Item Response Theory analysis was performed but differential "
                     "item functioning (DIF) analysis was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 416 – Robust standard errors reporting
+# ---------------------------------------------------------------------------
+
+_ROBUST_SE_TRIGGER_RE = re.compile(
+    r"\b(?:OLS\s+regression|linear\s+regression|ordinary\s+least\s+squares|"
+    r"multiple\s+regression|panel\s+data|cross[- ]sectional\s+regression)\b",
+    re.IGNORECASE,
+)
+_ROBUST_SE_REPORTED_RE = re.compile(
+    r"\b(?:robust\s+standard\s+errors?|heteroscedasticity[- ]robust|"
+    r"HC[0-9]\s+standard\s+errors?|White.s?\s+(?:robust|heteroscedasticity)|"
+    r"sandwich\s+(?:estimator|variance)|"
+    r"Huber[- ]White|clustered\s+standard\s+errors?|"
+    r"robust\s+(?:SE|SEs|variance\s+estimator))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_robust_standard_errors(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_robust_standard_errors"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _ROBUST_SE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ROBUST_SE_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-robust-standard-errors",
+                message=(
+                    "Regression analysis was performed but neither heteroscedasticity "
+                    "testing nor robust standard errors were reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 417 – Cluster-robust inference disclosure
+# ---------------------------------------------------------------------------
+
+_CLUSTER_TRIGGER_RE = re.compile(
+    r"\b(?:cluster(?:ed|ing)?[\s-](?:sample|data|design|structure)|"
+    r"nested\s+(?:data|design|structure)|hierarchical\s+(?:data|sample)|"
+    r"multi[- ]site\s+(?:study|trial|data)|grouped\s+(?:data|observations))\b",
+    re.IGNORECASE,
+)
+_CLUSTER_ROBUST_RE = re.compile(
+    r"\b(?:cluster(?:ed|ing)?[\s-](?:robust|standard\s+errors?)|"
+    r"within[- ]cluster\s+correlation|"
+    r"cluster\s+(?:size|level|variable)|"
+    r"clustered\s+(?:SE|SEs|variance)|"
+    r"account(?:ed|ing)?\s+for\s+clustering|"
+    r"multilevel\s+(?:model|analysis)|cluster[- ]corrected)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cluster_robust_inference(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_cluster_robust_inference"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CLUSTER_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CLUSTER_ROBUST_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cluster-robust-inference",
+                message=(
+                    "Clustered or nested data were used but cluster-robust standard "
+                    "errors or multilevel modeling was not reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 418 – Propensity score overlap / common support
+# ---------------------------------------------------------------------------
+
+_PS_OVERLAP_TRIGGER_RE = re.compile(
+    r"\b(?:propensity\s+score|inverse\s+probability\s+weight|IPW|"
+    r"propensity[- ]score\s+(?:match|weight|stratif))\b",
+    re.IGNORECASE,
+)
+_PS_OVERLAP_REPORTED_RE = re.compile(
+    r"\b(?:common\s+support|overlap\s+(?:assumption|region|check|condition)|"
+    r"propensity\s+score\s+distribution|"
+    r"trimm(?:ed|ing)\s+(?:sample|observations?)|"
+    r"positivity\s+(?:assumption|violation)|"
+    r"extreme\s+(?:propensity\s+scores?|weights?)\s+(?:were|were\s+not|excluded|trimmed))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_propensity_score_overlap(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_propensity_score_overlap"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _PS_OVERLAP_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _PS_OVERLAP_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-propensity-overlap",
+                message=(
+                    "Propensity score methods were used but the common support "
+                    "or overlap assumption was not assessed."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 419 – Survival cure model fraction reporting
+# ---------------------------------------------------------------------------
+
+_CURE_TRIGGER_RE = re.compile(
+    r"\b(?:cure\s+(?:model|fraction|rate|mixture\s+model)|"
+    r"mixture\s+cure\s+model|promotion\s+time\s+model|"
+    r"bounded\s+cumulative\s+hazard|long[- ]term\s+survivors?)\b",
+    re.IGNORECASE,
+)
+_CURE_FRACTION_RE = re.compile(
+    r"\b(?:cure\s+fraction|cure\s+rate\s+(?:estimate|was|=)|"
+    r"proportion\s+(?:cured|of\s+cures?)|uncured\s+fraction|"
+    r"immune\s+fraction|susceptible\s+fraction|"
+    r"mixture\s+parameter\s+(?:estimate|was))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cure_model_fraction_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_cure_model_fraction_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CURE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CURE_FRACTION_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cure-fraction",
+                message=(
+                    "A survival cure model was used but the cure fraction "
+                    "estimate was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 420 – Recurrent event survival modeling disclosure
+# ---------------------------------------------------------------------------
+
+_RECUR_TRIGGER_RE = re.compile(
+    r"\b(?:recurrent\s+(?:events?|episodes?)|repeated\s+(?:failure|events?)|"
+    r"multiple\s+(?:episodes?|failures?|events?)\s+(?:data|model)|"
+    r"Wei[- ]Lin[- ]Weissfeld|Andersen[- ]Gill|Prentice[- ]Williams[- ]Peterson|"
+    r"frailty\s+model|gap\s+time|calendar\s+time\s+recurrent)\b",
+    re.IGNORECASE,
+)
+_RECUR_REPORTED_RE = re.compile(
+    r"\b(?:recurrent\s+event\s+(?:model|analysis|method)|"
+    r"event\s+gap\s+(?:time|model)|"
+    r"between[- ]subject\s+heterogeneity|frailty\s+(?:term|variance|parameter)|"
+    r"within[- ]subject\s+(?:event|correlation)|"
+    r"WLW|AG\s+model|PWP\s+(?:model|method)|"
+    r"event\s+(?:specific|stratified)\s+(?:model|hazard))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_recurrent_event_modeling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_recurrent_event_modeling"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _RECUR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _RECUR_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-recurrent-event-method",
+                message=(
+                    "Recurrent event data were analyzed but the specific recurrent "
+                    "event method (WLW, AG, PWP) was not described."
                 ),
                 severity="minor",
                 validator=_vid,

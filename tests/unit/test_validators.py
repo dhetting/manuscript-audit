@@ -25116,3 +25116,333 @@ def test_no_irt415_trigger_no_fire() -> None:
     )
     result = validate_irt_dif_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 416 – validate_robust_standard_errors
+# ---------------------------------------------------------------------------
+
+def _rse416_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rse416",
+            source_path="/tmp/rse416.md",
+            source_format="markdown",
+            title="Robust Standard Errors Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ols_without_robust_se_fires() -> None:
+    from manuscript_audit.validators.core import validate_robust_standard_errors
+
+    ms, cl = _rse416_ms(
+        "An OLS regression was estimated to examine the relationship between variables."
+    )
+    result = validate_robust_standard_errors(ms, cl)
+    assert any(f.code == "missing-robust-standard-errors" for f in result.findings)
+
+
+def test_ols_with_robust_se_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_robust_standard_errors
+
+    ms, cl = _rse416_ms(
+        "An OLS regression was estimated with heteroscedasticity-robust standard errors "
+        "(HC3) to account for potential heteroscedasticity."
+    )
+    result = validate_robust_standard_errors(ms, cl)
+    assert result.findings == []
+
+
+def test_rse_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_robust_standard_errors
+
+    ms, cl = _rse416_ms("An OLS regression was estimated with four predictors.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_robust_standard_errors(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_rse_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_robust_standard_errors
+
+    ms, cl = _rse416_ms(
+        "We used a Wilcoxon signed-rank test for the non-parametric comparison."
+    )
+    result = validate_robust_standard_errors(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 417 – validate_cluster_robust_inference
+# ---------------------------------------------------------------------------
+
+def _clr417_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-clr417",
+            source_path="/tmp/clr417.md",
+            source_format="markdown",
+            title="Cluster Robust Inference Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_clustered_data_without_robust_inference_fires() -> None:
+    from manuscript_audit.validators.core import validate_cluster_robust_inference
+
+    ms, cl = _clr417_ms(
+        "Students were nested within schools in a clustered sample design."
+    )
+    result = validate_cluster_robust_inference(ms, cl)
+    assert any(f.code == "missing-cluster-robust-inference" for f in result.findings)
+
+
+def test_clustered_data_with_robust_inference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cluster_robust_inference
+
+    ms, cl = _clr417_ms(
+        "Students were nested within schools. Clustered standard errors at the "
+        "school level were used to account for within-cluster correlation."
+    )
+    result = validate_cluster_robust_inference(ms, cl)
+    assert result.findings == []
+
+
+def test_cluster_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cluster_robust_inference
+
+    ms, cl = _clr417_ms("Students were nested within schools in a clustered design.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cluster_robust_inference(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cluster_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cluster_robust_inference
+
+    ms, cl = _clr417_ms(
+        "We collected a simple random sample of 500 participants."
+    )
+    result = validate_cluster_robust_inference(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 418 – validate_propensity_score_overlap
+# ---------------------------------------------------------------------------
+
+def _pso418_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pso418",
+            source_path="/tmp/pso418.md",
+            source_format="markdown",
+            title="Propensity Score Overlap Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_psm_without_overlap_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_overlap
+
+    ms, cl = _pso418_ms(
+        "Propensity score matching was used to estimate the average treatment effect."
+    )
+    result = validate_propensity_score_overlap(ms, cl)
+    assert any(f.code == "missing-propensity-overlap" for f in result.findings)
+
+
+def test_psm_with_overlap_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_overlap
+
+    ms, cl = _pso418_ms(
+        "Propensity score matching was used. Common support was assessed by "
+        "examining propensity score distributions across groups."
+    )
+    result = validate_propensity_score_overlap(ms, cl)
+    assert result.findings == []
+
+
+def test_psm_overlap_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_overlap
+
+    ms, cl = _pso418_ms("Propensity score matching was used to estimate effects.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_propensity_score_overlap(ms, cl)
+    assert result.findings == []
+
+
+def test_no_psm_overlap_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_overlap
+
+    ms, cl = _pso418_ms(
+        "We conducted a randomized controlled trial with block randomization."
+    )
+    result = validate_propensity_score_overlap(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 419 – validate_cure_model_fraction_reporting
+# ---------------------------------------------------------------------------
+
+def _cure419_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cure419",
+            source_path="/tmp/cure419.md",
+            source_format="markdown",
+            title="Cure Model Fraction Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cure_model_without_fraction_fires() -> None:
+    from manuscript_audit.validators.core import validate_cure_model_fraction_reporting
+
+    ms, cl = _cure419_ms(
+        "A mixture cure model was fitted to account for long-term survivors."
+    )
+    result = validate_cure_model_fraction_reporting(ms, cl)
+    assert any(f.code == "missing-cure-fraction" for f in result.findings)
+
+
+def test_cure_model_with_fraction_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cure_model_fraction_reporting
+
+    ms, cl = _cure419_ms(
+        "A mixture cure model was fitted. The cure fraction was estimated at 0.23 "
+        "(95% CI: 0.18-0.29)."
+    )
+    result = validate_cure_model_fraction_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_cure_model_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cure_model_fraction_reporting
+
+    ms, cl = _cure419_ms("A mixture cure model was fitted to account for survivors.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cure_model_fraction_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cure_model_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cure_model_fraction_reporting
+
+    ms, cl = _cure419_ms(
+        "A Cox proportional hazards model was used to estimate survival times."
+    )
+    result = validate_cure_model_fraction_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 420 – validate_recurrent_event_modeling
+# ---------------------------------------------------------------------------
+
+def _rec420_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rec420",
+            source_path="/tmp/rec420.md",
+            source_format="markdown",
+            title="Recurrent Event Modeling Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_recurrent_event_without_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_recurrent_event_modeling
+
+    ms, cl = _rec420_ms(
+        "Patients experienced recurrent events over the follow-up period."
+    )
+    result = validate_recurrent_event_modeling(ms, cl)
+    assert any(f.code == "missing-recurrent-event-method" for f in result.findings)
+
+
+def test_recurrent_event_with_wlw_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_recurrent_event_modeling
+
+    ms, cl = _rec420_ms(
+        "Patients experienced recurrent events. The WLW model was used to "
+        "account for within-subject event correlation."
+    )
+    result = validate_recurrent_event_modeling(ms, cl)
+    assert result.findings == []
+
+
+def test_recurrent_event_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_recurrent_event_modeling
+
+    ms, cl = _rec420_ms("Patients experienced recurrent events over follow-up.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_recurrent_event_modeling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_recurrent_event_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_recurrent_event_modeling
+
+    ms, cl = _rec420_ms(
+        "Patients were followed until first event or censoring."
+    )
+    result = validate_recurrent_event_modeling(ms, cl)
+    assert result.findings == []
