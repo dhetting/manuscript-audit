@@ -12519,3 +12519,342 @@ def test_sensitivity_non_empirical_no_fire() -> None:
     )
     result = validate_warranted_sensitivity_analysis(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 231 – validate_ai_tool_disclosure
+# ---------------------------------------------------------------------------
+
+def _ai_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ai",
+            source_path="/tmp/ai.md",
+            source_format="markdown",
+            title="AI Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ai_tool_without_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_ai_tool_disclosure
+
+    ms, cl = _ai_ms(
+        "We used ChatGPT to assist with drafting the literature review section."
+    )
+    result = validate_ai_tool_disclosure(ms, cl)
+    assert any(f.code == "missing-ai-tool-disclosure" for f in result.findings)
+
+
+def test_ai_tool_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ai_tool_disclosure
+
+    ms, cl = _ai_ms(
+        "We used ChatGPT for grammar checking of the manuscript draft. "
+        "AI-generated content was reviewed and edited by all authors for accuracy."
+    )
+    result = validate_ai_tool_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ai_tool_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ai_tool_disclosure
+
+    ms, cl = _ai_ms(
+        "All analyses were conducted using R version 4.3.1. "
+        "The manuscript was written and revised by the research team."
+    )
+    result = validate_ai_tool_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_ai_tool_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ai_tool_disclosure
+
+    ms, cl = _ai_ms("We used ChatGPT to explore ideas.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ai_tool_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 232 – validate_between_group_effect_size
+# ---------------------------------------------------------------------------
+
+def _between_group_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-between-group",
+            source_path="/tmp/between_group.md",
+            source_format="markdown",
+            title="Between-Group Effect Size Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_group_diff_without_effect_size_fires() -> None:
+    from manuscript_audit.validators.core import validate_between_group_effect_size
+
+    ms, cl = _between_group_ms(
+        "Groups differed significantly on the primary outcome, t(98) = 3.45, p = 0.001."
+    )
+    result = validate_between_group_effect_size(ms, cl)
+    assert any(f.code == "missing-between-group-effect-size" for f in result.findings)
+
+
+def test_group_diff_with_cohens_d_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_between_group_effect_size
+
+    ms, cl = _between_group_ms(
+        "Groups differed significantly on the primary outcome, t(98) = 3.45, p = 0.001, "
+        "Cohen's d = 0.69."
+    )
+    result = validate_between_group_effect_size(ms, cl)
+    assert result.findings == []
+
+
+def test_no_between_group_comparison_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_between_group_effect_size
+
+    ms, cl = _between_group_ms(
+        "Descriptive statistics and correlations are reported for all variables."
+    )
+    result = validate_between_group_effect_size(ms, cl)
+    assert result.findings == []
+
+
+def test_between_group_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_between_group_effect_size
+
+    ms, cl = _between_group_ms("Groups differed significantly, t(98) = 3.45.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_between_group_effect_size(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 233 – validate_convenience_sample_generalization
+# ---------------------------------------------------------------------------
+
+def _convenience_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-convenience",
+            source_path="/tmp/convenience.md",
+            source_format="markdown",
+            title="Convenience Sample Generalization Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_convenience_with_broad_generalisation_fires() -> None:
+    from manuscript_audit.validators.core import validate_convenience_sample_generalization
+
+    ms, cl = _convenience_ms(
+        "Undergraduate students completed the survey. "
+        "Our findings generalize to the general adult population."
+    )
+    result = validate_convenience_sample_generalization(ms, cl)
+    assert any(f.code == "overclaimed-generalizability-convenience" for f in result.findings)
+
+
+def test_convenience_with_generalisability_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_convenience_sample_generalization
+
+    ms, cl = _convenience_ms(
+        "Undergraduate students completed the survey. "
+        "Our findings generalize to the general adult population, though "
+        "generalisability may be limited by the student sample."
+    )
+    result = validate_convenience_sample_generalization(ms, cl)
+    assert result.findings == []
+
+
+def test_representative_sample_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_convenience_sample_generalization
+
+    ms, cl = _convenience_ms(
+        "A nationally representative probability sample of 3,500 adults was recruited "
+        "using stratified random sampling."
+    )
+    result = validate_convenience_sample_generalization(ms, cl)
+    assert result.findings == []
+
+
+def test_convenience_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_convenience_sample_generalization
+
+    ms, cl = _convenience_ms(
+        "Convenience samples limit the ability to generalize to the general population."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_convenience_sample_generalization(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 234 – validate_icc_reliability_reporting
+# ---------------------------------------------------------------------------
+
+def _icc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-icc",
+            source_path="/tmp/icc.md",
+            source_format="markdown",
+            title="ICC Reliability Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rater_agreement_without_icc_fires() -> None:
+    from manuscript_audit.validators.core import validate_icc_reliability_reporting
+
+    ms, cl = _icc_ms(
+        "Two independent raters coded all interview transcripts. "
+        "Rater agreement was assessed and found to be acceptable."
+    )
+    result = validate_icc_reliability_reporting(ms, cl)
+    assert any(f.code == "missing-icc-reliability" for f in result.findings)
+
+
+def test_rater_agreement_with_icc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_icc_reliability_reporting
+
+    ms, cl = _icc_ms(
+        "Two independent raters coded all transcripts. "
+        "Inter-rater reliability was excellent, ICC(2,1) = 0.91."
+    )
+    result = validate_icc_reliability_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_single_rater_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_icc_reliability_reporting
+
+    ms, cl = _icc_ms(
+        "One trained researcher coded all interview data using the coding manual."
+    )
+    result = validate_icc_reliability_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_icc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_icc_reliability_reporting
+
+    ms, cl = _icc_ms("Two raters independently coded the data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_icc_reliability_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 235 – validate_anova_post_hoc_reporting
+# ---------------------------------------------------------------------------
+
+def _anova_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-anova",
+            source_path="/tmp/anova.md",
+            source_format="markdown",
+            title="ANOVA Post-Hoc Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_anova_significant_without_post_hoc_fires() -> None:
+    from manuscript_audit.validators.core import validate_anova_post_hoc_reporting
+
+    ms, cl = _anova_ms(
+        "A one-way ANOVA revealed a significant main effect of condition, "
+        "F(2, 147) = 8.34, p < 0.001."
+    )
+    result = validate_anova_post_hoc_reporting(ms, cl)
+    assert any(f.code == "missing-anova-post-hoc" for f in result.findings)
+
+
+def test_anova_with_tukey_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_anova_post_hoc_reporting
+
+    ms, cl = _anova_ms(
+        "A one-way ANOVA revealed a significant main effect of condition, "
+        "F(2, 147) = 8.34, p < 0.001. Post-hoc comparisons using Tukey HSD "
+        "indicated that group A differed from group B (p = 0.003)."
+    )
+    result = validate_anova_post_hoc_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_non_significant_anova_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_anova_post_hoc_reporting
+
+    ms, cl = _anova_ms(
+        "ANOVA indicated no significant differences between conditions, "
+        "F(2, 147) = 1.23, p = 0.29."
+    )
+    result = validate_anova_post_hoc_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_anova_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_anova_post_hoc_reporting
+
+    ms, cl = _anova_ms("ANOVA revealed a significant main effect of condition.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_anova_post_hoc_reporting(ms, cl)
+    assert result.findings == []

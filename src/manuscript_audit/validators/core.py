@@ -6739,6 +6739,11 @@ def run_deterministic_validators(
         validate_age_reporting_precision(parsed, classification),
         validate_statistical_software_version(parsed, classification),
         validate_warranted_sensitivity_analysis(parsed, classification),
+        validate_ai_tool_disclosure(parsed, classification),
+        validate_between_group_effect_size(parsed, classification),
+        validate_convenience_sample_generalization(parsed, classification),
+        validate_icc_reliability_reporting(parsed, classification),
+        validate_anova_post_hoc_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -13959,6 +13964,375 @@ def validate_warranted_sensitivity_analysis(
                 ),
                 validator="warranted_sensitivity_analysis",
                 location="Statistical Analysis / Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 231 – Undisclosed use of AI/LLM tools
+# ---------------------------------------------------------------------------
+
+_AI_TOOL_RE = re.compile(
+    r"\b(?:ChatGPT|GPT.?4|GPT.?3|Claude\b|Gemini\b|Copilot\b|"
+    r"large\s+language\s+model|LLM\b|generative\s+AI|"
+    r"AI.?generated|AI.?assisted|AI\s+tool|"
+    r"(?:used?|employed?|leveraged?|utilised?)\s+(?:an?\s+)?AI)\b",
+    re.IGNORECASE,
+)
+_AI_DISCLOSURE_RE = re.compile(
+    r"\b(?:AI\s+(?:tool|assistance|use|utilization|usage)\s+(?:disclosure|statement)|"
+    r"AI.?generated\s+content\s+(?:was|were)\s+(?:reviewed?|edited?|verified?|"
+    r"checked?|confirmed?|validated?|checked?\s+for\s+accuracy)|"
+    r"generative\s+AI\s+(?:was|were)\s+used?\s+(?:to|for)\s+\w+\s+(?:and\s+)?"
+    r"(?:reviewed?|edited?|verified?|checked?|confirmed?|validated?)|"
+    r"disclosure[:\s]+(?:AI|ChatGPT|LLM)|"
+    r"(?:we|the\s+authors?)\s+(?:acknowledge|disclose)\s+the\s+use\s+of\s+"
+    r"(?:ChatGPT|GPT|Claude|Gemini|Copilot|LLM|AI)|"
+    r"author\s+contributions?.*?AI|AI.*?author\s+contributions?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ai_tool_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts that mention AI tools without a proper disclosure.
+
+    Emits ``missing-ai-tool-disclosure`` (moderate) when ChatGPT, LLMs, or
+    similar AI tools are mentioned but no disclosure of how they were used is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="ai_tool_disclosure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="ai_tool_disclosure", findings=[]
+        )
+
+    if not _AI_TOOL_RE.search(full):
+        return ValidationResult(
+            validator_name="ai_tool_disclosure", findings=[]
+        )
+
+    if _AI_DISCLOSURE_RE.search(full):
+        return ValidationResult(
+            validator_name="ai_tool_disclosure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="ai_tool_disclosure",
+        findings=[
+            Finding(
+                code="missing-ai-tool-disclosure",
+                severity="moderate",
+                message=(
+                    "AI or LLM tools (ChatGPT, GPT-4, Claude, etc.) are mentioned "
+                    "but no disclosure of their specific use in the research process is given. "
+                    "Disclose how and where AI tools were used (writing, editing, analysis)."
+                ),
+                validator="ai_tool_disclosure",
+                location="Methods / Disclosures",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 232 – Missing inter-group effect size comparison
+# ---------------------------------------------------------------------------
+
+_BETWEEN_GROUP_DIFF_RE = re.compile(
+    r"\b(?:(?:significant|marginal|trending?)\s+difference\s+between\s+(?:groups?|conditions?)|"
+    r"groups?\s+(?:differed?|varied?)\s+(?:significantly|marginally)\s+(?:on|in)|"
+    r"between.group\s+(?:comparison|difference|test)|"
+    r"t\s*\(\s*\d+\s*\)\s*=\s*[-\d\.]+\s*,\s*p\s*[<=]\s*0\.\d+|"
+    r"F\s*\(\s*\d+\s*,\s*\d+\s*\)\s*=\s*\d+\.\d+\s*,\s*p\s*[<=]\s*0\.\d+)\b",
+    re.IGNORECASE,
+)
+_BETWEEN_GROUP_ES_RE = re.compile(
+    r"\b(?:Cohen.s?\s*d\s*=|Hedges.?\s*g\s*=|Glass.?\s*delta\s*=|"
+    r"eta.?squared\s*=|partial\s+eta.?squared\s*=|omega.?squared\s*=|"
+    r"effect\s+size\s*(?:was|=|:|is)\s*(?:small|medium|large|\d+\.\d+)|"
+    r"\bd\s*=\s*[-\d\.]+|\bg\s*=\s*[-\d\.]+|"
+    r"d\s*=\s*0\.\d+|g\s*=\s*0\.\d+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_between_group_effect_size(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag between-group comparisons reported without effect sizes.
+
+    Emits ``missing-between-group-effect-size`` (moderate) when significant
+    between-group differences are reported but no standardised effect size is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="between_group_effect_size", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="between_group_effect_size", findings=[]
+        )
+
+    if not _BETWEEN_GROUP_DIFF_RE.search(full):
+        return ValidationResult(
+            validator_name="between_group_effect_size", findings=[]
+        )
+
+    if _BETWEEN_GROUP_ES_RE.search(full):
+        return ValidationResult(
+            validator_name="between_group_effect_size", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="between_group_effect_size",
+        findings=[
+            Finding(
+                code="missing-between-group-effect-size",
+                severity="moderate",
+                message=(
+                    "Between-group comparison results reported without a standardised "
+                    "effect size (Cohen's d, Hedges' g, eta-squared). "
+                    "Report effect sizes alongside significance tests."
+                ),
+                validator="between_group_effect_size",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 233 – Overclaiming from non-representative sample
+# ---------------------------------------------------------------------------
+
+_CONVENIENCE_SAMPLE_RE = re.compile(
+    r"\b(?:convenience\s+sample|undergraduate\s+students?|WEIRD\s+sample|"
+    r"student\s+sample|recruited?\s+(?:from|via|through)\s+"
+    r"(?:a\s+)?(?:university|college|MTurk|Amazon\s+Mechanical\s+Turk|"
+    r"online\s+(?:panel|platform)|crowdsourcing\s+platform)|"
+    r"non.?representative\s+sample)\b",
+    re.IGNORECASE,
+)
+_GENERALIZE_FROM_CONVENIENCE_RE = re.compile(
+    r"\b(?:findings?\s+(?:generalise|generalize)\s+to\s+(?:the\s+)?(?:general|broader?|"
+    r"wider?|larger?)\s+(?:population|public|society|adults?)|"
+    r"results?\s+are\s+(?:generalisable?|generalizable?)\s+(?:to|beyond)|"
+    r"implications?\s+for\s+(?:the\s+)?(?:general|broader?|wider?)\s+"
+    r"(?:population|public|society))\b",
+    re.IGNORECASE,
+)
+_CONVENIENCE_CAVEAT_RE = re.compile(
+    r"\b(?:generalis(?:e|ability)\s+(?:may\s+be\s+)?(?:limited?|constrained?)|"
+    r"generalizability\s+(?:may\s+be\s+)?(?:limited?|constrained?)|"
+    r"sample\s+may\s+not\s+(?:be\s+)?representative|"
+    r"limited?\s+(?:to|by)\s+(?:the\s+)?(?:sample|convenience|homogeneous)|"
+    r"replication\s+(?:with|in)\s+(?:more\s+)?(?:diverse|representative|broader?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_convenience_sample_generalization(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag convenience samples that claim broad generalisability without caveats.
+
+    Emits ``overclaimed-generalizability-convenience`` (moderate) when a
+    convenience or student sample is used but results are generalised without
+    noting sample limitations.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="convenience_sample_generalization", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="convenience_sample_generalization", findings=[]
+        )
+
+    if not _CONVENIENCE_SAMPLE_RE.search(full):
+        return ValidationResult(
+            validator_name="convenience_sample_generalization", findings=[]
+        )
+
+    if not _GENERALIZE_FROM_CONVENIENCE_RE.search(full):
+        return ValidationResult(
+            validator_name="convenience_sample_generalization", findings=[]
+        )
+
+    if _CONVENIENCE_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="convenience_sample_generalization", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="convenience_sample_generalization",
+        findings=[
+            Finding(
+                code="overclaimed-generalizability-convenience",
+                severity="moderate",
+                message=(
+                    "Convenience or student sample used but findings are generalised "
+                    "to the broader population without caveat. "
+                    "Acknowledge sample limitations and constrain generalisability claims."
+                ),
+                validator="convenience_sample_generalization",
+                location="Discussion / Limitations",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 234 – Missing intraclass correlation for reliability
+# ---------------------------------------------------------------------------
+
+_ICC_NEEDED_RE = re.compile(
+    r"\b(?:raters?\s+(?:coded?|rated?|scored?|assessed?|evaluated?)|"
+    r"two\s+(?:independent\s+)?(?:raters?|coders?|judges?)\s+"
+    r"(?:independently\s+)?(?:coded?|rated?|scored?|assessed?|evaluated?)|"
+    r"inter.?rater\s+(?:reliability|agreement|consistency)|"
+    r"coded?\s+independently\s+by\s+two|"
+    r"rater\s+agreement\s+was\s+(?:assessed?|examined?|calculated?|computed?))\b",
+    re.IGNORECASE,
+)
+_ICC_REPORTED_RE = re.compile(
+    r"\b(?:intraclass\s+correlation|"
+    r"ICC\s*[\(=]|ICC\s+(?:was|of)\s*\d|"
+    r"Krippendorff.s?\s+alpha\s*=|Cohen.s?\s+(?:weighted\s+)?kappa\s*=|"
+    r"Fleiss.?\s+kappa\s*=|"
+    r"percent\s+(?:agreement|overlap)\s*=\s*\d{2,3})",
+    re.IGNORECASE,
+)
+
+
+def validate_icc_reliability_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag multi-rater reliability studies without ICC or kappa values.
+
+    Emits ``missing-icc-reliability`` (moderate) when inter-rater reliability
+    is assessed but no ICC, kappa, or Krippendorff alpha is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="icc_reliability_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="icc_reliability_reporting", findings=[]
+        )
+
+    if not _ICC_NEEDED_RE.search(full):
+        return ValidationResult(
+            validator_name="icc_reliability_reporting", findings=[]
+        )
+
+    if _ICC_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="icc_reliability_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="icc_reliability_reporting",
+        findings=[
+            Finding(
+                code="missing-icc-reliability",
+                severity="moderate",
+                message=(
+                    "Inter-rater reliability assessment is mentioned but no ICC, "
+                    "kappa, or Krippendorff alpha statistic is reported. "
+                    "Report a quantitative reliability index."
+                ),
+                validator="icc_reliability_reporting",
+                location="Measures / Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 235 – Missing planned contrasts or post-hoc correction for ANOVA
+# ---------------------------------------------------------------------------
+
+_ANOVA_SIGNIFICANT_RE = re.compile(
+    r"\b(?:significant\s+main\s+effect\s+of|"
+    r"one.?way\s+ANOVA\s+(?:revealed?|showed?|indicated?|found?)\s+(?:a\s+)?significant|"
+    r"two.?way\s+ANOVA\s+(?:revealed?|showed?|indicated?|found?)\s+(?:a\s+)?significant|"
+    r"ANOVA\s+(?:revealed?|showed?|indicated?|found?)\s+(?:a\s+)?significant)\b",
+    re.IGNORECASE,
+)
+_POST_HOC_RE = re.compile(
+    r"\b(?:Tukey|Bonferroni|Scheff[eé]|Sidak|Dunnett|Games.Howell|"
+    r"Duncan|Newman.Keuls|LSD\b|HSD\b|post.?hoc\s+(?:test|comparison|correction)|"
+    r"planned\s+contrast|pairwise\s+comparison\s+with\s+(?:Bonferroni|Tukey|correction))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_anova_post_hoc_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag significant ANOVA results without post-hoc tests or planned contrasts.
+
+    Emits ``missing-anova-post-hoc`` (moderate) when a significant ANOVA result
+    is reported for a factor with multiple levels but no follow-up tests are described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="anova_post_hoc_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="anova_post_hoc_reporting", findings=[]
+        )
+
+    if not _ANOVA_SIGNIFICANT_RE.search(full):
+        return ValidationResult(
+            validator_name="anova_post_hoc_reporting", findings=[]
+        )
+
+    if _POST_HOC_RE.search(full):
+        return ValidationResult(
+            validator_name="anova_post_hoc_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="anova_post_hoc_reporting",
+        findings=[
+            Finding(
+                code="missing-anova-post-hoc",
+                severity="moderate",
+                message=(
+                    "A significant ANOVA result is reported but no post-hoc tests "
+                    "(Tukey, Bonferroni, Scheffé, etc.) or planned contrasts are described. "
+                    "Report follow-up comparisons to identify which groups differ."
+                ),
+                validator="anova_post_hoc_reporting",
+                location="Statistical Analysis / Results",
                 evidence=[],
             )
         ],
