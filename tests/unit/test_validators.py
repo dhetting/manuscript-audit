@@ -19125,3 +19125,341 @@ def test_no_sentiment_analysis_no_fire() -> None:
     )
     result = validate_sentiment_lexicon_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 326 – validate_mri_acquisition_parameters
+# ---------------------------------------------------------------------------
+
+def _mri326_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mri326",
+            source_path="/tmp/mri326.md",
+            source_format="markdown",
+            title="MRI Acquisition Parameters Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mri_without_params_fires() -> None:
+    from manuscript_audit.validators.core import validate_mri_acquisition_parameters
+
+    ms, cl = _mri326_ms(
+        "Structural MRI was acquired for all participants at baseline."
+    )
+    result = validate_mri_acquisition_parameters(ms, cl)
+    assert any(f.code == "missing-mri-acquisition-parameters" for f in result.findings)
+
+
+def test_mri_with_params_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mri_acquisition_parameters
+
+    ms, cl = _mri326_ms(
+        "Structural MRI was acquired on a 3T Siemens Prisma scanner "
+        "(TR = 2500 ms, TE = 2.82 ms, voxel size = 1 mm isotropic)."
+    )
+    result = validate_mri_acquisition_parameters(ms, cl)
+    assert result.findings == []
+
+
+def test_mri_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mri_acquisition_parameters
+
+    ms, cl = _mri326_ms("Structural MRI was acquired for all participants.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_mri_acquisition_parameters(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mri_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mri_acquisition_parameters
+
+    ms, cl = _mri326_ms(
+        "Participants completed a battery of cognitive tests over two sessions."
+    )
+    result = validate_mri_acquisition_parameters(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 327 – validate_fmri_preprocessing_pipeline
+# ---------------------------------------------------------------------------
+
+def _fmri327_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fmri327",
+            source_path="/tmp/fmri327.md",
+            source_format="markdown",
+            title="fMRI Preprocessing Pipeline Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_fmri_without_preprocessing_fires() -> None:
+    from manuscript_audit.validators.core import validate_fmri_preprocessing_pipeline
+
+    ms, cl = _fmri327_ms(
+        "Functional MRI data were collected during a working memory task."
+    )
+    result = validate_fmri_preprocessing_pipeline(ms, cl)
+    assert any(f.code == "missing-fmri-preprocessing-pipeline" for f in result.findings)
+
+
+def test_fmri_with_pipeline_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fmri_preprocessing_pipeline
+
+    ms, cl = _fmri327_ms(
+        "fMRI data were preprocessed using fMRIPrep. Steps included motion "
+        "correction, slice-timing correction, and spatial smoothing (6 mm FWHM)."
+    )
+    result = validate_fmri_preprocessing_pipeline(ms, cl)
+    assert result.findings == []
+
+
+def test_fmri_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fmri_preprocessing_pipeline
+
+    ms, cl = _fmri327_ms("Functional MRI data were collected during the task.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_fmri_preprocessing_pipeline(ms, cl)
+    assert result.findings == []
+
+
+def test_no_fmri_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fmri_preprocessing_pipeline
+
+    ms, cl = _fmri327_ms(
+        "Participants completed questionnaires and behavioural tasks in a lab setting."
+    )
+    result = validate_fmri_preprocessing_pipeline(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 328 – validate_neuroimaging_atlas_disclosure
+# ---------------------------------------------------------------------------
+
+def _atlas328_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-atlas328",
+            source_path="/tmp/atlas328.md",
+            source_format="markdown",
+            title="Neuroimaging Atlas Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_brain_region_without_atlas_fires() -> None:
+    from manuscript_audit.validators.core import validate_neuroimaging_atlas_disclosure
+
+    ms, cl = _atlas328_ms(
+        "Activation in the prefrontal cortex and amygdala was significantly "
+        "elevated in the experimental condition."
+    )
+    result = validate_neuroimaging_atlas_disclosure(ms, cl)
+    assert any(f.code == "missing-neuroimaging-atlas" for f in result.findings)
+
+
+def test_brain_region_with_atlas_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_neuroimaging_atlas_disclosure
+
+    ms, cl = _atlas328_ms(
+        "Regions of interest were defined using the AAL atlas in MNI152 space. "
+        "Activation in the prefrontal cortex was significantly elevated."
+    )
+    result = validate_neuroimaging_atlas_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_atlas_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_neuroimaging_atlas_disclosure
+
+    ms, cl = _atlas328_ms(
+        "Activation in the prefrontal cortex was elevated."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_neuroimaging_atlas_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_brain_region_no_fire_atlas() -> None:
+    from manuscript_audit.validators.core import validate_neuroimaging_atlas_disclosure
+
+    ms, cl = _atlas328_ms(
+        "Participants completed a series of cognitive assessments over two visits."
+    )
+    result = validate_neuroimaging_atlas_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 329 – validate_multiple_comparisons_neuroimaging
+# ---------------------------------------------------------------------------
+
+def _neuromc329_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-neuromc329",
+            source_path="/tmp/neuromc329.md",
+            source_format="markdown",
+            title="Neuroimaging Multiple Comparisons Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_voxelwise_without_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_neuroimaging
+
+    ms, cl = _neuromc329_ms(
+        "Whole-brain voxelwise analysis was conducted to identify activation "
+        "differences between groups."
+    )
+    result = validate_multiple_comparisons_neuroimaging(ms, cl)
+    assert any(
+        f.code == "missing-neuroimaging-multiple-comparisons" for f in result.findings
+    )
+
+
+def test_voxelwise_with_fdr_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_neuroimaging
+
+    ms, cl = _neuromc329_ms(
+        "Voxelwise analysis was corrected for multiple comparisons using FDR "
+        "(q < 0.05) across the whole brain."
+    )
+    result = validate_multiple_comparisons_neuroimaging(ms, cl)
+    assert result.findings == []
+
+
+def test_neuro_mc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_neuroimaging
+
+    ms, cl = _neuromc329_ms(
+        "Whole-brain voxelwise analysis was conducted."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multiple_comparisons_neuroimaging(ms, cl)
+    assert result.findings == []
+
+
+def test_no_voxelwise_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparisons_neuroimaging
+
+    ms, cl = _neuromc329_ms(
+        "We applied mixed-effects ANOVA to self-report questionnaire data."
+    )
+    result = validate_multiple_comparisons_neuroimaging(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 330 – validate_roi_definition_disclosure
+# ---------------------------------------------------------------------------
+
+def _roi330_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-roi330",
+            source_path="/tmp/roi330.md",
+            source_format="markdown",
+            title="ROI Definition Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_roi_without_definition_fires() -> None:
+    from manuscript_audit.validators.core import validate_roi_definition_disclosure
+
+    ms, cl = _roi330_ms(
+        "ROI-based analysis was conducted to assess hippocampal activation."
+    )
+    result = validate_roi_definition_disclosure(ms, cl)
+    assert any(f.code == "missing-roi-definition" for f in result.findings)
+
+
+def test_roi_with_definition_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_roi_definition_disclosure
+
+    ms, cl = _roi330_ms(
+        "The ROI was defined anatomically using the AAL atlas. ROI-based analysis "
+        "was conducted on the bilateral hippocampus."
+    )
+    result = validate_roi_definition_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_roi_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_roi_definition_disclosure
+
+    ms, cl = _roi330_ms("ROI-based analysis was conducted on hippocampal activation.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_roi_definition_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_roi_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_roi_definition_disclosure
+
+    ms, cl = _roi330_ms(
+        "We used a between-subjects design to assess memory performance."
+    )
+    result = validate_roi_definition_disclosure(ms, cl)
+    assert result.findings == []

@@ -6832,6 +6832,11 @@ def run_deterministic_validators(
         validate_topic_model_parameter_disclosure(parsed, classification),
         validate_inter_annotator_agreement(parsed, classification),
         validate_sentiment_lexicon_disclosure(parsed, classification),
+        validate_mri_acquisition_parameters(parsed, classification),
+        validate_fmri_preprocessing_pipeline(parsed, classification),
+        validate_neuroimaging_atlas_disclosure(parsed, classification),
+        validate_multiple_comparisons_neuroimaging(parsed, classification),
+        validate_roi_definition_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -19851,6 +19856,305 @@ def validate_sentiment_lexicon_disclosure(
                     "Sentiment analysis is performed but the lexicon or model used "
                     "(e.g., VADER, AFINN, fine-tuned classifier) is not identified. "
                     "Disclose the sentiment scoring approach to support reproducibility."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 326 – validate_mri_acquisition_parameters
+# ---------------------------------------------------------------------------
+
+_MRI_TRIGGER_RE = re.compile(
+    r"\b(?:MRI\b|magnetic\s+resonance\s+imaging|"
+    r"(?:structural|anatomical|diffusion|functional)\s+MRI|"
+    r"fMRI\b|DTI\b|DWI\b|BOLD\b|T1[\s-]?weighted|T2[\s-]?weighted|"
+    r"scanner\s+(?:field\s+)?strength|Tesla\b|1\.5T\b|3T\b|7T\b)\b",
+    re.IGNORECASE,
+)
+_MRI_PARAMS_DISCLOSED_RE = re.compile(
+    r"\b(?:TR\s*=\s*(?:\d)|TE\s*=\s*(?:\d)|flip\s+angle\s*=\s*(?:\d)|"
+    r"voxel\s+size|slice\s+thickness|repetition\s+time|echo\s+time|"
+    r"field\s+of\s+view|matrix\s+size|acquisition\s+(?:parameters?|protocol)|"
+    r"(?:1\.5|3|7)[\s-]?T(?:esla)?\s+(?:scanner|MRI)|"
+    r"(?:Siemens|Philips|GE)\s+(?:scanner|MRI|Trio|Prisma|Skyra))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mri_acquisition_parameters(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag MRI studies without acquisition parameter disclosure.
+
+    Emits ``missing-mri-acquisition-parameters`` (minor) when MRI data are
+    collected but acquisition parameters (TR, TE, field strength, voxel size)
+    are not reported.
+    """
+    _vid = "validate_mri_acquisition_parameters"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MRI_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _MRI_PARAMS_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-mri-acquisition-parameters",
+                severity="minor",
+                message=(
+                    "MRI data are used but acquisition parameters (e.g., TR, TE, "
+                    "field strength, voxel size) are not reported. Disclose the "
+                    "acquisition protocol to support reproducibility."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 327 – validate_fmri_preprocessing_pipeline
+# ---------------------------------------------------------------------------
+
+_FMRI_TRIGGER_RE = re.compile(
+    r"\b(?:fMRI\b|functional\s+MRI|functional\s+magnetic\s+resonance|"
+    r"BOLD\s+signal|task[\s-]based\s+fMRI|resting[\s-]state\s+fMRI|"
+    r"rs[\s-]?fMRI\b|brain\s+activation\s+(?:map|pattern))\b",
+    re.IGNORECASE,
+)
+_FMRI_PREPROCESS_DISCLOSED_RE = re.compile(
+    r"\b(?:motion\s+(?:correction|scrubbing|realignment)|"
+    r"slice[\s-]timing\s+correction|"
+    r"spatial\s+(?:smoothing|normalization)|"
+    r"temporal\s+filtering|high[\s-]pass\s+filter|"
+    r"FSL\b|SPM\b|FreeSurfer\b|ANTs\b|fMRIPrep\b|AFNI\b|"
+    r"preprocessing\s+(?:pipeline|steps?)\s+(?:included|consisted|was|were))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_fmri_preprocessing_pipeline(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag fMRI studies without preprocessing pipeline disclosure.
+
+    Emits ``missing-fmri-preprocessing-pipeline`` (minor) when fMRI data
+    are analysed but the preprocessing pipeline is not described.
+    """
+    _vid = "validate_fmri_preprocessing_pipeline"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _FMRI_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _FMRI_PREPROCESS_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-fmri-preprocessing-pipeline",
+                severity="minor",
+                message=(
+                    "fMRI data are analysed but the preprocessing pipeline "
+                    "(e.g., motion correction, slice-timing, spatial smoothing) "
+                    "is not described. Disclose all preprocessing steps and software used."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 328 – validate_neuroimaging_atlas_disclosure
+# ---------------------------------------------------------------------------
+
+_ATLAS_TRIGGER_RE = re.compile(
+    r"\b(?:brain\s+region|anatomical\s+region|cortical\s+region|"
+    r"region\s+of\s+interest|ROI\b|"
+    r"prefrontal\s+cortex|amygdala|hippocampus|insula|"
+    r"parcellation|brain\s+atlas|neuroimaging\s+coordinates|"
+    r"MNI\s+(?:coordinates?|space)|Talairach)\b",
+    re.IGNORECASE,
+)
+_ATLAS_DISCLOSED_RE = re.compile(
+    r"\b(?:MNI\s+(?:152\s+)?(?:space|template|atlas|coordinates?)|"
+    r"Talairach\s+(?:space|atlas|coordinates?)|"
+    r"AAL\s+atlas|Desikan[\s-]Killiany|Brodmann\s+area|"
+    r"Harvard[\s-]Oxford\s+atlas|Destrieux|Schaefer\s+parcellation|"
+    r"automated\s+anatomical\s+labeling|"
+    r"atlas\s+(?:was|used|registered)|"
+    r"parcellated\s+(?:using|into|with))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_neuroimaging_atlas_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag neuroimaging studies without atlas/parcellation disclosure.
+
+    Emits ``missing-neuroimaging-atlas`` (minor) when brain regions are
+    reported but the atlas or parcellation scheme used is not named.
+    """
+    _vid = "validate_neuroimaging_atlas_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ATLAS_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _ATLAS_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-neuroimaging-atlas",
+                severity="minor",
+                message=(
+                    "Brain regions are reported but the atlas or parcellation scheme "
+                    "(e.g., MNI152, AAL, Desikan-Killiany) is not named. "
+                    "Identify the atlas and coordinate space used."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 329 – validate_multiple_comparisons_neuroimaging
+# ---------------------------------------------------------------------------
+
+_NEURO_MC_TRIGGER_RE = re.compile(
+    r"\b(?:whole[\s-]brain\s+(?:analysis|contrast|comparison)|"
+    r"voxelwise|voxel[\s-]wise|mass[\s-]univariate|"
+    r"GLM\s+(?:analysis|contrast)|"
+    r"cluster\s+(?:analysis|comparison|contrast)|"
+    r"statistical\s+parametric\s+(?:map|mapping)|SPM\s+contrast)\b",
+    re.IGNORECASE,
+)
+_NEURO_CORRECTION_DISCLOSED_RE = re.compile(
+    r"\b(?:family[\s-]wise\s+error|FWE\b|false\s+discovery\s+rate|FDR\b|"
+    r"Bonferroni\s+correct(?:ion|ed)|"
+    r"cluster[\s-]level\s+(?:threshold|correct(?:ion|ed))|"
+    r"GRF\s+(?:correction|theory)|Gaussian\s+random\s+field|"
+    r"permutation[\s-]based\s+(?:correction|threshold)|"
+    r"voxel[\s-]level\s+threshold\s+of\s+p\s*<\s*0\.0[0-9]+|"
+    r"corrected\s+(?:p[\s-]value|threshold)\s+(?:of\s+)?p\s*<\s*0\.0[0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multiple_comparisons_neuroimaging(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag neuroimaging voxelwise analyses without multiple comparisons correction.
+
+    Emits ``missing-neuroimaging-multiple-comparisons`` (moderate) when
+    voxelwise or whole-brain analysis is performed but no multiple
+    comparisons correction is described.
+    """
+    _vid = "validate_multiple_comparisons_neuroimaging"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _NEURO_MC_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _NEURO_CORRECTION_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-neuroimaging-multiple-comparisons",
+                severity="moderate",
+                message=(
+                    "Voxelwise or whole-brain analysis is performed but no multiple "
+                    "comparisons correction is described. Report the correction method "
+                    "(e.g., FWE, FDR, cluster-level GRF threshold)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 330 – validate_roi_definition_disclosure
+# ---------------------------------------------------------------------------
+
+_ROI_TRIGGER_RE = re.compile(
+    r"\b(?:region[\s-]of[\s-]interest|ROI[\s-]based|ROI\s+analysis|"
+    r"ROI\s+mask|ROI\s+approach|ROI\s+(?:was|were)\s+defined|"
+    r"selected\s+ROI|a\s+priori\s+ROI)\b",
+    re.IGNORECASE,
+)
+_ROI_DEFINED_RE = re.compile(
+    r"\b(?:ROI\s+(?:was|were)\s+(?:defined|delineated|drawn|extracted|created|"
+    r"segmented|identified)\s+(?:\w+\s+)?(?:using|from|based\s+on|as)|"
+    r"anatomically\s+defined\s+(?:ROI|region)|"
+    r"functionally\s+defined\s+(?:ROI|region)|"
+    r"ROI\s+mask\s+(?:was|were)\s+(?:obtained|created|derived)\s+from|"
+    r"coordinates?\s+(?:were\s+)?(?:taken|extracted)\s+from|"
+    r"sphere\s+(?:of\s+)?(?:\d+)\s*mm\s+radius\s+around)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_roi_definition_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ROI analyses without ROI definition disclosure.
+
+    Emits ``missing-roi-definition`` (minor) when ROI-based analysis is
+    performed but how the ROI was defined or selected is not described.
+    """
+    _vid = "validate_roi_definition_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ROI_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _ROI_DEFINED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-roi-definition",
+                severity="minor",
+                message=(
+                    "ROI-based analysis is performed but how the region of interest "
+                    "was defined is not described. Specify whether ROIs were anatomically "
+                    "defined, functionally defined, or derived from atlas coordinates."
                 ),
                 validator=_vid,
             )
