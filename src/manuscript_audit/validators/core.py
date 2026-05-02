@@ -7113,6 +7113,11 @@ def run_deterministic_validators(
         validate_visual_place_recognition_metrics(parsed, classification),
         validate_vpr_benchmark_metrics(parsed, classification),
         validate_camera_relocalization_metrics(parsed, classification),
+        validate_slam_evaluation_metrics(parsed, classification),
+        validate_autonomous_driving_perception_metrics(parsed, classification),
+        validate_trajectory_benchmark_metrics(parsed, classification),
+        validate_occupancy_prediction_metrics(parsed, classification),
+        validate_human_pose_forecasting_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -33953,6 +33958,243 @@ def validate_camera_relocalization_metrics(
                 ),
                 location="full_text",
                 validator=_CAMLOC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 606 – simultaneous localization and mapping evaluation
+# ---------------------------------------------------------------------------
+_SLAM_VID = "missing-slam-evaluation-metrics"
+
+_SLAM_TRIGGERS = re.compile(
+    r"\b(?:simultaneous\s+localization\s+and\s+mapping|SLAM\s+(?:system|method|approach)|"
+    r"visual\s+odometry|TUM\s+(?:RGB-D|dataset)|EuRoC\s+(?:dataset|benchmark)|"
+    r"KITTI\s+odometry)\b",
+    re.IGNORECASE,
+)
+_SLAM_METRICS = re.compile(
+    r"\b(?:ATE|absolute\s+trajectory\s+error|RPE|relative\s+pose\s+error|"
+    r"translational\s+RMSE|rotational\s+RMSE|drift)\b.*?"
+    r"(?:\d[\d.]*\s*(?:m|cm|deg|°)|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*(?:m|cm))\s*(?:ATE|RPE|drift)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_slam_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SLAM_VID, findings=[])
+    text = parsed.full_text
+    if not _SLAM_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SLAM_VID, findings=[])
+    if _SLAM_METRICS.search(text):
+        return ValidationResult(validator_name=_SLAM_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SLAM_VID,
+        findings=[
+            Finding(
+                code=_SLAM_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses SLAM / visual odometry but does not "
+                    "report ATE, RPE, or trajectory error on TUM/EuRoC/KITTI."
+                ),
+                location="full_text",
+                validator=_SLAM_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 607 – autonomous driving perception evaluation
+# ---------------------------------------------------------------------------
+_ADPERCEPTION_VID = "missing-autonomous-driving-perception-metrics"
+
+_ADPERCEPTION_TRIGGERS = re.compile(
+    r"\b(?:autonomous\s+driving\s+perception|self[- ]driving\s+perception|"
+    r"bird[- ]eye[- ]view\s+(?:detection|segmentation)|"
+    r"BEV\s+(?:perception|detection)|nuScenes\s+detection\s+score)\b",
+    re.IGNORECASE,
+)
+_ADPERCEPTION_METRICS = re.compile(
+    r"\b(?:NDS|mAP|nuScenes\s+(?:detection|tracking)\s+score|"
+    r"AMOTA|AMOTP|MOTA|IDS)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:NDS|mAP|AMOTA|MOTA)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_autonomous_driving_perception_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ADPERCEPTION_VID, findings=[])
+    text = parsed.full_text
+    if not _ADPERCEPTION_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ADPERCEPTION_VID, findings=[])
+    if _ADPERCEPTION_METRICS.search(text):
+        return ValidationResult(validator_name=_ADPERCEPTION_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ADPERCEPTION_VID,
+        findings=[
+            Finding(
+                code=_ADPERCEPTION_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses autonomous driving perception but does not "
+                    "report NDS, mAP, AMOTA, or MOTA on nuScenes or similar."
+                ),
+                location="full_text",
+                validator=_ADPERCEPTION_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 608 – trajectory prediction evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_TRAJPRED608_VID = "missing-trajectory-benchmark-metrics"
+
+_TRAJPRED608_TRIGGERS = re.compile(
+    r"\b(?:trajectory\s+prediction|motion\s+prediction|path\s+prediction|"
+    r"pedestrian\s+trajectory\s+forecasting|vehicle\s+motion\s+forecasting|"
+    r"ETH[/ ]UCY\s+dataset|nuScenes\s+prediction)\b",
+    re.IGNORECASE,
+)
+_TRAJPRED608_METRICS = re.compile(
+    r"\b(?:ADE|FDE|minADE|minFDE|average\s+displacement\s+error|"
+    r"final\s+displacement\s+error|collision\s+rate|miss\s+rate)\b.*?"
+    r"(?:\d[\d.]*\s*(?:m|cm)?|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:ADE|FDE|minADE|minFDE)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_trajectory_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TRAJPRED608_VID, findings=[])
+    text = parsed.full_text
+    if not _TRAJPRED608_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_TRAJPRED608_VID, findings=[])
+    if _TRAJPRED608_METRICS.search(text):
+        return ValidationResult(validator_name=_TRAJPRED608_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TRAJPRED608_VID,
+        findings=[
+            Finding(
+                code=_TRAJPRED608_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses trajectory prediction but does not report "
+                    "ADE, FDE, minADE, or minFDE."
+                ),
+                location="full_text",
+                validator=_TRAJPRED608_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 609 – occupancy prediction evaluation
+# ---------------------------------------------------------------------------
+_OCCUPANCY_VID = "missing-occupancy-prediction-metrics"
+
+_OCCUPANCY_TRIGGERS = re.compile(
+    r"\b(?:occupancy\s+(?:grid\s+)?prediction|3D\s+occupancy\s+prediction|"
+    r"semantic\s+occupancy|occupancy\s+flow|Occ3D|OpenOccupancy)\b",
+    re.IGNORECASE,
+)
+_OCCUPANCY_METRICS = re.compile(
+    r"\b(?:mIoU|IoU|SC\s+IoU|SSC\s+mIoU|semantic\s+scene\s+completion|"
+    r"occupied\s+IoU)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:mIoU|IoU|SSC)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_occupancy_prediction_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_OCCUPANCY_VID, findings=[])
+    text = parsed.full_text
+    if not _OCCUPANCY_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_OCCUPANCY_VID, findings=[])
+    if _OCCUPANCY_METRICS.search(text):
+        return ValidationResult(validator_name=_OCCUPANCY_VID, findings=[])
+    return ValidationResult(
+        validator_name=_OCCUPANCY_VID,
+        findings=[
+            Finding(
+                code=_OCCUPANCY_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses occupancy prediction but does not report "
+                    "mIoU, SC IoU, or SSC mIoU on a benchmark."
+                ),
+                location="full_text",
+                validator=_OCCUPANCY_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 610 – human pose forecasting evaluation
+# ---------------------------------------------------------------------------
+_POSEFORECAST_VID = "missing-human-pose-forecasting-metrics"
+
+_POSEFORECAST_TRIGGERS = re.compile(
+    r"\b(?:human\s+pose\s+forecasting|motion\s+prediction\s+human|"
+    r"human\s+motion\s+prediction|3D\s+pose\s+forecasting|"
+    r"Human3\.?6M\s+(?:prediction|forecasting)|CMU[- ]Mocap\s+prediction)\b",
+    re.IGNORECASE,
+)
+_POSEFORECAST_METRICS = re.compile(
+    r"\b(?:MPJPE|mean\s+per\s+joint\s+position\s+error|"
+    r"PCK|percentage\s+of\s+correct\s+keypoints|"
+    r"angle\s+MAE|geodesic\s+loss)\b.*?(?:\d[\d.]*\s*(?:mm|m|°)?|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:MPJPE|PCK)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_human_pose_forecasting_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_POSEFORECAST_VID, findings=[])
+    text = parsed.full_text
+    if not _POSEFORECAST_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_POSEFORECAST_VID, findings=[])
+    if _POSEFORECAST_METRICS.search(text):
+        return ValidationResult(validator_name=_POSEFORECAST_VID, findings=[])
+    return ValidationResult(
+        validator_name=_POSEFORECAST_VID,
+        findings=[
+            Finding(
+                code=_POSEFORECAST_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses human pose forecasting but does not report "
+                    "MPJPE, PCK, or angle MAE on Human3.6M or CMU-Mocap."
+                ),
+                location="full_text",
+                validator=_POSEFORECAST_VID,
             )
         ],
     )

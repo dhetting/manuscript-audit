@@ -35818,3 +35818,258 @@ def test_camloc605_non_empirical_no_fire() -> None:
     )
     r = validate_camera_relocalization_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 606 – validate_slam_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _slam606_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t606", source_path="t606.md", source_format="markdown",
+            title="SLAM evaluation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_slam606_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_slam_evaluation_metrics
+    ms, cl = _slam606_ms(
+        "We propose a visual odometry system evaluated on the TUM RGB-D dataset."
+    )
+    r = validate_slam_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-slam-evaluation-metrics" for f in r.findings)
+
+
+def test_slam606_no_fire_when_ate_reported() -> None:
+    from manuscript_audit.validators.core import validate_slam_evaluation_metrics
+    ms, cl = _slam606_ms("SLAM: ATE = 0.012 m on TUM RGB-D fr1/desk sequence.")
+    r = validate_slam_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_slam606_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_slam_evaluation_metrics
+    ms, cl = _slam606_ms("We present a text-to-SQL model.")
+    r = validate_slam_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_slam606_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_slam_evaluation_metrics
+    ms, _ = _slam606_ms("Simultaneous localization and mapping theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_slam_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 607 – validate_autonomous_driving_perception_metrics
+# ---------------------------------------------------------------------------
+def _adperception607_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t607", source_path="t607.md", source_format="markdown",
+            title="Autonomous driving perception", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_adperception607_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_autonomous_driving_perception_metrics
+    ms, cl = _adperception607_ms(
+        "We propose a bird-eye-view detection model for autonomous driving perception."
+    )
+    r = validate_autonomous_driving_perception_metrics(ms, cl)
+    assert any(f.code == "missing-autonomous-driving-perception-metrics" for f in r.findings)
+
+
+def test_adperception607_no_fire_when_nds_reported() -> None:
+    from manuscript_audit.validators.core import validate_autonomous_driving_perception_metrics
+    ms, cl = _adperception607_ms(
+        "BEV detection: NDS = 0.621, mAP = 57.8% on nuScenes test."
+    )
+    r = validate_autonomous_driving_perception_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_adperception607_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_autonomous_driving_perception_metrics
+    ms, cl = _adperception607_ms("We present a knowledge distillation approach.")
+    r = validate_autonomous_driving_perception_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_adperception607_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_autonomous_driving_perception_metrics
+    ms, _ = _adperception607_ms("Self-driving perception theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_autonomous_driving_perception_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 608 – validate_trajectory_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _trajpred608_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t608", source_path="t608.md", source_format="markdown",
+            title="Trajectory prediction", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_trajpred608_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_benchmark_metrics
+    ms, cl = _trajpred608_ms(
+        "We propose a pedestrian trajectory forecasting model on ETH/UCY dataset."
+    )
+    r = validate_trajectory_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-trajectory-benchmark-metrics" for f in r.findings)
+
+
+def test_trajpred608_no_fire_when_ade_reported() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_benchmark_metrics
+    ms, cl = _trajpred608_ms(
+        "Trajectory prediction: minADE = 0.41 m, minFDE = 0.79 m on ETH."
+    )
+    r = validate_trajectory_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_trajpred608_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_benchmark_metrics
+    ms, cl = _trajpred608_ms("We present a code translation model.")
+    r = validate_trajectory_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_trajpred608_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_benchmark_metrics
+    ms, _ = _trajpred608_ms("Motion prediction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_trajectory_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 609 – validate_occupancy_prediction_metrics
+# ---------------------------------------------------------------------------
+def _occupancy609_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t609", source_path="t609.md", source_format="markdown",
+            title="Occupancy prediction", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_occupancy609_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_occupancy_prediction_metrics
+    ms, cl = _occupancy609_ms(
+        "We propose a 3D occupancy prediction model evaluated on Occ3D."
+    )
+    r = validate_occupancy_prediction_metrics(ms, cl)
+    assert any(f.code == "missing-occupancy-prediction-metrics" for f in r.findings)
+
+
+def test_occupancy609_no_fire_when_miou_reported() -> None:
+    from manuscript_audit.validators.core import validate_occupancy_prediction_metrics
+    ms, cl = _occupancy609_ms("Semantic occupancy: mIoU = 42.3% on Occ3D-nuScenes.")
+    r = validate_occupancy_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_occupancy609_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_occupancy_prediction_metrics
+    ms, cl = _occupancy609_ms("We study formal verification approaches.")
+    r = validate_occupancy_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_occupancy609_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_occupancy_prediction_metrics
+    ms, _ = _occupancy609_ms("Occupancy grid prediction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_occupancy_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 610 – validate_human_pose_forecasting_metrics
+# ---------------------------------------------------------------------------
+def _poseforecast610_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t610", source_path="t610.md", source_format="markdown",
+            title="Human pose forecasting", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_poseforecast610_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_human_pose_forecasting_metrics
+    ms, cl = _poseforecast610_ms(
+        "We propose a human motion prediction model on Human3.6M."
+    )
+    r = validate_human_pose_forecasting_metrics(ms, cl)
+    assert any(f.code == "missing-human-pose-forecasting-metrics" for f in r.findings)
+
+
+def test_poseforecast610_no_fire_when_mpjpe_reported() -> None:
+    from manuscript_audit.validators.core import validate_human_pose_forecasting_metrics
+    ms, cl = _poseforecast610_ms(
+        "Human pose forecasting: MPJPE = 47.3 mm at 400ms on Human3.6M."
+    )
+    r = validate_human_pose_forecasting_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_poseforecast610_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_human_pose_forecasting_metrics
+    ms, cl = _poseforecast610_ms("We present an audio captioning model.")
+    r = validate_human_pose_forecasting_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_poseforecast610_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_human_pose_forecasting_metrics
+    ms, _ = _poseforecast610_ms("3D pose forecasting theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_human_pose_forecasting_metrics(ms, cl)
+    assert r.findings == []
