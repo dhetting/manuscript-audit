@@ -1023,16 +1023,70 @@ HEAD: `907b239`
 - Phase 354: `validate_negative_case_analysis` → `missing-negative-case-analysis` (minor)
 - Phase 355: `validate_thick_description_transferability` → `missing-thick-description` (minor)
 
-**Phases 356–360** (`a85e7c3`, 1226 tests)
-- Phase 356: `validate_mixed_methods_design_rationale` → `missing-mixed-methods-rationale` (minor)
-- Phase 357: `validate_simulation_parameter_justification` → `missing-simulation-parameters` (minor)
-- Phase 358: `validate_bootstrap_sample_size` → `missing-bootstrap-sample-size` (minor)
-- Phase 359: `validate_monte_carlo_replications` → `missing-monte-carlo-replications` (minor)
-- Phase 360: `validate_agent_based_model_validation` → `missing-abm-validation` (minor)
-- Golden: `minor` count updated from 14 → 15 (Monte Carlo trigger fires on latex_equivalence.tex)
+**Phases 361–365** (`224e3c6`, 1246 tests)
+- Phase 361: `validate_network_centrality_reporting` → `missing-centrality-reporting` (minor)
+- Phase 362: `validate_spatial_autocorrelation_testing` → `missing-spatial-autocorrelation-test` (minor)
+- Phase 363: `validate_time_series_stationarity` → `missing-stationarity-test` (minor)
+- Phase 364: `validate_regression_discontinuity_bandwidth` → `missing-rd-bandwidth` (minor)
+- Phase 365: `validate_within_subject_order_effects` → `missing-counterbalancing` (minor)
 
-Current test count: **1226 passing** (after phase 360)
-HEAD: `a85e7c3`
+**Phases 366–370** (`e2582d0`, 1266 tests)
+- Phase 366: `validate_arch_effect_testing` → `missing-arch-test` (minor)
+- Phase 367: `validate_cointegration_testing` → `missing-cointegration-test` (minor)
+- Phase 368: `validate_vecm_identification` → `missing-vecm-identification` (minor)
+- Phase 369: `validate_panel_fixed_effects_reporting` → `missing-panel-fe-reporting` (minor)
+- Phase 370: `validate_garch_order_specification` → `missing-garch-order` (minor)
+- Bug: `_ARCH_SPEC_RE` — outer `\b(?:...)\b` fails when group ends with `)`. Fixed by removing outer `\b` and adding inner `\b` per alternative.
+
+**Phases 371–375** (`9866084`, 1286 tests)
+- Phase 371: `validate_arima_order_reporting` → `missing-arima-order` (minor)
+- Phase 372: `validate_var_lag_selection` → `missing-var-lag-selection` (minor)
+- Phase 373: `validate_irf_significance_reporting` → `missing-irf-significance` (minor)
+- Phase 374: `validate_forecast_evaluation_metric` → `missing-forecast-metric` (minor)
+- Phase 375: `validate_seasonal_adjustment_disclosure` → `missing-seasonal-adjustment` (minor)
+- Bug: `_IRF_TRIGGER_RE` used singular `function` — missed "functions". Fixed with `functions?`.
+
+**Phases 376–380** (`f6ace7f`, 1306 tests)
+- Phase 376: `validate_did_parallel_trends` → `missing-parallel-trends-test` (moderate)
+- Phase 377: `validate_rdd_manipulation_test` → `missing-rdd-manipulation-test` (moderate)
+- Phase 378: `validate_synth_control_donor_pool` → `missing-synth-control-donor-pool` (minor)
+- Phase 379: `validate_iv_exclusion_restriction_argument` → `missing-iv-exclusion-argument` (minor)
+- Phase 380: `validate_event_study_pre_trends` → `missing-event-study-pre-trends` (minor)
+
+**Phases 381–385** (`5f46c1b`, 1326 tests)
+- Phase 381: `validate_psm_balance_assessment` → `missing-psm-balance` (minor)
+- Phase 382: `validate_ipw_weight_trimming` → `missing-ipw-weight-trimming` (minor)
+- Phase 383: `validate_mediation_bootstrapping` → `missing-mediation-bootstrapping` (minor)
+- Phase 384: `validate_moderation_simple_slopes` → `missing-simple-slopes` (minor)
+- Phase 385: `validate_ceiling_floor_effects` → `missing-ceiling-floor-effects` (minor)
+- Bug: `_CF_REPORTED_RE` didn't match "ceiling or floor effects" (conjunction). Fixed with optional `or floor`/`or ceiling` group.
+- Duplicate test name: `test_moderation_with_simple_slopes_no_fire` existed at line 15739 — renamed new one `test_moderation384_with_simple_slopes_no_fire`.
+
+**Phases 386–390** (`cf745d1`, 1346 tests)
+- Phase 386: `validate_loss_curve_reporting` → `missing-loss-curve` (minor)
+- Phase 387: `validate_early_stopping_criteria` → `missing-early-stopping-criteria` (minor)
+- Phase 388: `validate_class_imbalance_handling` → `missing-class-imbalance-handling` (minor)
+- Phase 389: `validate_cross_dataset_generalization` → `missing-cross-dataset-generalization` (minor)
+- Phase 390: `validate_ablation_study_reporting` → `missing-ablation-study` (minor)
+- Bug: `_ABLATION_TRIGGER_RE` used singular `component` — missed "components". Fixed with `components?`.
+
+**Phases 391–395** (`cc2553c`, 1366 tests)
+- Phase 391: `validate_attention_mechanism_analysis` → `missing-attention-analysis` (minor)
+- Phase 392: `validate_pretrained_weight_disclosure` → `missing-pretrained-weight-disclosure` (minor)
+- Phase 393: `validate_data_augmentation_description` → `missing-augmentation-description` (minor)
+- Phase 394: `validate_model_interpretability_reporting` → `missing-model-interpretability` (minor)
+- Phase 395: `validate_dataset_split_seed` → `missing-split-seed` (minor)
+
+**Phases 396–400** (`d5c3d3b`, 1386 tests)
+- Phase 396: `validate_hardware_compute_disclosure` → `missing-hardware-compute-disclosure` (minor)
+- Phase 397: `validate_carbon_footprint_reporting` → `missing-carbon-footprint-reporting` (minor)
+- Phase 398: `validate_benchmark_baseline_comparison` → `missing-benchmark-baseline` (moderate)
+- Phase 399: `validate_dataset_version_disclosure` → `missing-dataset-version` (minor)
+- Phase 400: `validate_hyperparameter_sensitivity` → `missing-hyperparameter-sensitivity` (minor)
+- Bug: `_HW_REPORTED_RE` matched "GPU" from trigger phrase itself — tightened to require specific disclosure language (NVIDIA/AMD, "run on an NVIDIA GPU", etc.)
+
+Current test count: **1386 passing** (after phase 400)
+HEAD: `d5c3d3b`
 
 ## Critical technical gotchas (accumulated)
 
@@ -1120,7 +1174,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 360 with 1226 tests passing
+- currently at phase 400 with 1386 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 400)
+- update MEMORY.md after every 40 phases (next update due after phase 440)
