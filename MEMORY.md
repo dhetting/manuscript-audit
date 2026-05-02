@@ -1077,16 +1077,71 @@ HEAD: `907b239`
 - Phase 394: `validate_model_interpretability_reporting` → `missing-model-interpretability` (minor)
 - Phase 395: `validate_dataset_split_seed` → `missing-split-seed` (minor)
 
-**Phases 396–400** (`d5c3d3b`, 1386 tests)
-- Phase 396: `validate_hardware_compute_disclosure` → `missing-hardware-compute-disclosure` (minor)
-- Phase 397: `validate_carbon_footprint_reporting` → `missing-carbon-footprint-reporting` (minor)
-- Phase 398: `validate_benchmark_baseline_comparison` → `missing-benchmark-baseline` (moderate)
-- Phase 399: `validate_dataset_version_disclosure` → `missing-dataset-version` (minor)
-- Phase 400: `validate_hyperparameter_sensitivity` → `missing-hyperparameter-sensitivity` (minor)
-- Bug: `_HW_REPORTED_RE` matched "GPU" from trigger phrase itself — tightened to require specific disclosure language (NVIDIA/AMD, "run on an NVIDIA GPU", etc.)
+**Phases 401–405** (`5453287`, 1406 tests)
+- Phase 401: `validate_ensemble_method_description` → `missing-ensemble-description` (minor)
+- Phase 402: `validate_calibration_curve_reporting` → `missing-calibration-reporting` (minor)
+- Phase 403: `validate_prediction_interval_distinction` → `missing-prediction-interval-distinction` (minor)
+- Phase 404: `validate_missing_data_imputation_method` → `missing-imputation-method` (moderate)
+- Phase 405: `validate_influential_observation_sensitivity` → `missing-influential-obs-sensitivity` (minor)
+- NOTE: phase 405 renamed from `validate_outlier_handling_disclosure` (duplicate at line 10481) to `validate_influential_observation_sensitivity`
 
-Current test count: **1386 passing** (after phase 400)
-HEAD: `d5c3d3b`
+**Phases 406–410** (`4de3e7a`, 1426 tests)
+- Phase 406: `validate_goodness_of_fit_reporting` → `missing-goodness-of-fit` (moderate)
+- Phase 407: `validate_aic_bic_model_selection` → `missing-model-selection-criterion` (moderate)
+- Phase 408: `validate_log_likelihood_reporting` → `missing-log-likelihood` (minor)
+- Phase 409: `validate_link_function_justification` → `missing-link-function-justification` (minor)
+- Phase 410: `validate_functional_form_test` → `missing-functional-form-test` (minor)
+- Gotcha: trailing `\b` after `=` fails (non-word char). Use `value/ratio` etc. not bare `=` as last match.
+
+**Phases 411–415** (`20e585b`, 1446 tests)
+- Phase 411: `validate_efa_factor_retention` → `missing-efa-retention-criteria` (moderate)
+- Phase 412: `validate_cfa_model_fit_indices` → `missing-cfa-fit-indices` (moderate)
+- Phase 413: `validate_omega_reliability` → `missing-omega-reliability` (minor)
+- Phase 414: `validate_criterion_validity_evidence` → `missing-criterion-validity-evidence` (moderate)
+- Phase 415: `validate_irt_dif_reporting` → `missing-irt-dif-reporting` (minor)
+- NOTE: phase 415 renamed from `validate_irt_model_fit` (duplicate at line 21300) to `validate_irt_dif_reporting`
+
+**Phases 416–420** (`8ccd2e4`, 1466 tests)
+- Phase 416: `validate_robust_standard_errors` → `missing-robust-standard-errors` (minor)
+- Phase 417: `validate_cluster_robust_inference` → `missing-cluster-robust-inference` (moderate)
+- Phase 418: `validate_propensity_score_overlap` → `missing-propensity-overlap` (moderate)
+- Phase 419: `validate_cure_model_fraction_reporting` → `missing-cure-fraction` (minor)
+- Phase 420: `validate_recurrent_event_modeling` → `missing-recurrent-event-method` (minor)
+- Bug: `_RECUR_TRIGGER_RE` used singular `event/episode` — missed plural. Fixed with `events?`/`episodes?`.
+
+**Phases 421–425** (`d929e82`, 1486 tests)
+- Phase 421: `validate_prior_specification_justification` → `missing-prior-justification` (moderate)
+- Phase 422: `validate_credible_interval_interpretation` → `missing-credible-interval-interpretation` (minor)
+- Phase 423: `validate_bayesian_sequential_stopping_rule` → `missing-bayesian-stopping-rule` (moderate)
+- Phase 424: `validate_variational_inference_elbo` → `missing-elbo-reporting` (minor)
+- Phase 425: `validate_hierarchical_shrinkage_reporting` → `missing-hierarchical-shrinkage` (minor)
+- Bug: `_PRIOR_JUSTIFIED_RE` had `informative\s+prior` which matched trigger text (suppress when fires expected). Removed.
+- Bug: plural form in `priors?\s+were\s+specified` needed `priors?` not just `prior`.
+
+**Phases 426–430** (`99287c8`, 1506 tests)
+- Phase 426: `validate_spatial_weights_matrix_specification` → `missing-spatial-weights-specification` (moderate)
+- Phase 427: `validate_spatial_spillover_effects` → `missing-spatial-spillover-effects` (moderate)
+- Phase 428: `validate_gwr_bandwidth_specification` → `missing-gwr-bandwidth` (minor)
+- Phase 429: `validate_spatial_panel_fe_re_selection` → `missing-spatial-panel-model-selection` (minor)
+- Phase 430: `validate_coordinate_reference_system_disclosure` → `missing-crs-disclosure` (minor)
+
+**Phases 431–435** (`b604b9c`, 1526 tests)
+- Phase 431: `validate_annotation_agreement_reporting` → `missing-annotation-agreement` (moderate)
+- Phase 432: `validate_crowdsourcing_quality_control` → `missing-crowdsourcing-qc` (moderate)
+- Phase 433: `validate_active_learning_strategy` → `missing-active-learning-strategy` (minor)
+- Phase 434: `validate_sequence_labeling_evaluation` → `missing-sequence-labeling-evaluation` (minor)
+- Phase 435: `validate_nlp_heldout_evaluation` → `missing-nlp-heldout-evaluation` (moderate)
+- Bug: `_ANNOT_TRIGGER_RE` used `manual\s+labeling` missing "manually labeled". Fixed with `manual(?:ly)?\s+(?:labeling|...|labeled)`.
+
+**Phases 436–440** (`084f831`, 1546 tests)
+- Phase 436: `validate_bleu_rouge_evaluation` → `missing-bleu-rouge-evaluation` (moderate)
+- Phase 437: `validate_human_evaluation_for_text_generation` → `missing-human-eval-text-generation` (minor)
+- Phase 438: `validate_asr_wer_reporting` → `missing-asr-wer` (moderate)
+- Phase 439: `validate_language_model_perplexity` → `missing-perplexity-reporting` (minor)
+- Phase 440: `validate_reading_comprehension_evaluation` → `missing-reading-comprehension-eval` (moderate)
+
+Current test count: **1546 passing** (after phase 440)
+HEAD: `084f831`
 
 ## Critical technical gotchas (accumulated)
 
@@ -1177,4 +1232,4 @@ Assume:
 - currently at phase 400 with 1386 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 440)
+- update MEMORY.md after every 40 phases (next update due after phase 480)
