@@ -26825,3 +26825,325 @@ def test_no_rc_trigger_no_fire() -> None:
     )
     result = validate_reading_comprehension_evaluation(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 441 – validate_ir_ranking_metrics
+# ---------------------------------------------------------------------------
+
+def _ir441_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ir441",
+            source_path="/tmp/ir441.md",
+            source_format="markdown",
+            title="IR Ranking Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ir_without_ndcg_fires() -> None:
+    from manuscript_audit.validators.core import validate_ir_ranking_metrics
+
+    ms, cl = _ir441_ms(
+        "An information retrieval model was trained on TREC data."
+    )
+    result = validate_ir_ranking_metrics(ms, cl)
+    assert any(f.code == "missing-ir-ranking-metrics" for f in result.findings)
+
+
+def test_ir_with_ndcg_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ir_ranking_metrics
+
+    ms, cl = _ir441_ms(
+        "An information retrieval model was trained. "
+        "NDCG@10 and MRR scores were reported on the TREC test set."
+    )
+    result = validate_ir_ranking_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_ir_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ir_ranking_metrics
+
+    ms, cl = _ir441_ms("An information retrieval model was trained on TREC data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ir_ranking_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ir_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ir_ranking_metrics
+
+    ms, cl = _ir441_ms("We used logistic regression on tabular census data.")
+    result = validate_ir_ranking_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 442 – validate_recsys_evaluation_metrics
+# ---------------------------------------------------------------------------
+
+def _recsys442_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-recsys442",
+            source_path="/tmp/recsys442.md",
+            source_format="markdown",
+            title="RecSys Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_recsys_without_topk_fires() -> None:
+    from manuscript_audit.validators.core import validate_recsys_evaluation_metrics
+
+    ms, cl = _recsys442_ms(
+        "A recommendation system using collaborative filtering was evaluated."
+    )
+    result = validate_recsys_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-recsys-metrics" for f in result.findings)
+
+
+def test_recsys_with_precision_at_k_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_recsys_evaluation_metrics
+
+    ms, cl = _recsys442_ms(
+        "A recommendation system using collaborative filtering was evaluated. "
+        "precision@10 and recall@10 were reported."
+    )
+    result = validate_recsys_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_recsys_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_recsys_evaluation_metrics
+
+    ms, cl = _recsys442_ms(
+        "A recommendation system using collaborative filtering was evaluated."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_recsys_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_recsys_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_recsys_evaluation_metrics
+
+    ms, cl = _recsys442_ms("We used a linear regression model for sales forecasting.")
+    result = validate_recsys_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 443 – validate_object_detection_metrics
+# ---------------------------------------------------------------------------
+
+def _cvdet443_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cvdet443",
+            source_path="/tmp/cvdet443.md",
+            source_format="markdown",
+            title="Object Detection Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_detection_without_map_fires() -> None:
+    from manuscript_audit.validators.core import validate_object_detection_metrics
+
+    ms, cl = _cvdet443_ms(
+        "An object detection model was trained on the COCO dataset."
+    )
+    result = validate_object_detection_metrics(ms, cl)
+    assert any(f.code == "missing-detection-metrics" for f in result.findings)
+
+
+def test_detection_with_map_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_object_detection_metrics
+
+    ms, cl = _cvdet443_ms(
+        "An object detection model was trained on COCO. "
+        "mAP and IoU at threshold 0.5 were reported."
+    )
+    result = validate_object_detection_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_detection_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_object_detection_metrics
+
+    ms, cl = _cvdet443_ms("An object detection model was trained on the COCO dataset.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_object_detection_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_detection_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_object_detection_metrics
+
+    ms, cl = _cvdet443_ms("We applied a support vector machine to classify text.")
+    result = validate_object_detection_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 444 – validate_gnn_evaluation_metrics
+# ---------------------------------------------------------------------------
+
+def _gnn444_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gnn444",
+            source_path="/tmp/gnn444.md",
+            source_format="markdown",
+            title="GNN Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gnn_without_metrics_fires() -> None:
+    from manuscript_audit.validators.core import validate_gnn_evaluation_metrics
+
+    ms, cl = _gnn444_ms(
+        "A graph neural network was applied to the Cora citation dataset."
+    )
+    result = validate_gnn_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-gnn-evaluation-metrics" for f in result.findings)
+
+
+def test_gnn_with_auc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gnn_evaluation_metrics
+
+    ms, cl = _gnn444_ms(
+        "A graph neural network was applied to the Cora dataset. "
+        "ROC-AUC and macro F1 scores were reported for link prediction."
+    )
+    result = validate_gnn_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_gnn_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gnn_evaluation_metrics
+
+    ms, cl = _gnn444_ms("A graph neural network was applied to citation data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_gnn_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_gnn_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gnn_evaluation_metrics
+
+    ms, cl = _gnn444_ms("We fit a Bayesian hierarchical model to survey data.")
+    result = validate_gnn_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 445 – validate_rl_reward_reporting
+# ---------------------------------------------------------------------------
+
+def _rl445_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rl445",
+            source_path="/tmp/rl445.md",
+            source_format="markdown",
+            title="RL Reward Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rl_without_reward_fires() -> None:
+    from manuscript_audit.validators.core import validate_rl_reward_reporting
+
+    ms, cl = _rl445_ms(
+        "A reinforcement learning agent was trained on the MuJoCo environment."
+    )
+    result = validate_rl_reward_reporting(ms, cl)
+    assert any(f.code == "missing-rl-reward-reporting" for f in result.findings)
+
+
+def test_rl_with_cumulative_reward_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rl_reward_reporting
+
+    ms, cl = _rl445_ms(
+        "A reinforcement learning agent was trained on MuJoCo. "
+        "The cumulative reward and mean episode return were plotted over training."
+    )
+    result = validate_rl_reward_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_rl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rl_reward_reporting
+
+    ms, cl = _rl445_ms("A reinforcement learning agent was trained on an environment.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_rl_reward_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_rl_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rl_reward_reporting
+
+    ms, cl = _rl445_ms("We applied principal component analysis to genomic data.")
+    result = validate_rl_reward_reporting(ms, cl)
+    assert result.findings == []

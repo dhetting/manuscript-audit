@@ -6947,6 +6947,11 @@ def run_deterministic_validators(
         validate_asr_wer_reporting(parsed, classification),
         validate_language_model_perplexity(parsed, classification),
         validate_reading_comprehension_evaluation(parsed, classification),
+        validate_ir_ranking_metrics(parsed, classification),
+        validate_recsys_evaluation_metrics(parsed, classification),
+        validate_object_detection_metrics(parsed, classification),
+        validate_gnn_evaluation_metrics(parsed, classification),
+        validate_rl_reward_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -26153,6 +26158,233 @@ def validate_reading_comprehension_evaluation(
                 ),
                 severity="moderate",
                 validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 441 – Information retrieval: NDCG/MAP reporting
+# ---------------------------------------------------------------------------
+_IR_TRIGGER_RE = re.compile(
+    r"\b(?:information\s+retrieval|document\s+retrieval|search\s+engine|"
+    r"ranked\s+retrieval|passage\s+retrieval|ad-hoc\s+retrieval)\b",
+    re.IGNORECASE,
+)
+_IR_METRIC_RE = re.compile(
+    r"\b(?:NDCG|nDCG|MAP@\d+|MAP\s*=|mean\s+average\s+precision|MRR|"
+    r"mean\s+reciprocal\s+rank|precision@\d+|recall@\d+|P@\d+)\b",
+    re.IGNORECASE,
+)
+
+_IR_VID = "missing-ir-ranking-metrics"
+
+
+def validate_ir_ranking_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when IR systems lack ranking metrics (NDCG, MAP, MRR)."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_IR_VID, findings=[])
+    text = parsed.full_text
+    if not _IR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_IR_VID, findings=[])
+    if _IR_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_IR_VID, findings=[])
+    return ValidationResult(
+        validator_name=_IR_VID,
+        findings=[
+            Finding(
+                code=_IR_VID,
+                message=(
+                    "Information retrieval paper detected but no ranking metrics "
+                    "(NDCG, MAP, MRR, Precision@k) were reported."
+                ),
+                severity="moderate",
+                validator=_IR_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 442 – Recommendation systems: precision@k / recall@k
+# ---------------------------------------------------------------------------
+_RECSYS_TRIGGER_RE = re.compile(
+    r"\b(?:recommendation\s+system|recommender\s+system|collaborative\s+filtering|"
+    r"matrix\s+factorization|item\s+ranking|top-?k\s+recommendation)\b",
+    re.IGNORECASE,
+)
+_RECSYS_METRIC_RE = re.compile(
+    r"\b(?:precision@\d+|recall@\d+|NDCG@\d+|hit\s+rate|HR@\d+|"
+    r"normalized\s+discounted\s+cumulative\s+gain|MAP@\d+|coverage|"
+    r"catalog\s+coverage)\b",
+    re.IGNORECASE,
+)
+
+_RECSYS_VID = "missing-recsys-metrics"
+
+
+def validate_recsys_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when recommender systems lack precision@k or recall@k metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_RECSYS_VID, findings=[])
+    text = parsed.full_text
+    if not _RECSYS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_RECSYS_VID, findings=[])
+    if _RECSYS_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_RECSYS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_RECSYS_VID,
+        findings=[
+            Finding(
+                code=_RECSYS_VID,
+                message=(
+                    "Recommender system paper detected but no top-k evaluation "
+                    "metrics (precision@k, recall@k, NDCG@k) were reported."
+                ),
+                severity="moderate",
+                validator=_RECSYS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 443 – Computer vision: mAP / IoU reporting
+# ---------------------------------------------------------------------------
+_CV_DET_TRIGGER_RE = re.compile(
+    r"\b(?:object\s+detection|instance\s+segmentation|semantic\s+segmentation|"
+    r"bounding\s+box\s+detection|detection\s+model)\b",
+    re.IGNORECASE,
+)
+_CV_DET_METRIC_RE = re.compile(
+    r"\b(?:mAP|mean\s+average\s+precision|IoU|intersection\s+over\s+union|"
+    r"AP@\d+|AP50|AP75|COCO\s+AP)\b",
+    re.IGNORECASE,
+)
+
+_CV_DET_VID = "missing-detection-metrics"
+
+
+def validate_object_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when object detection papers lack mAP/IoU metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CV_DET_VID, findings=[])
+    text = parsed.full_text
+    if not _CV_DET_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CV_DET_VID, findings=[])
+    if _CV_DET_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CV_DET_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CV_DET_VID,
+        findings=[
+            Finding(
+                code=_CV_DET_VID,
+                message=(
+                    "Object detection paper detected but no mAP or IoU metrics "
+                    "were reported."
+                ),
+                severity="moderate",
+                validator=_CV_DET_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 444 – GNN evaluation: node classification / link prediction metrics
+# ---------------------------------------------------------------------------
+_GNN_TRIGGER_RE = re.compile(
+    r"\b(?:graph\s+neural\s+network|GNN|graph\s+convolutional\s+network|GCN|"
+    r"GraphSAGE|GAT\s+model|graph\s+attention\s+network)\b",
+    re.IGNORECASE,
+)
+_GNN_METRIC_RE = re.compile(
+    r"\b(?:ROC-?AUC|AUC\s*=|Hits@\d+|MRR\s*=|accuracy\s*=\s*\d|"
+    r"macro\s+F1|micro\s+F1|node\s+classification\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+_GNN_VID = "missing-gnn-evaluation-metrics"
+
+
+def validate_gnn_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when GNN papers lack standard evaluation metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_GNN_VID, findings=[])
+    text = parsed.full_text
+    if not _GNN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_GNN_VID, findings=[])
+    if _GNN_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_GNN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_GNN_VID,
+        findings=[
+            Finding(
+                code=_GNN_VID,
+                message=(
+                    "Graph neural network paper detected but no standard evaluation "
+                    "metrics (AUC, Hits@k, accuracy) were reported."
+                ),
+                severity="moderate",
+                validator=_GNN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 445 – Reinforcement learning: reward curve / episode length reporting
+# ---------------------------------------------------------------------------
+_RL_TRIGGER_RE = re.compile(
+    r"\b(?:reinforcement\s+learning|RL\s+agent|policy\s+gradient|"
+    r"Q-learning|deep\s+Q-network|DQN|PPO\s+agent|actor-critic)\b",
+    re.IGNORECASE,
+)
+_RL_METRIC_RE = re.compile(
+    r"\b(?:cumulative\s+reward|episode\s+reward|average\s+reward|"
+    r"mean\s+episode\s+return|learning\s+curve|training\s+curve|"
+    r"return\s+curve|episode\s+length)\b",
+    re.IGNORECASE,
+)
+
+_RL_VID = "missing-rl-reward-reporting"
+
+
+def validate_rl_reward_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when RL papers lack reward curve or episode performance reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_RL_VID, findings=[])
+    text = parsed.full_text
+    if not _RL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_RL_VID, findings=[])
+    if _RL_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_RL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_RL_VID,
+        findings=[
+            Finding(
+                code=_RL_VID,
+                message=(
+                    "Reinforcement learning paper detected but no reward curve "
+                    "or episode performance metrics were reported."
+                ),
+                severity="moderate",
+                validator=_RL_VID,
             )
         ],
     )
