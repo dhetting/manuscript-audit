@@ -23122,3 +23122,334 @@ def test_no_scale_trigger_no_fire_cfe() -> None:
     )
     result = validate_ceiling_floor_effect_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 386 – validate_roc_auc_reporting
+# ---------------------------------------------------------------------------
+
+def _roc386_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-roc386",
+            source_path="/tmp/roc386.md",
+            source_format="markdown",
+            title="ROC AUC Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_classification_without_auc_fires() -> None:
+    from manuscript_audit.validators.core import validate_roc_auc_reporting
+
+    ms, cl = _roc386_ms(
+        "Binary classification of patient outcomes was performed using logistic regression."
+    )
+    result = validate_roc_auc_reporting(ms, cl)
+    assert any(f.code == "missing-roc-auc-report" for f in result.findings)
+
+
+def test_classification_with_auc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_roc_auc_reporting
+
+    ms, cl = _roc386_ms(
+        "Binary classification was performed. The ROC curve yielded an AUC of 0.87."
+    )
+    result = validate_roc_auc_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_roc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_roc_auc_reporting
+
+    ms, cl = _roc386_ms("Binary classification was performed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_roc_auc_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_classification_trigger_no_fire_roc() -> None:
+    from manuscript_audit.validators.core import validate_roc_auc_reporting
+
+    ms, cl = _roc386_ms(
+        "We used linear regression to predict continuous outcomes."
+    )
+    result = validate_roc_auc_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 387 – validate_logistic_model_calibration
+# ---------------------------------------------------------------------------
+
+def _lmc387_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-lmc387",
+            source_path="/tmp/lmc387.md",
+            source_format="markdown",
+            title="Logistic Calibration Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_logistic_without_calibration_fires() -> None:
+    from manuscript_audit.validators.core import validate_logistic_model_calibration
+
+    ms, cl = _lmc387_ms(
+        "Logistic regression was used to estimate predicted probability of disease."
+    )
+    result = validate_logistic_model_calibration(ms, cl)
+    assert any(f.code == "missing-logistic-calibration" for f in result.findings)
+
+
+def test_logistic_with_hosmer_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_logistic_model_calibration
+
+    ms, cl = _lmc387_ms(
+        "Logistic regression was used. The Hosmer-Lemeshow test confirmed "
+        "adequate calibration (χ² = 7.2, p = 0.51)."
+    )
+    result = validate_logistic_model_calibration(ms, cl)
+    assert result.findings == []
+
+
+def test_logistic_calibration_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_logistic_model_calibration
+
+    ms, cl = _lmc387_ms("Logistic regression was used to estimate predicted probability.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_logistic_model_calibration(ms, cl)
+    assert result.findings == []
+
+
+def test_no_logistic_trigger_no_fire_calibration() -> None:
+    from manuscript_audit.validators.core import validate_logistic_model_calibration
+
+    ms, cl = _lmc387_ms(
+        "We used linear mixed-effects models for repeated-measures data."
+    )
+    result = validate_logistic_model_calibration(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 388 – validate_confusion_matrix_reporting
+# ---------------------------------------------------------------------------
+
+def _cm388_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cm388",
+            source_path="/tmp/cm388.md",
+            source_format="markdown",
+            title="Confusion Matrix Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ml_classifier_without_confusion_matrix_fires() -> None:
+    from manuscript_audit.validators.core import validate_confusion_matrix_reporting
+
+    ms, cl = _cm388_ms(
+        "A random forest classifier model was trained to predict patient outcomes."
+    )
+    result = validate_confusion_matrix_reporting(ms, cl)
+    assert any(f.code == "missing-confusion-matrix" for f in result.findings)
+
+
+def test_ml_classifier_with_f1_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_confusion_matrix_reporting
+
+    ms, cl = _cm388_ms(
+        "A random forest classifier model was trained. The confusion matrix showed "
+        "F1 score = 0.91 with precision = 0.92 and recall = 0.90."
+    )
+    result = validate_confusion_matrix_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_confusion_matrix_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_confusion_matrix_reporting
+
+    ms, cl = _cm388_ms("A random forest classifier model was used.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_confusion_matrix_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_classifier_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_confusion_matrix_reporting
+
+    ms, cl = _cm388_ms(
+        "We used survival analysis to model time-to-event data."
+    )
+    result = validate_confusion_matrix_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 389 – validate_learning_curve_reporting
+# ---------------------------------------------------------------------------
+
+def _lc389_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-lc389",
+            source_path="/tmp/lc389.md",
+            source_format="markdown",
+            title="Learning Curve Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_training_size_effect_without_learning_curve_fires() -> None:
+    from manuscript_audit.validators.core import validate_learning_curve_reporting
+
+    ms, cl = _lc389_ms(
+        "We examined training set size sensitivity to determine data requirements."
+    )
+    result = validate_learning_curve_reporting(ms, cl)
+    assert any(f.code == "missing-learning-curve" for f in result.findings)
+
+
+def test_learning_curve_with_report_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_learning_curve_reporting
+
+    ms, cl = _lc389_ms(
+        "We examined training set size sensitivity. Learning curve analysis showed "
+        "performance saturated at approximately 5000 training examples."
+    )
+    result = validate_learning_curve_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_learning_curve_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_learning_curve_reporting
+
+    ms, cl = _lc389_ms("We examined training set size effects on performance.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_learning_curve_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_learning_curve_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_learning_curve_reporting
+
+    ms, cl = _lc389_ms(
+        "We used a fixed 80/20 train-test split for all experiments."
+    )
+    result = validate_learning_curve_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 390 – validate_ablation_study_reporting
+# ---------------------------------------------------------------------------
+
+def _abl390_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-abl390",
+            source_path="/tmp/abl390.md",
+            source_format="markdown",
+            title="Ablation Study Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_neural_network_without_ablation_fires() -> None:
+    from manuscript_audit.validators.core import validate_ablation_study_reporting
+
+    ms, cl = _abl390_ms(
+        "Our proposed model consists of three neural network components including "
+        "an encoder, decoder, and attention module."
+    )
+    result = validate_ablation_study_reporting(ms, cl)
+    assert any(f.code == "missing-ablation-study" for f in result.findings)
+
+
+def test_neural_network_with_ablation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ablation_study_reporting
+
+    ms, cl = _abl390_ms(
+        "Our proposed model consists of three neural network components. "
+        "An ablation study showed that removing the attention module decreased "
+        "performance by 3.2%."
+    )
+    result = validate_ablation_study_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_ablation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ablation_study_reporting
+
+    ms, cl = _abl390_ms("Our proposed neural network architecture has three components.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ablation_study_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ablation_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ablation_study_reporting
+
+    ms, cl = _abl390_ms(
+        "We used a single-layer logistic regression for all classification tasks."
+    )
+    result = validate_ablation_study_reporting(ms, cl)
+    assert result.findings == []

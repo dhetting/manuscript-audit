@@ -6892,6 +6892,11 @@ def run_deterministic_validators(
         validate_mediation_sensitivity_analysis(parsed, classification),
         validate_moderation_interaction_probing(parsed, classification),
         validate_ceiling_floor_effect_reporting(parsed, classification),
+        validate_roc_auc_reporting(parsed, classification),
+        validate_logistic_model_calibration(parsed, classification),
+        validate_confusion_matrix_reporting(parsed, classification),
+        validate_learning_curve_reporting(parsed, classification),
+        validate_ablation_study_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -23382,6 +23387,287 @@ def validate_ceiling_floor_effect_reporting(
                 message=(
                     "Outcome or rating scales are used but ceiling and floor "
                     "effects are not discussed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 386 – ROC/AUC reporting for classifiers
+# ---------------------------------------------------------------------------
+
+_ROC_TRIGGER_RE = re.compile(
+    r"\b(?:classification\s+(?:model|algorithm|task|performance)"
+    r"|binary\s+classification"
+    r"|diagnostic\s+(?:test|accuracy)"
+    r"|discriminant\s+(?:analysis|validity)"
+    r"|sensitivity\s+(?:and|vs\.?)\s+specificity)\b",
+    re.IGNORECASE,
+)
+
+_ROC_AUC_RE = re.compile(
+    r"\b(?:ROC\s+curve"
+    r"|AUC\b"
+    r"|area\s+under\s+(?:the\s+)?(?:ROC\s+)?curve"
+    r"|C[\s-]statistic"
+    r"|concordance\s+statistic"
+    r"|sensitivity\s*=\s*\d|specificity\s*=\s*\d)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_roc_auc_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag classification analyses without ROC/AUC reporting.
+
+    Emits ``missing-roc-auc-report`` (minor) when a classification or
+    diagnostic model is described but no AUC or ROC curve is reported.
+    """
+    _vid = "validate_roc_auc_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ROC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ROC_AUC_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-roc-auc-report",
+                message=(
+                    "A classification or diagnostic model is described but no "
+                    "ROC curve or AUC statistic is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 387 – Hosmer-Lemeshow calibration for logistic models
+# ---------------------------------------------------------------------------
+
+_CALIB_TRIGGER_RE = re.compile(
+    r"\b(?:logistic\s+regression"
+    r"|logit\s+model"
+    r"|predicted\s+(?:probability|risk)"
+    r"|probability\s+(?:calibration|estimation))\b",
+    re.IGNORECASE,
+)
+
+_CALIB_TESTED_RE = re.compile(
+    r"\b(?:Hosmer[\s-]Lemeshow\s+(?:test|statistic)"
+    r"|calibration\s+(?:plot|curve|assessment|test)"
+    r"|Brier\s+score"
+    r"|reliability\s+diagram"
+    r"|goodness[\s-]of[\s-]fit\s+(?:for|of)\s+logistic"
+    r"|Nagelkerke\b|Cox[\s-]Snell\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_logistic_model_calibration(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag logistic models without calibration assessment.
+
+    Emits ``missing-logistic-calibration`` (minor) when logistic regression
+    is described but no calibration test (e.g., Hosmer-Lemeshow) is reported.
+    """
+    _vid = "validate_logistic_model_calibration"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _CALIB_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CALIB_TESTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-logistic-calibration",
+                message=(
+                    "Logistic regression is described but no calibration assessment "
+                    "(e.g., Hosmer-Lemeshow test, calibration plot) is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 388 – confusion matrix reporting for classifiers
+# ---------------------------------------------------------------------------
+
+_CONF_MAT_TRIGGER_RE = re.compile(
+    r"\b(?:machine\s+learning\s+(?:model|classifier|algorithm)"
+    r"|classification\s+(?:algorithm|model)"
+    r"|(?:random\s+forest|gradient\s+boost(?:ing)?|XGBoost|support\s+vector\s+machine|SVM\b|neural\s+network)\s+(?:classifier|model|for\s+classification))\b",
+    re.IGNORECASE,
+)
+
+_CONF_MAT_REPORTED_RE = re.compile(
+    r"\b(?:confusion\s+matrix"
+    r"|precision\b.*\brecall\b"
+    r"|recall\b.*\bprecision\b"
+    r"|F1\s+score\b"
+    r"|F[\s-]measure\b"
+    r"|true\s+positive\s+rate"
+    r"|false\s+positive\s+rate"
+    r"|balanced\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_confusion_matrix_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML classifiers without confusion matrix or precision/recall.
+
+    Emits ``missing-confusion-matrix`` (minor) when a machine learning
+    classifier is described but no confusion matrix or precision/recall/F1
+    is reported.
+    """
+    _vid = "validate_confusion_matrix_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _CONF_MAT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CONF_MAT_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-confusion-matrix",
+                message=(
+                    "A machine learning classifier is described but no confusion "
+                    "matrix or precision/recall/F1 is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 389 – learning curve reporting for ML models
+# ---------------------------------------------------------------------------
+
+_LEARNING_CURVE_TRIGGER_RE = re.compile(
+    r"\b(?:training\s+(?:set\s+)?size\s+(?:effect|sensitivity)"
+    r"|sample\s+size\s+(?:effect|adequacy)\s+(?:for|on)\s+(?:model|prediction)"
+    r"|learning\s+curve"
+    r"|training\s+set\s+(?:growth|expansion)"
+    r"|data\s+efficiency)\b",
+    re.IGNORECASE,
+)
+
+_LEARNING_CURVE_REPORTED_RE = re.compile(
+    r"\b(?:learning\s+curve\s+(?:plot|analysis|shows?)"
+    r"|performance\s+(?:vs\.?|versus|against)\s+training\s+(?:size|set\s+size)"
+    r"|increasing\s+training\s+(?:size|data)\s+(?:improved?|increased?|enhanced?)"
+    r"|saturation\s+of\s+(?:model\s+)?performance)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_learning_curve_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML studies claiming training size effects without learning curves.
+
+    Emits ``missing-learning-curve`` (minor) when training set size sensitivity
+    is discussed but no learning curve is reported.
+    """
+    _vid = "validate_learning_curve_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _LEARNING_CURVE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _LEARNING_CURVE_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-learning-curve",
+                message=(
+                    "Training set size effects are discussed but no learning "
+                    "curve is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 390 – ablation study for ML models
+# ---------------------------------------------------------------------------
+
+_ABLATION_TRIGGER_RE = re.compile(
+    r"\b(?:(?:deep\s+)?neural\s+network\s+(?:architecture|model|components?)"
+    r"|transformer\s+(?:model|architecture)"
+    r"|multi[\s-]component\s+(?:model|system|architecture)"
+    r"|proposed\s+(?:model|architecture|framework)\s+with\s+multiple\s+(?:module|component|layer)s?)\b",
+    re.IGNORECASE,
+)
+
+_ABLATION_REPORTED_RE = re.compile(
+    r"\b(?:ablation\s+(?:study|experiment|analysis)"
+    r"|component\s+(?:analysis|contribution)"
+    r"|module\s+(?:contribution|importance)"
+    r"|removing\s+(?:the\s+)?(?:module|component|layer)\s+(?:decreased|reduced|hurt|degraded)"
+    r"|without\s+(?:the\s+)?(?:module|component|attention|encoder|decoder))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ablation_study_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag complex ML models without ablation study.
+
+    Emits ``missing-ablation-study`` (minor) when a multi-component neural
+    network or complex model is proposed but no ablation study is reported.
+    """
+    _vid = "validate_ablation_study_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ABLATION_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ABLATION_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ablation-study",
+                message=(
+                    "A complex multi-component model is described but no ablation "
+                    "study demonstrating component contributions is reported."
                 ),
                 severity="minor",
                 validator=_vid,
