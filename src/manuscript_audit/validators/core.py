@@ -6714,6 +6714,11 @@ def run_deterministic_validators(
         validate_qualitative_rigor_reporting(parsed, classification),
         validate_subgroup_analysis_labelling(parsed, classification),
         validate_null_result_power_caveat(parsed, classification),
+        validate_mean_sd_reporting(parsed, classification),
+        validate_intervention_description(parsed, classification),
+        validate_baseline_equivalence(parsed, classification),
+        validate_likert_distribution_check(parsed, classification),
+        validate_reproducibility_statement(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -12157,6 +12162,357 @@ def validate_null_result_power_caveat(
                 ),
                 validator="null_result_power_caveat",
                 location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 206 – Missing standard deviation for means
+# ---------------------------------------------------------------------------
+
+_MEAN_REPORTED_RE = re.compile(
+    r"\b(?:mean\s*(?:=|of|was|score\s+was)\s*[\d\.\-]+|"
+    r"M\s*=\s*[\d\.\-]+|"
+    r"average\s+(?:was|of|score\s+was)\s*[\d\.\-]+|"
+    r"(?:mean|average)\s+(?:age|score|value|rating|time)\s+was\s+[\d\.\-]+)\b",
+    re.IGNORECASE,
+)
+_SD_REPORTED_RE = re.compile(
+    r"\b(?:SD\s*=\s*[\d\.\-]+|S\.D\.\s*=\s*[\d\.\-]+|"
+    r"standard\s+deviation\s*(?:=|of|was)\s*[\d\.\-]+|"
+    r"SE\s*=\s*[\d\.\-]+|SEM\s*=\s*[\d\.\-]+|"
+    r"\(\s*SD\s*=|,\s*SD\s*=|\(S\.D\.\s*=)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mean_sd_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag empirical manuscripts reporting means without standard deviations.
+
+    Emits ``missing-sd-for-mean`` (minor) when means are reported but no
+    standard deviation (or SE/SEM) accompanies them.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="mean_sd_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="mean_sd_reporting", findings=[]
+        )
+
+    if not _MEAN_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="mean_sd_reporting", findings=[]
+        )
+
+    if _SD_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="mean_sd_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="mean_sd_reporting",
+        findings=[
+            Finding(
+                code="missing-sd-for-mean",
+                severity="minor",
+                message=(
+                    "Means are reported but no standard deviation (SD, SE, or SEM) "
+                    "is provided. "
+                    "Report variability measures alongside all means."
+                ),
+                validator="mean_sd_reporting",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 207 – Insufficient detail on intervention/treatment
+# ---------------------------------------------------------------------------
+
+_INTERVENTION_RE = re.compile(
+    r"\b(?:intervention|treatment\s+(?:group|condition|protocol)|"
+    r"experimental\s+(?:condition|group)|"
+    r"(?:the\s+)?(?:program|protocol|therapy|training|workshop)\s+"
+    r"(?:was|were|included?)\s+(?:\w+\s*){1,5}(?:sessions?|weeks?|months?|hours?|minutes?))\b",
+    re.IGNORECASE,
+)
+_INTERVENTION_DETAIL_RE = re.compile(
+    r"\b(?:session\s+(?:duration|length|frequency|content)|"
+    r"(?:number|total)\s+of\s+sessions?|"
+    r"delivered?\s+by\s+(?:trained?|certified?|licensed?|\w+\s+therapist)|"
+    r"protocol\s+(?:manual|fidelity|adherence)|"
+    r"treatment\s+fidelity|intervention\s+description|"
+    r"\d+\s+(?:weekly|bi.?weekly|monthly)\s+sessions?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_intervention_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies describing interventions without sufficient detail.
+
+    Emits ``insufficient-intervention-description`` (moderate) when an
+    intervention/treatment is mentioned but session duration, frequency,
+    content, or fidelity are not described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="intervention_description", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="intervention_description", findings=[]
+        )
+
+    if not _INTERVENTION_RE.search(full):
+        return ValidationResult(
+            validator_name="intervention_description", findings=[]
+        )
+
+    if _INTERVENTION_DETAIL_RE.search(full):
+        return ValidationResult(
+            validator_name="intervention_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="intervention_description",
+        findings=[
+            Finding(
+                code="insufficient-intervention-description",
+                severity="moderate",
+                message=(
+                    "Intervention or treatment mentioned but insufficient detail "
+                    "(session frequency, duration, content, fidelity) is provided. "
+                    "Describe the intervention in enough detail for replication."
+                ),
+                validator="intervention_description",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 208 – Baseline equivalence check (RCTs)
+# ---------------------------------------------------------------------------
+
+_BASELINE_RCT_RE = re.compile(
+    r"\b(?:randomized?\s+(?:controlled?\s+)?trial|RCT\b|"
+    r"randomly\s+assigned?|random\s+assignment)\b",
+    re.IGNORECASE,
+)
+_BASELINE_CHECK_RE = re.compile(
+    r"\b(?:baseline\s+(?:characteristics?|equivalence|comparison|balance|"
+    r"differences?|variables?)\s+(?:were|was|are|showed?|revealed?|indicated?)|"
+    r"groups?\s+(?:were|was)\s+(?:comparable|equivalent|balanced|similar)\s+"
+    r"(?:at\s+baseline|on\s+baseline)|"
+    r"no\s+significant\s+(?:difference|difference)\s+(?:was|were)\s+found\s+"
+    r"(?:at\s+baseline|between\s+groups?\s+at\s+baseline)|"
+    r"Table\s+\d+\s+(?:shows?|presents?|displays?)\s+(?:baseline|demographics))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_baseline_equivalence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RCTs that don't report baseline equivalence.
+
+    Emits ``missing-baseline-equivalence`` (moderate) when an RCT design
+    is detected but no baseline comparison or equivalence check is described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="baseline_equivalence", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="baseline_equivalence", findings=[]
+        )
+
+    if not _BASELINE_RCT_RE.search(full):
+        return ValidationResult(
+            validator_name="baseline_equivalence", findings=[]
+        )
+
+    if _BASELINE_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="baseline_equivalence", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="baseline_equivalence",
+        findings=[
+            Finding(
+                code="missing-baseline-equivalence",
+                severity="moderate",
+                message=(
+                    "RCT design detected but no baseline equivalence check is reported. "
+                    "Report and compare baseline characteristics across groups "
+                    "to verify successful randomization."
+                ),
+                validator="baseline_equivalence",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 209 – Ceiling/floor effect in Likert-type outcomes
+# ---------------------------------------------------------------------------
+
+_LIKERT_OUTCOME_RE = re.compile(
+    r"\b(?:Likert(?:.?type)?\s+(?:scale|response|item|measure|rating)|"
+    r"\d+.?point\s+(?:scale|Likert|rating\s+scale)|"
+    r"(?:strongly\s+)?(?:agree|disagree)\s+(?:to|through)|"
+    r"response\s+options?\s+(?:ranged?|ranging)\s+from\s+\d+\s+to\s+\d+)\b",
+    re.IGNORECASE,
+)
+_LIKERT_DISTRIBUTION_RE = re.compile(
+    r"\b(?:skew(?:ed?|ness)|ceiling\s+effect|floor\s+effect|"
+    r"distribution\s+of\s+(?:responses?|scores?)|"
+    r"(?:highly\s+)?skewed\s+(?:distribution|responses?|toward)|"
+    r"(?:normal|non.?normal)\s+distribution\s+of\s+(?:scores?|responses?)|"
+    r"Shapiro|normality\s+test\s+for\s+(?:Likert|ordinal))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_likert_distribution_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies using Likert scales without checking response distribution.
+
+    Emits ``missing-likert-distribution-check`` (minor) when Likert-type
+    measures are used but no skewness, ceiling/floor effects, or distribution
+    check is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="likert_distribution_check", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="likert_distribution_check", findings=[]
+        )
+
+    if not _LIKERT_OUTCOME_RE.search(full):
+        return ValidationResult(
+            validator_name="likert_distribution_check", findings=[]
+        )
+
+    if _LIKERT_DISTRIBUTION_RE.search(full):
+        return ValidationResult(
+            validator_name="likert_distribution_check", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="likert_distribution_check",
+        findings=[
+            Finding(
+                code="missing-likert-distribution-check",
+                severity="minor",
+                message=(
+                    "Likert-type scale detected but no distribution check "
+                    "(skewness, ceiling/floor effects) is reported. "
+                    "Examine and report response distribution before using parametric tests."
+                ),
+                validator="likert_distribution_check",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 210 – Reproducibility statement (code/data sharing)
+# ---------------------------------------------------------------------------
+
+_REPRO_CLAIM_RE = re.compile(
+    r"\b(?:reproducible?\s+(?:analysis|code|workflow|results?)|"
+    r"(?:code|data|materials?|scripts?)\s+(?:are|were|will\s+be)\s+"
+    r"(?:available|shared?|deposited?|archived?|released?)|"
+    r"supplementary\s+(?:code|scripts?|data)|"
+    r"available\s+(?:at|from|via|on)\s+(?:GitHub|OSF|Zenodo|Figshare|Dryad))\b",
+    re.IGNORECASE,
+)
+_REPRO_DETAIL_RE = re.compile(
+    r"\b(?:https?://|doi:\s*10\.|github\.com/|osf\.io/|zenodo\.org/|"
+    r"figshare\.com/|datadryad\.org/|"
+    r"accession\s+(?:number|code)|"
+    r"(?:code|data)\s+(?:repository|archive))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_reproducibility_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag reproducibility claims without a concrete URL/DOI/accession.
+
+    Emits ``missing-reproducibility-link`` (minor) when code/data availability
+    is claimed but no URL, DOI, or accession number is provided.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="reproducibility_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="reproducibility_statement", findings=[]
+        )
+
+    if not _REPRO_CLAIM_RE.search(full):
+        return ValidationResult(
+            validator_name="reproducibility_statement", findings=[]
+        )
+
+    if _REPRO_DETAIL_RE.search(full):
+        return ValidationResult(
+            validator_name="reproducibility_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="reproducibility_statement",
+        findings=[
+            Finding(
+                code="missing-reproducibility-link",
+                severity="minor",
+                message=(
+                    "Code or data availability is claimed but no URL, DOI, or "
+                    "accession number is provided. "
+                    "Include a concrete link or identifier for the shared materials."
+                ),
+                validator="reproducibility_statement",
+                location="manuscript",
                 evidence=[],
             )
         ],

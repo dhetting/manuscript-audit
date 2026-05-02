@@ -10849,3 +10849,332 @@ def test_null_result_non_empirical_no_fire() -> None:
     )
     result = validate_null_result_power_caveat(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 206 – validate_mean_sd_reporting
+# ---------------------------------------------------------------------------
+
+
+def _mean_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="mean-1",
+        source_path="mean.md",
+        source_format="markdown",
+        title="Mean SD Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_mean_no_sd_fires() -> None:
+    from manuscript_audit.validators.core import validate_mean_sd_reporting
+
+    ms, cl = _mean_ms(
+        "The mean age was 34.2 years. The mean score was 72.1 and the "
+        "average rating of 4.3 was observed across conditions."
+    )
+    result = validate_mean_sd_reporting(ms, cl)
+    assert any(f.code == "missing-sd-for-mean" for f in result.findings)
+
+
+def test_mean_with_sd_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mean_sd_reporting
+
+    ms, cl = _mean_ms(
+        "The mean age was 34.2 years (SD = 8.1). "
+        "Scores averaged M = 72.1 (SD = 12.3)."
+    )
+    result = validate_mean_sd_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mean_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mean_sd_reporting
+
+    ms, cl = _mean_ms(
+        "Frequencies and proportions are reported for all categorical variables."
+    )
+    result = validate_mean_sd_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_mean_sd_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mean_sd_reporting
+
+    ms, cl = _mean_ms(
+        "The mean value is 3.5 in this theoretical example.", "math_theory_paper"
+    )
+    result = validate_mean_sd_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 207 – validate_intervention_description
+# ---------------------------------------------------------------------------
+
+
+def _intv_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="intv-1",
+        source_path="intv.md",
+        source_format="markdown",
+        title="Intervention Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_intervention_no_detail_fires() -> None:
+    from manuscript_audit.validators.core import validate_intervention_description
+
+    ms, cl = _intv_ms(
+        "The intervention group received CBT treatment protocol for 8 weeks. "
+        "The treatment condition included group sessions."
+    )
+    result = validate_intervention_description(ms, cl)
+    assert any(
+        f.code == "insufficient-intervention-description" for f in result.findings
+    )
+
+
+def test_intervention_with_detail_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_intervention_description
+
+    ms, cl = _intv_ms(
+        "The intervention group received 8 weekly sessions of CBT. "
+        "Each session lasted 50 minutes. Session content followed the protocol manual. "
+        "Treatment fidelity was monitored by supervisors."
+    )
+    result = validate_intervention_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_intervention_observational_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_intervention_description
+
+    ms, cl = _intv_ms(
+        "This observational study collected data from existing health records."
+    )
+    result = validate_intervention_description(ms, cl)
+    assert result.findings == []
+
+
+def test_intervention_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_intervention_description
+
+    ms, cl = _intv_ms(
+        "The intervention group is analyzed theoretically.", "math_theory_paper"
+    )
+    result = validate_intervention_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 208 – validate_baseline_equivalence
+# ---------------------------------------------------------------------------
+
+
+def _base_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="base-1",
+        source_path="base.md",
+        source_format="markdown",
+        title="Baseline Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_rct_no_baseline_fires() -> None:
+    from manuscript_audit.validators.core import validate_baseline_equivalence
+
+    ms, cl = _base_ms(
+        "This randomized controlled trial assigned 120 participants to "
+        "treatment or control. Outcomes were assessed at 3 months."
+    )
+    result = validate_baseline_equivalence(ms, cl)
+    assert any(f.code == "missing-baseline-equivalence" for f in result.findings)
+
+
+def test_rct_with_baseline_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_baseline_equivalence
+
+    ms, cl = _base_ms(
+        "This RCT randomly assigned participants. "
+        "Baseline characteristics were comparable across groups. "
+        "Groups were similar at baseline on all key variables."
+    )
+    result = validate_baseline_equivalence(ms, cl)
+    assert result.findings == []
+
+
+def test_non_rct_cross_sectional_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_baseline_equivalence
+
+    ms, cl = _base_ms(
+        "This cross-sectional survey measured all variables at one time point."
+    )
+    result = validate_baseline_equivalence(ms, cl)
+    assert result.findings == []
+
+
+def test_baseline_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_baseline_equivalence
+
+    ms, cl = _base_ms(
+        "The RCT baseline equivalence is analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_baseline_equivalence(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 209 – validate_likert_distribution_check
+# ---------------------------------------------------------------------------
+
+
+def _likert_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="lik-1",
+        source_path="lik.md",
+        source_format="markdown",
+        title="Likert Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_likert_no_distribution_fires() -> None:
+    from manuscript_audit.validators.core import validate_likert_distribution_check
+
+    ms, cl = _likert_ms(
+        "Outcomes were measured using a 5-point Likert scale ranging from "
+        "strongly disagree to strongly agree. Parametric tests were used."
+    )
+    result = validate_likert_distribution_check(ms, cl)
+    assert any(
+        f.code == "missing-likert-distribution-check" for f in result.findings
+    )
+
+
+def test_likert_with_distribution_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_likert_distribution_check
+
+    ms, cl = _likert_ms(
+        "Outcomes used a 5-point Likert-type scale. "
+        "Skewness and ceiling effects were examined. "
+        "The distribution of responses was approximately normal."
+    )
+    result = validate_likert_distribution_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_likert_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_likert_distribution_check
+
+    ms, cl = _likert_ms(
+        "Outcomes were measured using objective performance tests."
+    )
+    result = validate_likert_distribution_check(ms, cl)
+    assert result.findings == []
+
+
+def test_likert_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_likert_distribution_check
+
+    ms, cl = _likert_ms(
+        "The 5-point Likert scale is analyzed theoretically.", "math_theory_paper"
+    )
+    result = validate_likert_distribution_check(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 210 – validate_reproducibility_statement
+# ---------------------------------------------------------------------------
+
+
+def _repro_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="rep-1",
+        source_path="rep.md",
+        source_format="markdown",
+        title="Reproducibility Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_repro_claim_no_link_fires() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_statement
+
+    ms, cl = _repro_ms(
+        "All code and data are available from the corresponding author upon request. "
+        "Scripts are available as supplementary materials."
+    )
+    result = validate_reproducibility_statement(ms, cl)
+    assert any(f.code == "missing-reproducibility-link" for f in result.findings)
+
+
+def test_repro_claim_with_url_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_statement
+
+    ms, cl = _repro_ms(
+        "All code is available at https://github.com/user/repo. "
+        "Data are deposited at osf.io/abc123."
+    )
+    result = validate_reproducibility_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_repro_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_statement
+
+    ms, cl = _repro_ms(
+        "The study followed standard analysis protocols. "
+        "No additional materials are provided."
+    )
+    result = validate_reproducibility_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_repro_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reproducibility_statement
+
+    ms, cl = _repro_ms(
+        "Code is available from the authors for this theoretical example.",
+        "math_theory_paper",
+    )
+    result = validate_reproducibility_statement(ms, cl)
+    assert result.findings == []
