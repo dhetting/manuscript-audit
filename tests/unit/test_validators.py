@@ -15633,3 +15633,355 @@ def test_self_report_non_empirical_no_fire() -> None:
     )
     result = validate_self_report_bias_acknowledgement(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 276 – validate_p_value_reporting_precision
+# ---------------------------------------------------------------------------
+
+def _pval_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pval",
+            source_path="/tmp/pval.md",
+            source_format="markdown",
+            title="P-Value Precision Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_threshold_only_p_values_fires() -> None:
+    from manuscript_audit.validators.core import validate_p_value_reporting_precision
+
+    ms, cl = _pval_ms(
+        "The main effect was significant (p < .05). "
+        "The secondary outcome was also significant (p < .01)."
+    )
+    result = validate_p_value_reporting_precision(ms, cl)
+    assert any(f.code == "imprecise-p-value-reporting" for f in result.findings)
+
+
+def test_exact_p_value_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_p_value_reporting_precision
+
+    ms, cl = _pval_ms(
+        "The main effect was significant (p = .032). "
+        "The secondary outcome was also significant (p = .004)."
+    )
+    result = validate_p_value_reporting_precision(ms, cl)
+    assert result.findings == []
+
+
+def test_no_p_value_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_p_value_reporting_precision
+
+    ms, cl = _pval_ms(
+        "Means and standard deviations are reported in Table 1."
+    )
+    result = validate_p_value_reporting_precision(ms, cl)
+    assert result.findings == []
+
+
+def test_pval_precision_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_p_value_reporting_precision
+
+    ms, cl = _pval_ms("P-values should be reported exactly.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_p_value_reporting_precision(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 277 – validate_moderator_analysis_interpretation
+# ---------------------------------------------------------------------------
+
+def _moderator_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-moderator",
+            source_path="/tmp/moderator.md",
+            source_format="markdown",
+            title="Moderator Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_moderation_without_simple_slopes_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_moderator_analysis_interpretation,
+    )
+
+    ms, cl = _moderator_ms(
+        "Gender moderated the relationship between stress and burnout "
+        "(interaction effect b = 0.34, p = .02)."
+    )
+    result = validate_moderator_analysis_interpretation(ms, cl)
+    assert any(f.code == "missing-moderator-follow-up" for f in result.findings)
+
+
+def test_moderation_with_simple_slopes_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_moderator_analysis_interpretation,
+    )
+
+    ms, cl = _moderator_ms(
+        "Gender moderated the relationship (interaction b = 0.34, p = .02). "
+        "Simple slopes analysis showed that stress predicted burnout strongly "
+        "at high but not low levels of gender identification."
+    )
+    result = validate_moderator_analysis_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_moderation_claimed_no_moderator_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_moderator_analysis_interpretation,
+    )
+
+    ms, cl = _moderator_ms(
+        "Stress was positively associated with burnout (r = 0.45, p < .001)."
+    )
+    result = validate_moderator_analysis_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_moderator_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_moderator_analysis_interpretation,
+    )
+
+    ms, cl = _moderator_ms("Moderation analysis requires simple slopes follow-up.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_moderator_analysis_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 278 – validate_measurement_occasion_labelling
+# ---------------------------------------------------------------------------
+
+def _occasion_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-occasion",
+            source_path="/tmp/occasion.md",
+            source_format="markdown",
+            title="Measurement Occasion Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_time_labels_without_definition_fires() -> None:
+    from manuscript_audit.validators.core import validate_measurement_occasion_labelling
+
+    ms, cl = _occasion_ms(
+        "Participants completed measures at T1 and T2. "
+        "T1 and T2 scores were compared using paired t-tests."
+    )
+    result = validate_measurement_occasion_labelling(ms, cl)
+    assert any(f.code == "unlabelled-measurement-occasions" for f in result.findings)
+
+
+def test_time_labels_with_definition_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_occasion_labelling
+
+    ms, cl = _occasion_ms(
+        "T1 was the baseline measurement conducted before the intervention. "
+        "T2 was the post-intervention assessment conducted 8 weeks later."
+    )
+    result = validate_measurement_occasion_labelling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_time_labels_no_occasion_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_occasion_labelling
+
+    ms, cl = _occasion_ms(
+        "Participants completed a single survey at recruitment."
+    )
+    result = validate_measurement_occasion_labelling(ms, cl)
+    assert result.findings == []
+
+
+def test_occasion_labelling_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_occasion_labelling
+
+    ms, cl = _occasion_ms("Time labels T1 and T2 should be defined.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_measurement_occasion_labelling(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 279 – validate_statistical_conclusion_validity
+# ---------------------------------------------------------------------------
+
+def _stat_conc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-stat-conc",
+            source_path="/tmp/stat_conc.md",
+            source_format="markdown",
+            title="Statistical Conclusion Validity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_null_result_with_low_power_no_type2_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_statistical_conclusion_validity,
+    )
+
+    ms, cl = _stat_conc_ms(
+        "The intervention effect was not significant (p = .18). "
+        "The study was underpowered due to the smaller than expected sample."
+    )
+    result = validate_statistical_conclusion_validity(ms, cl)
+    assert any(
+        f.code == "missing-null-result-power-discussion" for f in result.findings
+    )
+
+
+def test_null_result_with_power_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_statistical_conclusion_validity,
+    )
+
+    ms, cl = _stat_conc_ms(
+        "The intervention effect was not significant (p = .18). "
+        "The study may have been underpowered; statistical power was insufficient "
+        "to detect a small effect, raising Type II error risk."
+    )
+    result = validate_statistical_conclusion_validity(ms, cl)
+    assert result.findings == []
+
+
+def test_significant_result_no_power_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_statistical_conclusion_validity,
+    )
+
+    ms, cl = _stat_conc_ms(
+        "The intervention was highly effective (p = .001)."
+    )
+    result = validate_statistical_conclusion_validity(ms, cl)
+    assert result.findings == []
+
+
+def test_stat_conc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_statistical_conclusion_validity,
+    )
+
+    ms, cl = _stat_conc_ms("Null results require power analysis discussion.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_statistical_conclusion_validity(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 280 – validate_author_contribution_statement
+# ---------------------------------------------------------------------------
+
+def _author_contrib_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-author",
+            source_path="/tmp/author.md",
+            source_format="markdown",
+            title="Author Contribution Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multiple_authors_without_contribution_statement_fires() -> None:
+    from manuscript_audit.validators.core import validate_author_contribution_statement
+
+    ms, _cl = _author_contrib_ms(
+        "All authors approved the final manuscript. "
+        "Co-authors reviewed the manuscript before submission."
+    )
+    result = validate_author_contribution_statement(ms)
+    assert any(
+        f.code == "missing-author-contributions" for f in result.findings
+    )
+
+
+def test_authors_with_contribution_statement_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_author_contribution_statement
+
+    ms, _cl = _author_contrib_ms(
+        "Author contributions: Smith conceptualized the study and wrote the original "
+        "draft. Jones performed the formal analysis. Brown reviewed and edited the "
+        "manuscript."
+    )
+    result = validate_author_contribution_statement(ms)
+    assert result.findings == []
+
+
+def test_no_co_author_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_author_contribution_statement
+
+    ms, _cl = _author_contrib_ms(
+        "Author contributions: conceptualization and writing by the sole author."
+    )
+    result = validate_author_contribution_statement(ms)
+    assert result.findings == []
+
+
+def test_author_contrib_no_credit_fires() -> None:
+    from manuscript_audit.validators.core import validate_author_contribution_statement
+
+    ms, _cl = _author_contrib_ms("All authors contributed equally to this work.")
+    result = validate_author_contribution_statement(ms)
+    assert any(f.code == "missing-author-contributions" for f in result.findings)

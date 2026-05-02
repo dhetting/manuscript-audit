@@ -6783,6 +6783,10 @@ def run_deterministic_validators(
         validate_complete_case_analysis_bias(parsed, classification),
         validate_analytic_strategy_prespecification(parsed, classification),
         validate_self_report_bias_acknowledgement(parsed, classification),
+        validate_p_value_reporting_precision(parsed, classification),
+        validate_moderator_analysis_interpretation(parsed, classification),
+        validate_measurement_occasion_labelling(parsed, classification),
+        validate_statistical_conclusion_validity(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -16910,3 +16914,272 @@ def validate_self_report_bias_acknowledgement(
             )
         ],
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 276 – validate_p_value_reporting_precision
+# ---------------------------------------------------------------------------
+
+_P_VALUE_RE = re.compile(
+    r"\b(?:p\s*[=<>≤≥]\s*0?\.\d+|p[\s-]value\s*[=<>≤≥]\s*0?\.\d+|"
+    r"p\s*=\s*\.0{3,}|p\s*<\s*\.0{1,2}1)\b",
+    re.IGNORECASE,
+)
+_P_EXACT_RE = re.compile(
+    r"\b(?:p\s*=\s*\.\d{3,}|p\s*=\s*0\.\d{3,}|"
+    r"exact\s+p[\s-]value|p[\s-]value\s+(?:was|is)\s+reported\s+exactly)\b",
+    re.IGNORECASE,
+)
+_P_THRESHOLD_ONLY_RE = re.compile(
+    r"\b(?:p\s*<\s*\.0+1\b|p\s*<\s*\.05\b|p\s*<\s*\.001\b|"
+    r"p\s*=\s*\.0{4,})",
+    re.IGNORECASE,
+)
+
+
+def validate_p_value_reporting_precision(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag p-values reported only as threshold comparisons.
+
+    Emits ``imprecise-p-value-reporting`` (minor) when all p-values are reported
+    as thresholds only (e.g., p < .05) rather than exact values.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_p_value_reporting_precision", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _P_VALUE_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_p_value_reporting_precision", findings=[]
+        )
+
+    if _P_EXACT_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_p_value_reporting_precision", findings=[]
+        )
+
+    if not _P_THRESHOLD_ONLY_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_p_value_reporting_precision", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_p_value_reporting_precision",
+        findings=[
+            Finding(
+                code="imprecise-p-value-reporting",
+                severity="minor",
+                message=(
+                    "P-values appear to be reported only as threshold comparisons "
+                    "(e.g., p < .05). Report exact p-values where possible to aid "
+                    "replication and meta-analysis."
+                ),
+                validator="validate_p_value_reporting_precision",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 277 – validate_moderator_analysis_interpretation
+# ---------------------------------------------------------------------------
+
+_MODERATOR_TRIGGER_RE = re.compile(
+    r"\b(?:moderati(?:on|ng)|moderator\s+variable|interaction\s+effect|"
+    r"\w+\s+moderat(?:es?|ed)\s+the\s+(?:relationship|effect|association))\b",
+    re.IGNORECASE,
+)
+_MODERATOR_INTERPRETATION_RE = re.compile(
+    r"\b(?:simple\s+(?:slopes?|effect)\s+analysis|probing\s+the\s+interaction|"
+    r"regions?\s+of\s+significance|Johnson[\s-]Neyman|"
+    r"at\s+(?:low|high|mean)\s+levels?\s+of|"
+    r"graphed?\s+the\s+interaction|plotted?\s+the\s+interaction|"
+    r"interaction\s+was\s+probed)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_moderator_analysis_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag significant moderation without follow-up interpretation.
+
+    Emits ``missing-moderator-follow-up`` (minor) when moderation is tested
+    and significant but no follow-up probing (simple slopes, regions of
+    significance) is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_moderator_analysis_interpretation", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _MODERATOR_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_moderator_analysis_interpretation", findings=[]
+        )
+
+    if _MODERATOR_INTERPRETATION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_moderator_analysis_interpretation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_moderator_analysis_interpretation",
+        findings=[
+            Finding(
+                code="missing-moderator-follow-up",
+                severity="minor",
+                message=(
+                    "Moderation is claimed but no follow-up probing of the interaction "
+                    "is reported (e.g., simple slopes, Johnson-Neyman). Probe significant "
+                    "interactions to describe the nature of moderation."
+                ),
+                validator="validate_moderator_analysis_interpretation",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 278 – validate_measurement_occasion_labelling
+# ---------------------------------------------------------------------------
+
+_MULTI_TIMEPOINT_TRIGGER_RE = re.compile(
+    r"\b(?:time\s+(?:1|2|3|one|two|three)|T[123]\b|"
+    r"wave\s+(?:1|2|3|one|two|three)|W[123]\b|"
+    r"baseline\s+and\s+(?:follow[\s-]?up|post[\s-]?(?:test|intervention|treatment))|"
+    r"pre[\s-]?(?:test|treatment|intervention)\s+and\s+post[\s-]?(?:test|treatment|intervention))\b",
+    re.IGNORECASE,
+)
+_OCCASION_LABELLING_RE = re.compile(
+    r"\b(?:time\s+(?:1|2|3|one|two|three)\s+(?:was|corresponds?|refers?)|"
+    r"T[123]\s+(?:was|corresponds?|refers?)|"
+    r"wave\s+(?:1|2|3)\s+(?:was|corresponds?|refers?)|"
+    r"baseline\s+(?:measurement|assessment)(?:\s+\w+){0,3}\s+conducted|"
+    r"measurement\s+occasions?\s+(?:were|are)\s+labelled|"
+    r"(?:first|second|third)\s+(?:measurement|assessment|time\s+point))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_measurement_occasion_labelling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag unlabelled measurement occasions in longitudinal studies.
+
+    Emits ``unlabelled-measurement-occasions`` (minor) when time labels like
+    T1/T2 or Wave 1/Wave 2 are used without defining what they refer to.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_measurement_occasion_labelling", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _MULTI_TIMEPOINT_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_measurement_occasion_labelling", findings=[]
+        )
+
+    if _OCCASION_LABELLING_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_measurement_occasion_labelling", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_measurement_occasion_labelling",
+        findings=[
+            Finding(
+                code="unlabelled-measurement-occasions",
+                severity="minor",
+                message=(
+                    "Time labels (T1, T2, Wave 1, etc.) are used without defining what "
+                    "each occasion corresponds to. Clearly label measurement occasions "
+                    "with their timing or content."
+                ),
+                validator="validate_measurement_occasion_labelling",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 279 – validate_statistical_conclusion_validity
+# ---------------------------------------------------------------------------
+
+_LOW_POWER_TRIGGER_RE = re.compile(
+    r"\b(?:underpowered|under[\s-]?powered|small\s+sample\s+(?:size|n)|"
+    r"limited\s+(?:statistical\s+)?power|insufficient\s+power|"
+    r"our\s+study\s+(?:lacked|had\s+limited)\s+(?:statistical\s+)?power)\b",
+    re.IGNORECASE,
+)
+_NULL_POWER_TRIGGER_RE = re.compile(
+    r"\b(?:(?:not|non)\s+significant|p\s*>\s*\.0[5-9]|p\s*>\s*\.[1-9]\d*|"
+    r"failed\s+to\s+(?:reach|achieve)\s+significance|"
+    r"no\s+significant\s+(?:effect|difference|association|relationship))\b",
+    re.IGNORECASE,
+)
+_NULL_POWER_DISCUSSION_RE = re.compile(
+    r"\b(?:Type\s+II\s+error|false\s+negative|statistical\s+power|"
+    r"may\s+(?:have\s+)?(?:been|be)\s+underpowered|"
+    r"power\s+to\s+detect\s+(?:an?\s+)?(?:effect|difference)|"
+    r"null\s+(?:result|finding)\s+(?:may|might|could)\s+reflect)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_statistical_conclusion_validity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag null results without statistical power discussion.
+
+    Emits ``missing-null-result-power-discussion`` (moderate) when a null
+    result is reported alongside acknowledgement of limited power but no
+    discussion of Type II error risk.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_statistical_conclusion_validity", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _NULL_POWER_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_statistical_conclusion_validity", findings=[]
+        )
+
+    if not _LOW_POWER_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_statistical_conclusion_validity", findings=[]
+        )
+
+    if _NULL_POWER_DISCUSSION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_statistical_conclusion_validity", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_statistical_conclusion_validity",
+        findings=[
+            Finding(
+                code="missing-null-result-power-discussion",
+                severity="moderate",
+                message=(
+                    "A null result is reported but statistical power is acknowledged "
+                    "as limited without discussing Type II error risk. Discuss whether "
+                    "the study was adequately powered to detect the expected effect."
+                ),
+                validator="validate_statistical_conclusion_validity",
+            )
+        ],
+    )
+
+
