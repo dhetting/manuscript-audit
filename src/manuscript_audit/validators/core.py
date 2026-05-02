@@ -7052,6 +7052,11 @@ def run_deterministic_validators(
         validate_code_summarization_metrics(parsed, classification),
         validate_api_usage_prediction_metrics(parsed, classification),
         validate_multilingual_ner_metrics(parsed, classification),
+        validate_zero_shot_classification_metrics(parsed, classification),
+        validate_chain_of_thought_evaluation(parsed, classification),
+        validate_rag_evaluation_metrics(parsed, classification),
+        validate_instruction_tuning_evaluation(parsed, classification),
+        validate_long_context_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -31084,6 +31089,239 @@ def validate_multilingual_ner_metrics(
                 ),
                 location="full_text",
                 validator=_MLNER_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 546 – zero-shot classification metrics
+# ---------------------------------------------------------------------------
+_ZEROSHOT_VID = "missing-zero-shot-classification-metrics"
+
+_ZEROSHOT_TRIGGERS = re.compile(
+    r"\b(?:zero[- ]shot\s+(?:classification|recognition|transfer|learning)|"
+    r"ZSL\s+(?:benchmark|model|accuracy)|generalized\s+zero[- ]shot)\b",
+    re.IGNORECASE,
+)
+_ZEROSHOT_METRICS = re.compile(
+    r"\b(?:accuracy|top[- ][0-9]+\s+accuracy|harmonic\s+mean|H)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|top[- ][0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_zero_shot_classification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ZEROSHOT_VID, findings=[])
+    text = parsed.full_text
+    if not _ZEROSHOT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ZEROSHOT_VID, findings=[])
+    if _ZEROSHOT_METRICS.search(text):
+        return ValidationResult(validator_name=_ZEROSHOT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ZEROSHOT_VID,
+        findings=[
+            Finding(
+                code=_ZEROSHOT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses zero-shot classification but does not report "
+                    "accuracy or harmonic mean on a ZSL benchmark."
+                ),
+                location="full_text",
+                validator=_ZEROSHOT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 547 – chain-of-thought reasoning evaluation
+# ---------------------------------------------------------------------------
+_COT_VID = "missing-chain-of-thought-evaluation"
+
+_COT_TRIGGERS = re.compile(
+    r"\b(?:chain[- ]of[- ]thought|CoT\s+(?:prompting|reasoning|evaluation)|"
+    r"chain\s+of\s+thought\s+(?:prompting|reasoning))\b",
+    re.IGNORECASE,
+)
+_COT_METRICS = re.compile(
+    r"\b(?:accuracy|exact\s+match|EM|pass@[0-9]+)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|EM)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_chain_of_thought_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_COT_VID, findings=[])
+    text = parsed.full_text
+    if not _COT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_COT_VID, findings=[])
+    if _COT_METRICS.search(text):
+        return ValidationResult(validator_name=_COT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_COT_VID,
+        findings=[
+            Finding(
+                code=_COT_VID,
+                severity="moderate",
+                message=(
+                    "Paper uses chain-of-thought prompting but does not report "
+                    "accuracy, EM, or pass@k on a reasoning benchmark."
+                ),
+                location="full_text",
+                validator=_COT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 548 – retrieval-augmented generation (RAG) evaluation
+# ---------------------------------------------------------------------------
+_RAG_VID = "missing-rag-evaluation-metrics"
+
+_RAG_TRIGGERS = re.compile(
+    r"\b(?:retrieval[- ]augmented\s+generation|RAG\s+(?:model|system|pipeline|approach)|"
+    r"retrieval\s+augmented\s+generation|open[- ]domain\s+QA\s+with\s+retrieval)\b",
+    re.IGNORECASE,
+)
+_RAG_METRICS = re.compile(
+    r"\b(?:EM|exact\s+match|F[- ]?1|recall@[0-9]+|precision@[0-9]+|BLEU|ROUGE)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:EM|F[- ]?1|BLEU|ROUGE)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_rag_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_RAG_VID, findings=[])
+    text = parsed.full_text
+    if not _RAG_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_RAG_VID, findings=[])
+    if _RAG_METRICS.search(text):
+        return ValidationResult(validator_name=_RAG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_RAG_VID,
+        findings=[
+            Finding(
+                code=_RAG_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses retrieval-augmented generation but does not "
+                    "report EM, F1, or BLEU/ROUGE on a QA or generation benchmark."
+                ),
+                location="full_text",
+                validator=_RAG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 549 – instruction tuning / RLHF evaluation
+# ---------------------------------------------------------------------------
+_INSTRTUNE_VID = "missing-instruction-tuning-evaluation"
+
+_INSTRTUNE_TRIGGERS = re.compile(
+    r"\b(?:instruction[- ](?:tuning|following|finetuning|fine-tuning)|"
+    r"RLHF|reinforcement\s+learning\s+from\s+human\s+feedback|"
+    r"InstructGPT|reward\s+model\s+training)\b",
+    re.IGNORECASE,
+)
+_INSTRTUNE_METRICS = re.compile(
+    r"\b(?:win\s+rate|human\s+preference|MT[- ]Bench|AlpacaEval|"
+    r"reward\s+score|Elo\s+rating)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:win\s+rate|preference)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_instruction_tuning_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_INSTRTUNE_VID, findings=[])
+    text = parsed.full_text
+    if not _INSTRTUNE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_INSTRTUNE_VID, findings=[])
+    if _INSTRTUNE_METRICS.search(text):
+        return ValidationResult(validator_name=_INSTRTUNE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_INSTRTUNE_VID,
+        findings=[
+            Finding(
+                code=_INSTRTUNE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses instruction tuning or RLHF but does not report "
+                    "win rate, human preference, or a standard alignment benchmark score."
+                ),
+                location="full_text",
+                validator=_INSTRTUNE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 550 – long-context LM evaluation
+# ---------------------------------------------------------------------------
+_LONGCTX_VID = "missing-long-context-evaluation"
+
+_LONGCTX_TRIGGERS = re.compile(
+    r"\b(?:long[- ]context\s+(?:model|evaluation|LM|language\s+model)|"
+    r"long\s+document\s+(?:understanding|summarization|QA)|"
+    r"context\s+length\s+(?:extension|scaling)|"
+    r"(?:32k|64k|128k|1M)[- ]token\s+context)\b",
+    re.IGNORECASE,
+)
+_LONGCTX_METRICS = re.compile(
+    r"\b(?:perplexity|accuracy|F[- ]?1|ROUGE|BLEU|EM)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:perplexity|accuracy|F[- ]?1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_long_context_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_LONGCTX_VID, findings=[])
+    text = parsed.full_text
+    if not _LONGCTX_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_LONGCTX_VID, findings=[])
+    if _LONGCTX_METRICS.search(text):
+        return ValidationResult(validator_name=_LONGCTX_VID, findings=[])
+    return ValidationResult(
+        validator_name=_LONGCTX_VID,
+        findings=[
+            Finding(
+                code=_LONGCTX_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses long-context LM evaluation but does not report "
+                    "perplexity, accuracy, or retrieval metrics at extended context lengths."
+                ),
+                location="full_text",
+                validator=_LONGCTX_VID,
             )
         ],
     )

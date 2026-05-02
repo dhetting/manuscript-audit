@@ -32854,3 +32854,242 @@ def test_mlner545_non_empirical_no_fire() -> None:
     )
     r = validate_multilingual_ner_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 546 – validate_zero_shot_classification_metrics
+# ---------------------------------------------------------------------------
+def _zeroshot546_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t546", source_path="t546.md", source_format="markdown",
+            title="Zero-shot classification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_zeroshot546_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_zero_shot_classification_metrics
+    ms, cl = _zeroshot546_ms("We address zero-shot classification on CUB-200.")
+    r = validate_zero_shot_classification_metrics(ms, cl)
+    assert any(f.code == "missing-zero-shot-classification-metrics" for f in r.findings)
+
+
+def test_zeroshot546_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_zero_shot_classification_metrics
+    ms, cl = _zeroshot546_ms("Zero-shot classification: top-1 accuracy = 65.3% on CUB-200.")
+    r = validate_zero_shot_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_zeroshot546_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_zero_shot_classification_metrics
+    ms, cl = _zeroshot546_ms("We propose a standard image classification approach.")
+    r = validate_zero_shot_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_zeroshot546_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_zero_shot_classification_metrics
+    ms, _ = _zeroshot546_ms("Zero-shot learning theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_zero_shot_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 547 – validate_chain_of_thought_evaluation
+# ---------------------------------------------------------------------------
+def _cot547_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t547", source_path="t547.md", source_format="markdown",
+            title="Chain-of-thought reasoning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cot547_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_chain_of_thought_evaluation
+    ms, cl = _cot547_ms("We evaluate chain-of-thought prompting on GSM8K.")
+    r = validate_chain_of_thought_evaluation(ms, cl)
+    assert any(f.code == "missing-chain-of-thought-evaluation" for f in r.findings)
+
+
+def test_cot547_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_chain_of_thought_evaluation
+    ms, cl = _cot547_ms("Chain-of-thought prompting: accuracy = 78.4% on GSM8K.")
+    r = validate_chain_of_thought_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_cot547_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_chain_of_thought_evaluation
+    ms, cl = _cot547_ms("We present an image segmentation model.")
+    r = validate_chain_of_thought_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_cot547_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_chain_of_thought_evaluation
+    ms, _ = _cot547_ms("CoT reasoning theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_chain_of_thought_evaluation(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 548 – validate_rag_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _rag548_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t548", source_path="t548.md", source_format="markdown",
+            title="RAG evaluation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rag548_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_rag_evaluation_metrics
+    ms, cl = _rag548_ms("We propose a retrieval-augmented generation pipeline.")
+    r = validate_rag_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-rag-evaluation-metrics" for f in r.findings)
+
+
+def test_rag548_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_rag_evaluation_metrics
+    ms, cl = _rag548_ms("RAG model: F1 = 52.4% on NaturalQuestions.")
+    r = validate_rag_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_rag548_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_rag_evaluation_metrics
+    ms, cl = _rag548_ms("We present a speaker diarization approach.")
+    r = validate_rag_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_rag548_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rag_evaluation_metrics
+    ms, _ = _rag548_ms("Retrieval-augmented generation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_rag_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 549 – validate_instruction_tuning_evaluation
+# ---------------------------------------------------------------------------
+def _instrtune549_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t549", source_path="t549.md", source_format="markdown",
+            title="Instruction tuning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_instrtune549_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_instruction_tuning_evaluation
+    ms, cl = _instrtune549_ms("We train a model using instruction-tuning with RLHF.")
+    r = validate_instruction_tuning_evaluation(ms, cl)
+    assert any(f.code == "missing-instruction-tuning-evaluation" for f in r.findings)
+
+
+def test_instrtune549_no_fire_when_winrate_reported() -> None:
+    from manuscript_audit.validators.core import validate_instruction_tuning_evaluation
+    ms, cl = _instrtune549_ms("RLHF model: win rate = 72% over SFT baseline on MT-Bench.")
+    r = validate_instruction_tuning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_instrtune549_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_instruction_tuning_evaluation
+    ms, cl = _instrtune549_ms("We study monocular depth estimation networks.")
+    r = validate_instruction_tuning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_instrtune549_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_instruction_tuning_evaluation
+    ms, _ = _instrtune549_ms("Instruction following theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_instruction_tuning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 550 – validate_long_context_evaluation
+# ---------------------------------------------------------------------------
+def _longctx550_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t550", source_path="t550.md", source_format="markdown",
+            title="Long-context LM", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_longctx550_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_long_context_evaluation
+    ms, cl = _longctx550_ms("We propose a long-context language model with 128k-token context.")
+    r = validate_long_context_evaluation(ms, cl)
+    assert any(f.code == "missing-long-context-evaluation" for f in r.findings)
+
+
+def test_longctx550_no_fire_when_perplexity_reported() -> None:
+    from manuscript_audit.validators.core import validate_long_context_evaluation
+    ms, cl = _longctx550_ms("Long-context model: perplexity = 5.2 on PG-19 with 32k-token context.")
+    r = validate_long_context_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_longctx550_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_long_context_evaluation
+    ms, cl = _longctx550_ms("We introduce a face recognition network.")
+    r = validate_long_context_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_longctx550_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_long_context_evaluation
+    ms, _ = _longctx550_ms("Long-context attention theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_long_context_evaluation(ms, cl)
+    assert r.findings == []
