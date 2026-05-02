@@ -11513,3 +11513,336 @@ def test_recency_non_empirical_no_fire() -> None:
     )
     result = validate_data_collection_recency(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 216 – validate_theoretical_framework_citation
+# ---------------------------------------------------------------------------
+
+def _theory_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-theory",
+            source_path="/tmp/theory.md",
+            source_format="markdown",
+            title="Theory Citation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_named_theory_without_citation_fires() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_framework_citation
+
+    ms, cl = _theory_ms(
+        "This study is grounded in Self-Determination Theory and examines "
+        "intrinsic motivation among students."
+    )
+    result = validate_theoretical_framework_citation(ms, cl)
+    assert any(f.code == "missing-theory-citation" for f in result.findings)
+
+
+def test_named_theory_with_citation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_framework_citation
+
+    ms, cl = _theory_ms(
+        "This study is grounded in Self-Determination Theory (Deci & Ryan, 1985) "
+        "and examines intrinsic motivation among students."
+    )
+    result = validate_theoretical_framework_citation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_named_theory_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_framework_citation
+
+    ms, cl = _theory_ms(
+        "We ran a regression analysis to predict academic performance from GPA."
+    )
+    result = validate_theoretical_framework_citation(ms, cl)
+    assert result.findings == []
+
+
+def test_theory_citation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_theoretical_framework_citation
+
+    ms, cl = _theory_ms("Self-Determination Theory is discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_theoretical_framework_citation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 217 – validate_survey_instrument_source
+# ---------------------------------------------------------------------------
+
+def _instrument_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-instrument",
+            source_path="/tmp/instrument.md",
+            source_format="markdown",
+            title="Instrument Source Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_scale_without_source_fires() -> None:
+    from manuscript_audit.validators.core import validate_survey_instrument_source
+
+    ms, cl = _instrument_ms(
+        "A validated questionnaire was used to assess burnout levels among "
+        "healthcare workers across three hospital sites."
+    )
+    result = validate_survey_instrument_source(ms, cl)
+    assert any(f.code == "missing-instrument-source" for f in result.findings)
+
+
+def test_scale_with_citation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_survey_instrument_source
+
+    ms, cl = _instrument_ms(
+        "The Maslach Burnout Inventory (Maslach & Jackson, 1981) was used. "
+        "Cronbach's alpha for the exhaustion subscale was .87."
+    )
+    result = validate_survey_instrument_source(ms, cl)
+    assert result.findings == []
+
+
+def test_no_scale_used_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_survey_instrument_source
+
+    ms, cl = _instrument_ms(
+        "Biomarker levels were extracted from medical records using standard laboratory protocols."
+    )
+    result = validate_survey_instrument_source(ms, cl)
+    assert result.findings == []
+
+
+def test_instrument_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_survey_instrument_source
+
+    ms, cl = _instrument_ms("A validated scale was used in prior work.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_survey_instrument_source(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 218 – validate_sampling_frame_description
+# ---------------------------------------------------------------------------
+
+def _sampling_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sampling",
+            source_path="/tmp/sampling.md",
+            source_format="markdown",
+            title="Sampling Frame Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sampling_without_frame_fires() -> None:
+    from manuscript_audit.validators.core import validate_sampling_frame_description
+
+    ms, cl = _sampling_ms(
+        "Participants were recruited from a large urban university. "
+        "A total of 200 undergraduate students completed the survey."
+    )
+    result = validate_sampling_frame_description(ms, cl)
+    assert any(f.code == "missing-sampling-frame" for f in result.findings)
+
+
+def test_sampling_with_strategy_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sampling_frame_description
+
+    ms, cl = _sampling_ms(
+        "Participants were recruited using stratified random sampling from "
+        "the university registry of enrolled undergraduate students."
+    )
+    result = validate_sampling_frame_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sampling_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sampling_frame_description
+
+    ms, cl = _sampling_ms(
+        "We analysed archival clinical trial data with complete registry linkage."
+    )
+    result = validate_sampling_frame_description(ms, cl)
+    assert result.findings == []
+
+
+def test_sampling_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sampling_frame_description
+
+    ms, cl = _sampling_ms("Participants were sampled from a register.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sampling_frame_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 219 – validate_one_tailed_test_justification
+# ---------------------------------------------------------------------------
+
+def _one_tailed_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-onetail",
+            source_path="/tmp/onetail.md",
+            source_format="markdown",
+            title="One-Tailed Test Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_one_tailed_without_justification_fires() -> None:
+    from manuscript_audit.validators.core import validate_one_tailed_test_justification
+
+    ms, cl = _one_tailed_ms(
+        "Significance was assessed using a one-tailed test with alpha = 0.05 "
+        "based on the directional hypothesis."
+    )
+    result = validate_one_tailed_test_justification(ms, cl)
+    assert any(f.code == "unjustified-one-tailed-test" for f in result.findings)
+
+
+def test_one_tailed_with_justification_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_one_tailed_test_justification
+
+    ms, cl = _one_tailed_ms(
+        "A one-tailed test was justified because prior literature strongly predicts "
+        "a positive effect of treatment on anxiety reduction."
+    )
+    result = validate_one_tailed_test_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_two_tailed_only_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_one_tailed_test_justification
+
+    ms, cl = _one_tailed_ms(
+        "All tests were two-tailed with alpha = 0.05."
+    )
+    result = validate_one_tailed_test_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_one_tailed_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_one_tailed_test_justification
+
+    ms, cl = _one_tailed_ms("One-tailed tests are discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_one_tailed_test_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 220 – validate_gratuitous_significance_language
+# ---------------------------------------------------------------------------
+
+def _gratuitous_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gratuitous",
+            source_path="/tmp/gratuitous.md",
+            source_format="markdown",
+            title="Gratuitous Significance Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_all_results_significant_fires() -> None:
+    from manuscript_audit.validators.core import validate_gratuitous_significance_language
+
+    ms, cl = _gratuitous_ms(
+        "All results were statistically significant, confirming our hypotheses."
+    )
+    result = validate_gratuitous_significance_language(ms, cl)
+    assert any(f.code == "implausible-significance-language" for f in result.findings)
+
+
+def test_normal_significance_report_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gratuitous_significance_language
+
+    ms, cl = _gratuitous_ms(
+        "The primary outcome was statistically significant (p = 0.03). "
+        "Secondary outcomes did not reach significance."
+    )
+    result = validate_gratuitous_significance_language(ms, cl)
+    assert result.findings == []
+
+
+def test_no_significance_language_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gratuitous_significance_language
+
+    ms, cl = _gratuitous_ms(
+        "We report descriptive statistics and confidence intervals for all outcomes."
+    )
+    result = validate_gratuitous_significance_language(ms, cl)
+    assert result.findings == []
+
+
+def test_gratuitous_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gratuitous_significance_language
+
+    ms, cl = _gratuitous_ms("All results were highly significant.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_gratuitous_significance_language(ms, cl)
+    assert result.findings == []

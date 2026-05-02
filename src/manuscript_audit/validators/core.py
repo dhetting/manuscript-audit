@@ -6724,6 +6724,11 @@ def run_deterministic_validators(
         validate_logistic_regression_assumptions(parsed, classification),
         validate_researcher_positionality(parsed, classification),
         validate_data_collection_recency(parsed, classification),
+        validate_theoretical_framework_citation(parsed, classification),
+        validate_survey_instrument_source(parsed, classification),
+        validate_sampling_frame_description(parsed, classification),
+        validate_one_tailed_test_justification(parsed, classification),
+        validate_gratuitous_significance_language(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -12868,6 +12873,356 @@ def validate_data_collection_recency(
                 ),
                 validator="data_collection_recency",
                 location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 216 – Missing theoretical framework citation
+# ---------------------------------------------------------------------------
+
+_THEORY_CLAIM_RE = re.compile(
+    r"\b(?:grounded\s+in|based\s+on|guided\s+by|draws?\s+on|informed?\s+by|"
+    r"theoretical\s+framework|conceptual\s+framework|framed?\s+(?:by|within|through)|"
+    r"underpinned?\s+by|rooted\s+in)\s+(?:the\s+)?(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\s+)?theory\b",
+    re.IGNORECASE,
+)
+_THEORY_CITATION_RE = re.compile(
+    r"\b[Tt]heory\b.{0,120}?\(\s*[A-Z][^\)]{2,}\d{4}\s*\)"
+    r"|\(\s*[A-Z][^\)]{2,}\d{4}\s*\).{0,120}?\b[Tt]heory\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_THEORY_NAMED_RE = re.compile(
+    r"\b(?:Social\s+(?:Learning|Cognitive|Exchange|Capital|Identity)|"
+    r"Self.?Determination|Self.?Efficacy|Theory\s+of\s+Planned\s+Behaviour?|"
+    r"Health\s+Belief\s+Model|Transtheoretical\s+Model|Ecological\s+Systems?|"
+    r"Cognitive\s+Dissonance|Attribution|Reasoned\s+Action|Diffusion\s+of\s+Innovations?|"
+    r"Situated\s+Learning|Expectancy.?Value|Dual\s+Process)\s+[Tt]heory\b",
+    re.IGNORECASE,
+)
+
+
+def validate_theoretical_framework_citation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts invoking a theory without providing a citation.
+
+    Emits ``missing-theory-citation`` (minor) when a named theoretical
+    framework is mentioned but no year/author citation accompanies it.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="theoretical_framework_citation", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="theoretical_framework_citation", findings=[]
+        )
+
+    if not _THEORY_NAMED_RE.search(full):
+        return ValidationResult(
+            validator_name="theoretical_framework_citation", findings=[]
+        )
+
+    if _THEORY_CITATION_RE.search(full):
+        return ValidationResult(
+            validator_name="theoretical_framework_citation", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="theoretical_framework_citation",
+        findings=[
+            Finding(
+                code="missing-theory-citation",
+                severity="minor",
+                message=(
+                    "A named theoretical framework is invoked but no corresponding "
+                    "author/year citation is present. Cite the original source for the theory."
+                ),
+                validator="theoretical_framework_citation",
+                location="Introduction / Theoretical Framework",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 217 – Undisclosed survey instrument source
+# ---------------------------------------------------------------------------
+
+_SURVEY_INSTRUMENT_RE = re.compile(
+    r"\b(?:scale\s+(?:was|were|is|are)\s+(?:used?|adapted?|modified?|administered?|"
+    r"administered?\s+to\s+participants?)|"
+    r"questionnaire\s+(?:was|were|is|are)\s+(?:used?|adapted?|modified?|"
+    r"administered?|designed?|developed?)|"
+    r"validated?\s+(?:scale|measure|instrument|questionnaire)|"
+    r"(?:psychometric|standardized?)\s+(?:scale|instrument|measure|questionnaire))\b",
+    re.IGNORECASE,
+)
+_INSTRUMENT_SOURCE_RE = re.compile(
+    r"\b(?:developed?\s+by\s+[A-Z]|adapted?\s+from\s+[A-Z]|"
+    r"(?:scale|questionnaire|instrument|measure)\s+\((?:[A-Z][a-z]+.+?\d{4})\)|"
+    r"originally\s+(?:developed?|published?|validated?)\s+by\s+[A-Z]|"
+    r"(?:Cronbach.s?\s+alpha|internal\s+consistency|factor\s+(?:structure|loading)|"
+    r"convergent\s+validity|discriminant\s+validity|test.retest))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_survey_instrument_source(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag use of a survey scale without citing its source or validation.
+
+    Emits ``missing-instrument-source`` (moderate) when a scale or
+    questionnaire is used but no developer citation or psychometric properties
+    are reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="survey_instrument_source", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="survey_instrument_source", findings=[]
+        )
+
+    if not _SURVEY_INSTRUMENT_RE.search(full):
+        return ValidationResult(
+            validator_name="survey_instrument_source", findings=[]
+        )
+
+    if _INSTRUMENT_SOURCE_RE.search(full):
+        return ValidationResult(
+            validator_name="survey_instrument_source", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="survey_instrument_source",
+        findings=[
+            Finding(
+                code="missing-instrument-source",
+                severity="moderate",
+                message=(
+                    "A validated scale or questionnaire is used but no source citation, "
+                    "psychometric properties (alpha, validity), or developer credit are given. "
+                    "Cite the instrument's original source and report reliability."
+                ),
+                validator="survey_instrument_source",
+                location="Measures / Instruments",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 218 – Missing sampling frame description
+# ---------------------------------------------------------------------------
+
+_SAMPLING_FRAME_TRIGGER_RE = re.compile(
+    r"\b(?:sample(?:d|ing)?\s+from|participants?\s+were\s+(?:recruited?|selected?|drawn?)|"
+    r"population\s+of\s+interest|target\s+population|sampling\s+(?:frame|strategy|method)|"
+    r"drawn?\s+from\s+(?:a|the)\s+(?:list|registry|database|pool|cohort|roster))\b",
+    re.IGNORECASE,
+)
+_SAMPLING_FRAME_DESC_RE = re.compile(
+    r"\b(?:sampling\s+frame\s+(?:was|consisted?|included?|comprised?)|"
+    r"(?:list|registry|database|pool|cohort|roster)\s+of\s+(?:all\s+)?"
+    r"(?:eligible\s+)?(?:patients?|participants?|students?|employees?|"
+    r"households?|adults?|women|men)\b|"
+    r"census\s+of|purposive\s+sampling|stratified\s+(?:random\s+)?sampling|"
+    r"random\s+sampling|probability\s+sampling|convenience\s+sampling|"
+    r"cluster\s+sampling|snowball\s+sampling)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sampling_frame_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies that mention sampling but do not describe the sampling frame.
+
+    Emits ``missing-sampling-frame`` (minor) when participants are recruited or
+    sampled but no sampling frame, strategy, or method is described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="sampling_frame_description", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="sampling_frame_description", findings=[]
+        )
+
+    if not _SAMPLING_FRAME_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="sampling_frame_description", findings=[]
+        )
+
+    if _SAMPLING_FRAME_DESC_RE.search(full):
+        return ValidationResult(
+            validator_name="sampling_frame_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="sampling_frame_description",
+        findings=[
+            Finding(
+                code="missing-sampling-frame",
+                severity="minor",
+                message=(
+                    "Sampling or participant recruitment is mentioned but no sampling "
+                    "frame, strategy, or selection method is described. "
+                    "Clarify how and from what population participants were selected."
+                ),
+                validator="sampling_frame_description",
+                location="Methods / Participants",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 219 – Unjustified one-tailed test
+# ---------------------------------------------------------------------------
+
+_ONE_TAILED_RE = re.compile(
+    r"\b(?:one.?tailed?\s+(?:test|significance|p.?value|hypothesis|alpha)|"
+    r"directional\s+hypothesis\s+(?:was|were)\s+tested?\s+one.?tailed?|"
+    r"one.?sided?\s+(?:test|p.?value|significance))\b",
+    re.IGNORECASE,
+)
+_ONE_TAILED_JUSTIFICATION_RE = re.compile(
+    r"\b(?:one.?tailed?\s+(?:test\s+)?(?:was|were|is)\s+(?:justified?|appropriate|"
+    r"warranted?|chosen?|selected?)\s+because|"
+    r"because\s+(?:we\s+)?(?:hypothesised?|hypothesized?|predicted?|expected?)\s+"
+    r"(?:a\s+)?(?:positive|negative|directional|specific)\s+(?:effect|relationship|"
+    r"difference|association)|"
+    r"prior\s+(?:theory|evidence|literature|research)\s+strongly\s+(?:predicts?|suggests?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_one_tailed_test_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag use of one-tailed tests without explicit justification.
+
+    Emits ``unjustified-one-tailed-test`` (moderate) when a one-tailed test
+    is used but no theoretical justification for the directional hypothesis is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="one_tailed_test_justification", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="one_tailed_test_justification", findings=[]
+        )
+
+    if not _ONE_TAILED_RE.search(full):
+        return ValidationResult(
+            validator_name="one_tailed_test_justification", findings=[]
+        )
+
+    if _ONE_TAILED_JUSTIFICATION_RE.search(full):
+        return ValidationResult(
+            validator_name="one_tailed_test_justification", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="one_tailed_test_justification",
+        findings=[
+            Finding(
+                code="unjustified-one-tailed-test",
+                severity="moderate",
+                message=(
+                    "A one-tailed test is reported but no justification for the "
+                    "directional hypothesis is given. "
+                    "Justify the use of a one-tailed test with prior theory or strong "
+                    "directional evidence, or use a two-tailed test."
+                ),
+                validator="one_tailed_test_justification",
+                location="Statistical Analysis",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 220 – Data fabrication / wishful results red flags
+# ---------------------------------------------------------------------------
+
+_SUSPICIOUSLY_ROUND_P_RE = re.compile(
+    r"\b(?:p\s*(?:<|=)\s*0?\.0+[15]0+\b)",
+    re.IGNORECASE,
+)
+_GRATUITOUS_SIGNIFICANCE_RE = re.compile(
+    r"\b(?:highly\s+significant|strongly\s+significant|extremely\s+significant|"
+    r"clearly\s+significant|overwhelmingly\s+significant|"
+    r"all\s+(?:results?|tests?|outcomes?|findings?)\s+were\s+(?:significant|statistically\s+significant)|"
+    r"every\s+(?:result|test|outcome|finding|variable|predictor)\s+(?:was|were)\s+significant)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_gratuitous_significance_language(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag language suggesting inflated or implausible significance.
+
+    Emits ``implausible-significance-language`` (major) when the manuscript
+    uses phrases like 'all results were significant' or 'highly significant'
+    that may signal p-hacking or reporting bias.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="gratuitous_significance_language", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="gratuitous_significance_language", findings=[]
+        )
+
+    if not _GRATUITOUS_SIGNIFICANCE_RE.search(full):
+        return ValidationResult(
+            validator_name="gratuitous_significance_language", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="gratuitous_significance_language",
+        findings=[
+            Finding(
+                code="implausible-significance-language",
+                severity="major",
+                message=(
+                    "Language suggesting that all or virtually all results are "
+                    "statistically significant detected. "
+                    "This may indicate p-hacking, selective reporting, or inflated claims. "
+                    "Report null findings and use precise language."
+                ),
+                validator="gratuitous_significance_language",
+                location="Results",
                 evidence=[],
             )
         ],
