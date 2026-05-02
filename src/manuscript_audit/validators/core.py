@@ -6917,6 +6917,11 @@ def run_deterministic_validators(
         validate_log_likelihood_reporting(parsed, classification),
         validate_link_function_justification(parsed, classification),
         validate_functional_form_test(parsed, classification),
+        validate_efa_factor_retention(parsed, classification),
+        validate_cfa_model_fit_indices(parsed, classification),
+        validate_omega_reliability(parsed, classification),
+        validate_criterion_validity_evidence(parsed, classification),
+        validate_irt_dif_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -24665,6 +24670,240 @@ def validate_functional_form_test(
                 message=(
                     "OLS or linear regression was used but no functional form "
                     "test (e.g., Ramsey RESET) was reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 411 – EFA factor retention criteria
+# ---------------------------------------------------------------------------
+
+_EFA_TRIGGER_RE = re.compile(
+    r"\b(?:exploratory\s+factor\s+analysis|EFA|principal\s+(?:component|axis)\s+factor|"
+    r"factor\s+extract(?:ion|ed)|factor\s+retention|number\s+of\s+factors)\b",
+    re.IGNORECASE,
+)
+_EFA_CRITERIA_RE = re.compile(
+    r"\b(?:scree\s+(?:test|plot|criterion)|eigenvalue[s]?\s+(?:greater|above|exceeding|"
+    r">|≥)\s+(?:1|one)|parallel\s+analysis|MAP\s+test|Velicer|"
+    r"Horn.s\s+parallel|minimum\s+average\s+partial|"
+    r"factor\s+retention\s+(?:criterion|criteria|method|using))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_efa_factor_retention(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_efa_factor_retention"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _EFA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _EFA_CRITERIA_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-efa-retention-criteria",
+                message=(
+                    "Exploratory factor analysis was performed but no factor retention "
+                    "criterion (scree test, eigenvalue>1, parallel analysis) was reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 412 – CFA model fit indices reporting
+# ---------------------------------------------------------------------------
+
+_CFA_TRIGGER_RE = re.compile(
+    r"\b(?:confirmatory\s+factor\s+analysis|CFA|structural\s+equation\s+model|SEM|"
+    r"measurement\s+model|factor\s+structure\s+(?:was\s+)?confirmed|"
+    r"latent\s+factor\s+model)\b",
+    re.IGNORECASE,
+)
+_CFA_FIT_RE = re.compile(
+    r"\b(?:CFI|TLI|RMSEA|SRMR|GFI|AGFI|NFI|IFI|"
+    r"Tucker[- ]Lewis|comparative\s+fit\s+index|"
+    r"root\s+mean\s+square\s+(?:error\s+of\s+approximation|residual)|"
+    r"model\s+fit\s+(?:indices|statistics?|was\s+(?:acceptable|good|adequate)))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cfa_model_fit_indices(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_cfa_model_fit_indices"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CFA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CFA_FIT_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cfa-fit-indices",
+                message=(
+                    "Confirmatory factor analysis or SEM was performed but no "
+                    "model fit indices (CFI, RMSEA, SRMR) were reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 413 – Omega reliability reporting
+# ---------------------------------------------------------------------------
+
+_OMEGA_TRIGGER_RE = re.compile(
+    r"\b(?:internal\s+consistency|scale\s+reliability|reliability\s+of\s+the\s+scale|"
+    r"composite\s+reliability|reliability\s+coefficient|"
+    r"Cronbach.s?\s+alpha\b|coefficient\s+alpha)\b",
+    re.IGNORECASE,
+)
+_OMEGA_REPORTED_RE = re.compile(
+    r"\b(?:omega\s+(?:total|hierarchical|reliability|=\s*\.\d+|was\s+\.\d+)|"
+    r"McDonald.s\s+omega|ω[th]?\s*(?:=|>|\.|was)|"
+    r"omega\s+coefficient|composite\s+reliability\s+(?:was|=|coefficient))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_omega_reliability(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_omega_reliability"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _OMEGA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _OMEGA_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-omega-reliability",
+                message=(
+                    "Scale reliability was reported using Cronbach's alpha but "
+                    "omega (a more robust reliability estimate) was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 414 – Criterion validity evidence
+# ---------------------------------------------------------------------------
+
+_CRITERION_VAL_TRIGGER_RE = re.compile(
+    r"\b(?:criterion\s+validity|predictive\s+validity|concurrent\s+validity|"
+    r"criterion[- ]related\s+validity|we\s+assessed\s+(?:the\s+)?validity|"
+    r"validity\s+of\s+(?:the\s+)?(?:scale|measure|instrument|questionnaire))\b",
+    re.IGNORECASE,
+)
+_CRITERION_VAL_EVIDENCE_RE = re.compile(
+    r"\b(?:criterion\s+(?:variable|measure|outcome)|"
+    r"correlat(?:ed|ion)\s+with\s+(?:(?:a|the)\s+)?(?:known|established|"
+    r"gold[- ]standard|concurrent)|"
+    r"convergent\s+with|predicted\s+(?:by|from)|"
+    r"predictive\s+validity\s+(?:was|is)\s+(?:established|supported|demonstrated|assessed)|"
+    r"correlation\s+with\s+(?:the\s+)?criterion)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_criterion_validity_evidence(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_criterion_validity_evidence"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CRITERION_VAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CRITERION_VAL_EVIDENCE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-criterion-validity-evidence",
+                message=(
+                    "Criterion validity was claimed but no criterion variable, "
+                    "gold-standard comparison, or predictive correlation was provided."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 415 – IRT differential item functioning (DIF) reporting
+# ---------------------------------------------------------------------------
+
+_IRT_DIF_TRIGGER_RE = re.compile(
+    r"\b(?:item\s+response\s+theory|IRT|Rasch\s+(?:model|analysis)|"
+    r"2PL|3PL|1PL|graded\s+response\s+model|partial\s+credit\s+model|"
+    r"item\s+discrimination|item\s+difficulty)\b",
+    re.IGNORECASE,
+)
+_IRT_DIF_REPORTED_RE = re.compile(
+    r"\b(?:differential\s+item\s+functioning|DIF\s+(?:analysis|was|testing|"
+    r"detected|found|examined)|DIF\s+free|uniform\s+DIF|non[- ]uniform\s+DIF|"
+    r"Mantel[- ]Haenszel|Lord.s\s+chi[- ]square\s+DIF|item\s+bias)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_irt_dif_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_irt_dif_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _IRT_DIF_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _IRT_DIF_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-irt-dif-reporting",
+                message=(
+                    "Item Response Theory analysis was performed but differential "
+                    "item functioning (DIF) analysis was not reported."
                 ),
                 severity="minor",
                 validator=_vid,

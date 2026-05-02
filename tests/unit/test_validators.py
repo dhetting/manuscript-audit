@@ -24782,3 +24782,337 @@ def test_no_regression_form_trigger_no_fire() -> None:
     )
     result = validate_functional_form_test(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 411 – validate_efa_factor_retention
+# ---------------------------------------------------------------------------
+
+def _efa411_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-efa411",
+            source_path="/tmp/efa411.md",
+            source_format="markdown",
+            title="EFA Factor Retention Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_efa_without_retention_criterion_fires() -> None:
+    from manuscript_audit.validators.core import validate_efa_factor_retention
+
+    ms, cl = _efa411_ms(
+        "An exploratory factor analysis was conducted on the 20-item scale."
+    )
+    result = validate_efa_factor_retention(ms, cl)
+    assert any(f.code == "missing-efa-retention-criteria" for f in result.findings)
+
+
+def test_efa_with_parallel_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_efa_factor_retention
+
+    ms, cl = _efa411_ms(
+        "An exploratory factor analysis was conducted. Parallel analysis "
+        "indicated retention of three factors."
+    )
+    result = validate_efa_factor_retention(ms, cl)
+    assert result.findings == []
+
+
+def test_efa_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_efa_factor_retention
+
+    ms, cl = _efa411_ms("An exploratory factor analysis was conducted on the scale.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_efa_factor_retention(ms, cl)
+    assert result.findings == []
+
+
+def test_no_efa_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_efa_factor_retention
+
+    ms, cl = _efa411_ms(
+        "We used a multilevel regression model to analyze the hierarchical data."
+    )
+    result = validate_efa_factor_retention(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 412 – validate_cfa_model_fit_indices
+# ---------------------------------------------------------------------------
+
+def _cfa412_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cfa412",
+            source_path="/tmp/cfa412.md",
+            source_format="markdown",
+            title="CFA Model Fit Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cfa_without_fit_indices_fires() -> None:
+    from manuscript_audit.validators.core import validate_cfa_model_fit_indices
+
+    ms, cl = _cfa412_ms(
+        "A confirmatory factor analysis was conducted to test the factor structure."
+    )
+    result = validate_cfa_model_fit_indices(ms, cl)
+    assert any(f.code == "missing-cfa-fit-indices" for f in result.findings)
+
+
+def test_cfa_with_rmsea_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cfa_model_fit_indices
+
+    ms, cl = _cfa412_ms(
+        "A confirmatory factor analysis was conducted. "
+        "Model fit indices indicated acceptable fit: CFI=.96, RMSEA=.05, SRMR=.06."
+    )
+    result = validate_cfa_model_fit_indices(ms, cl)
+    assert result.findings == []
+
+
+def test_cfa412_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cfa_model_fit_indices
+
+    ms, cl = _cfa412_ms(
+        "A confirmatory factor analysis was conducted to test the factor structure."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cfa_model_fit_indices(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cfa_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cfa_model_fit_indices
+
+    ms, cl = _cfa412_ms(
+        "We used a mixed ANOVA to assess group by time interactions."
+    )
+    result = validate_cfa_model_fit_indices(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 413 – validate_omega_reliability
+# ---------------------------------------------------------------------------
+
+def _omega413_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-omega413",
+            source_path="/tmp/omega413.md",
+            source_format="markdown",
+            title="Omega Reliability Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cronbach_without_omega_fires() -> None:
+    from manuscript_audit.validators.core import validate_omega_reliability
+
+    ms, cl = _omega413_ms(
+        "Internal consistency was assessed using Cronbach's alpha (α=.87)."
+    )
+    result = validate_omega_reliability(ms, cl)
+    assert any(f.code == "missing-omega-reliability" for f in result.findings)
+
+
+def test_cronbach_with_omega_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_omega_reliability
+
+    ms, cl = _omega413_ms(
+        "Internal consistency was assessed using Cronbach's alpha (α=.87) "
+        "and McDonald's omega total (ω=.89)."
+    )
+    result = validate_omega_reliability(ms, cl)
+    assert result.findings == []
+
+
+def test_omega_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_omega_reliability
+
+    ms, cl = _omega413_ms("Internal consistency was assessed using Cronbach's alpha.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_omega_reliability(ms, cl)
+    assert result.findings == []
+
+
+def test_no_reliability_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_omega_reliability
+
+    ms, cl = _omega413_ms(
+        "We used a two-way ANOVA to assess the interaction effects."
+    )
+    result = validate_omega_reliability(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 414 – validate_criterion_validity_evidence
+# ---------------------------------------------------------------------------
+
+def _cv414_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cv414",
+            source_path="/tmp/cv414.md",
+            source_format="markdown",
+            title="Criterion Validity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_criterion_validity_without_evidence_fires() -> None:
+    from manuscript_audit.validators.core import validate_criterion_validity_evidence
+
+    ms, cl = _cv414_ms(
+        "We assessed the criterion validity of the new questionnaire."
+    )
+    result = validate_criterion_validity_evidence(ms, cl)
+    assert any(
+        f.code == "missing-criterion-validity-evidence" for f in result.findings
+    )
+
+
+def test_criterion_validity_with_correlation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_criterion_validity_evidence
+
+    ms, cl = _cv414_ms(
+        "We assessed the criterion validity of the new questionnaire by computing "
+        "its correlation with the established gold-standard measure (r=.72)."
+    )
+    result = validate_criterion_validity_evidence(ms, cl)
+    assert result.findings == []
+
+
+def test_criterion_validity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_criterion_validity_evidence
+
+    ms, cl = _cv414_ms("We assessed the criterion validity of the questionnaire.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_criterion_validity_evidence(ms, cl)
+    assert result.findings == []
+
+
+def test_no_criterion_validity_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_criterion_validity_evidence
+
+    ms, cl = _cv414_ms(
+        "We used a structural equation model to test the hypothesized relationships."
+    )
+    result = validate_criterion_validity_evidence(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 415 – validate_irt_model_fit
+# ---------------------------------------------------------------------------
+
+def _irt415_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-irt415",
+            source_path="/tmp/irt415.md",
+            source_format="markdown",
+            title="IRT Model Fit Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_irt_without_dif_reporting_fires() -> None:
+    from manuscript_audit.validators.core import validate_irt_dif_reporting
+
+    ms, cl = _irt415_ms(
+        "A Rasch model was fitted to assess item discrimination and difficulty."
+    )
+    result = validate_irt_dif_reporting(ms, cl)
+    assert any(f.code == "missing-irt-dif-reporting" for f in result.findings)
+
+
+def test_irt_with_dif_reporting_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_irt_dif_reporting
+
+    ms, cl = _irt415_ms(
+        "A Rasch model was fitted. Differential item functioning (DIF) analysis "
+        "using the Mantel-Haenszel procedure found no significant DIF."
+    )
+    result = validate_irt_dif_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_irt415_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_irt_dif_reporting
+
+    ms, cl = _irt415_ms("A Rasch model was fitted to assess item properties.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_irt_dif_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_irt415_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_irt_dif_reporting
+
+    ms, cl = _irt415_ms(
+        "We used a mixed-effects regression to analyze the repeated measures data."
+    )
+    result = validate_irt_dif_reporting(ms, cl)
+    assert result.findings == []
