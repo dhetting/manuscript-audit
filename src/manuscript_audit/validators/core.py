@@ -6709,6 +6709,11 @@ def run_deterministic_validators(
         validate_mediation_analysis_transparency(parsed, classification),
         validate_latent_variable_model_fit(parsed, classification),
         validate_pilot_study_disclosure(parsed, classification),
+        validate_autocorrelation_check(parsed, classification),
+        validate_mixed_methods_integration(parsed, classification),
+        validate_qualitative_rigor_reporting(parsed, classification),
+        validate_subgroup_analysis_labelling(parsed, classification),
+        validate_null_result_power_caveat(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -11798,6 +11803,360 @@ def validate_pilot_study_disclosure(
                 ),
                 validator="pilot_study_disclosure",
                 location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 201 – Missing autocorrelation check (time-series)
+# ---------------------------------------------------------------------------
+
+_TIME_SERIES_RE = re.compile(
+    r"\b(?:time\s+series|time.?series|longitudinal\s+regression|"
+    r"autoregressive|panel\s+regression|repeated\s+time\s+(?:points?|measures?)|"
+    r"lagged\s+(?:dependent|variable|predictor)|"
+    r"AR\s*\(\s*\d+\s*\)|ARMA|ARIMA|VAR\s+model)\b",
+    re.IGNORECASE,
+)
+_AUTOCORRELATION_CHECK_RE = re.compile(
+    r"\b(?:autocorrelation|Durbin.?Watson|Ljung.?Box|Box.?Pierce|"
+    r"serial\s+correlation|residual\s+autocorrelation|"
+    r"no\s+(?:serial|auto)correlation|ACF\s+plot|PACF\s+plot)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_autocorrelation_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag time-series or panel regression without autocorrelation check.
+
+    Emits ``missing-autocorrelation-check`` (minor) when autoregressive or
+    time-series methods are used but no autocorrelation test is reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="autocorrelation_check", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="autocorrelation_check", findings=[]
+        )
+
+    if not _TIME_SERIES_RE.search(full):
+        return ValidationResult(
+            validator_name="autocorrelation_check", findings=[]
+        )
+
+    if _AUTOCORRELATION_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="autocorrelation_check", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="autocorrelation_check",
+        findings=[
+            Finding(
+                code="missing-autocorrelation-check",
+                severity="minor",
+                message=(
+                    "Time-series or autoregressive model detected but no autocorrelation "
+                    "check (Durbin-Watson, Ljung-Box, ACF/PACF plot) is reported. "
+                    "Test for serial correlation in residuals."
+                ),
+                validator="autocorrelation_check",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 202 – Mixed methods integration
+# ---------------------------------------------------------------------------
+
+_MIXED_METHODS_RE = re.compile(
+    r"\b(?:mixed.?methods?|mixed\s+method\s+(?:study|design|approach|research)|"
+    r"qualitative\s+and\s+quantitative|quantitative\s+and\s+qualitative|"
+    r"qual.?quant|convergent\s+design|sequential\s+explanatory|"
+    r"triangulat(?:ed?|ion))\b",
+    re.IGNORECASE,
+)
+_MIXED_METHODS_INTEGRATION_RE = re.compile(
+    r"\b(?:integrat(?:ed?|ing|ion)\s+(?:the\s+)?(?:qualitative|quantitative|findings?|results?)|"
+    r"qual(?:itative)?\s+findings?\s+(?:illuminated?|explained?|elaborated?|"
+    r"contextualized?|informed?)\s+(?:the\s+)?quant(?:itative)?|"
+    r"triangulat(?:ed?|ing|ion)\s+(?:the\s+)?(?:findings?|results?)|"
+    r"mixing\s+occurred|joint\s+display)",
+    re.IGNORECASE,
+)
+
+
+def validate_mixed_methods_integration(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag mixed-methods studies without explicit data integration.
+
+    Emits ``missing-mixed-methods-integration`` (moderate) when a
+    mixed-methods design is claimed but no explicit integration of
+    qualitative and quantitative findings is described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="mixed_methods_integration", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="mixed_methods_integration", findings=[]
+        )
+
+    if not _MIXED_METHODS_RE.search(full):
+        return ValidationResult(
+            validator_name="mixed_methods_integration", findings=[]
+        )
+
+    if _MIXED_METHODS_INTEGRATION_RE.search(full):
+        return ValidationResult(
+            validator_name="mixed_methods_integration", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="mixed_methods_integration",
+        findings=[
+            Finding(
+                code="missing-mixed-methods-integration",
+                severity="moderate",
+                message=(
+                    "Mixed-methods design claimed but no explicit integration of "
+                    "qualitative and quantitative findings is described. "
+                    "Explain how the two data strands were merged or compared."
+                ),
+                validator="mixed_methods_integration",
+                location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 203 – Grounded theory / qualitative rigor
+# ---------------------------------------------------------------------------
+
+_QUALITATIVE_RE = re.compile(
+    r"\b(?:qualitative\s+(?:study|research|data|analysis|interview|observation)|"
+    r"grounded\s+theory|thematic\s+analysis|content\s+analysis|"
+    r"ethnograph(?:ic|y)|phenomenolog(?:ical|y)|interpretive|"
+    r"focus\s+groups?|semi.?structured\s+interviews?)\b",
+    re.IGNORECASE,
+)
+_QUALITATIVE_RIGOR_RE = re.compile(
+    r"\b(?:trustworthiness|credibility|transferability|dependability|"
+    r"confirmability|member\s+check(?:ing)?|peer\s+debrief(?:ing)?|"
+    r"thick\s+description|reflexivity|audit\s+trail|"
+    r"negative\s+case\s+analysis|prolonged\s+engagement|"
+    r"data\s+saturation|theoretical\s+saturation)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_qualitative_rigor_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag qualitative studies that omit rigor/trustworthiness criteria.
+
+    Emits ``missing-qualitative-rigor`` (moderate) when qualitative methods
+    are used but no trustworthiness, credibility, or rigor measures are
+    reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="qualitative_rigor_reporting", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="qualitative_rigor_reporting", findings=[]
+        )
+
+    if not _QUALITATIVE_RE.search(full):
+        return ValidationResult(
+            validator_name="qualitative_rigor_reporting", findings=[]
+        )
+
+    if _QUALITATIVE_RIGOR_RE.search(full):
+        return ValidationResult(
+            validator_name="qualitative_rigor_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="qualitative_rigor_reporting",
+        findings=[
+            Finding(
+                code="missing-qualitative-rigor",
+                severity="moderate",
+                message=(
+                    "Qualitative methods detected but no trustworthiness or rigor "
+                    "criteria (member checking, peer debriefing, data saturation, "
+                    "reflexivity) are reported. "
+                    "Address rigor/credibility in qualitative research."
+                ),
+                validator="qualitative_rigor_reporting",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 204 – Unreported subgroup analysis
+# ---------------------------------------------------------------------------
+
+_SUBGROUP_ANALYSIS_RE = re.compile(
+    r"\b(?:subgroup\s+(?:analysis|comparison|effect)|"
+    r"stratified\s+analysis|moderation\s+by\s+(?:age|sex|gender|race|education)|"
+    r"we\s+(?:also\s+)?(?:examined?|tested?|explored?)\s+(?:whether\s+)?"
+    r"(?:the\s+)?(?:effect|association|relationship)\s+(?:differed?|varied?)\s+"
+    r"(?:by|across|between)\s+\w+)\b",
+    re.IGNORECASE,
+)
+_SUBGROUP_CAUTION_RE = re.compile(
+    r"\b(?:exploratory\s+subgroup|subgroup\s+(?:results?\s+should\s+be\s+)"
+    r"(?:interpreted?|viewed?)\s+(?:cautiously|with\s+caution)|"
+    r"subgroup\s+analyses?\s+(?:were\s+)?(?:pre.?specified|planned?|"
+    r"pre.?registered?)|"
+    r"caution\s+(?:in\s+)?interpreting\s+subgroup)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_subgroup_analysis_labelling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag exploratory subgroup analyses not labelled as such.
+
+    Emits ``unlabelled-subgroup-analysis`` (minor) when subgroup or stratified
+    analyses are conducted without pre-specification or cautionary labelling.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="subgroup_analysis_labelling", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="subgroup_analysis_labelling", findings=[]
+        )
+
+    if not _SUBGROUP_ANALYSIS_RE.search(full):
+        return ValidationResult(
+            validator_name="subgroup_analysis_labelling", findings=[]
+        )
+
+    if _SUBGROUP_CAUTION_RE.search(full):
+        return ValidationResult(
+            validator_name="subgroup_analysis_labelling", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="subgroup_analysis_labelling",
+        findings=[
+            Finding(
+                code="unlabelled-subgroup-analysis",
+                severity="minor",
+                message=(
+                    "Subgroup or stratified analysis detected but not labelled as "
+                    "exploratory or pre-specified. "
+                    "Clearly indicate whether subgroup analyses were pre-planned or "
+                    "exploratory and interpret accordingly."
+                ),
+                validator="subgroup_analysis_labelling",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 205 – Underpowered conclusions from non-significant results
+# ---------------------------------------------------------------------------
+
+_NON_SIG_CONCLUDE_RE = re.compile(
+    r"\b(?:(?:there\s+is|there\s+was|we\s+found)\s+no\s+(?:significant\s+)?"
+    r"(?:effect|association|difference|relationship)\s+between|"
+    r"(?:the\s+)?(?:results?\s+)?(?:suggest|indicate|show|demonstrate)\s+(?:that\s+)?"
+    r"(?:\w+\s+)?(?:has|have|had|does\s+not\s+have)\s+no\s+(?:effect|impact)|"
+    r"no\s+evidence\s+(?:of|for)\s+(?:an?\s+)?(?:effect|association|difference))\b",
+    re.IGNORECASE,
+)
+_POWER_CAVEAT_RE = re.compile(
+    r"\b(?:underpowered|insufficient\s+power|limited\s+(?:statistical\s+)?power|"
+    r"type\s+II\s+error|false\s+negative|absence\s+of\s+evidence\s+is\s+not|"
+    r"null\s+result\s+(?:should\s+be\s+)?(?:interpreted?|viewed?)\s+"
+    r"(?:cautiously|with\s+caution)|"
+    r"sample\s+(?:was\s+)?(?:too\s+small|insufficient)\s+to\s+detect)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_null_result_power_caveat(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag null-result conclusions without power caveats.
+
+    Emits ``null-result-without-power-caveat`` (minor) when a non-significant
+    result is stated as a conclusion without acknowledging possible Type II error
+    or insufficient power.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="null_result_power_caveat", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="null_result_power_caveat", findings=[]
+        )
+
+    if not _NON_SIG_CONCLUDE_RE.search(full):
+        return ValidationResult(
+            validator_name="null_result_power_caveat", findings=[]
+        )
+
+    if _POWER_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="null_result_power_caveat", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="null_result_power_caveat",
+        findings=[
+            Finding(
+                code="null-result-without-power-caveat",
+                severity="minor",
+                message=(
+                    "Non-significant result presented as a definitive conclusion without "
+                    "acknowledging possible insufficient power or Type II error. "
+                    "Interpret null results cautiously and discuss power limitations."
+                ),
+                validator="null_result_power_caveat",
+                location="Discussion",
                 evidence=[],
             )
         ],

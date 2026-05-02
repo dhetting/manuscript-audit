@@ -10521,3 +10521,331 @@ def test_pilot_disclosure_non_empirical_no_fire() -> None:
     )
     result = validate_pilot_study_disclosure(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 201 – validate_autocorrelation_check
+# ---------------------------------------------------------------------------
+
+
+def _ts_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="ts-1",
+        source_path="ts.md",
+        source_format="markdown",
+        title="Time Series Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_time_series_no_autocorr_fires() -> None:
+    from manuscript_audit.validators.core import validate_autocorrelation_check
+
+    ms, cl = _ts_ms(
+        "An autoregressive AR(1) model was fitted to the time series data. "
+        "Lagged dependent variables were included in the panel regression."
+    )
+    result = validate_autocorrelation_check(ms, cl)
+    assert any(f.code == "missing-autocorrelation-check" for f in result.findings)
+
+
+def test_time_series_with_durbinwatson_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_autocorrelation_check
+
+    ms, cl = _ts_ms(
+        "An AR(1) model was fitted. The Durbin-Watson statistic (d=1.98) "
+        "indicated no serial correlation in the residuals."
+    )
+    result = validate_autocorrelation_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_time_series_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_autocorrelation_check
+
+    ms, cl = _ts_ms(
+        "A cross-sectional survey was conducted at one time point."
+    )
+    result = validate_autocorrelation_check(ms, cl)
+    assert result.findings == []
+
+
+def test_autocorr_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_autocorrelation_check
+
+    ms, cl = _ts_ms(
+        "The time series ARIMA model is analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_autocorrelation_check(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 202 – validate_mixed_methods_integration
+# ---------------------------------------------------------------------------
+
+
+def _mm_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="mm-1",
+        source_path="mm.md",
+        source_format="markdown",
+        title="Mixed Methods Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_mixed_methods_no_integration_fires() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_integration
+
+    ms, cl = _mm_ms(
+        "This mixed-methods study combined qualitative interviews with "
+        "quantitative survey data to examine patient experiences."
+    )
+    result = validate_mixed_methods_integration(ms, cl)
+    assert any(f.code == "missing-mixed-methods-integration" for f in result.findings)
+
+
+def test_mixed_methods_with_integration_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_integration
+
+    ms, cl = _mm_ms(
+        "This mixed-methods study used triangulation. "
+        "Qualitative findings illuminated the quantitative results, "
+        "providing context for the survey data patterns."
+    )
+    result = validate_mixed_methods_integration(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mixed_methods_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_integration
+
+    ms, cl = _mm_ms(
+        "This quantitative survey study used regression analysis."
+    )
+    result = validate_mixed_methods_integration(ms, cl)
+    assert result.findings == []
+
+
+def test_mixed_methods_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_integration
+
+    ms, cl = _mm_ms(
+        "Mixed-methods frameworks are analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_mixed_methods_integration(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 203 – validate_qualitative_rigor_reporting
+# ---------------------------------------------------------------------------
+
+
+def _qual_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="qual-1",
+        source_path="qual.md",
+        source_format="markdown",
+        title="Qualitative Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_qualitative_no_rigor_fires() -> None:
+    from manuscript_audit.validators.core import validate_qualitative_rigor_reporting
+
+    ms, cl = _qual_ms(
+        "Semi-structured interviews were conducted with 15 participants. "
+        "Thematic analysis was used to identify patterns in the qualitative data."
+    )
+    result = validate_qualitative_rigor_reporting(ms, cl)
+    assert any(f.code == "missing-qualitative-rigor" for f in result.findings)
+
+
+def test_qualitative_with_member_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_qualitative_rigor_reporting
+
+    ms, cl = _qual_ms(
+        "Semi-structured interviews were conducted. "
+        "Trustworthiness was established through member checking and peer debriefing. "
+        "Data saturation was reached after 15 interviews."
+    )
+    result = validate_qualitative_rigor_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_qualitative_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_qualitative_rigor_reporting
+
+    ms, cl = _qual_ms(
+        "A randomized controlled trial with quantitative outcomes was conducted."
+    )
+    result = validate_qualitative_rigor_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_qualitative_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_qualitative_rigor_reporting
+
+    ms, cl = _qual_ms(
+        "Qualitative research methods are analyzed theoretically.",
+        "math_theory_paper",
+    )
+    result = validate_qualitative_rigor_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 204 – validate_subgroup_analysis_labelling
+# ---------------------------------------------------------------------------
+
+
+def _sg_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="sg-1",
+        source_path="sg.md",
+        source_format="markdown",
+        title="Subgroup Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_subgroup_no_label_fires() -> None:
+    from manuscript_audit.validators.core import validate_subgroup_analysis_labelling
+
+    ms, cl = _sg_ms(
+        "We also examined whether the effect differed by age group. "
+        "Subgroup analysis showed stronger effects in older participants."
+    )
+    result = validate_subgroup_analysis_labelling(ms, cl)
+    assert any(f.code == "unlabelled-subgroup-analysis" for f in result.findings)
+
+
+def test_subgroup_prespecified_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_subgroup_analysis_labelling
+
+    ms, cl = _sg_ms(
+        "Pre-specified subgroup analyses were conducted by age and sex. "
+        "These subgroup analyses were pre-registered and planned."
+    )
+    result = validate_subgroup_analysis_labelling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_subgroup_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_subgroup_analysis_labelling
+
+    ms, cl = _sg_ms(
+        "The primary analysis compared treatment vs. control groups."
+    )
+    result = validate_subgroup_analysis_labelling(ms, cl)
+    assert result.findings == []
+
+
+def test_subgroup_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_subgroup_analysis_labelling
+
+    ms, cl = _sg_ms(
+        "Subgroup analysis is analyzed theoretically.", "math_theory_paper"
+    )
+    result = validate_subgroup_analysis_labelling(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 205 – validate_null_result_power_caveat
+# ---------------------------------------------------------------------------
+
+
+def _null_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
+    ms = ParsedManuscript(
+        manuscript_id="null-1",
+        source_path="null.md",
+        source_format="markdown",
+        title="Null Result Study",
+        full_text=text,
+        sections=[],
+    )
+    cl = ManuscriptClassification(
+        pathway="applied_stats",
+        paper_type=paper_type,
+        recommended_stack="standard",
+    )
+    return ms, cl
+
+
+def test_null_result_no_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_null_result_power_caveat
+
+    ms, cl = _null_ms(
+        "There is no significant effect of treatment on outcomes. "
+        "There was no association between stress and depression."
+    )
+    result = validate_null_result_power_caveat(ms, cl)
+    assert any(
+        f.code == "null-result-without-power-caveat" for f in result.findings
+    )
+
+
+def test_null_result_with_power_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_power_caveat
+
+    ms, cl = _null_ms(
+        "There is no significant effect of treatment. However, the study "
+        "may have been underpowered to detect small effects. "
+        "Type II error cannot be excluded."
+    )
+    result = validate_null_result_power_caveat(ms, cl)
+    assert result.findings == []
+
+
+def test_no_null_result_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_power_caveat
+
+    ms, cl = _null_ms(
+        "The treatment significantly improved outcomes (p < .001, d = 0.6)."
+    )
+    result = validate_null_result_power_caveat(ms, cl)
+    assert result.findings == []
+
+
+def test_null_result_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_power_caveat
+
+    ms, cl = _null_ms(
+        "There is no effect in this theoretical null model.",
+        "math_theory_paper",
+    )
+    result = validate_null_result_power_caveat(ms, cl)
+    assert result.findings == []
