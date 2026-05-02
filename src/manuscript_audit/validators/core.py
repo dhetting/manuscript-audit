@@ -6852,6 +6852,11 @@ def run_deterministic_validators(
         validate_uncertainty_analysis_health_economic(parsed, classification),
         validate_qaly_utility_source(parsed, classification),
         validate_markov_model_cycle_length(parsed, classification),
+        validate_measurement_invariance_testing(parsed, classification),
+        validate_convergent_discriminant_validity(parsed, classification),
+        validate_irt_model_fit(parsed, classification),
+        validate_test_retest_reliability(parsed, classification),
+        validate_norm_reference_group(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -21073,6 +21078,310 @@ def validate_markov_model_cycle_length(
                     "A Markov model is used but the cycle length is not reported. "
                     "Specify the cycle length (e.g., monthly, annual) and apply "
                     "half-cycle correction if appropriate."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 346 – validate_measurement_invariance_testing
+# ---------------------------------------------------------------------------
+
+_MEASUREMENT_INVARIANCE_TRIGGER_RE = re.compile(
+    r"\b(?:measurement\s+invariance|factorial\s+invariance|"
+    r"configural\s+(?:model|invariance)|metric\s+invariance|"
+    r"scalar\s+invariance|partial\s+invariance|"
+    r"cross[\s-]group\s+comparison\s+(?:of\s+)?(?:latent|factor)|"
+    r"multi[\s-]group\s+(?:CFA|SEM|analysis)|"
+    r"comparing\s+(?:latent|factor)\s+(?:means?|scores?)\s+across\s+groups?)\b",
+    re.IGNORECASE,
+)
+_INVARIANCE_TESTED_RE = re.compile(
+    r"\b(?:measurement\s+invariance\s+(?:was|were|is)\s+"
+    r"(?:tested|assessed|examined|established|confirmed)|"
+    r"configural\s+(?:model\s+)?(?:fit|invariance|testing)|"
+    r"metric\s+(?:model\s+)?(?:fit|invariance|testing)|"
+    r"scalar\s+(?:model\s+)?(?:fit|invariance|testing)|"
+    r"Lagrange\s+multiplier\s+test|"
+    r"chi[\s-]square\s+difference\s+test\s+for\s+(?:invariance|nested))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_measurement_invariance_testing(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag cross-group latent comparisons without invariance testing.
+
+    Emits ``missing-measurement-invariance-test`` (moderate) when cross-group
+    comparisons of latent constructs are made but measurement invariance is
+    not tested.
+    """
+    _vid = "validate_measurement_invariance_testing"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MEASUREMENT_INVARIANCE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _INVARIANCE_TESTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-measurement-invariance-test",
+                severity="moderate",
+                message=(
+                    "Cross-group comparisons of latent constructs are made but "
+                    "measurement invariance is not tested. Establish at minimum "
+                    "configural and metric invariance before comparing groups."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 347 – validate_convergent_discriminant_validity
+# ---------------------------------------------------------------------------
+
+_CONSTRUCT_VALIDITY_TRIGGER_RE = re.compile(
+    r"\b(?:(?:new|novel|developed|validated|adapted)\s+"
+    r"(?:scale|measure|instrument|questionnaire|inventory)|"
+    r"scale\s+development|instrument\s+development|"
+    r"construct\s+validity|factor\s+structure\s+(?:was|of|for)\s+the)\b",
+    re.IGNORECASE,
+)
+_VALIDITY_ASSESSED_RE = re.compile(
+    r"\b(?:convergent\s+validity|discriminant\s+validity|"
+    r"average\s+variance\s+extracted|AVE\b|"
+    r"composite\s+reliability|CR\b\s+(?:=\s+0\.|for|of)|"
+    r"maximum\s+shared\s+variance|"
+    r"HTMT\b|heterotrait[\s-]monotrait|"
+    r"Fornell[\s-]Larcker|"
+    r"concurrent\s+validity|criterion\s+validity|"
+    r"known[\s-]groups\s+validity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_convergent_discriminant_validity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag new scale development without convergent/discriminant validity.
+
+    Emits ``missing-convergent-discriminant-validity`` (minor) when a new
+    scale or measure is developed but convergent and discriminant validity
+    are not assessed.
+    """
+    _vid = "validate_convergent_discriminant_validity"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _CONSTRUCT_VALIDITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _VALIDITY_ASSESSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-convergent-discriminant-validity",
+                severity="minor",
+                message=(
+                    "A new scale or measure is developed but convergent and discriminant "
+                    "validity are not assessed. Report AVE, composite reliability, "
+                    "and HTMT ratios."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 348 – validate_irt_model_fit
+# ---------------------------------------------------------------------------
+
+_IRT_TRIGGER_RE = re.compile(
+    r"\b(?:item\s+response\s+theory|IRT\b|Rasch\s+(?:model|analysis|rating)|"
+    r"2PL\b|3PL\b|graded\s+response\s+model|GRM\b|"
+    r"item\s+discrimination|item\s+difficulty|item\s+information|"
+    r"person[\s-]item\s+(?:map|fit)|theta\s+(?:estimates?|score))\b",
+    re.IGNORECASE,
+)
+_IRT_FIT_REPORTED_RE = re.compile(
+    r"\b(?:item\s+fit\s+(?:was|statistics?|index|indices)|"
+    r"person\s+fit\s+(?:was|statistics?|index)|"
+    r"infit\b|outfit\b|"
+    r"model[\s-]data\s+fit|Rasch\s+fit\s+(?:statistics?|residuals?)|"
+    r"RMSEA\s+(?:for\s+IRT|of\s+the\s+IRT)|"
+    r"item\s+characteristic\s+curve\s+(?:analysis|fit)|ICC\s+fit)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_irt_model_fit(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag IRT/Rasch analyses without model fit reporting.
+
+    Emits ``missing-irt-model-fit`` (minor) when item response theory or
+    Rasch analysis is used but model-data fit is not assessed.
+    """
+    _vid = "validate_irt_model_fit"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _IRT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _IRT_FIT_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-irt-model-fit",
+                severity="minor",
+                message=(
+                    "IRT or Rasch analysis is used but model-data fit is not assessed. "
+                    "Report item fit statistics (infit/outfit MSQ) and evaluate "
+                    "model fit to the data."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 349 – validate_test_retest_reliability
+# ---------------------------------------------------------------------------
+
+_TEST_RETEST_TRIGGER_RE = re.compile(
+    r"\b(?:test[\s-]retest\s+reliability|temporal\s+stability|"
+    r"stability\s+over\s+time|intraclass\s+correlation\s+(?:coefficient|for\s+stability)|"
+    r"(?:administered|measured)\s+(?:twice|on\s+two\s+occasions?|at\s+two\s+time\s+points?)|"
+    r"retest\s+interval|time\s+between\s+(?:administrations?|measurements?)\s+was)\b",
+    re.IGNORECASE,
+)
+_TEST_RETEST_REPORTED_RE = re.compile(
+    r"\b(?:test[\s-]retest\s+reliability\s+(?:of|=|coefficient)\s*(?:\d|0\.)|"
+    r"test[\s-]retest\s+(?:r|coefficient)\s*=\s*0\.\d+|"
+    r"ICC\s*=\s*0\.\d+|intraclass\s+correlation\s+coefficient\s*(?:=|was|of)\s*0\.\d+|"
+    r"Pearson\s+(?:r\s+for\s+)?(?:test[\s-]retest|stability)|"
+    r"Spearman\s+(?:rho\s+for\s+)?(?:test[\s-]retest|stability)|"
+    r"stability\s+coefficient\s*=)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_test_retest_reliability(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag test-retest reliability studies without reliability coefficients.
+
+    Emits ``missing-test-retest-reliability`` (minor) when test-retest
+    reliability is investigated but no stability coefficient is reported.
+    """
+    _vid = "validate_test_retest_reliability"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _TEST_RETEST_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _TEST_RETEST_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-test-retest-reliability",
+                severity="minor",
+                message=(
+                    "Test-retest reliability is investigated but no reliability "
+                    "coefficient is reported. Report ICC or Pearson/Spearman "
+                    "correlations with the retest interval."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 350 – validate_norm_reference_group
+# ---------------------------------------------------------------------------
+
+_NORM_TRIGGER_RE = re.compile(
+    r"\b(?:normative\s+(?:data|sample|scores?|values?)|"
+    r"population\s+norms?|standardized\s+(?:scores?|norms?)|"
+    r"norm[\s-]referenced\s+(?:test|score|assessment)|"
+    r"z[\s-]score\s+(?:based\s+on|relative\s+to|compared\s+to)\s+(?:the\s+)?norm|"
+    r"compared\s+to\s+(?:population\s+)?norms?)\b",
+    re.IGNORECASE,
+)
+_NORM_REFERENCE_DISCLOSED_RE = re.compile(
+    r"\b(?:normative\s+(?:data|sample)\s+(?:were|was)\s+"
+    r"(?:derived|obtained|sourced|taken)\s+from|"
+    r"reference\s+(?:sample|population|group)\s+(?:for\s+(?:the\s+)?norms?|"
+    r"consisted\s+of|included|was\s+a)|"
+    r"norms?\s+(?:were|was)\s+(?:based\s+on|derived\s+from)|"
+    r"normative\s+population\s+(?:was|consisted\s+of|included))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_norm_reference_group(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag norm-referenced interpretations without norm source disclosure.
+
+    Emits ``missing-norm-reference-group`` (minor) when normative scores
+    or comparisons to population norms are made but the norm reference
+    group is not described.
+    """
+    _vid = "validate_norm_reference_group"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _NORM_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _NORM_REFERENCE_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-norm-reference-group",
+                severity="minor",
+                message=(
+                    "Scores are compared to population norms but the norm reference "
+                    "group is not described. Specify the sample used to derive norms "
+                    "(size, demographics, collection date)."
                 ),
                 validator=_vid,
             )

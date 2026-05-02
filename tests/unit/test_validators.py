@@ -20475,3 +20475,339 @@ def test_no_markov_model_no_fire() -> None:
     )
     result = validate_markov_model_cycle_length(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 346 – validate_measurement_invariance_testing
+# ---------------------------------------------------------------------------
+
+def _mi346_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mi346",
+            source_path="/tmp/mi346.md",
+            source_format="markdown",
+            title="Measurement Invariance Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multigroup_comparison_without_invariance_fires() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance_testing
+
+    ms, cl = _mi346_ms(
+        "A multi-group CFA was conducted to compare latent factor means "
+        "between male and female participants."
+    )
+    result = validate_measurement_invariance_testing(ms, cl)
+    assert any(f.code == "missing-measurement-invariance-test" for f in result.findings)
+
+
+def test_multigroup_with_invariance_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance_testing
+
+    ms, cl = _mi346_ms(
+        "Measurement invariance was tested across groups. Configural model fit "
+        "was acceptable and metric invariance was confirmed."
+    )
+    result = validate_measurement_invariance_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_invariance_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance_testing
+
+    ms, cl = _mi346_ms("Multi-group CFA compared factor means across gender groups.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_measurement_invariance_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_no_multigroup_comparison_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_measurement_invariance_testing
+
+    ms, cl = _mi346_ms(
+        "We used simple linear regression to predict depression scores from age."
+    )
+    result = validate_measurement_invariance_testing(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 347 – validate_convergent_discriminant_validity
+# ---------------------------------------------------------------------------
+
+def _cdv347_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cdv347",
+            source_path="/tmp/cdv347.md",
+            source_format="markdown",
+            title="Convergent/Discriminant Validity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_new_scale_without_validity_fires() -> None:
+    from manuscript_audit.validators.core import validate_convergent_discriminant_validity
+
+    ms, cl = _cdv347_ms(
+        "We developed a novel questionnaire measuring academic motivation."
+    )
+    result = validate_convergent_discriminant_validity(ms, cl)
+    assert any(
+        f.code == "missing-convergent-discriminant-validity" for f in result.findings
+    )
+
+
+def test_new_scale_with_ave_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_convergent_discriminant_validity
+
+    ms, cl = _cdv347_ms(
+        "We developed a novel scale. Convergent validity was supported by AVE > 0.50 "
+        "and composite reliability > 0.70. Discriminant validity was assessed via HTMT ratios."
+    )
+    result = validate_convergent_discriminant_validity(ms, cl)
+    assert result.findings == []
+
+
+def test_validity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_convergent_discriminant_validity
+
+    ms, cl = _cdv347_ms("We developed a novel questionnaire measuring motivation.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_convergent_discriminant_validity(ms, cl)
+    assert result.findings == []
+
+
+def test_no_scale_development_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_convergent_discriminant_validity
+
+    ms, cl = _cdv347_ms(
+        "We used established measures with documented reliability and validity."
+    )
+    result = validate_convergent_discriminant_validity(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 348 – validate_irt_model_fit
+# ---------------------------------------------------------------------------
+
+def _irt348_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-irt348",
+            source_path="/tmp/irt348.md",
+            source_format="markdown",
+            title="IRT Model Fit Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_irt_without_fit_fires() -> None:
+    from manuscript_audit.validators.core import validate_irt_model_fit
+
+    ms, cl = _irt348_ms(
+        "Item response theory analysis was conducted on the 20-item scale."
+    )
+    result = validate_irt_model_fit(ms, cl)
+    assert any(f.code == "missing-irt-model-fit" for f in result.findings)
+
+
+def test_irt_with_fit_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_irt_model_fit
+
+    ms, cl = _irt348_ms(
+        "Rasch analysis was conducted. Item fit statistics (infit MSQ) ranged "
+        "from 0.8 to 1.2, indicating acceptable model-data fit."
+    )
+    result = validate_irt_model_fit(ms, cl)
+    assert result.findings == []
+
+
+def test_irt_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_irt_model_fit
+
+    ms, cl = _irt348_ms("Item response theory analysis was conducted on the scale.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_irt_model_fit(ms, cl)
+    assert result.findings == []
+
+
+def test_no_irt_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_irt_model_fit
+
+    ms, cl = _irt348_ms(
+        "We used exploratory factor analysis to investigate the factor structure."
+    )
+    result = validate_irt_model_fit(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 349 – validate_test_retest_reliability
+# ---------------------------------------------------------------------------
+
+def _ttr349_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ttr349",
+            source_path="/tmp/ttr349.md",
+            source_format="markdown",
+            title="Test-Retest Reliability Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_test_retest_without_coefficient_fires() -> None:
+    from manuscript_audit.validators.core import validate_test_retest_reliability
+
+    ms, cl = _ttr349_ms(
+        "Test-retest reliability was examined by administering the scale "
+        "on two occasions two weeks apart."
+    )
+    result = validate_test_retest_reliability(ms, cl)
+    assert any(f.code == "missing-test-retest-reliability" for f in result.findings)
+
+
+def test_test_retest_with_icc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_test_retest_reliability
+
+    ms, cl = _ttr349_ms(
+        "Test-retest reliability was examined two weeks apart. The intraclass "
+        "correlation coefficient (ICC = 0.87) indicated excellent stability."
+    )
+    result = validate_test_retest_reliability(ms, cl)
+    assert result.findings == []
+
+
+def test_test_retest_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_test_retest_reliability
+
+    ms, cl = _ttr349_ms(
+        "Test-retest reliability was assessed on two occasions two weeks apart."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_test_retest_reliability(ms, cl)
+    assert result.findings == []
+
+
+def test_no_test_retest_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_test_retest_reliability
+
+    ms, cl = _ttr349_ms(
+        "We used structural equation modelling to test the hypothesised mediation."
+    )
+    result = validate_test_retest_reliability(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 350 – validate_norm_reference_group
+# ---------------------------------------------------------------------------
+
+def _nrg350_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-nrg350",
+            source_path="/tmp/nrg350.md",
+            source_format="markdown",
+            title="Norm Reference Group Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_norm_comparison_without_reference_fires() -> None:
+    from manuscript_audit.validators.core import validate_norm_reference_group
+
+    ms, cl = _nrg350_ms(
+        "Participant scores were compared to population norms to assess performance."
+    )
+    result = validate_norm_reference_group(ms, cl)
+    assert any(f.code == "missing-norm-reference-group" for f in result.findings)
+
+
+def test_norm_comparison_with_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_norm_reference_group
+
+    ms, cl = _nrg350_ms(
+        "Scores were compared to population norms. Normative data were derived "
+        "from a nationally representative sample of 5000 adults aged 18-65."
+    )
+    result = validate_norm_reference_group(ms, cl)
+    assert result.findings == []
+
+
+def test_norm_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_norm_reference_group
+
+    ms, cl = _nrg350_ms("Scores were compared to population norms.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_norm_reference_group(ms, cl)
+    assert result.findings == []
+
+
+def test_no_norm_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_norm_reference_group
+
+    ms, cl = _nrg350_ms(
+        "We compared group means using analysis of variance with Bonferroni correction."
+    )
+    result = validate_norm_reference_group(ms, cl)
+    assert result.findings == []
