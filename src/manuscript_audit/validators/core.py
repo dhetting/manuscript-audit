@@ -6817,6 +6817,11 @@ def run_deterministic_validators(
         validate_waic_looic_reporting(parsed, classification),
         validate_informative_prior_justification(parsed, classification),
         validate_posterior_predictive_check(parsed, classification),
+        validate_train_test_split_disclosure(parsed, classification),
+        validate_hyperparameter_tuning_disclosure(parsed, classification),
+        validate_feature_importance_method(parsed, classification),
+        validate_data_leakage_prevention(parsed, classification),
+        validate_ml_uncertainty_quantification(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -18937,6 +18942,300 @@ def validate_posterior_predictive_check(
                     "A Bayesian model is fitted but posterior predictive checks "
                     "are not reported. Include graphical or quantitative posterior "
                     "predictive checks to assess model adequacy."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 311 – validate_train_test_split_disclosure
+# ---------------------------------------------------------------------------
+
+_ML_MODEL_TRIGGER_RE = re.compile(
+    r"\b(?:machine\s+learning|deep\s+learning|neural\s+network|random\s+forest|"
+    r"gradient\s+boost(?:ing)?|support\s+vector\s+machine|SVM\b|"
+    r"XGBoost|LightGBM|logistic\s+classifier|classification\s+model|"
+    r"predictive\s+model|supervised\s+learning)\b",
+    re.IGNORECASE,
+)
+_TRAIN_TEST_DISCLOSED_RE = re.compile(
+    r"\b(?:train(?:ing)?\s+(?:set|data|sample)|test(?:ing)?\s+(?:set|data|sample)|"
+    r"held[\s-]out\s+(?:set|data|sample)|holdout\s+(?:set|data|sample)|"
+    r"train[\s/]test\s+split|(?:\d+)[%\s]+(?:of\s+(?:the\s+)?data\s+)?"
+    r"(?:was|were)\s+(?:used\s+for\s+)?(?:training|testing|validation)|"
+    r"external\s+validation\s+(?:set|cohort|data))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_train_test_split_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML models without a train/test split disclosure.
+
+    Emits ``missing-train-test-split`` (minor) when a machine learning or
+    predictive model is described but the train/test split strategy is not
+    disclosed.
+    """
+    _vid = "validate_train_test_split_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ML_MODEL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _TRAIN_TEST_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-train-test-split",
+                severity="minor",
+                message=(
+                    "A machine learning model is described but the train/test split "
+                    "strategy is not disclosed. Report the proportion of data used "
+                    "for training, validation, and testing."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 312 – validate_hyperparameter_tuning_disclosure
+# ---------------------------------------------------------------------------
+
+_HYPERPAR_TRIGGER_RE = re.compile(
+    r"\b(?:hyperparameter|learning\s+rate|regularization\s+(?:parameter|strength)|"
+    r"lambda\s+(?:for\s+)?(?:LASSO|ridge|elastic\s+net)|"
+    r"number\s+of\s+(?:trees?|estimators?|layers?|hidden\s+units?|epochs?)|"
+    r"max(?:imum)?\s+depth|min(?:imum)?\s+samples?|kernel\s+(?:function|parameter))\b",
+    re.IGNORECASE,
+)
+_TUNING_DISCLOSED_RE = re.compile(
+    r"\b(?:hyperparameter\s+(?:tuning|optimisation|search|selection|grid\s+search|"
+    r"random\s+search|Bayesian\s+optimisation)|"
+    r"cross[\s-]?validated?\s+(?:hyperparameter|parameter)\s+selection|"
+    r"optimal\s+hyperparameter|best\s+(?:parameter|configuration)\s+was\s+selected|"
+    r"grid\s+search|random\s+search)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_hyperparameter_tuning_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML models with hyperparameters but no tuning disclosure.
+
+    Emits ``missing-hyperparameter-tuning-disclosure`` (minor) when a model
+    with hyperparameters is described but how they were selected is not stated.
+    """
+    _vid = "validate_hyperparameter_tuning_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _HYPERPAR_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _TUNING_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-hyperparameter-tuning-disclosure",
+                severity="minor",
+                message=(
+                    "Model hyperparameters are mentioned but the tuning procedure "
+                    "(e.g., grid search, cross-validation) is not described. "
+                    "Report how hyperparameters were selected to ensure reproducibility."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 313 – validate_feature_importance_method
+# ---------------------------------------------------------------------------
+
+_FEATURE_IMPORT_TRIGGER_RE = re.compile(
+    r"\b(?:feature\s+importance|variable\s+importance|predictor\s+importance|"
+    r"most\s+important\s+(?:features?|variables?|predictors?)|"
+    r"top\s+(?:features?|variables?|predictors?)\s+(?:were|included))\b",
+    re.IGNORECASE,
+)
+_FEATURE_IMPORT_EXPLAINED_RE = re.compile(
+    r"\b(?:SHAP\b|Shapley\s+value|permutation\s+importance|"
+    r"Gini\s+importance|mean\s+decrease\s+(?:in\s+)?(?:accuracy|impurity)|"
+    r"absolute\s+coefficient|feature\s+importance\s+(?:was|is|were)\s+"
+    r"(?:calculated|computed|estimated|derived)\s+(?:using|via|with|as))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_feature_importance_method(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag feature importance claims without methodology disclosure.
+
+    Emits ``missing-feature-importance-method`` (minor) when feature
+    importance is reported but the method for computing it is not stated.
+    """
+    _vid = "validate_feature_importance_method"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _FEATURE_IMPORT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _FEATURE_IMPORT_EXPLAINED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-feature-importance-method",
+                severity="minor",
+                message=(
+                    "Feature importance is reported but the method for computing it "
+                    "(e.g., SHAP values, permutation importance, Gini impurity) is "
+                    "not described. Specify the feature importance metric used."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 314 – validate_data_leakage_prevention
+# ---------------------------------------------------------------------------
+
+_LEAKAGE_RISK_TRIGGER_RE = re.compile(
+    r"\b(?:feature\s+(?:engineering|extraction|selection|scaling|normaliz(?:ation|ing))|"
+    r"imputation|oversampling|SMOTE\b|data\s+augmentation|"
+    r"normaliz(?:ed|ing|ation)\s+(?:the\s+)?(?:features?|predictors?|input))\b",
+    re.IGNORECASE,
+)
+_LEAKAGE_PREVENTED_RE = re.compile(
+    r"\b(?:data\s+leakage|leakage\s+prevention|"
+    r"(?:feature\s+scaling|normaliz(?:ation|ing)|imputation)\s+"
+    r"(?:was|were)\s+(?:performed|applied|fitted|computed)\s+"
+    r"(?:only\s+)?(?:on\s+the\s+)?(?:training\s+(?:set|data)|within\s+cross[\s-]?validation)|"
+    r"fitted\s+(?:only\s+)?on\s+(?:the\s+)?train(?:ing)?\s+(?:set|data)|"
+    r"scaler\s+(?:was|were)\s+fit\s+on\s+train(?:ing)|"
+    r"pipeline\s+(?:ensures?|prevented?)\s+(?:data\s+)?leakage)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_data_leakage_prevention(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML preprocessing without data leakage prevention disclosure.
+
+    Emits ``missing-data-leakage-check`` (moderate) when feature engineering
+    or preprocessing is described without confirming that transformations were
+    fitted only on training data.
+    """
+    _vid = "validate_data_leakage_prevention"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _LEAKAGE_RISK_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _LEAKAGE_PREVENTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-data-leakage-check",
+                severity="moderate",
+                message=(
+                    "Feature engineering or preprocessing is described but it is "
+                    "not confirmed that transformations were fitted only on training "
+                    "data. Clarify leakage prevention to ensure valid test-set evaluation."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 315 – validate_ml_uncertainty_quantification
+# ---------------------------------------------------------------------------
+
+_ML_PREDICTION_TRIGGER_RE = re.compile(
+    r"\b(?:machine\s+learning|predictive\s+(?:model|algorithm)|"
+    r"deep\s+learning|neural\s+network|ensemble\s+method|"
+    r"model\s+(?:prediction|output|forecast))\b",
+    re.IGNORECASE,
+)
+_ML_UNCERTAINTY_RE = re.compile(
+    r"\b(?:confidence\s+intervals?\s+(?:for\s+)?(?:the\s+)?(?:prediction|estimate)|"
+    r"prediction\s+intervals?|credible\s+intervals?|"
+    r"uncertainty\s+(?:quantification|estimation|in\s+predictions?)|"
+    r"bootstrap\s+(?:confidence\s+)?intervals?\s+for|"
+    r"calibrat(?:ion|ed)\s+(?:probability|uncertainty)|"
+    r"conformal\s+prediction|Platt\s+scaling|"
+    r"standard\s+error\s+of\s+(?:the\s+)?prediction)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ml_uncertainty_quantification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ML models without uncertainty quantification.
+
+    Emits ``missing-ml-uncertainty`` (minor) when a machine learning model
+    produces predictions but no uncertainty or confidence estimate is
+    reported.
+    """
+    _vid = "validate_ml_uncertainty_quantification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ML_PREDICTION_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _ML_UNCERTAINTY_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ml-uncertainty",
+                severity="minor",
+                message=(
+                    "A machine learning model produces predictions but no uncertainty "
+                    "quantification (e.g., confidence intervals, prediction intervals, "
+                    "calibration) is reported. Include uncertainty estimates to support "
+                    "evidence-based interpretation."
                 ),
                 validator=_vid,
             )

@@ -18112,3 +18112,338 @@ def test_ppc_non_empirical_no_fire() -> None:
     )
     result = validate_posterior_predictive_check(ms, cl)
     assert result.findings == []
+
+
+
+
+# ---------------------------------------------------------------------------
+# Phase 311 – validate_train_test_split_disclosure
+# ---------------------------------------------------------------------------
+
+def _ml311_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ml311",
+            source_path="/tmp/ml311.md",
+            source_format="markdown",
+            title="ML Train/Test Split Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ml_model_without_split_fires() -> None:
+    from manuscript_audit.validators.core import validate_train_test_split_disclosure
+
+    ms, cl = _ml311_ms(
+        "We trained a random forest classifier on the dataset."
+    )
+    result = validate_train_test_split_disclosure(ms, cl)
+    assert any(f.code == "missing-train-test-split" for f in result.findings)
+
+
+def test_ml_model_with_split_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_train_test_split_disclosure
+
+    ms, cl = _ml311_ms(
+        "We trained a random forest classifier. 80% of the data was used for "
+        "training and 20% as the test set."
+    )
+    result = validate_train_test_split_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_train_test_split_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_train_test_split_disclosure
+
+    ms, cl = _ml311_ms(
+        "We trained a random forest classifier on the dataset."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
+    )
+    result = validate_train_test_split_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ml_model_train_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_train_test_split_disclosure
+
+    ms, cl = _ml311_ms(
+        "We conducted a survey of 200 participants using a Likert scale."
+    )
+    result = validate_train_test_split_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 312 – validate_hyperparameter_tuning_disclosure
+# ---------------------------------------------------------------------------
+
+def _hp312_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-hp312",
+            source_path="/tmp/hp312.md",
+            source_format="markdown",
+            title="Hyperparameter Tuning Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_hyperparameter_without_tuning_fires() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
+
+    ms, cl = _hp312_ms(
+        "The learning rate was set to 0.01 and the number of trees was 500."
+    )
+    result = validate_hyperparameter_tuning_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-hyperparameter-tuning-disclosure" for f in result.findings
+    )
+
+
+def test_hyperparameter_with_tuning_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
+
+    ms, cl = _hp312_ms(
+        "The learning rate was selected via grid search over [0.001, 0.01, 0.1] "
+        "with 5-fold cross-validation."
+    )
+    result = validate_hyperparameter_tuning_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_hyperparameter_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
+
+    ms, cl = _hp312_ms(
+        "The learning rate was set to 0.01 and the number of trees was 500."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
+    )
+    result = validate_hyperparameter_tuning_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_hyperparameter_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
+
+    ms, cl = _hp312_ms(
+        "Participants completed a questionnaire and data were analysed with ANOVA."
+    )
+    result = validate_hyperparameter_tuning_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 313 – validate_feature_importance_method
+# ---------------------------------------------------------------------------
+
+def _fi313_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fi313",
+            source_path="/tmp/fi313.md",
+            source_format="markdown",
+            title="Feature Importance Method Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_feature_importance_without_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_feature_importance_method
+
+    ms, cl = _fi313_ms(
+        "Feature importance rankings showed that age was the most important predictor."
+    )
+    result = validate_feature_importance_method(ms, cl)
+    assert any(f.code == "missing-feature-importance-method" for f in result.findings)
+
+
+def test_feature_importance_with_shap_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_feature_importance_method
+
+    ms, cl = _fi313_ms(
+        "Feature importance was calculated using SHAP values. Age was the most "
+        "important predictor."
+    )
+    result = validate_feature_importance_method(ms, cl)
+    assert result.findings == []
+
+
+def test_feature_importance_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_feature_importance_method
+
+    ms, cl = _fi313_ms(
+        "Feature importance rankings showed that age was the most important predictor."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
+    )
+    result = validate_feature_importance_method(ms, cl)
+    assert result.findings == []
+
+
+def test_no_feature_importance_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_feature_importance_method
+
+    ms, cl = _fi313_ms(
+        "We used logistic regression to predict outcomes in the study cohort."
+    )
+    result = validate_feature_importance_method(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 314 – validate_data_leakage_prevention
+# ---------------------------------------------------------------------------
+
+def _dl314_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dl314",
+            source_path="/tmp/dl314.md",
+            source_format="markdown",
+            title="Data Leakage Prevention Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_preprocessing_without_leakage_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_data_leakage_prevention
+
+    ms, cl = _dl314_ms(
+        "Features were normalized before model training. Imputation was applied "
+        "to handle missing values."
+    )
+    result = validate_data_leakage_prevention(ms, cl)
+    assert any(f.code == "missing-data-leakage-check" for f in result.findings)
+
+
+def test_preprocessing_with_leakage_prevention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_leakage_prevention
+
+    ms, cl = _dl314_ms(
+        "Feature scaling was performed only on the training data. The scaler was "
+        "fit on training and applied to the test data."
+    )
+    result = validate_data_leakage_prevention(ms, cl)
+    assert result.findings == []
+
+
+def test_leakage_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_data_leakage_prevention
+
+    ms, cl = _dl314_ms(
+        "Features were normalized before model training."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
+    )
+    result = validate_data_leakage_prevention(ms, cl)
+    assert result.findings == []
+
+
+def test_no_preprocessing_no_fire_leakage() -> None:
+    from manuscript_audit.validators.core import validate_data_leakage_prevention
+
+    ms, cl = _dl314_ms(
+        "We collected survey responses and analysed them using descriptive statistics."
+    )
+    result = validate_data_leakage_prevention(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 315 – validate_ml_uncertainty_quantification
+# ---------------------------------------------------------------------------
+
+def _mluq315_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mluq315",
+            source_path="/tmp/mluq315.md",
+            source_format="markdown",
+            title="ML Uncertainty Quantification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ml_model_without_uncertainty_fires() -> None:
+    from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
+
+    ms, cl = _mluq315_ms(
+        "The neural network achieved 92% accuracy on the test set."
+    )
+    result = validate_ml_uncertainty_quantification(ms, cl)
+    assert any(f.code == "missing-ml-uncertainty" for f in result.findings)
+
+
+def test_ml_model_with_confidence_interval_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
+
+    ms, cl = _mluq315_ms(
+        "The neural network achieved 92% accuracy. Bootstrap confidence intervals "
+        "for the prediction were computed (95% CI: 89–94%)."
+    )
+    result = validate_ml_uncertainty_quantification(ms, cl)
+    assert result.findings == []
+
+
+def test_ml_uncertainty_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
+
+    ms, cl = _mluq315_ms(
+        "The neural network achieved 92% accuracy on the test set."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
+    )
+    result = validate_ml_uncertainty_quantification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ml_prediction_no_fire_uncertainty() -> None:
+    from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
+
+    ms, cl = _mluq315_ms(
+        "Participants rated their satisfaction on a 5-point Likert scale."
+    )
+    result = validate_ml_uncertainty_quantification(ms, cl)
+    assert result.findings == []
