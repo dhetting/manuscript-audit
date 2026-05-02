@@ -6987,6 +6987,11 @@ def run_deterministic_validators(
         validate_sdm_evaluation_metrics(parsed, classification),
         validate_epi_parameter_estimation(parsed, classification),
         validate_optimization_convergence_reporting(parsed, classification),
+        validate_nids_imbalance_handling(parsed, classification),
+        validate_fraud_cost_evaluation(parsed, classification),
+        validate_credit_scorecard_calibration(parsed, classification),
+        validate_nli_artifact_evaluation(parsed, classification),
+        validate_image_captioning_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -28065,6 +28070,242 @@ def validate_optimization_convergence_reporting(
                 ),
                 severity="minor",
                 validator=_OPT_BENCH_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 481 – Network intrusion detection: class imbalance handling
+# ---------------------------------------------------------------------------
+_NIDS_TRIGGER_RE = re.compile(
+    r"\b(?:network\s+intrusion\s+detection|intrusion\s+detection\s+system|IDS\b|"
+    r"anomaly.based\s+intrusion\s+detection|"
+    r"network\s+traffic\s+classification\s+for\s+(?:security|intrusion))\b",
+    re.IGNORECASE,
+)
+_NIDS_IMBALANCE_RE = re.compile(
+    r"\b(?:class\s+imbalance\s+(?:handling|strategy)|SMOTE|oversampling|undersampling|"
+    r"cost.sensitive\s+(?:learning|classification)|"
+    r"weighted\s+(?:loss|cross.entropy)\s+for\s+imbalance|"
+    r"imbalanced\s+class\s+distribution)\b",
+    re.IGNORECASE,
+)
+
+_NIDS_VID = "missing-nids-imbalance-handling"
+
+
+def validate_nids_imbalance_handling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when network intrusion detection papers lack class imbalance handling."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_NIDS_VID, findings=[])
+    text = parsed.full_text
+    if not _NIDS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_NIDS_VID, findings=[])
+    if _NIDS_IMBALANCE_RE.search(text):
+        return ValidationResult(validator_name=_NIDS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_NIDS_VID,
+        findings=[
+            Finding(
+                code=_NIDS_VID,
+                message=(
+                    "Network intrusion detection paper detected but no class "
+                    "imbalance handling strategy was reported."
+                ),
+                severity="minor",
+                validator=_NIDS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 482 – Financial fraud detection: cost-sensitive evaluation
+# ---------------------------------------------------------------------------
+_FRAUD_TRIGGER_RE = re.compile(
+    r"\b(?:fraud\s+detection|financial\s+fraud|credit\s+card\s+fraud|"
+    r"transaction\s+fraud\s+detection|anti.fraud\s+model)\b",
+    re.IGNORECASE,
+)
+_FRAUD_EVAL_RE = re.compile(
+    r"\b(?:cost.sensitive\s+(?:evaluation|metric)|monetary\s+cost\s+of\s+(?:false|error)|"
+    r"false\s+positive\s+cost|false\s+negative\s+cost|"
+    r"expected\s+cost\s+(?:matrix|metric)|savings\s+from\s+detection|"
+    r"precision.recall\s+at\s+(?:specific\s+)?threshold)\b",
+    re.IGNORECASE,
+)
+
+_FRAUD_VID = "missing-fraud-cost-evaluation"
+
+
+def validate_fraud_cost_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when fraud detection papers lack cost-sensitive evaluation."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FRAUD_VID, findings=[])
+    text = parsed.full_text
+    if not _FRAUD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_FRAUD_VID, findings=[])
+    if _FRAUD_EVAL_RE.search(text):
+        return ValidationResult(validator_name=_FRAUD_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FRAUD_VID,
+        findings=[
+            Finding(
+                code=_FRAUD_VID,
+                message=(
+                    "Fraud detection paper detected but no cost-sensitive "
+                    "evaluation or monetary cost analysis was reported."
+                ),
+                severity="minor",
+                validator=_FRAUD_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 483 – Credit scoring: scorecard calibration disclosure
+# ---------------------------------------------------------------------------
+_CREDIT_TRIGGER_RE = re.compile(
+    r"\b(?:credit\s+scoring|credit\s+risk\s+model|probability\s+of\s+default\s+model|"
+    r"PD\s+model|credit\s+scorecard|loan\s+default\s+prediction)\b",
+    re.IGNORECASE,
+)
+_CREDIT_CALIB_RE = re.compile(
+    r"\b(?:scorecard\s+calibration|calibration\s+of\s+(?:the\s+)?(?:PD|credit)\s+model|"
+    r"Brier\s+score|reliability\s+diagram\s+for\s+credit|"
+    r"Hosmer.Lemeshow\s+test\s+for\s+credit|"
+    r"binomial\s+test\s+for\s+calibration)\b",
+    re.IGNORECASE,
+)
+
+_CREDIT_VID = "missing-credit-scorecard-calibration"
+
+
+def validate_credit_scorecard_calibration(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when credit scoring papers lack scorecard calibration disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CREDIT_VID, findings=[])
+    text = parsed.full_text
+    if not _CREDIT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CREDIT_VID, findings=[])
+    if _CREDIT_CALIB_RE.search(text):
+        return ValidationResult(validator_name=_CREDIT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CREDIT_VID,
+        findings=[
+            Finding(
+                code=_CREDIT_VID,
+                message=(
+                    "Credit scoring paper detected but no scorecard calibration "
+                    "or PD model calibration evaluation was reported."
+                ),
+                severity="minor",
+                validator=_CREDIT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 484 – Natural language inference: hypothesis artifact evaluation
+# ---------------------------------------------------------------------------
+_NLI_TRIGGER_RE = re.compile(
+    r"\b(?:natural\s+language\s+inference|NLI\b|recognizing\s+textual\s+entailment|"
+    r"RTE\s+(?:task|dataset)|entailment\s+classification|"
+    r"MNLI|MultiNLI|SNLI\s+(?:dataset|benchmark))\b",
+    re.IGNORECASE,
+)
+_NLI_ARTIFACT_RE = re.compile(
+    r"\b(?:hypothesis.only\s+baseline|annotation\s+artifact|"
+    r"lexical\s+(?:overlap|bias)\s+in\s+(?:NLI|entailment)|"
+    r"spurious\s+correlation\s+in\s+(?:NLI|SNLI|MNLI)|"
+    r"hard\s+subset\s+evaluation|adversarial\s+NLI)\b",
+    re.IGNORECASE,
+)
+
+_NLI_VID = "missing-nli-artifact-evaluation"
+
+
+def validate_nli_artifact_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when NLI papers lack hypothesis artifact or bias evaluation."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_NLI_VID, findings=[])
+    text = parsed.full_text
+    if not _NLI_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_NLI_VID, findings=[])
+    if _NLI_ARTIFACT_RE.search(text):
+        return ValidationResult(validator_name=_NLI_VID, findings=[])
+    return ValidationResult(
+        validator_name=_NLI_VID,
+        findings=[
+            Finding(
+                code=_NLI_VID,
+                message=(
+                    "NLI paper detected but no hypothesis-only baseline or "
+                    "annotation artifact analysis was reported."
+                ),
+                severity="minor",
+                validator=_NLI_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 485 – Image captioning: CIDEr / SPICE metric reporting
+# ---------------------------------------------------------------------------
+_CAPTION_TRIGGER_RE = re.compile(
+    r"\b(?:image\s+captioning|visual\s+captioning|dense\s+captioning|"
+    r"image\s+description\s+generation|caption\s+generation\s+model)\b",
+    re.IGNORECASE,
+)
+_CAPTION_METRIC_RE = re.compile(
+    r"(?:\bCIDEr\b|\bSPICE\b|\bMETEOR\b)\s*=|"
+    r"\b(?:BLEU-4\s+for\s+captioning|ROUGE.L\s+for\s+captioning|"
+    r"captioning\s+score|caption\s+evaluation\s+metric)\b",
+    re.IGNORECASE,
+)
+
+_CAPTION_VID = "missing-captioning-metrics"
+
+
+def validate_image_captioning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when image captioning papers lack CIDEr, SPICE, or METEOR metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CAPTION_VID, findings=[])
+    text = parsed.full_text
+    if not _CAPTION_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CAPTION_VID, findings=[])
+    if _CAPTION_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CAPTION_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CAPTION_VID,
+        findings=[
+            Finding(
+                code=_CAPTION_VID,
+                message=(
+                    "Image captioning paper detected but no CIDEr, SPICE, or "
+                    "METEOR captioning metrics were reported."
+                ),
+                severity="moderate",
+                validator=_CAPTION_VID,
             )
         ],
     )

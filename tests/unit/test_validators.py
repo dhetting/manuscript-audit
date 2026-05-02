@@ -29468,3 +29468,327 @@ def test_no_optbench_trigger_no_fire() -> None:
     ms, cl = _optbench480_ms("We used a negative binomial model for count outcomes.")
     result = validate_optimization_convergence_reporting(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 481 – validate_nids_imbalance_handling
+# ---------------------------------------------------------------------------
+
+def _nids481_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-nids481",
+            source_path="/tmp/nids481.md",
+            source_format="markdown",
+            title="NIDS Imbalance Handling Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nids_without_imbalance_handling_fires() -> None:
+    from manuscript_audit.validators.core import validate_nids_imbalance_handling
+
+    ms, cl = _nids481_ms(
+        "A network intrusion detection system was built on the NSL-KDD dataset."
+    )
+    result = validate_nids_imbalance_handling(ms, cl)
+    assert any(f.code == "missing-nids-imbalance-handling" for f in result.findings)
+
+
+def test_nids_with_smote_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nids_imbalance_handling
+
+    ms, cl = _nids481_ms(
+        "A network intrusion detection system was built on NSL-KDD. "
+        "SMOTE oversampling was used to handle class imbalance."
+    )
+    result = validate_nids_imbalance_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_nids_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nids_imbalance_handling
+
+    ms, cl = _nids481_ms(
+        "A network intrusion detection system was built on the NSL-KDD dataset."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_nids_imbalance_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_nids_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nids_imbalance_handling
+
+    ms, cl = _nids481_ms("We used generalized linear models on observational data.")
+    result = validate_nids_imbalance_handling(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 482 – validate_fraud_cost_evaluation
+# ---------------------------------------------------------------------------
+
+def _fraud482_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fraud482",
+            source_path="/tmp/fraud482.md",
+            source_format="markdown",
+            title="Fraud Cost Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_fraud_without_cost_fires() -> None:
+    from manuscript_audit.validators.core import validate_fraud_cost_evaluation
+
+    ms, cl = _fraud482_ms(
+        "A fraud detection model was trained on credit card transaction data."
+    )
+    result = validate_fraud_cost_evaluation(ms, cl)
+    assert any(f.code == "missing-fraud-cost-evaluation" for f in result.findings)
+
+
+def test_fraud_with_cost_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fraud_cost_evaluation
+
+    ms, cl = _fraud482_ms(
+        "A fraud detection model was trained on credit card data. "
+        "Cost-sensitive evaluation was used with a monetary cost matrix."
+    )
+    result = validate_fraud_cost_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_fraud_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fraud_cost_evaluation
+
+    ms, cl = _fraud482_ms("A fraud detection model was applied to financial data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_fraud_cost_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_fraud_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fraud_cost_evaluation
+
+    ms, cl = _fraud482_ms("We used PCA for dimensionality reduction in microarray data.")
+    result = validate_fraud_cost_evaluation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 483 – validate_credit_scorecard_calibration
+# ---------------------------------------------------------------------------
+
+def _credit483_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-credit483",
+            source_path="/tmp/credit483.md",
+            source_format="markdown",
+            title="Credit Scorecard Calibration Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_credit_without_calibration_fires() -> None:
+    from manuscript_audit.validators.core import validate_credit_scorecard_calibration
+
+    ms, cl = _credit483_ms(
+        "A credit scoring model was developed to predict probability of default."
+    )
+    result = validate_credit_scorecard_calibration(ms, cl)
+    assert any(
+        f.code == "missing-credit-scorecard-calibration" for f in result.findings
+    )
+
+
+def test_credit_with_calibration_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_credit_scorecard_calibration
+
+    ms, cl = _credit483_ms(
+        "A credit scoring model was developed. "
+        "Scorecard calibration was assessed using the Brier score."
+    )
+    result = validate_credit_scorecard_calibration(ms, cl)
+    assert result.findings == []
+
+
+def test_credit_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_credit_scorecard_calibration
+
+    ms, cl = _credit483_ms("A credit scoring model was developed for default prediction.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_credit_scorecard_calibration(ms, cl)
+    assert result.findings == []
+
+
+def test_no_credit_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_credit_scorecard_calibration
+
+    ms, cl = _credit483_ms("We applied factor analysis to educational test scores.")
+    result = validate_credit_scorecard_calibration(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 484 – validate_nli_artifact_evaluation
+# ---------------------------------------------------------------------------
+
+def _nli484_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-nli484",
+            source_path="/tmp/nli484.md",
+            source_format="markdown",
+            title="NLI Artifact Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nli_without_artifact_eval_fires() -> None:
+    from manuscript_audit.validators.core import validate_nli_artifact_evaluation
+
+    ms, cl = _nli484_ms(
+        "We trained a model on the SNLI dataset for natural language inference."
+    )
+    result = validate_nli_artifact_evaluation(ms, cl)
+    assert any(f.code == "missing-nli-artifact-evaluation" for f in result.findings)
+
+
+def test_nli_with_artifact_eval_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nli_artifact_evaluation
+
+    ms, cl = _nli484_ms(
+        "We trained a model on the SNLI dataset for natural language inference. "
+        "A hypothesis-only baseline was evaluated to check annotation artifacts."
+    )
+    result = validate_nli_artifact_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_nli_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nli_artifact_evaluation
+
+    ms, cl = _nli484_ms("We trained on SNLI for natural language inference tasks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_nli_artifact_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_nli_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nli_artifact_evaluation
+
+    ms, cl = _nli484_ms("We ran a propensity score weighted regression analysis.")
+    result = validate_nli_artifact_evaluation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 485 – validate_image_captioning_metrics
+# ---------------------------------------------------------------------------
+
+def _caption485_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-caption485",
+            source_path="/tmp/caption485.md",
+            source_format="markdown",
+            title="Image Captioning Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_captioning_without_cider_fires() -> None:
+    from manuscript_audit.validators.core import validate_image_captioning_metrics
+
+    ms, cl = _caption485_ms(
+        "An image captioning model was trained on the MSCOCO dataset."
+    )
+    result = validate_image_captioning_metrics(ms, cl)
+    assert any(f.code == "missing-captioning-metrics" for f in result.findings)
+
+
+def test_captioning_with_cider_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_image_captioning_metrics
+
+    ms, cl = _caption485_ms(
+        "An image captioning model was trained on MSCOCO. "
+        "CIDEr = 138.7 and SPICE = 21.5 were reported on the test split."
+    )
+    result = validate_image_captioning_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_captioning_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_image_captioning_metrics
+
+    ms, cl = _caption485_ms("An image captioning model was evaluated on COCO.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_image_captioning_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_captioning_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_image_captioning_metrics
+
+    ms, cl = _caption485_ms("We used negative binomial regression for overdispersed data.")
+    result = validate_image_captioning_metrics(ms, cl)
+    assert result.findings == []
