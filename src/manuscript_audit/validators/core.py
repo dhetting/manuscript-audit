@@ -6792,6 +6792,11 @@ def run_deterministic_validators(
         validate_literature_search_recency(parsed, classification),
         validate_publication_bias_acknowledgement(parsed, classification),
         validate_replication_citation(parsed, classification),
+        validate_negative_binomial_overdispersion(parsed, classification),
+        validate_zero_inflated_data_handling(parsed, classification),
+        validate_variance_homogeneity_check(parsed, classification),
+        validate_path_model_fit_indices(parsed, classification),
+        validate_post_hoc_power_caution(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -17467,6 +17472,287 @@ def validate_replication_citation(
                     "The text claims to replicate or confirm prior findings but no "
                     "supporting citation follows. Cite the original study being "
                     "replicated or the prior findings being confirmed."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 286 – validate_negative_binomial_overdispersion
+# ---------------------------------------------------------------------------
+
+_COUNT_OUTCOME_RE = re.compile(
+    r"\b(?:count\s+(?:outcome|data|variable|model)|"
+    r"Poisson\s+(?:regression|model|distribution)|"
+    r"number\s+of\s+(?:events?|incidents?|occurrences?|episodes?|visits?|hospitalizations?))\b",
+    re.IGNORECASE,
+)
+_OVERDISPERSION_CHECK_RE = re.compile(
+    r"\b(?:overdispersion|over-dispersion|negative\s+binomial|"
+    r"dispersion\s+(?:test|parameter|index)|"
+    r"quasi-Poisson|quasi\s+Poisson|"
+    r"dispersion\s*(?:=|<|>)\s*[0-9]|variance\s+exceeds?\s+(?:the\s+)?mean)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_negative_binomial_overdispersion(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag count-outcome Poisson models without an overdispersion check.
+
+    Emits ``missing-overdispersion-test`` (minor) when a Poisson model for
+    count data is described but overdispersion is neither tested nor addressed.
+    """
+    _vid = "validate_negative_binomial_overdispersion"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _COUNT_OUTCOME_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _OVERDISPERSION_CHECK_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-overdispersion-test",
+                severity="minor",
+                message=(
+                    "A count-outcome or Poisson model is used but overdispersion is "
+                    "not tested or addressed. Check for overdispersion (e.g., with a "
+                    "negative binomial or quasi-Poisson model) and report the result."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 287 – validate_zero_inflated_data_handling
+# ---------------------------------------------------------------------------
+
+_COUNT_DATA_TRIGGER_RE = re.compile(
+    r"\b(?:count\s+(?:outcome|data|variable|model)|"
+    r"frequency\s+of\s+(?:events?|incidents?|occurrences?)|"
+    r"Poisson\s+(?:regression|model)|"
+    r"number\s+of\s+(?:events?|incidents?|visits?|episodes?))\b",
+    re.IGNORECASE,
+)
+_ZERO_INFLATION_HANDLED_RE = re.compile(
+    r"\b(?:zero[\s-]inflated|zero\s+inflation|excess\s+zeros?|"
+    r"hurdle\s+model|ZIP\s+model|ZINB\s+model|"
+    r"proportion\s+of\s+zeros?|many\s+(?:zero|zero\s+counts?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_zero_inflated_data_handling(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag count models without addressing potential zero-inflation.
+
+    Emits ``missing-zero-inflation-handling`` (minor) when a count-outcome
+    model is detected but zero-inflation is not mentioned or addressed.
+    """
+    _vid = "validate_zero_inflated_data_handling"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _COUNT_DATA_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _ZERO_INFLATION_HANDLED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-zero-inflation-handling",
+                severity="minor",
+                message=(
+                    "A count-outcome model is used but zero-inflation is not "
+                    "mentioned or addressed. Inspect the distribution for excess "
+                    "zeros and consider a zero-inflated or hurdle model if warranted."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 288 – validate_variance_homogeneity_check
+# ---------------------------------------------------------------------------
+
+_BETWEEN_GROUP_STAT_RE = re.compile(
+    r"\b(?:t[\s-]?test|ANOVA|ANCOVA|Mann[\s-]?Whitney|independent\s+samples?\s+t|"
+    r"one[\s-]?way\s+ANOVA|two[\s-]?way\s+ANOVA)\b",
+    re.IGNORECASE,
+)
+_HOMOGENEITY_REPORTED_RE = re.compile(
+    r"\b(?:Levene(?:'s)?\s+test|Bartlett(?:'s)?\s+test|homogeneity\s+of\s+variance|"
+    r"equal\s+variances?|unequal\s+variances?|variance\s+(?:were|was|are|is)\s+"
+    r"(?:equal|homogeneous|heterogeneous)|Welch(?:'s)?\s+(?:t[\s-]?test|ANOVA)|"
+    r"Brown[\s-]?Forsythe\s+test|heteroscedasticity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_variance_homogeneity_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag between-group tests without a variance homogeneity check.
+
+    Emits ``missing-variance-homogeneity-check`` (minor) when a t-test or
+    ANOVA is reported but homogeneity of variance is not tested or mentioned.
+    """
+    _vid = "validate_variance_homogeneity_check"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _BETWEEN_GROUP_STAT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _HOMOGENEITY_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-variance-homogeneity-check",
+                severity="minor",
+                message=(
+                    "A between-group test (t-test or ANOVA) is used but homogeneity "
+                    "of variance is not reported. Include Levene's test or use a "
+                    "Welch correction for unequal variances."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 289 – validate_path_model_fit_indices
+# ---------------------------------------------------------------------------
+
+_PATH_MODEL_RE = re.compile(
+    r"\b(?:structural\s+equation\s+model|SEM\b|path\s+(?:model|analysis|diagram)|"
+    r"confirmatory\s+factor\s+analysis|CFA\b|latent\s+(?:variable|factor|path)|"
+    r"measurement\s+model)\b",
+    re.IGNORECASE,
+)
+_FIT_INDEX_RE = re.compile(
+    r"\b(?:CFI\b|TLI\b|RMSEA\b|SRMR\b|GFI\b|AGFI\b|NFI\b|"
+    r"comparative\s+fit\s+index|Tucker[\s-]Lewis\s+index|"
+    r"root\s+mean\s+square\s+error\s+of\s+approximation|"
+    r"standardised\s+root\s+mean\s+(?:square|squared)\s+residual|"
+    r"model\s+fit\s+(?:indices|statistics|evaluation))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_path_model_fit_indices(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag SEM/path models without reporting model fit indices.
+
+    Emits ``missing-path-model-fit-indices`` (minor) when a structural
+    equation or path model is used but no fit indices are reported.
+    """
+    _vid = "validate_path_model_fit_indices"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _PATH_MODEL_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _FIT_INDEX_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-path-model-fit-indices",
+                severity="minor",
+                message=(
+                    "A structural equation or path model is used but no model fit "
+                    "indices (e.g., CFI, TLI, RMSEA, SRMR) are reported. Include "
+                    "standard fit indices to allow readers to evaluate model fit."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 290 – validate_post_hoc_power_caution
+# ---------------------------------------------------------------------------
+
+_POST_HOC_POWER_TRIGGER_RE = re.compile(
+    r"\b(?:post[\s-]?hoc\s+(?:power|statistical\s+power)|"
+    r"observed\s+power|achieved\s+power|retrospective\s+power)\b",
+    re.IGNORECASE,
+)
+_POST_HOC_POWER_CAVEAT_RE = re.compile(
+    r"\b(?:post[\s-]?hoc\s+power\s+(?:is|has\s+been|can\s+be)\s+"
+    r"(?:criticized|questioned|misleading|unreliable)|"
+    r"observed\s+power\s+(?:is|has\s+been)\s+(?:criticized|questioned|misleading)|"
+    r"caution\s+(?:should\s+be\s+exercised|is\s+warranted)\s+"
+    r"(?:in\s+interpreting|when\s+interpreting)\s+(?:observed|post[\s-]?hoc)\s+power|"
+    r"Hoenig|Lakens|Senn)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_post_hoc_power_caution(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag post-hoc power reports without a validity caveat.
+
+    Emits ``missing-post-hoc-power-caution`` (minor) when post-hoc or
+    observed power is reported without cautioning about its limitations.
+    """
+    _vid = "validate_post_hoc_power_caution"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _POST_HOC_POWER_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _POST_HOC_POWER_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-post-hoc-power-caution",
+                severity="minor",
+                message=(
+                    "Post-hoc or observed power is reported without caveats. "
+                    "Post-hoc power analysis is widely criticised as uninformative "
+                    "and circular. Note this limitation or remove post-hoc power."
                 ),
                 validator=_vid,
             )

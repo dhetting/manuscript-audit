@@ -16330,3 +16330,353 @@ def test_replication285_non_empirical_no_fire() -> None:
     )
     result = validate_replication_citation(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 286 – validate_negative_binomial_overdispersion
+# ---------------------------------------------------------------------------
+
+def _overdispersion_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-overdispersion",
+            source_path="/tmp/overdispersion.md",
+            source_format="markdown",
+            title="Overdispersion Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_poisson_without_overdispersion_check_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_negative_binomial_overdispersion,
+    )
+
+    ms, cl = _overdispersion_ms(
+        "We used Poisson regression to model the number of hospital visits. "
+        "Results indicated a significant effect of treatment."
+    )
+    result = validate_negative_binomial_overdispersion(ms, cl)
+    assert any(f.code == "missing-overdispersion-test" for f in result.findings)
+
+
+def test_poisson_with_overdispersion_check_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_negative_binomial_overdispersion,
+    )
+
+    ms, cl = _overdispersion_ms(
+        "We used Poisson regression to model count outcomes. Overdispersion was "
+        "detected (dispersion parameter = 2.3) and addressed using a negative "
+        "binomial model."
+    )
+    result = validate_negative_binomial_overdispersion(ms, cl)
+    assert result.findings == []
+
+
+def test_no_count_outcome_no_overdispersion_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_negative_binomial_overdispersion,
+    )
+
+    ms, cl = _overdispersion_ms(
+        "We used linear regression to model continuous outcomes."
+    )
+    result = validate_negative_binomial_overdispersion(ms, cl)
+    assert result.findings == []
+
+
+def test_overdispersion_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_negative_binomial_overdispersion,
+    )
+
+    ms, cl = _overdispersion_ms("Poisson models for count data were discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_negative_binomial_overdispersion(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 287 – validate_zero_inflated_data_handling
+# ---------------------------------------------------------------------------
+
+def _zero_inflate_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-zero-inflate",
+            source_path="/tmp/zero_inflate.md",
+            source_format="markdown",
+            title="Zero Inflation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_count_model_without_zero_inflation_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_zero_inflated_data_handling
+
+    ms, cl = _zero_inflate_ms(
+        "We modelled the number of incidents using Poisson regression. "
+        "Count outcomes were analysed at the individual level."
+    )
+    result = validate_zero_inflated_data_handling(ms, cl)
+    assert any(f.code == "missing-zero-inflation-handling" for f in result.findings)
+
+
+def test_zero_inflated_model_used_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_zero_inflated_data_handling
+
+    ms, cl = _zero_inflate_ms(
+        "The frequency of events was modelled. Given the excess zeros in the "
+        "distribution, we applied a zero-inflated Poisson (ZIP) model."
+    )
+    result = validate_zero_inflated_data_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_no_count_data_no_zero_inflate_fire() -> None:
+    from manuscript_audit.validators.core import validate_zero_inflated_data_handling
+
+    ms, cl = _zero_inflate_ms(
+        "Participants completed a survey measuring attitudes and beliefs."
+    )
+    result = validate_zero_inflated_data_handling(ms, cl)
+    assert result.findings == []
+
+
+def test_zero_inflate_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_zero_inflated_data_handling
+
+    ms, cl = _zero_inflate_ms("Zero-inflated models are described theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_zero_inflated_data_handling(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 288 – validate_variance_homogeneity_check
+# ---------------------------------------------------------------------------
+
+def _homogeneity_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-homogeneity",
+            source_path="/tmp/homogeneity.md",
+            source_format="markdown",
+            title="Variance Homogeneity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ttest_without_homogeneity_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_variance_homogeneity_check
+
+    ms, cl = _homogeneity_ms(
+        "We compared the two groups using an independent samples t-test. "
+        "The intervention group showed significantly higher scores (p = .02)."
+    )
+    result = validate_variance_homogeneity_check(ms, cl)
+    assert any(f.code == "missing-variance-homogeneity-check" for f in result.findings)
+
+
+def test_ttest_with_levene_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variance_homogeneity_check
+
+    ms, cl = _homogeneity_ms(
+        "Levene's test confirmed homogeneity of variance (p = .43). "
+        "We then conducted an independent samples t-test."
+    )
+    result = validate_variance_homogeneity_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_between_group_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variance_homogeneity_check
+
+    ms, cl = _homogeneity_ms(
+        "We used structural equation modelling to test the mediation model."
+    )
+    result = validate_variance_homogeneity_check(ms, cl)
+    assert result.findings == []
+
+
+def test_homogeneity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variance_homogeneity_check
+
+    ms, cl = _homogeneity_ms(
+        "The t-test assumptions include homogeneity of variance."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_variance_homogeneity_check(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 289 – validate_path_model_fit_indices
+# ---------------------------------------------------------------------------
+
+def _path_model_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-path-model",
+            source_path="/tmp/path_model.md",
+            source_format="markdown",
+            title="Path Model Fit Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sem289_without_fit_indices_fires() -> None:
+    from manuscript_audit.validators.core import validate_path_model_fit_indices
+
+    ms, cl = _path_model_ms(
+        "We used structural equation modelling to test our hypotheses. "
+        "The SEM showed that stress significantly predicted burnout."
+    )
+    result = validate_path_model_fit_indices(ms, cl)
+    assert any(f.code == "missing-path-model-fit-indices" for f in result.findings)
+
+
+def test_sem289_with_fit_indices_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_path_model_fit_indices
+
+    ms, cl = _path_model_ms(
+        "The structural equation model showed good fit: CFI = .96, TLI = .95, "
+        "RMSEA = .05, SRMR = .06. All hypothesised paths were significant."
+    )
+    result = validate_path_model_fit_indices(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sem_no_fit_fire() -> None:
+    from manuscript_audit.validators.core import validate_path_model_fit_indices
+
+    ms, cl = _path_model_ms(
+        "We used linear regression to predict the outcome variable."
+    )
+    result = validate_path_model_fit_indices(ms, cl)
+    assert result.findings == []
+
+
+def test_path_model_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_path_model_fit_indices
+
+    ms, cl = _path_model_ms(
+        "Structural equation modelling is a flexible framework for theory testing."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_path_model_fit_indices(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 290 – validate_post_hoc_power_caution
+# ---------------------------------------------------------------------------
+
+def _posthoc_power_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-posthoc-power",
+            source_path="/tmp/posthoc_power.md",
+            source_format="markdown",
+            title="Post-hoc Power Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_post_hoc_power_without_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_power_caution
+
+    ms, cl = _posthoc_power_ms(
+        "Post-hoc power analysis revealed that our study had 62% power to detect "
+        "the observed effect size."
+    )
+    result = validate_post_hoc_power_caution(ms, cl)
+    assert any(f.code == "missing-post-hoc-power-caution" for f in result.findings)
+
+
+def test_post_hoc_power_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_power_caution
+
+    ms, cl = _posthoc_power_ms(
+        "Observed power was 62%. Caution is warranted when interpreting observed "
+        "power, as post-hoc power analysis has been widely criticised (Hoenig, 2001)."
+    )
+    result = validate_post_hoc_power_caution(ms, cl)
+    assert result.findings == []
+
+
+def test_no_post_hoc_power_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_power_caution
+
+    ms, cl = _posthoc_power_ms(
+        "A priori power analysis indicated a required sample of N = 120."
+    )
+    result = validate_post_hoc_power_caution(ms, cl)
+    assert result.findings == []
+
+
+def test_post_hoc_power_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_post_hoc_power_caution
+
+    ms, cl = _posthoc_power_ms(
+        "Post-hoc power analysis is discussed as a methodological issue."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_post_hoc_power_caution(ms, cl)
+    assert result.findings == []
