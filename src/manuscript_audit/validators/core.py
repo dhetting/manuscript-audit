@@ -7057,6 +7057,11 @@ def run_deterministic_validators(
         validate_rag_evaluation_metrics(parsed, classification),
         validate_instruction_tuning_evaluation(parsed, classification),
         validate_long_context_evaluation(parsed, classification),
+        validate_continual_learning_metrics(parsed, classification),
+        validate_gnn_benchmark_metrics(parsed, classification),
+        validate_nas_evaluation_metrics(parsed, classification),
+        validate_contrastive_learning_evaluation(parsed, classification),
+        validate_knowledge_distillation_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -31322,6 +31327,240 @@ def validate_long_context_evaluation(
                 ),
                 location="full_text",
                 validator=_LONGCTX_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 551 – continual learning evaluation
+# ---------------------------------------------------------------------------
+_CONTLEARN_VID = "missing-continual-learning-metrics"
+
+_CONTLEARN_TRIGGERS = re.compile(
+    r"\b(?:continual\s+learning|incremental\s+learning|lifelong\s+learning|"
+    r"catastrophic\s+forgetting|class[- ]incremental|task[- ]incremental)\b",
+    re.IGNORECASE,
+)
+_CONTLEARN_METRICS = re.compile(
+    r"\b(?:average\s+accuracy|backward\s+transfer|forward\s+transfer|"
+    r"forgetting\s+measure|BWT|FWT|intransigence)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:BWT|FWT|forgetting)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_continual_learning_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CONTLEARN_VID, findings=[])
+    text = parsed.full_text
+    if not _CONTLEARN_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CONTLEARN_VID, findings=[])
+    if _CONTLEARN_METRICS.search(text):
+        return ValidationResult(validator_name=_CONTLEARN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CONTLEARN_VID,
+        findings=[
+            Finding(
+                code=_CONTLEARN_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses continual learning but does not report "
+                    "average accuracy, backward transfer (BWT), or forgetting measure."
+                ),
+                location="full_text",
+                validator=_CONTLEARN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 552 – graph neural network evaluation (extended)
+# ---------------------------------------------------------------------------
+_GNN552_VID = "missing-gnn-benchmark-metrics"
+
+_GNN552_TRIGGERS = re.compile(
+    r"\b(?:graph\s+neural\s+network|GNN|graph\s+convolutional\s+network|GCN|"
+    r"graph\s+attention\s+network|GAT|message\s+passing\s+neural)\b",
+    re.IGNORECASE,
+)
+_GNN552_METRICS = re.compile(
+    r"\b(?:accuracy|AUC|ROC[- ]AUC|F[- ]?1|mean\s+reciprocal\s+rank|MRR|"
+    r"Hits@[0-9]+|link\s+prediction\s+accuracy)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|AUC|F[- ]?1|MRR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_gnn_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_GNN552_VID, findings=[])
+    text = parsed.full_text
+    if not _GNN552_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_GNN552_VID, findings=[])
+    if _GNN552_METRICS.search(text):
+        return ValidationResult(validator_name=_GNN552_VID, findings=[])
+    return ValidationResult(
+        validator_name=_GNN552_VID,
+        findings=[
+            Finding(
+                code=_GNN552_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses graph neural networks but does not report "
+                    "accuracy, AUC, F1, MRR, or Hits@k on a node/link/graph benchmark."
+                ),
+                location="full_text",
+                validator=_GNN552_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 553 – neural architecture search evaluation
+# ---------------------------------------------------------------------------
+_NAS553_VID = "missing-nas-evaluation-metrics"
+
+_NAS553_TRIGGERS = re.compile(
+    r"\b(?:neural\s+architecture\s+search|NAS\b|differentiable\s+NAS|"
+    r"DARTS|one[- ]shot\s+NAS|hardware[- ]aware\s+NAS)\b",
+    re.IGNORECASE,
+)
+_NAS553_METRICS = re.compile(
+    r"\b(?:top[- ][15]\s+accuracy|FLOPs|MACs|latency|search\s+cost|GPU\s+days)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:top[- ][15]\s+accuracy|FLOPs)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_nas_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_NAS553_VID, findings=[])
+    text = parsed.full_text
+    if not _NAS553_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_NAS553_VID, findings=[])
+    if _NAS553_METRICS.search(text):
+        return ValidationResult(validator_name=_NAS553_VID, findings=[])
+    return ValidationResult(
+        validator_name=_NAS553_VID,
+        findings=[
+            Finding(
+                code=_NAS553_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses neural architecture search but does not report "
+                    "top-1/5 accuracy, FLOPs, or search cost (GPU days)."
+                ),
+                location="full_text",
+                validator=_NAS553_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 554 – contrastive learning evaluation
+# ---------------------------------------------------------------------------
+_CONTRASTIVE_VID = "missing-contrastive-learning-evaluation"
+
+_CONTRASTIVE_TRIGGERS = re.compile(
+    r"\b(?:contrastive\s+(?:learning|pre[- ]training|self[- ]supervised)|"
+    r"SimCLR|MoCo\b|BYOL\b|SimSiam|contrastive\s+loss|NT[- ]Xent\s+loss)\b",
+    re.IGNORECASE,
+)
+_CONTRASTIVE_METRICS = re.compile(
+    r"\b(?:linear\s+(?:evaluation|probing)|kNN\s+accuracy|top[- ][15]\s+accuracy|"
+    r"transfer\s+accuracy|few[- ]shot\s+accuracy)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:linear\s+eval|kNN|top[- ][15])\b",
+    re.IGNORECASE,
+)
+
+
+def validate_contrastive_learning_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CONTRASTIVE_VID, findings=[])
+    text = parsed.full_text
+    if not _CONTRASTIVE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CONTRASTIVE_VID, findings=[])
+    if _CONTRASTIVE_METRICS.search(text):
+        return ValidationResult(validator_name=_CONTRASTIVE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CONTRASTIVE_VID,
+        findings=[
+            Finding(
+                code=_CONTRASTIVE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses contrastive learning but does not report "
+                    "linear evaluation, kNN accuracy, or top-k transfer accuracy."
+                ),
+                location="full_text",
+                validator=_CONTRASTIVE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 555 – knowledge distillation evaluation
+# ---------------------------------------------------------------------------
+_KDDIST_VID = "missing-knowledge-distillation-evaluation"
+
+_KDDIST_TRIGGERS = re.compile(
+    r"\b(?:knowledge\s+distillation|model\s+distillation|teacher[- ]student\s+(?:training|network)|"
+    r"student\s+model\s+training|distilled\s+model|soft\s+label\s+distillation)\b",
+    re.IGNORECASE,
+)
+_KDDIST_METRICS = re.compile(
+    r"\b(?:accuracy|top[- ][15]\s+accuracy|F[- ]?1|compression\s+ratio|"
+    r"parameter\s+reduction|FLOPs\s+reduction|latency)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|top[- ][15]|F[- ]?1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_knowledge_distillation_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_KDDIST_VID, findings=[])
+    text = parsed.full_text
+    if not _KDDIST_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_KDDIST_VID, findings=[])
+    if _KDDIST_METRICS.search(text):
+        return ValidationResult(validator_name=_KDDIST_VID, findings=[])
+    return ValidationResult(
+        validator_name=_KDDIST_VID,
+        findings=[
+            Finding(
+                code=_KDDIST_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses knowledge distillation but does not report "
+                    "student accuracy, compression ratio, or FLOPs reduction."
+                ),
+                location="full_text",
+                validator=_KDDIST_VID,
             )
         ],
     )

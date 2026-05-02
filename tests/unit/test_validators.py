@@ -33093,3 +33093,248 @@ def test_longctx550_non_empirical_no_fire() -> None:
     )
     r = validate_long_context_evaluation(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 551 – validate_continual_learning_metrics
+# ---------------------------------------------------------------------------
+def _contlearn551_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t551", source_path="t551.md", source_format="markdown",
+            title="Continual learning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_contlearn551_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_continual_learning_metrics
+    ms, cl = _contlearn551_ms("We address catastrophic forgetting in continual learning.")
+    r = validate_continual_learning_metrics(ms, cl)
+    assert any(f.code == "missing-continual-learning-metrics" for f in r.findings)
+
+
+def test_contlearn551_no_fire_when_bwt_reported() -> None:
+    from manuscript_audit.validators.core import validate_continual_learning_metrics
+    ms, cl = _contlearn551_ms("Continual learning: BWT = -2.1% on Split-CIFAR-100.")
+    r = validate_continual_learning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_contlearn551_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_continual_learning_metrics
+    ms, cl = _contlearn551_ms("We propose a one-time image classification model.")
+    r = validate_continual_learning_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_contlearn551_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_continual_learning_metrics
+    ms, _ = _contlearn551_ms("Lifelong learning theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_continual_learning_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 552 – validate_gnn_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _gnn552_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t552", source_path="t552.md", source_format="markdown",
+            title="GNN evaluation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gnn552_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_gnn_benchmark_metrics
+    ms, cl = _gnn552_ms("We propose a graph neural network for node classification.")
+    r = validate_gnn_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-gnn-benchmark-metrics" for f in r.findings)
+
+
+def test_gnn552_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_gnn_benchmark_metrics
+    ms, cl = _gnn552_ms("GNN: accuracy = 85.3% on Cora node classification.")
+    r = validate_gnn_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_gnn552_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_gnn_benchmark_metrics
+    ms, cl = _gnn552_ms("We present a convolutional neural network for images.")
+    r = validate_gnn_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_gnn552_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gnn_benchmark_metrics
+    ms, _ = _gnn552_ms("Graph convolution theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_gnn_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 553 – validate_nas_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _nas553_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t553", source_path="t553.md", source_format="markdown",
+            title="NAS evaluation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nas553_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_nas_evaluation_metrics
+    ms, cl = _nas553_ms("We apply neural architecture search with DARTS on CIFAR-10.")
+    r = validate_nas_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-nas-evaluation-metrics" for f in r.findings)
+
+
+def test_nas553_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_nas_evaluation_metrics
+    ms, cl = _nas553_ms("NAS: top-1 accuracy = 97.4% on CIFAR-10 with 600 GPU days.")
+    r = validate_nas_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_nas553_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_nas_evaluation_metrics
+    ms, cl = _nas553_ms("We propose a ResNet-50 baseline for image recognition.")
+    r = validate_nas_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_nas553_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nas_evaluation_metrics
+    ms, _ = _nas553_ms("Differentiable NAS theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_nas_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 554 – validate_contrastive_learning_evaluation
+# ---------------------------------------------------------------------------
+def _contrastive554_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t554", source_path="t554.md", source_format="markdown",
+            title="Contrastive learning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_contrastive554_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_contrastive_learning_evaluation
+    ms, cl = _contrastive554_ms("We propose a SimCLR-based contrastive pre-training approach.")
+    r = validate_contrastive_learning_evaluation(ms, cl)
+    assert any(f.code == "missing-contrastive-learning-evaluation" for f in r.findings)
+
+
+def test_contrastive554_no_fire_when_linear_eval_reported() -> None:
+    from manuscript_audit.validators.core import validate_contrastive_learning_evaluation
+    ms, cl = _contrastive554_ms(
+        "Contrastive learning: linear evaluation top-1 accuracy = 73.2% on ImageNet."
+    )
+    r = validate_contrastive_learning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_contrastive554_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_contrastive_learning_evaluation
+    ms, cl = _contrastive554_ms("We present a supervised object detection model.")
+    r = validate_contrastive_learning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_contrastive554_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_contrastive_learning_evaluation
+    ms, _ = _contrastive554_ms("Contrastive loss theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_contrastive_learning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 555 – validate_knowledge_distillation_evaluation
+# ---------------------------------------------------------------------------
+def _kddist555_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t555", source_path="t555.md", source_format="markdown",
+            title="Knowledge distillation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_kddist555_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_evaluation
+    ms, cl = _kddist555_ms(
+        "We apply knowledge distillation from a BERT teacher to a student model."
+    )
+    r = validate_knowledge_distillation_evaluation(ms, cl)
+    assert any(f.code == "missing-knowledge-distillation-evaluation" for f in r.findings)
+
+
+def test_kddist555_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_evaluation
+    ms, cl = _kddist555_ms(
+        "Knowledge distillation: student accuracy = 88.6% with 3x compression ratio."
+    )
+    r = validate_knowledge_distillation_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_kddist555_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_evaluation
+    ms, cl = _kddist555_ms("We introduce a point cloud processing network.")
+    r = validate_knowledge_distillation_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_kddist555_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_knowledge_distillation_evaluation
+    ms, _ = _kddist555_ms("Soft label distillation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_knowledge_distillation_evaluation(ms, cl)
+    assert r.findings == []
