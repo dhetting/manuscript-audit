@@ -6862,6 +6862,11 @@ def run_deterministic_validators(
         validate_reflexivity_statement(parsed, classification),
         validate_negative_case_analysis(parsed, classification),
         validate_thick_description_transferability(parsed, classification),
+        validate_mixed_methods_design_rationale(parsed, classification),
+        validate_simulation_parameter_justification(parsed, classification),
+        validate_bootstrap_sample_size(parsed, classification),
+        validate_monte_carlo_replications(parsed, classification),
+        validate_agent_based_model_validation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -21689,6 +21694,268 @@ def validate_thick_description_transferability(
                     "description to support transferability judgements. Provide thick "
                     "description of the setting, context, and participants."
                 ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 356 – mixed-methods design rationale
+# ---------------------------------------------------------------------------
+
+_MMD_TRIGGER_RE = re.compile(
+    r"\b(?:mixed[\s-]methods?|mixed[\s-]method\s+design|concurrent\s+triangulation"
+    r"|explanatory\s+sequential|exploratory\s+sequential|convergent\s+design)\b",
+    re.IGNORECASE,
+)
+
+_MMD_RATIONALE_RE = re.compile(
+    r"\b(?:rationale|because|in\s+order\s+to|to\s+(?:triangulate|explore|explain|validate)"
+    r"|chosen\s+(?:to|because)|selected\s+(?:to|because)|design\s+(?:was\s+)?(?:adopted|selected|chosen))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mixed_methods_design_rationale(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag mixed-methods designs reported without an explicit rationale.
+
+    Emits ``missing-mixed-methods-rationale`` (minor) when a mixed-methods
+    design is identified but no reason for choosing it is stated.
+    """
+    _vid = "validate_mixed_methods_design_rationale"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _MMD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _MMD_RATIONALE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-mixed-methods-rationale",
+                message=(
+                    "A mixed-methods design is mentioned but no explicit rationale "
+                    "for choosing it is provided."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 357 – simulation parameter justification
+# ---------------------------------------------------------------------------
+
+_SIM_TRIGGER_RE = re.compile(
+    r"\b(?:simulation\s+(?:study|experiment|analysis)|Monte\s+Carlo\s+simulation"
+    r"|agent[\s-]based\s+simulation|discrete[\s-]event\s+simulation"
+    r"|stochastic\s+simulation)\b",
+    re.IGNORECASE,
+)
+
+_SIM_PARAMS_RE = re.compile(
+    r"\b(?:parameters?\s+(?:were\s+)?(?:set|chosen|selected|calibrated|justified)"
+    r"|parameter\s+(?:values?|settings?|choices?)"
+    r"|based\s+on\s+(?:prior|published|empirical)\s+(?:literature|data|studies?)"
+    r"|calibrated\s+to|justified\s+by)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_simulation_parameter_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag simulation studies that do not justify their parameter values.
+
+    Emits ``missing-simulation-parameters`` (minor) when a simulation study
+    is identified but no justification for parameter choices is provided.
+    """
+    _vid = "validate_simulation_parameter_justification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _SIM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SIM_PARAMS_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-simulation-parameters",
+                message=(
+                    "A simulation study is described but no justification for the "
+                    "simulation parameter values is provided."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 358 – bootstrap sample size
+# ---------------------------------------------------------------------------
+
+_BOOT_TRIGGER_RE = re.compile(
+    r"\b(?:bootstrapp?ing|bootstrap\s+(?:resampl|sample|procedure|method|confidence"
+    r"|standard\s+error)|percentile\s+bootstrap|bias[\s-]corrected\s+bootstrap)\b",
+    re.IGNORECASE,
+)
+
+_BOOT_SIZE_RE = re.compile(
+    r"(?:\d[\d,]*\s+bootstrap\s+(?:samples?|replications?|iterations?)"
+    r"|bootstrap(?:ped)?\s+(?:with|using)\s+\d[\d,]*"
+    r"|B\s*=\s*\d[\d,]*"
+    r"|number\s+of\s+bootstrap\s+(?:samples?|replications?)\s+(?:was|were|set\s+to)\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_bootstrap_sample_size(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag bootstrapping without reporting the number of samples.
+
+    Emits ``missing-bootstrap-sample-size`` (minor) when bootstrapping is used
+    but the number of bootstrap samples or replications is not stated.
+    """
+    _vid = "validate_bootstrap_sample_size"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _BOOT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _BOOT_SIZE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-bootstrap-sample-size",
+                message=(
+                    "Bootstrapping is mentioned but the number of bootstrap samples "
+                    "or replications is not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 359 – Monte Carlo replications
+# ---------------------------------------------------------------------------
+
+_MC_TRIGGER_RE = re.compile(
+    r"\b(?:Monte\s+Carlo|MCMC|Markov\s+chain\s+Monte\s+Carlo)\b",
+    re.IGNORECASE,
+)
+
+_MC_REPS_RE = re.compile(
+    r"(?:\d[\d,]*\s+(?:Monte\s+Carlo\s+)?(?:replications?|iterations?|simulations?|draws?)"
+    r"|(?:replications?|iterations?|simulations?)\s*=\s*\d[\d,]*"
+    r"|R\s*=\s*\d[\d,]*\s+replications?"
+    r"|number\s+of\s+(?:replications?|iterations?|simulations?)\s+(?:was|were|set\s+to)\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_monte_carlo_replications(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Monte Carlo studies without reporting replication counts.
+
+    Emits ``missing-monte-carlo-replications`` (minor) when Monte Carlo or
+    MCMC methods are mentioned but the number of replications or iterations
+    is not stated.
+    """
+    _vid = "validate_monte_carlo_replications"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _MC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _MC_REPS_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-monte-carlo-replications",
+                message=(
+                    "Monte Carlo or MCMC methods are mentioned but the number of "
+                    "replications or iterations is not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 360 – agent-based model validation
+# ---------------------------------------------------------------------------
+
+_ABM_TRIGGER_RE = re.compile(
+    r"\b(?:agent[\s-]based\s+model(?:ling|ing|s?)?"
+    r"|ABM\b"
+    r"|multi[\s-]agent\s+(?:simulation|model))\b",
+    re.IGNORECASE,
+)
+
+_ABM_VALIDATION_RE = re.compile(
+    r"\b(?:model\s+(?:validation|verification|calibration)"
+    r"|face\s+validity"
+    r"|empirical\s+validation"
+    r"|calibrated\s+(?:against|to)\s+(?:empirical|real|observed)"
+    r"|validated\s+(?:against|by|using)"
+    r"|ODD\s+protocol)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_agent_based_model_validation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag agent-based models without a validation or calibration procedure.
+
+    Emits ``missing-abm-validation`` (minor) when an ABM is described but
+    no validation, verification, or calibration procedure is reported.
+    """
+    _vid = "validate_agent_based_model_validation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ABM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ABM_VALIDATION_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-abm-validation",
+                message=(
+                    "An agent-based model (ABM) is described but no model validation "
+                    "or calibration procedure is reported."
+                ),
+                severity="minor",
                 validator=_vid,
             )
         ],

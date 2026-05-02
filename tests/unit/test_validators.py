@@ -21145,3 +21145,333 @@ def test_no_transferability_concern_no_fire() -> None:
     )
     result = validate_thick_description_transferability(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 356 – validate_mixed_methods_design_rationale
+# ---------------------------------------------------------------------------
+
+def _mmdr356_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mmdr356",
+            source_path="/tmp/mmdr356.md",
+            source_format="markdown",
+            title="Mixed Methods Rationale Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mixed_methods_without_rationale_fires() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_design_rationale
+
+    ms, cl = _mmdr356_ms(
+        "We used an explanatory sequential mixed-methods design for this study."
+    )
+    result = validate_mixed_methods_design_rationale(ms, cl)
+    assert any(f.code == "missing-mixed-methods-rationale" for f in result.findings)
+
+
+def test_mixed_methods_with_rationale_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_design_rationale
+
+    ms, cl = _mmdr356_ms(
+        "We used an explanatory sequential mixed-methods design because "
+        "qualitative data was needed to explain the quantitative results."
+    )
+    result = validate_mixed_methods_design_rationale(ms, cl)
+    assert result.findings == []
+
+
+def test_mixed_methods_rationale_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_design_rationale
+
+    ms, cl = _mmdr356_ms("We used an exploratory sequential mixed-methods design.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_mixed_methods_design_rationale(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mixed_methods_trigger_no_fire_rationale() -> None:
+    from manuscript_audit.validators.core import validate_mixed_methods_design_rationale
+
+    ms, cl = _mmdr356_ms(
+        "We used a purely quantitative survey design with Likert items."
+    )
+    result = validate_mixed_methods_design_rationale(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 357 – validate_simulation_parameter_justification
+# ---------------------------------------------------------------------------
+
+def _spj357_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-spj357",
+            source_path="/tmp/spj357.md",
+            source_format="markdown",
+            title="Simulation Parameter Justification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_simulation_without_param_justification_fires() -> None:
+    from manuscript_audit.validators.core import validate_simulation_parameter_justification
+
+    ms, cl = _spj357_ms(
+        "A Monte Carlo simulation study was conducted to assess estimator performance."
+    )
+    result = validate_simulation_parameter_justification(ms, cl)
+    assert any(f.code == "missing-simulation-parameters" for f in result.findings)
+
+
+def test_simulation_with_param_justification_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_simulation_parameter_justification
+
+    ms, cl = _spj357_ms(
+        "A Monte Carlo simulation study was conducted. Parameter values were "
+        "calibrated to match empirical data from the literature."
+    )
+    result = validate_simulation_parameter_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_simulation_param_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_simulation_parameter_justification
+
+    ms, cl = _spj357_ms("A simulation study was conducted to assess power.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_simulation_parameter_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_simulation_trigger_no_fire_params() -> None:
+    from manuscript_audit.validators.core import validate_simulation_parameter_justification
+
+    ms, cl = _spj357_ms(
+        "We used maximum likelihood estimation to fit the model."
+    )
+    result = validate_simulation_parameter_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 358 – validate_bootstrap_sample_size
+# ---------------------------------------------------------------------------
+
+def _bss358_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bss358",
+            source_path="/tmp/bss358.md",
+            source_format="markdown",
+            title="Bootstrap Sample Size Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bootstrap_without_sample_size_fires() -> None:
+    from manuscript_audit.validators.core import validate_bootstrap_sample_size
+
+    ms, cl = _bss358_ms(
+        "Bootstrapping was used to estimate confidence intervals for the effect size."
+    )
+    result = validate_bootstrap_sample_size(ms, cl)
+    assert any(f.code == "missing-bootstrap-sample-size" for f in result.findings)
+
+
+def test_bootstrap_with_sample_size_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bootstrap_sample_size
+
+    ms, cl = _bss358_ms(
+        "Bootstrapping was used with 10,000 bootstrap samples to estimate "
+        "95% confidence intervals."
+    )
+    result = validate_bootstrap_sample_size(ms, cl)
+    assert result.findings == []
+
+
+def test_bootstrap_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bootstrap_sample_size
+
+    ms, cl = _bss358_ms("Bootstrapping was used to estimate confidence intervals.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_bootstrap_sample_size(ms, cl)
+    assert result.findings == []
+
+
+def test_no_bootstrap_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bootstrap_sample_size
+
+    ms, cl = _bss358_ms(
+        "We used Bayesian credible intervals estimated via posterior samples."
+    )
+    result = validate_bootstrap_sample_size(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 359 – validate_monte_carlo_replications
+# ---------------------------------------------------------------------------
+
+def _mcr359_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mcr359",
+            source_path="/tmp/mcr359.md",
+            source_format="markdown",
+            title="Monte Carlo Replications Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_monte_carlo_without_replications_fires() -> None:
+    from manuscript_audit.validators.core import validate_monte_carlo_replications
+
+    ms, cl = _mcr359_ms(
+        "Monte Carlo simulation was used to evaluate the estimator's performance."
+    )
+    result = validate_monte_carlo_replications(ms, cl)
+    assert any(f.code == "missing-monte-carlo-replications" for f in result.findings)
+
+
+def test_monte_carlo_with_replications_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_monte_carlo_replications
+
+    ms, cl = _mcr359_ms(
+        "Monte Carlo simulation was used with 5,000 replications to evaluate "
+        "the estimator's performance."
+    )
+    result = validate_monte_carlo_replications(ms, cl)
+    assert result.findings == []
+
+
+def test_monte_carlo_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_monte_carlo_replications
+
+    ms, cl = _mcr359_ms("Monte Carlo simulation was used to assess power.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_monte_carlo_replications(ms, cl)
+    assert result.findings == []
+
+
+def test_no_monte_carlo_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_monte_carlo_replications
+
+    ms, cl = _mcr359_ms(
+        "We estimated parameters using ordinary least squares regression."
+    )
+    result = validate_monte_carlo_replications(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 360 – validate_agent_based_model_validation
+# ---------------------------------------------------------------------------
+
+def _abm360_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-abm360",
+            source_path="/tmp/abm360.md",
+            source_format="markdown",
+            title="ABM Validation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_abm_without_validation_fires() -> None:
+    from manuscript_audit.validators.core import validate_agent_based_model_validation
+
+    ms, cl = _abm360_ms(
+        "An agent-based model was developed to simulate disease spread in the population."
+    )
+    result = validate_agent_based_model_validation(ms, cl)
+    assert any(f.code == "missing-abm-validation" for f in result.findings)
+
+
+def test_abm_with_validation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_agent_based_model_validation
+
+    ms, cl = _abm360_ms(
+        "An agent-based model was developed and validated against empirical data "
+        "from three prior studies."
+    )
+    result = validate_agent_based_model_validation(ms, cl)
+    assert result.findings == []
+
+
+def test_abm_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_agent_based_model_validation
+
+    ms, cl = _abm360_ms("An agent-based model was developed to simulate behaviour.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_agent_based_model_validation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_abm_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_agent_based_model_validation
+
+    ms, cl = _abm360_ms(
+        "We used a compartmental SEIR model implemented in differential equations."
+    )
+    result = validate_agent_based_model_validation(ms, cl)
+    assert result.findings == []
