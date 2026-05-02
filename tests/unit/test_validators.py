@@ -35563,3 +35563,258 @@ def test_stereomatch600_non_empirical_no_fire() -> None:
     )
     r = validate_stereo_matching_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 601 – validate_scene_flow_estimation_metrics
+# ---------------------------------------------------------------------------
+def _sceneflow601_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t601", source_path="t601.md", source_format="markdown",
+            title="Scene flow estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sceneflow601_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_scene_flow_estimation_metrics
+    ms, cl = _sceneflow601_ms(
+        "We propose a LiDAR scene flow model for 3D motion estimation."
+    )
+    r = validate_scene_flow_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-scene-flow-estimation-metrics" for f in r.findings)
+
+
+def test_sceneflow601_no_fire_when_epe3d_reported() -> None:
+    from manuscript_audit.validators.core import validate_scene_flow_estimation_metrics
+    ms, cl = _sceneflow601_ms("Scene flow: EPE3D = 0.071 m on the FlyingThings3D benchmark.")
+    r = validate_scene_flow_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_sceneflow601_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_scene_flow_estimation_metrics
+    ms, cl = _sceneflow601_ms("We present a chart QA model.")
+    r = validate_scene_flow_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_sceneflow601_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scene_flow_estimation_metrics
+    ms, _ = _sceneflow601_ms("Point cloud scene flow theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_scene_flow_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 602 – validate_monocular_depth_estimation_metrics
+# ---------------------------------------------------------------------------
+def _monodepth602_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t602", source_path="t602.md", source_format="markdown",
+            title="Monocular depth estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_monodepth602_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_monocular_depth_estimation_metrics
+    ms, cl = _monodepth602_ms(
+        "We propose a self-supervised depth model evaluated on KITTI depth."
+    )
+    r = validate_monocular_depth_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-monocular-depth-estimation-metrics" for f in r.findings)
+
+
+def test_monodepth602_no_fire_when_absrel_reported() -> None:
+    from manuscript_audit.validators.core import validate_monocular_depth_estimation_metrics
+    ms, cl = _monodepth602_ms(
+        "Monocular depth estimation: AbsRel = 0.058, RMSE = 2.21 on KITTI."
+    )
+    r = validate_monocular_depth_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_monodepth602_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_monocular_depth_estimation_metrics
+    ms, cl = _monodepth602_ms("We study multilingual machine translation.")
+    r = validate_monocular_depth_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_monodepth602_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_monocular_depth_estimation_metrics
+    ms, _ = _monodepth602_ms("Single-image depth prediction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_monocular_depth_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 603 – validate_surface_normal_estimation_metrics
+# ---------------------------------------------------------------------------
+def _surfnormal603_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t603", source_path="t603.md", source_format="markdown",
+            title="Surface normal estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_surfnormal603_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_surface_normal_estimation_metrics
+    ms, cl = _surfnormal603_ms(
+        "We propose a surface normal prediction model on the NYU-Depth dataset."
+    )
+    r = validate_surface_normal_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-surface-normal-estimation-metrics" for f in r.findings)
+
+
+def test_surfnormal603_no_fire_when_angular_error_reported() -> None:
+    from manuscript_audit.validators.core import validate_surface_normal_estimation_metrics
+    ms, cl = _surfnormal603_ms(
+        "Surface normal estimation: mean angular error = 11.25 on NYUv2."
+    )
+    r = validate_surface_normal_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_surfnormal603_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_surface_normal_estimation_metrics
+    ms, cl = _surfnormal603_ms("We present a text-to-SQL parsing model.")
+    r = validate_surface_normal_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_surfnormal603_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_surface_normal_estimation_metrics
+    ms, _ = _surfnormal603_ms("Surface normal prediction theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_surface_normal_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 604 – validate_vpr_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _vprec604_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t604", source_path="t604.md", source_format="markdown",
+            title="Visual place recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vprec604_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_vpr_benchmark_metrics
+    ms, cl = _vprec604_ms(
+        "We propose a VPR system using NetVLAD on the Oxford RobotCar dataset."
+    )
+    r = validate_vpr_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-vpr-benchmark-metrics" for f in r.findings)
+
+
+def test_vprec604_no_fire_when_recall_reported() -> None:
+    from manuscript_audit.validators.core import validate_vpr_benchmark_metrics
+    ms, cl = _vprec604_ms("Visual place recognition: Recall@1 = 87.3% on Pittsburgh30k.")
+    r = validate_vpr_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vprec604_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_vpr_benchmark_metrics
+    ms, cl = _vprec604_ms("We study stereo matching approaches.")
+    r = validate_vpr_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vprec604_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vpr_benchmark_metrics
+    ms, _ = _vprec604_ms("Image-based localization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_vpr_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 605 – validate_camera_relocalization_metrics
+# ---------------------------------------------------------------------------
+def _camloc605_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t605", source_path="t605.md", source_format="markdown",
+            title="Camera relocalization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_camloc605_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_camera_relocalization_metrics
+    ms, cl = _camloc605_ms(
+        "We propose a camera pose estimation model on the 7-Scenes dataset."
+    )
+    r = validate_camera_relocalization_metrics(ms, cl)
+    assert any(f.code == "missing-camera-relocalization-metrics" for f in r.findings)
+
+
+def test_camloc605_no_fire_when_trans_error_reported() -> None:
+    from manuscript_audit.validators.core import validate_camera_relocalization_metrics
+    ms, cl = _camloc605_ms(
+        "Camera relocalization: median translation error = 0.02 m on 7-Scenes."
+    )
+    r = validate_camera_relocalization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_camloc605_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_camera_relocalization_metrics
+    ms, cl = _camloc605_ms("We present a video dense captioning model.")
+    r = validate_camera_relocalization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_camloc605_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_camera_relocalization_metrics
+    ms, _ = _camloc605_ms("Scene coordinate regression theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_camera_relocalization_metrics(ms, cl)
+    assert r.findings == []

@@ -7107,6 +7107,12 @@ def run_deterministic_validators(
         validate_pedestrian_detection_metrics(parsed, classification),
         validate_optical_flow_estimation_metrics(parsed, classification),
         validate_stereo_matching_metrics(parsed, classification),
+        validate_scene_flow_estimation_metrics(parsed, classification),
+        validate_monocular_depth_estimation_metrics(parsed, classification),
+        validate_surface_normal_estimation_metrics(parsed, classification),
+        validate_visual_place_recognition_metrics(parsed, classification),
+        validate_vpr_benchmark_metrics(parsed, classification),
+        validate_camera_relocalization_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -33711,6 +33717,242 @@ def validate_stereo_matching_metrics(
                 ),
                 location="full_text",
                 validator=_STEREOMATCH_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 601 – scene flow estimation evaluation
+# ---------------------------------------------------------------------------
+_SCENEFLOW_VID = "missing-scene-flow-estimation-metrics"
+
+_SCENEFLOW_TRIGGERS = re.compile(
+    r"\b(?:scene\s+flow\s+estimation|4D\s+flow|3D\s+motion\s+estimation|"
+    r"LiDAR\s+scene\s+flow|point\s+cloud\s+scene\s+flow|FlowNet3D)\b",
+    re.IGNORECASE,
+)
+_SCENEFLOW_METRICS = re.compile(
+    r"\b(?:EPE3D|AccS|AccR|outlier\s+ratio|end[- ]point\s+error|"
+    r"dynamic\s+EPE|static\s+EPE)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:EPE3D|AccS|AccR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_scene_flow_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SCENEFLOW_VID, findings=[])
+    text = parsed.full_text
+    if not _SCENEFLOW_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SCENEFLOW_VID, findings=[])
+    if _SCENEFLOW_METRICS.search(text):
+        return ValidationResult(validator_name=_SCENEFLOW_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SCENEFLOW_VID,
+        findings=[
+            Finding(
+                code=_SCENEFLOW_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses scene flow estimation but does not report "
+                    "EPE3D, AccS, AccR, or outlier ratio."
+                ),
+                location="full_text",
+                validator=_SCENEFLOW_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 602 – monocular depth estimation evaluation
+# ---------------------------------------------------------------------------
+_MONODEPTH_VID = "missing-monocular-depth-estimation-metrics"
+
+_MONODEPTH_TRIGGERS = re.compile(
+    r"\b(?:monocular\s+depth\s+estimation|single[- ]image\s+depth|"
+    r"self[- ]supervised\s+depth|NYU(?:[- ]Depth)?v2|KITTI\s+depth)\b",
+    re.IGNORECASE,
+)
+_MONODEPTH_METRICS = re.compile(
+    r"\b(?:AbsRel|SqRel|RMSE(?:\s*log)?|delta\s*<\s*[0-9.]+|"
+    r"threshold\s+accuracy|mean\s+absolute\s+relative)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:AbsRel|SqRel|RMSE)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_monocular_depth_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MONODEPTH_VID, findings=[])
+    text = parsed.full_text
+    if not _MONODEPTH_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MONODEPTH_VID, findings=[])
+    if _MONODEPTH_METRICS.search(text):
+        return ValidationResult(validator_name=_MONODEPTH_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MONODEPTH_VID,
+        findings=[
+            Finding(
+                code=_MONODEPTH_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses monocular depth estimation but does not "
+                    "report AbsRel, SqRel, RMSE, or threshold accuracy."
+                ),
+                location="full_text",
+                validator=_MONODEPTH_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 603 – surface normal estimation evaluation
+# ---------------------------------------------------------------------------
+_SURFNORMAL_VID = "missing-surface-normal-estimation-metrics"
+
+_SURFNORMAL_TRIGGERS = re.compile(
+    r"\b(?:surface\s+normal\s+estimation|normal\s+prediction|"
+    r"surface\s+normal\s+prediction|3D\s+surface\s+orientation|"
+    r"depth-to-normal|point\s+cloud\s+normal)\b",
+    re.IGNORECASE,
+)
+_SURFNORMAL_METRICS = re.compile(
+    r"\b(?:mean\s+angular\s+error|median\s+angular\s+error|"
+    r"within\s+[0-9]+\s+degree|11\.25|22\.5|30\s+deg)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:angular\s+error|within\s+[0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_surface_normal_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SURFNORMAL_VID, findings=[])
+    text = parsed.full_text
+    if not _SURFNORMAL_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SURFNORMAL_VID, findings=[])
+    if _SURFNORMAL_METRICS.search(text):
+        return ValidationResult(validator_name=_SURFNORMAL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SURFNORMAL_VID,
+        findings=[
+            Finding(
+                code=_SURFNORMAL_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses surface normal estimation but does not "
+                    "report mean/median angular error or within-N-degree accuracy."
+                ),
+                location="full_text",
+                validator=_SURFNORMAL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 604 – visual place recognition evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_VPREC604_VID = "missing-vpr-benchmark-metrics"
+
+_VPREC604_TRIGGERS = re.compile(
+    r"\b(?:visual\s+place\s+recognition|VPR\s+(?:benchmark|system)|"
+    r"image[- ]based\s+localization|loop\s+closure\s+detection|"
+    r"Oxford\s+RobotCar|Pittsburgh30k|NetVLAD)\b",
+    re.IGNORECASE,
+)
+_VPREC604_METRICS = re.compile(
+    r"\b(?:Recall@[0-9]+|R@[0-9]+|AP|mAP|accuracy|"
+    r"localization\s+accuracy)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:Recall@[0-9]+|R@[0-9]+|AP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_vpr_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VPREC604_VID, findings=[])
+    text = parsed.full_text
+    if not _VPREC604_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VPREC604_VID, findings=[])
+    if _VPREC604_METRICS.search(text):
+        return ValidationResult(validator_name=_VPREC604_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VPREC604_VID,
+        findings=[
+            Finding(
+                code=_VPREC604_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses visual place recognition but does not "
+                    "report Recall@k, AP, or localization accuracy."
+                ),
+                location="full_text",
+                validator=_VPREC604_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 605 – camera relocalization evaluation
+# ---------------------------------------------------------------------------
+_CAMLOC_VID = "missing-camera-relocalization-metrics"
+
+_CAMLOC_TRIGGERS = re.compile(
+    r"\b(?:camera\s+relocalization|visual\s+localization|camera\s+pose\s+estimation|"
+    r"scene\s+coordinate\s+regression|7[- ]Scenes\s+(?:dataset|benchmark)|"
+    r"Cambridge\s+Landmarks)\b",
+    re.IGNORECASE,
+)
+_CAMLOC_METRICS = re.compile(
+    r"\b(?:median\s+(?:translation|rotation)\s+error|"
+    r"translation\s+error|rotation\s+error|cm[,/]\s*deg|"
+    r"localization\s+accuracy)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:translation\s+error|rotation\s+error)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_camera_relocalization_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CAMLOC_VID, findings=[])
+    text = parsed.full_text
+    if not _CAMLOC_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CAMLOC_VID, findings=[])
+    if _CAMLOC_METRICS.search(text):
+        return ValidationResult(validator_name=_CAMLOC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CAMLOC_VID,
+        findings=[
+            Finding(
+                code=_CAMLOC_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses camera relocalization but does not report "
+                    "median translation/rotation error on 7-Scenes or Cambridge Landmarks."
+                ),
+                location="full_text",
+                validator=_CAMLOC_VID,
             )
         ],
     )
