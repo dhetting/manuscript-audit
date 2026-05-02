@@ -6937,6 +6937,11 @@ def run_deterministic_validators(
         validate_gwr_bandwidth_specification(parsed, classification),
         validate_spatial_panel_fe_re_selection(parsed, classification),
         validate_coordinate_reference_system_disclosure(parsed, classification),
+        validate_annotation_agreement_reporting(parsed, classification),
+        validate_crowdsourcing_quality_control(parsed, classification),
+        validate_active_learning_strategy(parsed, classification),
+        validate_sequence_labeling_evaluation(parsed, classification),
+        validate_nlp_heldout_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -25656,6 +25661,253 @@ def validate_coordinate_reference_system_disclosure(
                     "reference system or map projection was not disclosed."
                 ),
                 severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 431 – Annotation agreement reporting
+# ---------------------------------------------------------------------------
+
+_ANNOT_TRIGGER_RE = re.compile(
+    r"\b(?:annotation|human\s+(?:labeling|annotation|judgment)|"
+    r"manual(?:ly)?\s+(?:labeling|annotation|coding|label(?:ed|ing)|annotated?|coded?)|"
+    r"crowd[- ]?sourced\s+label|annotators?\s+(?:agreement|reliability)|"
+    r"gold\s+standard\s+label)\b",
+    re.IGNORECASE,
+)
+_ANNOT_AGREEMENT_RE = re.compile(
+    r"\b(?:inter[- ]annotator\s+agreement|inter[- ]rater\s+(?:agreement|reliability)|"
+    r"Cohen.s\s+kappa|Fleiss.s\s+kappa|Krippendorff.s\s+alpha|"
+    r"agreement\s+rate|percent\s+agreement|"
+    r"annotation\s+agreement\s+(?:was|of))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_annotation_agreement_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_annotation_agreement_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _ANNOT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ANNOT_AGREEMENT_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-annotation-agreement",
+                message=(
+                    "Manual annotation or labeling was used but inter-annotator "
+                    "agreement was not reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 432 – Crowdsourcing quality control
+# ---------------------------------------------------------------------------
+
+_CROWD_TRIGGER_RE = re.compile(
+    r"\b(?:crowd[- ]?sourc(?:ing|ed)|Amazon\s+Mechanical\s+Turk|MTurk|"
+    r"Prolific|Figure\s+Eight|Appen|crowdwork(?:ers?)?|"
+    r"crowd[- ]sourced\s+(?:annotation|label|data))\b",
+    re.IGNORECASE,
+)
+_CROWD_QC_RE = re.compile(
+    r"\b(?:attention\s+check|gold\s+standard\s+(?:question|item)|"
+    r"qualification\s+test|worker\s+(?:qualification|screening|filter)|"
+    r"spam\s+(?:detection|filter)|catch\s+trial|"
+    r"quality\s+control|data\s+quality\s+(?:check|filter|screening)|"
+    r"reject(?:ed|ion)\s+(?:of\s+)?(?:low|poor)[- ]quality\s+(?:responses?|workers?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_crowdsourcing_quality_control(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_crowdsourcing_quality_control"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CROWD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CROWD_QC_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-crowdsourcing-qc",
+                message=(
+                    "Crowdsourcing was used for data collection but quality control "
+                    "procedures (attention checks, worker qualifications) were not described."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 433 – Active learning strategy disclosure
+# ---------------------------------------------------------------------------
+
+_ACTIVE_LEARN_TRIGGER_RE = re.compile(
+    r"\b(?:active\s+learning|query\s+(?:strategy|by\s+committee)|"
+    r"pool[- ]based\s+sampling|uncertainty\s+sampling|"
+    r"query\s+selection\s+(?:strategy|method)|"
+    r"human[- ]in[- ]the[- ]loop\s+learning)\b",
+    re.IGNORECASE,
+)
+_ACTIVE_LEARN_DISCLOSED_RE = re.compile(
+    r"\b(?:query\s+strategy\s+(?:was|is)|"
+    r"uncertainty\s+(?:sampling|measure|score)\s+(?:was|is)|"
+    r"query\s+(?:criterion|selection\s+criterion)|"
+    r"least\s+confident\s+sampling|"
+    r"margin\s+sampling|entropy\s+sampling|"
+    r"expected\s+model\s+change|"
+    r"stopping\s+(?:criterion|rule)\s+for\s+active)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_active_learning_strategy(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_active_learning_strategy"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _ACTIVE_LEARN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ACTIVE_LEARN_DISCLOSED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-active-learning-strategy",
+                message=(
+                    "Active learning was used but the query strategy and stopping "
+                    "criterion were not described."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 434 – Sequence labeling evaluation metrics
+# ---------------------------------------------------------------------------
+
+_SEQ_LABEL_TRIGGER_RE = re.compile(
+    r"\b(?:sequence\s+(?:labeling|tagging|classification)|"
+    r"named\s+entity\s+recognition|NER|"
+    r"part[- ]of[- ]speech\s+tagging|POS\s+tagging|"
+    r"chunking|slot\s+filling|"
+    r"token\s+(?:classification|labeling))\b",
+    re.IGNORECASE,
+)
+_SEQ_LABEL_EVAL_RE = re.compile(
+    r"\b(?:entity[- ]level\s+(?:F1|precision|recall)|"
+    r"token[- ]level\s+(?:F1|precision|recall)|"
+    r"CoNLL\s+(?:evaluation|F1|score)|"
+    r"span[- ]based\s+(?:F1|evaluation)|"
+    r"exact\s+match\s+F1|"
+    r"micro[- ]F1|macro[- ]F1|weighted\s+F1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sequence_labeling_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_sequence_labeling_evaluation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _SEQ_LABEL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SEQ_LABEL_EVAL_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-sequence-labeling-evaluation",
+                message=(
+                    "Sequence labeling (NER, POS tagging) was performed but "
+                    "entity-level or token-level F1 metrics were not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 435 – NLP evaluation on held-out test set
+# ---------------------------------------------------------------------------
+
+_NLP_EVAL_TRIGGER_RE = re.compile(
+    r"\b(?:natural\s+language\s+processing|NLP\s+(?:model|system|pipeline)|"
+    r"text\s+classification|sentiment\s+analysis|"
+    r"machine\s+translation|question\s+answering|"
+    r"text\s+generation|summarization\s+model)\b",
+    re.IGNORECASE,
+)
+_NLP_HELDOUT_RE = re.compile(
+    r"\b(?:held[- ]out\s+(?:test\s+set|evaluation|data)|"
+    r"test\s+set\s+(?:evaluation|performance|results?)|"
+    r"blind\s+(?:test|evaluation)|"
+    r"official\s+(?:test\s+set|benchmark|split)|"
+    r"final\s+(?:test|held[- ]out)\s+(?:performance|evaluation|results?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_nlp_heldout_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_nlp_heldout_evaluation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _NLP_EVAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _NLP_HELDOUT_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-nlp-heldout-evaluation",
+                message=(
+                    "An NLP model was evaluated but results on a held-out test "
+                    "set were not reported."
+                ),
+                severity="moderate",
                 validator=_vid,
             )
         ],

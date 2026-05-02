@@ -26144,3 +26144,339 @@ def test_no_geodata_trigger_no_fire() -> None:
     )
     result = validate_coordinate_reference_system_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 431 – validate_annotation_agreement_reporting
+# ---------------------------------------------------------------------------
+
+def _ann431_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ann431",
+            source_path="/tmp/ann431.md",
+            source_format="markdown",
+            title="Annotation Agreement Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_annotation_without_agreement_fires() -> None:
+    from manuscript_audit.validators.core import validate_annotation_agreement_reporting
+
+    ms, cl = _ann431_ms(
+        "Two annotators manually labeled 500 sentences for sentiment polarity."
+    )
+    result = validate_annotation_agreement_reporting(ms, cl)
+    assert any(f.code == "missing-annotation-agreement" for f in result.findings)
+
+
+def test_annotation431_with_kappa_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_annotation_agreement_reporting
+
+    ms, cl = _ann431_ms(
+        "Two annotators manually labeled 500 sentences. "
+        "Inter-annotator agreement was assessed using Cohen's kappa (κ=.82)."
+    )
+    result = validate_annotation_agreement_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_annotation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_annotation_agreement_reporting
+
+    ms, cl = _ann431_ms("Two annotators manually labeled 500 sentences for sentiment.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_annotation_agreement_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_annotation_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_annotation_agreement_reporting
+
+    ms, cl = _ann431_ms(
+        "We used a supervised machine learning model trained on existing labels."
+    )
+    result = validate_annotation_agreement_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 432 – validate_crowdsourcing_quality_control
+# ---------------------------------------------------------------------------
+
+def _crowd432_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-crowd432",
+            source_path="/tmp/crowd432.md",
+            source_format="markdown",
+            title="Crowdsourcing QC Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mturk_without_qc_fires() -> None:
+    from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
+
+    ms, cl = _crowd432_ms(
+        "Data were collected via Amazon Mechanical Turk from 500 participants."
+    )
+    result = validate_crowdsourcing_quality_control(ms, cl)
+    assert any(f.code == "missing-crowdsourcing-qc" for f in result.findings)
+
+
+def test_mturk_with_qc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
+
+    ms, cl = _crowd432_ms(
+        "Data were collected via Amazon Mechanical Turk. Attention checks were "
+        "included and responses failing quality control were excluded."
+    )
+    result = validate_crowdsourcing_quality_control(ms, cl)
+    assert result.findings == []
+
+
+def test_crowdsourcing_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
+
+    ms, cl = _crowd432_ms(
+        "Data were collected via Amazon Mechanical Turk from 500 participants."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_crowdsourcing_quality_control(ms, cl)
+    assert result.findings == []
+
+
+def test_no_crowdsourcing_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
+
+    ms, cl = _crowd432_ms(
+        "We recruited participants from a university participant pool."
+    )
+    result = validate_crowdsourcing_quality_control(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 433 – validate_active_learning_strategy
+# ---------------------------------------------------------------------------
+
+def _al433_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-al433",
+            source_path="/tmp/al433.md",
+            source_format="markdown",
+            title="Active Learning Strategy Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_active_learning_without_strategy_fires() -> None:
+    from manuscript_audit.validators.core import validate_active_learning_strategy
+
+    ms, cl = _al433_ms(
+        "Active learning was used to iteratively label the most informative samples."
+    )
+    result = validate_active_learning_strategy(ms, cl)
+    assert any(f.code == "missing-active-learning-strategy" for f in result.findings)
+
+
+def test_active_learning_with_strategy_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_active_learning_strategy
+
+    ms, cl = _al433_ms(
+        "Active learning was used with an uncertainty sampling query strategy. "
+        "The least confident sampling criterion was used to select annotations."
+    )
+    result = validate_active_learning_strategy(ms, cl)
+    assert result.findings == []
+
+
+def test_active_learning_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_active_learning_strategy
+
+    ms, cl = _al433_ms(
+        "Active learning was used to label the most informative samples."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_active_learning_strategy(ms, cl)
+    assert result.findings == []
+
+
+def test_no_active_learning_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_active_learning_strategy
+
+    ms, cl = _al433_ms(
+        "We used a fully supervised approach with a fixed labeled dataset."
+    )
+    result = validate_active_learning_strategy(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 434 – validate_sequence_labeling_evaluation
+# ---------------------------------------------------------------------------
+
+def _sl434_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sl434",
+            source_path="/tmp/sl434.md",
+            source_format="markdown",
+            title="Sequence Labeling Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ner_without_entity_f1_fires() -> None:
+    from manuscript_audit.validators.core import validate_sequence_labeling_evaluation
+
+    ms, cl = _sl434_ms(
+        "Named entity recognition was evaluated on the test dataset."
+    )
+    result = validate_sequence_labeling_evaluation(ms, cl)
+    assert any(
+        f.code == "missing-sequence-labeling-evaluation" for f in result.findings
+    )
+
+
+def test_ner_with_conll_f1_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sequence_labeling_evaluation
+
+    ms, cl = _sl434_ms(
+        "Named entity recognition was evaluated using CoNLL F1 scoring. "
+        "The entity-level F1 score on the test set was 87.3."
+    )
+    result = validate_sequence_labeling_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_seq_label_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sequence_labeling_evaluation
+
+    ms, cl = _sl434_ms("Named entity recognition was evaluated on the test set.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sequence_labeling_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_seq_label_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sequence_labeling_evaluation
+
+    ms, cl = _sl434_ms(
+        "We used a logistic regression classifier for document-level classification."
+    )
+    result = validate_sequence_labeling_evaluation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 435 – validate_nlp_heldout_evaluation
+# ---------------------------------------------------------------------------
+
+def _nlp435_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-nlp435",
+            source_path="/tmp/nlp435.md",
+            source_format="markdown",
+            title="NLP Heldout Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nlp_without_heldout_eval_fires() -> None:
+    from manuscript_audit.validators.core import validate_nlp_heldout_evaluation
+
+    ms, cl = _nlp435_ms(
+        "A text classification model was trained and evaluated on the dataset."
+    )
+    result = validate_nlp_heldout_evaluation(ms, cl)
+    assert any(f.code == "missing-nlp-heldout-evaluation" for f in result.findings)
+
+
+def test_nlp_with_heldout_eval_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nlp_heldout_evaluation
+
+    ms, cl = _nlp435_ms(
+        "A text classification model was trained and evaluated. "
+        "Final test set evaluation was performed on the held-out test set."
+    )
+    result = validate_nlp_heldout_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_nlp_heldout_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nlp_heldout_evaluation
+
+    ms, cl = _nlp435_ms("A text classification model was trained on the corpus.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_nlp_heldout_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_nlp_eval_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nlp_heldout_evaluation
+
+    ms, cl = _nlp435_ms(
+        "We used a logistic regression to analyze survey response data."
+    )
+    result = validate_nlp_heldout_evaluation(ms, cl)
+    assert result.findings == []
