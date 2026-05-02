@@ -6787,6 +6787,11 @@ def run_deterministic_validators(
         validate_moderator_analysis_interpretation(parsed, classification),
         validate_measurement_occasion_labelling(parsed, classification),
         validate_statistical_conclusion_validity(parsed, classification),
+        validate_scale_reliability_reporting(parsed, classification),
+        validate_pilot_study_scope_limitation(parsed, classification),
+        validate_literature_search_recency(parsed, classification),
+        validate_publication_bias_acknowledgement(parsed, classification),
+        validate_replication_citation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -17183,3 +17188,287 @@ def validate_statistical_conclusion_validity(
     )
 
 
+
+
+# ---------------------------------------------------------------------------
+# Phase 281 – validate_scale_reliability_reporting
+# ---------------------------------------------------------------------------
+
+_MULTI_ITEM_SCALE_RE = re.compile(
+    r"\b(?:scale|questionnaire|inventory|measure|instrument|subscale|composite\s+score)"
+    r"\b.{0,60}\b(?:item|items|question|questions|indicator|indicators)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_RELIABILITY_REPORTED_RE = re.compile(
+    r"\b(?:Cronbach(?:'s|\s+alpha)|alpha\s*=|ω\s*=|omega\s*=|McDonald(?:'s|\s+omega)|"
+    r"coefficient\s+alpha|internal\s+consistency|reliability\s+coefficient|"
+    r"test[\s-]retest\s+reliability)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_scale_reliability_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag multi-item scale use without reliability reporting.
+
+    Emits ``missing-scale-reliability`` (minor) when a multi-item scale is
+    referenced but no reliability coefficient (e.g., Cronbach's alpha) is
+    reported.
+    """
+    _vid = "validate_scale_reliability_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _MULTI_ITEM_SCALE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _RELIABILITY_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-scale-reliability",
+                severity="minor",
+                message=(
+                    "A multi-item scale is used but no reliability coefficient "
+                    "(e.g., Cronbach's alpha, McDonald's omega) is reported. "
+                    "Include internal consistency estimates for all composite scores."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 282 – validate_pilot_study_scope_limitation
+# ---------------------------------------------------------------------------
+
+_PILOT_SCOPE_TRIGGER_RE = re.compile(
+    r"\b(?:pilot\s+(?:study|trial|test|data|sample)|"
+    r"feasibility\s+(?:study|trial)|preliminary\s+(?:study|data|findings))\b",
+    re.IGNORECASE,
+)
+_PILOT_SCOPE_CAVEAT_RE = re.compile(
+    r"\b(?:small\s+sample|limited\s+(?:sample|power|generali[sz]ability)|"
+    r"underpowered|preliminary\s+(?:evidence|finding|conclusion)|"
+    r"should\s+be\s+(?:replicated|confirmed|interpreted\s+with\s+caution)|"
+    r"caution\s+(?:is\s+warranted|should\s+be\s+exercised|in\s+interpreting)|"
+    r"exploratory\s+in\s+nature|not\s+(?:definitive|conclusive)|"
+    r"future\s+(?:studies|research|work)\s+(?:should|are\s+needed)\s+to\s+"
+    r"(?:confirm|replicate|validate))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_pilot_study_scope_limitation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag pilot studies that do not acknowledge scope limitations.
+
+    Emits ``missing-pilot-scope-limitation`` (minor) when a pilot study is
+    described without any caveat about its preliminary or limited nature.
+    """
+    _vid = "validate_pilot_study_scope_limitation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _PILOT_SCOPE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PILOT_SCOPE_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-pilot-scope-limitation",
+                severity="minor",
+                message=(
+                    "A pilot study is described but no scope or generalisability "
+                    "limitation is acknowledged. Add a caveat noting the preliminary "
+                    "nature of the findings and the need for confirmatory replication."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 283 – validate_literature_search_recency
+# ---------------------------------------------------------------------------
+
+_LIT_REVIEW_TRIGGER_RE = re.compile(
+    r"\b(?:systematic\s+review|literature\s+review|scoping\s+review|"
+    r"narrative\s+review|searched?\s+(?:the\s+)?(?:literature|databases?|"
+    r"PubMed|MEDLINE|PsycINFO|Web\s+of\s+Science|Scopus|CINAHL|EMBASE))\b",
+    re.IGNORECASE,
+)
+_SEARCH_DATE_RE = re.compile(
+    r"\b(?:search(?:es|ed)?\s+(?:was|were)?\s+(?:conducted|performed|last\s+updated|"
+    r"last\s+run|last\s+executed)\s+(?:in|on|through|up\s+to|until)|"
+    r"(?:in|through|until|up\s+to)\s+(?:January|February|March|April|May|June|"
+    r"July|August|September|October|November|December)\s+\d{4}|"
+    r"(?:in|through|until|up\s+to)\s+\d{4}|"
+    r"database\s+search(?:es)?\s+were\s+(?:last\s+)?(?:conducted|updated|run))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_literature_search_recency(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag systematic/literature reviews without a stated search date.
+
+    Emits ``missing-literature-search-date`` (minor) when a review is
+    described but no date for the literature search is reported.
+    """
+    _vid = "validate_literature_search_recency"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _LIT_REVIEW_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SEARCH_DATE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-literature-search-date",
+                severity="minor",
+                message=(
+                    "A literature search is described but no date or time window "
+                    "for the search is reported. State when the search was conducted "
+                    "or last updated to allow readers to assess recency."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 284 – validate_publication_bias_acknowledgement
+# ---------------------------------------------------------------------------
+
+_REVIEW_SYNTHESIS_RE = re.compile(
+    r"\b(?:systematic\s+review|literature\s+review|scoping\s+review|"
+    r"narrative\s+review|integrative\s+review)\b",
+    re.IGNORECASE,
+)
+_PUB_BIAS_ACKNOWLEDGED_RE = re.compile(
+    r"\b(?:publication\s+bias|reporting\s+bias|file[\s-]drawer|"
+    r"grey\s+literature|unpublished\s+(?:studies|data|results)|"
+    r"selective\s+reporting|positive\s+result\s+bias)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_publication_bias_acknowledgement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag literature reviews that do not mention publication bias.
+
+    Emits ``missing-publication-bias-acknowledgement`` (minor) when a review
+    paper is detected but publication/reporting bias is never mentioned.
+    """
+    _vid = "validate_publication_bias_acknowledgement"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _REVIEW_SYNTHESIS_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PUB_BIAS_ACKNOWLEDGED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-publication-bias-acknowledgement",
+                severity="minor",
+                message=(
+                    "A literature review is described but publication bias or "
+                    "selective reporting is not mentioned. Acknowledge the potential "
+                    "for publication bias as a limitation of the reviewed literature."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 285 – validate_replication_citation
+# ---------------------------------------------------------------------------
+
+_REPLICATION_CLAIM_RE = re.compile(
+    r"\b(?:replic(?:at(?:es?|ed|ing)|ation|ations)|"
+    r"consistent\s+with\s+(?:previous|prior|earlier)\s+(?:findings|results|work)|"
+    r"confirms?\s+(?:previous|prior|earlier)\s+(?:findings|results|reports?))\b",
+    re.IGNORECASE,
+)
+_REPLICATION_CITE_RE = re.compile(
+    r"(?:\((?:[A-Z][a-z]+(?:\s+et\s+al\.)?|[A-Z][a-z]+\s*&\s*[A-Z][a-z]+)"
+    r"(?:,\s*\d{4})+\)|"
+    r"\[(?:\d+(?:,\s*\d+)*)\])",
+    re.IGNORECASE,
+)
+
+
+def validate_replication_citation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag replication claims without a supporting citation.
+
+    Emits ``missing-replication-citation`` (minor) when the text claims
+    to replicate or confirm prior findings but no citation follows within
+    a short window.
+    """
+    _vid = "validate_replication_citation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _REPLICATION_CLAIM_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    # Check if any replication claim is followed by a citation within 120 chars
+    for m in _REPLICATION_CLAIM_RE.finditer(full):
+        window = full[m.start(): m.end() + 120]
+        if _REPLICATION_CITE_RE.search(window):
+            return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-replication-citation",
+                severity="minor",
+                message=(
+                    "The text claims to replicate or confirm prior findings but no "
+                    "supporting citation follows. Cite the original study being "
+                    "replicated or the prior findings being confirmed."
+                ),
+                validator=_vid,
+            )
+        ],
+    )

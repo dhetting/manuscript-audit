@@ -15985,3 +15985,348 @@ def test_author_contrib_no_credit_fires() -> None:
     ms, _cl = _author_contrib_ms("All authors contributed equally to this work.")
     result = validate_author_contribution_statement(ms)
     assert any(f.code == "missing-author-contributions" for f in result.findings)
+
+
+# ---------------------------------------------------------------------------
+# Phase 281 – validate_scale_reliability_reporting
+# ---------------------------------------------------------------------------
+
+def _scale_rel_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-scale-rel",
+            source_path="/tmp/scale_rel.md",
+            source_format="markdown",
+            title="Scale Reliability Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_scale281_without_reliability_fires() -> None:
+    from manuscript_audit.validators.core import validate_scale_reliability_reporting
+
+    ms, cl = _scale_rel_ms(
+        "We used the Depression Anxiety Stress Scale (21-item questionnaire). "
+        "Scores were computed by summing all items."
+    )
+    result = validate_scale_reliability_reporting(ms, cl)
+    assert any(f.code == "missing-scale-reliability" for f in result.findings)
+
+
+def test_scale_with_alpha_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scale_reliability_reporting
+
+    ms, cl = _scale_rel_ms(
+        "We used a 10-item questionnaire. Cronbach's alpha = .87 indicated "
+        "good internal consistency."
+    )
+    result = validate_scale_reliability_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_scale_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scale_reliability_reporting
+
+    ms, cl = _scale_rel_ms(
+        "Participants were randomised to conditions. Reaction time was recorded."
+    )
+    result = validate_scale_reliability_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_scale_rel_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scale_reliability_reporting
+
+    ms, cl = _scale_rel_ms(
+        "A scale of 10 items was administered without reliability reporting."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_scale_reliability_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 282 – validate_pilot_study_scope_limitation
+# ---------------------------------------------------------------------------
+
+def _pilot_scope_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pilot-scope",
+            source_path="/tmp/pilot_scope.md",
+            source_format="markdown",
+            title="Pilot Scope Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pilot_without_caveat_fires() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_scope_limitation
+
+    ms, cl = _pilot_scope_ms(
+        "We conducted a pilot study with 25 participants. Results showed "
+        "significant improvements in all primary outcomes."
+    )
+    result = validate_pilot_study_scope_limitation(ms, cl)
+    assert any(f.code == "missing-pilot-scope-limitation" for f in result.findings)
+
+
+def test_pilot_with_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_scope_limitation
+
+    ms, cl = _pilot_scope_ms(
+        "This pilot study provides preliminary evidence. Results should be "
+        "interpreted with caution due to the small sample and limited power."
+    )
+    result = validate_pilot_study_scope_limitation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pilot_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_scope_limitation
+
+    ms, cl = _pilot_scope_ms(
+        "A randomised controlled trial was conducted with 200 participants."
+    )
+    result = validate_pilot_study_scope_limitation(ms, cl)
+    assert result.findings == []
+
+
+def test_pilot_scope_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pilot_study_scope_limitation
+
+    ms, cl = _pilot_scope_ms("A pilot study design was discussed theoretically.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_pilot_study_scope_limitation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 283 – validate_literature_search_recency
+# ---------------------------------------------------------------------------
+
+def _lit_search_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-lit-search",
+            source_path="/tmp/lit_search.md",
+            source_format="markdown",
+            title="Literature Search Recency Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lit_review_without_search_date_fires() -> None:
+    from manuscript_audit.validators.core import validate_literature_search_recency
+
+    ms, cl = _lit_search_ms(
+        "We conducted a systematic review of randomised controlled trials. "
+        "We searched PubMed and PsycINFO for relevant studies."
+    )
+    result = validate_literature_search_recency(ms, cl)
+    assert any(f.code == "missing-literature-search-date" for f in result.findings)
+
+
+def test_lit_review_with_search_date_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_literature_search_recency
+
+    ms, cl = _lit_search_ms(
+        "We conducted a systematic review. The database search was last conducted "
+        "in March 2024, covering studies published from 2000 to 2024."
+    )
+    result = validate_literature_search_recency(ms, cl)
+    assert result.findings == []
+
+
+def test_no_lit_review_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_literature_search_recency
+
+    ms, cl = _lit_search_ms(
+        "This study examined treatment outcomes in a prospective cohort."
+    )
+    result = validate_literature_search_recency(ms, cl)
+    assert result.findings == []
+
+
+def test_lit_search_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_literature_search_recency
+
+    ms, cl = _lit_search_ms(
+        "A systematic review was described as an example search strategy."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_literature_search_recency(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 284 – validate_publication_bias_acknowledgement
+# ---------------------------------------------------------------------------
+
+def _pub_bias_ack_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pub-bias",
+            source_path="/tmp/pub_bias.md",
+            source_format="markdown",
+            title="Publication Bias Acknowledgement Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lit_review_without_pub_bias_fires() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_acknowledgement
+
+    ms, cl = _pub_bias_ack_ms(
+        "This systematic review synthesised the literature on cognitive behavioural "
+        "therapy. Thirty-two studies met inclusion criteria."
+    )
+    result = validate_publication_bias_acknowledgement(ms, cl)
+    assert any(
+        f.code == "missing-publication-bias-acknowledgement" for f in result.findings
+    )
+
+
+def test_lit_review_with_pub_bias_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_acknowledgement
+
+    ms, cl = _pub_bias_ack_ms(
+        "This narrative review acknowledges that publication bias may affect "
+        "the available literature, as negative results are less likely to be published."
+    )
+    result = validate_publication_bias_acknowledgement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_review_no_pub_bias_fire() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_acknowledgement
+
+    ms, cl = _pub_bias_ack_ms(
+        "We conducted an RCT comparing two treatment conditions."
+    )
+    result = validate_publication_bias_acknowledgement(ms, cl)
+    assert result.findings == []
+
+
+def test_pub_bias_ack_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_publication_bias_acknowledgement
+
+    ms, cl = _pub_bias_ack_ms(
+        "Systematic review methodology was discussed in the introduction."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_publication_bias_acknowledgement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 285 – validate_replication_citation
+# ---------------------------------------------------------------------------
+
+def _replication285_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-replication",
+            source_path="/tmp/replication.md",
+            source_format="markdown",
+            title="Replication Citation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_replication_claim_without_cite_fires() -> None:
+    from manuscript_audit.validators.core import validate_replication_citation
+
+    ms, cl = _replication285_ms(
+        "Our results replicate earlier findings on the relationship between "
+        "stress and health outcomes."
+    )
+    result = validate_replication_citation(ms, cl)
+    assert any(f.code == "missing-replication-citation" for f in result.findings)
+
+
+def test_replication_claim_with_cite_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_replication_citation
+
+    ms, cl = _replication285_ms(
+        "Our results replicate earlier findings (Smith et al., 2019) on the "
+        "relationship between stress and health outcomes."
+    )
+    result = validate_replication_citation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_replication_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_replication_citation
+
+    ms, cl = _replication285_ms(
+        "We examined the effects of a novel intervention on anxiety symptoms."
+    )
+    result = validate_replication_citation(ms, cl)
+    assert result.findings == []
+
+
+def test_replication285_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_replication_citation
+
+    ms, cl = _replication285_ms(
+        "The study replicates a well-known mathematical finding."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_replication_citation(ms, cl)
+    assert result.findings == []
