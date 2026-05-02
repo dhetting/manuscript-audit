@@ -1369,8 +1369,81 @@ HEAD: `89d9637`
   - NOTE: trigger fixed to match `text-to-video retrieval` (uses `text[- ](?:to[- ])?video`)
 - Phase 595: `validate_3d_object_detection_metrics` → `missing-3d-object-detection-metrics` (moderate)
 
-Current test count: **2166 passing** (after phase 595)
-HEAD: `3af5de2`
+**Phases 596–600** (`b6a51a4`, 2186 tests)
+- Phase 596: `validate_point_cloud_segmentation_metrics` → `missing-point-cloud-segmentation-metrics` (moderate)
+- Phase 597: `validate_lane_benchmark_metrics` → `missing-lane-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_lane_detection_metrics` — phase ~508 already defines that name
+- Phase 598: `validate_pedestrian_detection_metrics` → `missing-pedestrian-detection-metrics` (moderate)
+- Phase 599: `validate_optical_flow_estimation_metrics` → `missing-optical-flow-estimation-metrics` (moderate)
+  - NOTE: uses `_OPTFLOW599_VID` and `_OPTFLOW599_TRIGGERS` to avoid shadowing phase 501's `_OPTFLOW_VID`
+- Phase 600: `validate_stereo_matching_metrics` → `missing-stereo-matching-metrics` (moderate)
+
+**Phases 601–605** (`4954c48`, 2206 tests)
+- Phase 601: `validate_scene_flow_estimation_metrics` → `missing-scene-flow-estimation-metrics` (moderate)
+- Phase 602: `validate_monocular_depth_estimation_metrics` → `missing-monocular-depth-estimation-metrics` (moderate)
+- Phase 603: `validate_surface_normal_estimation_metrics` → `missing-surface-normal-estimation-metrics` (moderate)
+- Phase 604: `validate_vpr_benchmark_metrics` → `missing-vpr-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_visual_place_recognition_metrics` — phase ~503 already defines that name
+- Phase 605: `validate_camera_relocalization_metrics` → `missing-camera-relocalization-metrics` (moderate)
+  - NOTE: wiring bug caught — both functions must be added; `validate_camera_relocalization_metrics` was missing from list
+
+**Phases 606–610** (`1f786ac`, 2226 tests)
+- Phase 606: `validate_slam_evaluation_metrics` → `missing-slam-evaluation-metrics` (moderate)
+- Phase 607: `validate_autonomous_driving_perception_metrics` → `missing-autonomous-driving-perception-metrics` (moderate)
+- Phase 608: `validate_trajectory_benchmark_metrics` → `missing-trajectory-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_trajectory_prediction_metrics` — phase ~505 already defines that name; uses `_TRAJPRED608_VID`
+- Phase 609: `validate_occupancy_prediction_metrics` → `missing-occupancy-prediction-metrics` (moderate)
+- Phase 610: `validate_human_pose_forecasting_metrics` → `missing-human-pose-forecasting-metrics` (moderate)
+
+**Phases 611–615** (`e95671d`, 2246 tests)
+- Phase 611: `validate_hand_pose_benchmark_metrics` → `missing-hand-pose-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_hand_pose_estimation_metrics` — phase ~506 already defines that name; uses `_HANDPOSE611_VID`
+- Phase 612: `validate_face_alignment_metrics` → `missing-face-alignment-metrics` (moderate)
+- Phase 613: `validate_face_anti_spoofing_metrics` → `missing-face-anti-spoofing-metrics` (moderate)
+- Phase 614: `validate_deepfake_detection_metrics` → `missing-deepfake-detection-metrics` (moderate)
+- Phase 615: `validate_person_reid_metrics` → `missing-person-reid-metrics` (moderate)
+
+**Phases 616–620** (`b9cb0b0`, 2266 tests)
+- Phase 616: `validate_vehicle_reid_metrics` → `missing-vehicle-reid-metrics` (moderate)
+- Phase 617: `validate_crowd_counting_metrics` → `missing-crowd-counting-metrics` (moderate)
+- Phase 618: `validate_gaze_estimation_metrics` → `missing-gaze-estimation-metrics` (moderate)
+- Phase 619: `validate_action_quality_assessment_metrics` → `missing-action-quality-assessment-metrics` (moderate)
+- Phase 620: `validate_sign_language_recognition_metrics` → `missing-sign-language-recognition-metrics` (moderate)
+
+**Phases 621–625** (`6c4489f`, 2286 tests)
+- Phase 621: `validate_lip_reading_metrics` → `missing-lip-reading-metrics` (moderate)
+- Phase 622: `validate_erc_metrics` → `missing-erc-metrics` (moderate)
+  - NOTE: renamed from `validate_emotion_recognition_in_conversation_metrics` — distinct from phase ~521 `validate_emotion_recognition_metrics`
+- Phase 623: `validate_multimodal_emotion_recognition_metrics` → `missing-multimodal-emotion-recognition-metrics` (moderate)
+- Phase 624: `validate_avsr_metrics` → `missing-avsr-metrics` (moderate)
+- Phase 625: `validate_speaker_diarization_metrics` → `missing-speaker-diarization-metrics` (moderate)
+
+**Phases 626–630** (`3e6d095`, 2306 tests)
+- Phase 626: `validate_speech_enhancement_metrics` → `missing-speech-enhancement-metrics` (moderate)
+- Phase 627: `validate_voice_conversion_metrics` → `missing-voice-conversion-metrics` (moderate)
+- Phase 628: `validate_music_source_separation_metrics` → `missing-music-source-separation-metrics` (moderate)
+- Phase 629: `validate_music_transcription_metrics` → `missing-music-transcription-metrics` (moderate)
+- Phase 630: `validate_svs_benchmark_metrics` → `missing-svs-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_singing_voice_synthesis_evaluation` — phase ~565 already defines a singing voice synthesis validator
+
+**Phases 631–635** (`3cf2698`, 2326 tests)
+- Phase 631: `validate_audio_captioning_benchmark_metrics` → `missing-audio-captioning-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_audio_captioning_metrics` — phase ~564 already defines that name
+- Phase 632: `validate_sed_benchmark_metrics` → `missing-sed-benchmark-metrics` (moderate)
+  - NOTE: renamed from `validate_sound_event_detection_metrics` — phase ~566 already defines that name
+- Phase 633: `validate_acoustic_scene_classification_metrics` → `missing-acoustic-scene-classification-metrics` (moderate)
+- Phase 634: `validate_environmental_sound_classification_metrics` → `missing-environmental-sound-classification-metrics` (moderate)
+- Phase 635: `validate_urban_sound_tagging_metrics` → `missing-urban-sound-tagging-metrics` (moderate)
+
+**Phases 636–640** (`83515bc`, 2346 tests)
+- Phase 636: `validate_bioacoustic_event_detection_metrics` → `missing-bioacoustic-event-detection-metrics` (moderate)
+- Phase 637: `validate_ecg_arrhythmia_classification_metrics` → `missing-ecg-arrhythmia-classification-metrics` (moderate)
+- Phase 638: `validate_eeg_motor_imagery_metrics` → `missing-eeg-motor-imagery-metrics` (moderate)
+- Phase 639: `validate_emg_gesture_recognition_metrics` → `missing-emg-gesture-recognition-metrics` (moderate)
+- Phase 640: `validate_fmri_brain_decoding_metrics` → `missing-fmri-brain-decoding-metrics` (moderate)
+
+Current test count: **2346 passing** (after phase 640)
+HEAD: `83515bc`
 
 ## Critical technical gotchas (accumulated)
 
@@ -1458,7 +1531,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 560 with 2026 tests passing
+- currently at phase 640 with 2346 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 640)
+- update MEMORY.md after every 40 phases (next update due after phase 680)
