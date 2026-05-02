@@ -22133,3 +22133,330 @@ def test_no_panel_trigger_no_fire() -> None:
     )
     result = validate_panel_effects_justification(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 371 – validate_arima_order_disclosure
+# ---------------------------------------------------------------------------
+
+def _arm371_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-arm371",
+            source_path="/tmp/arm371.md",
+            source_format="markdown",
+            title="ARIMA Order Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_arima_without_order_fires() -> None:
+    from manuscript_audit.validators.core import validate_arima_order_disclosure
+
+    ms, cl = _arm371_ms(
+        "An ARIMA model was fitted to the monthly sales time series."
+    )
+    result = validate_arima_order_disclosure(ms, cl)
+    assert any(f.code == "missing-arima-order-disclosure" for f in result.findings)
+
+
+def test_arima_with_order_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_arima_order_disclosure
+
+    ms, cl = _arm371_ms(
+        "An ARIMA(1,1,1) model was fitted to the monthly sales time series."
+    )
+    result = validate_arima_order_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_arima_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_arima_order_disclosure
+
+    ms, cl = _arm371_ms("An ARIMA model was fitted to monthly data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_arima_order_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_arima_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_arima_order_disclosure
+
+    ms, cl = _arm371_ms(
+        "We used linear regression to model the relationship between X and Y."
+    )
+    result = validate_arima_order_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 372 – validate_var_model_lag_order
+# ---------------------------------------------------------------------------
+
+def _var372_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-var372",
+            source_path="/tmp/var372.md",
+            source_format="markdown",
+            title="VAR Lag Order Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_var_without_lag_order_fires() -> None:
+    from manuscript_audit.validators.core import validate_var_model_lag_order
+
+    ms, cl = _var372_ms(
+        "A vector autoregression model was estimated to examine monetary transmission."
+    )
+    result = validate_var_model_lag_order(ms, cl)
+    assert any(f.code == "missing-var-lag-order" for f in result.findings)
+
+
+def test_var_with_lag_order_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_var_model_lag_order
+
+    ms, cl = _var372_ms(
+        "A VAR(2) model was estimated; the lag order 2 was selected by AIC."
+    )
+    result = validate_var_model_lag_order(ms, cl)
+    assert result.findings == []
+
+
+def test_var_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_var_model_lag_order
+
+    ms, cl = _var372_ms("A vector autoregression model was estimated.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_var_model_lag_order(ms, cl)
+    assert result.findings == []
+
+
+def test_no_var_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_var_model_lag_order
+
+    ms, cl = _var372_ms(
+        "We used ordinary least squares regression for all analyses."
+    )
+    result = validate_var_model_lag_order(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 373 – validate_impulse_response_identification
+# ---------------------------------------------------------------------------
+
+def _irf373_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-irf373",
+            source_path="/tmp/irf373.md",
+            source_format="markdown",
+            title="IRF Identification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_irf_without_identification_fires() -> None:
+    from manuscript_audit.validators.core import validate_impulse_response_identification
+
+    ms, cl = _irf373_ms(
+        "Impulse response functions were computed to examine the dynamic effects."
+    )
+    result = validate_impulse_response_identification(ms, cl)
+    assert any(f.code == "missing-irf-identification" for f in result.findings)
+
+
+def test_irf_with_cholesky_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_impulse_response_identification
+
+    ms, cl = _irf373_ms(
+        "Impulse response functions were computed using Cholesky decomposition "
+        "with 95% confidence bands from 1000 bootstrap replications."
+    )
+    result = validate_impulse_response_identification(ms, cl)
+    assert result.findings == []
+
+
+def test_irf_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_impulse_response_identification
+
+    ms, cl = _irf373_ms("Impulse response functions were computed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_impulse_response_identification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_irf_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_impulse_response_identification
+
+    ms, cl = _irf373_ms(
+        "We used ANOVA to compare group means across conditions."
+    )
+    result = validate_impulse_response_identification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 374 – validate_forecast_evaluation_metrics
+# ---------------------------------------------------------------------------
+
+def _fev374_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fev374",
+            source_path="/tmp/fev374.md",
+            source_format="markdown",
+            title="Forecast Evaluation Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_forecast_without_metric_fires() -> None:
+    from manuscript_audit.validators.core import validate_forecast_evaluation_metrics
+
+    ms, cl = _fev374_ms(
+        "Out-of-sample forecast performance was evaluated for all models."
+    )
+    result = validate_forecast_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-forecast-evaluation-metric" for f in result.findings)
+
+
+def test_forecast_with_rmse_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_forecast_evaluation_metrics
+
+    ms, cl = _fev374_ms(
+        "Out-of-sample forecast performance was evaluated using RMSE. "
+        "The proposed model achieved RMSE = 1.23."
+    )
+    result = validate_forecast_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_forecast_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_forecast_evaluation_metrics
+
+    ms, cl = _fev374_ms("Out-of-sample forecast performance was evaluated.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_forecast_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_forecast_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_forecast_evaluation_metrics
+
+    ms, cl = _fev374_ms(
+        "We used logistic regression for binary classification of outcomes."
+    )
+    result = validate_forecast_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 375 – validate_seasonal_adjustment_disclosure
+# ---------------------------------------------------------------------------
+
+def _sea375_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sea375",
+            source_path="/tmp/sea375.md",
+            source_format="markdown",
+            title="Seasonal Adjustment Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_seasonal_adjustment_without_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
+
+    ms, cl = _sea375_ms(
+        "All series were seasonally adjusted before modelling."
+    )
+    result = validate_seasonal_adjustment_disclosure(ms, cl)
+    assert any(f.code == "missing-seasonal-adjustment-method" for f in result.findings)
+
+
+def test_seasonal_adjustment_with_x13_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
+
+    ms, cl = _sea375_ms(
+        "All series were seasonally adjusted using the X-13 ARIMA-SEATS procedure."
+    )
+    result = validate_seasonal_adjustment_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_seasonal_adjustment_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
+
+    ms, cl = _sea375_ms("Series were seasonally adjusted before modelling.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_seasonal_adjustment_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_seasonal_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
+
+    ms, cl = _sea375_ms(
+        "We used linear regression on cross-sectional data from a single wave."
+    )
+    result = validate_seasonal_adjustment_disclosure(ms, cl)
+    assert result.findings == []

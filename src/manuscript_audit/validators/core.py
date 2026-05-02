@@ -6877,6 +6877,11 @@ def run_deterministic_validators(
         validate_unit_root_test_disclosure(parsed, classification),
         validate_arch_garch_specification(parsed, classification),
         validate_panel_effects_justification(parsed, classification),
+        validate_arima_order_disclosure(parsed, classification),
+        validate_var_model_lag_order(parsed, classification),
+        validate_impulse_response_identification(parsed, classification),
+        validate_forecast_evaluation_metrics(parsed, classification),
+        validate_seasonal_adjustment_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -22525,6 +22530,282 @@ def validate_panel_effects_justification(
                 message=(
                     "Panel data fixed or random effects are used but no Hausman "
                     "test or theoretical justification for the choice is provided."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 371 – ARIMA model order disclosure
+# ---------------------------------------------------------------------------
+
+_ARIMA_TRIGGER_RE = re.compile(
+    r"\b(?:ARIMA\b|ARMA\b|AR\s+model|autoregressive\s+(?:integrated\s+)?moving\s+average"
+    r"|Box[\s-]Jenkins\s+(?:model|methodology|approach))\b",
+    re.IGNORECASE,
+)
+
+_ARIMA_ORDER_RE = re.compile(
+    r"(?:ARIMA\s*\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)"
+    r"|ARMA\s*\(\s*\d+\s*,\s*\d+\s*\)"
+    r"|\border\s*\(\s*p\s*,\s*d\s*,\s*q\s*\)"
+    r"|\bAIC\b|\bBIC\b|\bautomatic\s+order\s+selection)",
+    re.IGNORECASE,
+)
+
+
+def validate_arima_order_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ARIMA models without order specification.
+
+    Emits ``missing-arima-order-disclosure`` (minor) when an ARIMA or ARMA
+    model is described but the model order (p, d, q) is not specified.
+    """
+    _vid = "validate_arima_order_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ARIMA_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ARIMA_ORDER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-arima-order-disclosure",
+                message=(
+                    "An ARIMA or ARMA model is described but the model order "
+                    "(p, d, q) is not specified."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 372 – VAR model lag order disclosure
+# ---------------------------------------------------------------------------
+
+_VAR_TRIGGER_RE = re.compile(
+    r"\b(?:vector\s+autoregress(?:ion|ive)\b"
+    r"|VAR\s+(?:model|system|analysis)"
+    r"|SVAR\b|structural\s+VAR\b"
+    r"|BVAR\b|Bayesian\s+VAR\b)\b",
+    re.IGNORECASE,
+)
+
+_VAR_LAG_RE = re.compile(
+    r"\b(?:VAR\s*\(\s*\d+\s*\)"
+    r"|\blag\s+(?:length|order)\s+(?:of\s+)?\d"
+    r"|\boptimal\s+lag"
+    r"|\bAIC\b|\bBIC\b|\bHQIC\b"
+    r"|\blag\s+selection\s+(?:criterion|criteria))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_var_model_lag_order(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag VAR models without lag order specification.
+
+    Emits ``missing-var-lag-order`` (minor) when a VAR model is described but
+    the lag order is not specified or no selection criterion is reported.
+    """
+    _vid = "validate_var_model_lag_order"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _VAR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _VAR_LAG_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-var-lag-order",
+                message=(
+                    "A VAR model is described but the lag order or lag selection "
+                    "criterion is not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 373 – impulse response function disclosure
+# ---------------------------------------------------------------------------
+
+_IRF_TRIGGER_RE = re.compile(
+    r"\b(?:impulse\s+response\s+functions?"
+    r"|IRF\b"
+    r"|forecast\s+error\s+variance\s+decomposition"
+    r"|FEVD\b"
+    r"|variance\s+decomposition\b)\b",
+    re.IGNORECASE,
+)
+
+_IRF_CI_RE = re.compile(
+    r"\b(?:confidence\s+(?:band|interval)"
+    r"|bootstrap\s+(?:confidence|error)\s+band"
+    r"|standard\s+error\s+band"
+    r"|Cholesky\s+decomposition"
+    r"|ordering\s+of\s+(?:variable|shock)"
+    r"|shock\s+identification)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_impulse_response_identification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag IRF analyses without shock identification or confidence bands.
+
+    Emits ``missing-irf-identification`` (minor) when impulse response
+    functions are reported without shock identification or confidence bands.
+    """
+    _vid = "validate_impulse_response_identification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _IRF_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _IRF_CI_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-irf-identification",
+                message=(
+                    "Impulse response functions are reported but shock identification "
+                    "strategy or confidence bands are not disclosed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 374 – forecast evaluation metric disclosure
+# ---------------------------------------------------------------------------
+
+_FORECAST_TRIGGER_RE = re.compile(
+    r"\b(?:forecast(?:ing)?\s+(?:model|accuracy|performance|evaluation|error)"
+    r"|out[\s-]of[\s-]sample\s+(?:forecast|prediction|performance)"
+    r"|predictive\s+accuracy\s+(?:test|comparison))\b",
+    re.IGNORECASE,
+)
+
+_FORECAST_METRIC_RE = re.compile(
+    r"\b(?:MAE\b|MAPE\b|RMSE\b|MSE\b"
+    r"|mean\s+absolute\s+(?:percentage\s+)?error"
+    r"|root\s+mean\s+square(?:d)?\s+error"
+    r"|Diebold[\s-]Mariano\s+test"
+    r"|DM\s+test\b"
+    r"|Theil['']?s?\s+U\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_forecast_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag forecast evaluations without standard error metrics.
+
+    Emits ``missing-forecast-evaluation-metric`` (minor) when forecasting
+    is described but no standard evaluation metric (MAE, RMSE, etc.) is reported.
+    """
+    _vid = "validate_forecast_evaluation_metrics"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _FORECAST_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _FORECAST_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-forecast-evaluation-metric",
+                message=(
+                    "Forecasting or out-of-sample prediction is described but no "
+                    "standard evaluation metric (MAE, RMSE, MAPE) is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 375 – seasonal adjustment disclosure
+# ---------------------------------------------------------------------------
+
+_SEASONAL_TRIGGER_RE = re.compile(
+    r"\b(?:seasonal(?:ly)?\s+(?:adjusted|adjustment|component|variation|pattern)"
+    r"|seasonality"
+    r"|deseasonali[sz](?:ed|ation)"
+    r"|seasonal\s+(?:decomposition|difference))\b",
+    re.IGNORECASE,
+)
+
+_SEASONAL_METHOD_RE = re.compile(
+    r"\b(?:X[\s-]?1[12]\b|X[\s-]?13\b"
+    r"|SEATS\b|TRAMO[\s-]SEATS"
+    r"|Census\s+X[\s-]?1[12]"
+    r"|STL\s+decomposition"
+    r"|Hodrick[\s-]Prescott\s+filter"
+    r"|seasonal\s+differencing"
+    r"|seasonal\s+adjustment\s+(?:method|procedure|was\s+(?:applied|conducted|performed)))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_seasonal_adjustment_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag seasonal adjustment without method disclosure.
+
+    Emits ``missing-seasonal-adjustment-method`` (minor) when seasonal
+    adjustment is mentioned but the adjustment method is not described.
+    """
+    _vid = "validate_seasonal_adjustment_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _SEASONAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SEASONAL_METHOD_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-seasonal-adjustment-method",
+                message=(
+                    "Seasonal adjustment is described but the adjustment method "
+                    "(e.g., X-12, SEATS, STL) is not specified."
                 ),
                 severity="minor",
                 validator=_vid,
