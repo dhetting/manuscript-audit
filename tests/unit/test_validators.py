@@ -19794,3 +19794,339 @@ def test_no_genomic_alignment_no_fire() -> None:
     )
     result = validate_genome_reference_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 336 – validate_strobe_observational_reporting
+# ---------------------------------------------------------------------------
+
+def _strobe336_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-strobe336",
+            source_path="/tmp/strobe336.md",
+            source_format="markdown",
+            title="STROBE Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cohort_without_strobe_elements_fires() -> None:
+    from manuscript_audit.validators.core import validate_strobe_observational_reporting
+
+    ms, cl = _strobe336_ms(
+        "We conducted a prospective cohort study of 1000 adults over 5 years."
+    )
+    result = validate_strobe_observational_reporting(ms, cl)
+    assert any(f.code == "missing-strobe-elements" for f in result.findings)
+
+
+def test_cohort_with_eligibility_criteria_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_strobe_observational_reporting
+
+    ms, cl = _strobe336_ms(
+        "We conducted a prospective cohort study of 1000 adults. Eligibility criteria "
+        "included age 30–65 and no prior cardiovascular disease. Exposure assessment "
+        "used validated dietary questionnaires. Potential confounders included age "
+        "and smoking status."
+    )
+    result = validate_strobe_observational_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_strobe_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_strobe_observational_reporting
+
+    ms, cl = _strobe336_ms(
+        "We conducted a prospective cohort study of 1000 adults."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_strobe_observational_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_observational_study_no_fire_strobe() -> None:
+    from manuscript_audit.validators.core import validate_strobe_observational_reporting
+
+    ms, cl = _strobe336_ms(
+        "We conducted a randomised controlled trial comparing two treatments."
+    )
+    result = validate_strobe_observational_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 337 – validate_selection_bias_discussion
+# ---------------------------------------------------------------------------
+
+def _sb337_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sb337",
+            source_path="/tmp/sb337.md",
+            source_format="markdown",
+            title="Selection Bias Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_low_response_rate_without_bias_discussion_fires() -> None:
+    from manuscript_audit.validators.core import validate_selection_bias_discussion
+
+    ms, cl = _sb337_ms(
+        "Questionnaires were sent to 2000 participants. Response rate was 42%."
+    )
+    result = validate_selection_bias_discussion(ms, cl)
+    assert any(f.code == "missing-selection-bias-discussion" for f in result.findings)
+
+
+def test_low_response_rate_with_bias_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_selection_bias_discussion
+
+    ms, cl = _sb337_ms(
+        "Response rate was 42%. Selection bias may have affected results "
+        "as generalizability may be limited to those willing to respond."
+    )
+    result = validate_selection_bias_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_selection_bias_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_selection_bias_discussion
+
+    ms, cl = _sb337_ms("Response rate was 42% which may reflect self-selection.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_selection_bias_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_no_selection_bias_context_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_selection_bias_discussion
+
+    ms, cl = _sb337_ms(
+        "All 150 eligible patients were enrolled and completed the study protocol."
+    )
+    result = validate_selection_bias_discussion(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 338 – validate_information_bias_discussion
+# ---------------------------------------------------------------------------
+
+def _ib338_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ib338",
+            source_path="/tmp/ib338.md",
+            source_format="markdown",
+            title="Information Bias Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_self_report_without_bias_discussion_fires() -> None:
+    from manuscript_audit.validators.core import validate_information_bias_discussion
+
+    ms, cl = _ib338_ms(
+        "Dietary intake was assessed using self-reported 24-hour dietary recall."
+    )
+    result = validate_information_bias_discussion(ms, cl)
+    assert any(f.code == "missing-information-bias-discussion" for f in result.findings)
+
+
+def test_self_report_with_recall_bias_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_information_bias_discussion
+
+    ms, cl = _ib338_ms(
+        "Dietary intake was assessed by self-reported recall. Recall bias may have "
+        "introduced measurement error in the exposure assessment."
+    )
+    result = validate_information_bias_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_information_bias_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_information_bias_discussion
+
+    ms, cl = _ib338_ms("Dietary intake was assessed using self-reported recall.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_information_bias_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_no_self_report_no_fire_ib338() -> None:
+    from manuscript_audit.validators.core import validate_information_bias_discussion
+
+    ms, cl = _ib338_ms(
+        "Blood pressure was measured by trained nurses using calibrated equipment."
+    )
+    result = validate_information_bias_discussion(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 339 – validate_dose_response_relationship
+# ---------------------------------------------------------------------------
+
+def _dr339_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dr339",
+            source_path="/tmp/dr339.md",
+            source_format="markdown",
+            title="Dose-Response Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_dose_response_claim_without_test_fires() -> None:
+    from manuscript_audit.validators.core import validate_dose_response_relationship
+
+    ms, cl = _dr339_ms(
+        "Higher exposure was associated with greater risk in a dose-response pattern."
+    )
+    result = validate_dose_response_relationship(ms, cl)
+    assert any(f.code == "missing-dose-response-analysis" for f in result.findings)
+
+
+def test_dose_response_with_trend_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dose_response_relationship
+
+    ms, cl = _dr339_ms(
+        "Higher exposure was associated with greater risk. A dose-response analysis "
+        "confirmed the trend using restricted cubic splines (p for trend < 0.001)."
+    )
+    result = validate_dose_response_relationship(ms, cl)
+    assert result.findings == []
+
+
+def test_dose_response_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dose_response_relationship
+
+    ms, cl = _dr339_ms(
+        "Higher exposure was associated with greater risk in a dose-response pattern."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_dose_response_relationship(ms, cl)
+    assert result.findings == []
+
+
+def test_no_dose_response_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dose_response_relationship
+
+    ms, cl = _dr339_ms(
+        "We compared two treatment groups using a two-sample t-test."
+    )
+    result = validate_dose_response_relationship(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 340 – validate_follow_up_rate_reporting
+# ---------------------------------------------------------------------------
+
+def _fu340_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-fu340",
+            source_path="/tmp/fu340.md",
+            source_format="markdown",
+            title="Follow-Up Rate Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_longitudinal_without_follow_up_rate_fires() -> None:
+    from manuscript_audit.validators.core import validate_follow_up_rate_reporting
+
+    ms, cl = _fu340_ms(
+        "Participants completed follow-up assessments at 6 and 12 months."
+    )
+    result = validate_follow_up_rate_reporting(ms, cl)
+    assert any(f.code == "missing-follow-up-rate" for f in result.findings)
+
+
+def test_longitudinal_with_retention_rate_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_follow_up_rate_reporting
+
+    ms, cl = _fu340_ms(
+        "Participants completed follow-up assessments at 6 and 12 months. "
+        "Follow-up rate was 87% at 12 months."
+    )
+    result = validate_follow_up_rate_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_follow_up_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_follow_up_rate_reporting
+
+    ms, cl = _fu340_ms("Participants completed follow-up assessments at 6 months.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_follow_up_rate_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_follow_up_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_follow_up_rate_reporting
+
+    ms, cl = _fu340_ms(
+        "Participants were assessed once at baseline and no further data were collected."
+    )
+    result = validate_follow_up_rate_reporting(ms, cl)
+    assert result.findings == []

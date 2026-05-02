@@ -6842,6 +6842,11 @@ def run_deterministic_validators(
         validate_multiple_testing_genomics(parsed, classification),
         validate_pathway_enrichment_method(parsed, classification),
         validate_genome_reference_disclosure(parsed, classification),
+        validate_strobe_observational_reporting(parsed, classification),
+        validate_selection_bias_discussion(parsed, classification),
+        validate_information_bias_discussion(parsed, classification),
+        validate_dose_response_relationship(parsed, classification),
+        validate_follow_up_rate_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -20463,6 +20468,310 @@ def validate_genome_reference_disclosure(
                     "Genomic reads are aligned or variants are called but the "
                     "reference genome assembly version is not stated. "
                     "Report the reference genome (e.g., GRCh38, hg19) used for alignment."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 336 – validate_strobe_observational_reporting
+# ---------------------------------------------------------------------------
+
+_OBSERVATIONAL_DESIGN_TRIGGER_RE = re.compile(
+    r"\b(?:cohort\s+study|case[\s-]control\s+study|cross[\s-]sectional\s+study|"
+    r"prospective\s+(?:cohort|observational)|"
+    r"retrospective\s+(?:cohort|case[\s-]control|observational)|"
+    r"observational\s+study|longitudinal\s+observational)\b",
+    re.IGNORECASE,
+)
+_STROBE_ELEMENTS_PRESENT_RE = re.compile(
+    r"\b(?:eligibility\s+criteria|source\s+population|"
+    r"exposure\s+(?:assessment|definition|measurement)|"
+    r"outcome\s+(?:ascertainment|definition|assessment)|"
+    r"potential\s+confounders?|effect\s+modification|"
+    r"loss\s+to\s+follow[\s-]up|study\s+flow\s+diagram|"
+    r"STROBE\b|STROBE\s+(?:guidelines?|checklist|statement))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_strobe_observational_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag observational studies missing key STROBE-aligned reporting elements.
+
+    Emits ``missing-strobe-elements`` (minor) when an observational study
+    is described but essential reporting elements (eligibility criteria,
+    exposure assessment, confounder handling) are absent.
+    """
+    _vid = "validate_strobe_observational_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _OBSERVATIONAL_DESIGN_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _STROBE_ELEMENTS_PRESENT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-strobe-elements",
+                severity="minor",
+                message=(
+                    "An observational study is described but key STROBE reporting "
+                    "elements are absent (e.g., eligibility criteria, exposure "
+                    "assessment, confounder handling). Follow the STROBE checklist."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 337 – validate_selection_bias_discussion
+# ---------------------------------------------------------------------------
+
+_SELECTION_BIAS_CONTEXT_RE = re.compile(
+    r"\b(?:self[\s-]select(?:ion|ed)|volunteer\s+bias|healthy\s+worker\s+effect|"
+    r"non[\s-]response\s+bias|response\s+rate\s+(?:was|of)\s+(?:\d+|0\.\d+)\s*%|"
+    r"response\s+rate\s+(?:was\s+)?(?:below|less\s+than|under)\s+(?:80|70|60|50)\s*%|"
+    r"(?:low|poor|insufficient)\s+response\s+rate|"
+    r"attrition\s+(?:was|rate|of)|loss\s+to\s+follow[\s-]up\s+of\s+\d+\s*%)",
+    re.IGNORECASE,
+)
+_SELECTION_BIAS_ADDRESSED_RE = re.compile(
+    r"\b(?:selection\s+bias\s+(?:was|may|could|might|is|cannot)|"
+    r"generalizability\s+(?:may|might|is|could)\s+be\s+(?:limited|affected)|"
+    r"external\s+validity\s+(?:may|might|is|could)\s+be\s+(?:limited|affected)|"
+    r"non[\s-]response\s+(?:bias\s+)?(?:was|may|might|could)\s+(?:be|have)|"
+    r"representativeness\s+of\s+(?:the\s+)?sample|"
+    r"systematic\s+differences?\s+between\s+(?:responders?|participants?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_selection_bias_discussion(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies with potential selection bias that do not discuss it.
+
+    Emits ``missing-selection-bias-discussion`` (minor) when indicators
+    of selection bias are present (low response rate, self-selection, etc.)
+    but selection bias is not discussed as a limitation.
+    """
+    _vid = "validate_selection_bias_discussion"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _SELECTION_BIAS_CONTEXT_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _SELECTION_BIAS_ADDRESSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-selection-bias-discussion",
+                severity="minor",
+                message=(
+                    "Indicators of potential selection bias are present (e.g., low "
+                    "response rate, self-selection) but selection bias is not discussed "
+                    "as a limitation. Address generalizability and sample representativeness."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 338 – validate_information_bias_discussion
+# ---------------------------------------------------------------------------
+
+_INFO_BIAS_TRIGGER_RE = re.compile(
+    r"\b(?:self[\s-]report(?:ed)?|recall\s+(?:bias|error)|retrospective\s+report|"
+    r"questionnaire[\s-]based\s+(?:exposure|assessment)|"
+    r"interview[\s-]based\s+(?:exposure|outcome)|"
+    r"subjective\s+(?:assessment|rating|report)|"
+    r"proxy\s+(?:measure|report|respondent))\b",
+    re.IGNORECASE,
+)
+_INFO_BIAS_ADDRESSED_RE = re.compile(
+    r"\b(?:information\s+bias|recall\s+bias\s+(?:was|may|might|could)|"
+    r"measurement\s+(?:error|bias)\s+(?:may|might|could|was)|"
+    r"reporting\s+bias\s+(?:may|might|could|was)|"
+    r"misclassification\s+(?:bias\s+)?(?:may|might|could|was)|"
+    r"social\s+desirability\s+bias|acquiescence\s+bias|"
+    r"objective\s+(?:measure|assessment)\s+(?:was|were)\s+(?:used|employed|obtained))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_information_bias_discussion(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies using self-report that do not discuss information bias.
+
+    Emits ``missing-information-bias-discussion`` (minor) when self-report
+    measures are used but recall bias or measurement error is not discussed.
+    """
+    _vid = "validate_information_bias_discussion"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _INFO_BIAS_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _INFO_BIAS_ADDRESSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-information-bias-discussion",
+                severity="minor",
+                message=(
+                    "Self-report or retrospective measures are used but information "
+                    "bias (e.g., recall bias, measurement error) is not discussed. "
+                    "Address potential misclassification or reporting bias."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 339 – validate_dose_response_relationship
+# ---------------------------------------------------------------------------
+
+_DOSE_RESPONSE_TRIGGER_RE = re.compile(
+    r"\b(?:dose[\s-]response|exposure[\s-]response|"
+    r"biological\s+(?:dose|gradient)|"
+    r"graded\s+(?:response|association|relationship)|"
+    r"increasing\s+(?:dose|exposure|concentration)\s+"
+    r"(?:was\s+)?(?:associated|correlated|linked)\s+with|"
+    r"higher\s+(?:dose|exposure)\s+(?:was\s+)?associated\s+with\s+greater)\b",
+    re.IGNORECASE,
+)
+_DOSE_RESPONSE_TESTED_RE = re.compile(
+    r"\b(?:dose[\s-]response\s+(?:analysis|test(?:ing)?|relationship|trend)|"
+    r"trend\s+test|test\s+for\s+(?:linear\s+)?trend|"
+    r"linear\s+trend\s+(?:test|analysis)|"
+    r"Cochran[\s-]Armitage\s+trend|"
+    r"spline\s+(?:model|analysis)\s+for\s+(?:dose|exposure)|"
+    r"restricted\s+cubic\s+spline)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_dose_response_relationship(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag dose-response claims without formal trend analysis.
+
+    Emits ``missing-dose-response-analysis`` (minor) when a dose-response
+    relationship is claimed but no formal trend test or analysis is reported.
+    """
+    _vid = "validate_dose_response_relationship"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _DOSE_RESPONSE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _DOSE_RESPONSE_TESTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-dose-response-analysis",
+                severity="minor",
+                message=(
+                    "A dose-response relationship is claimed but no formal trend "
+                    "test or analysis (e.g., Cochran-Armitage trend test, spline model) "
+                    "is reported. Include a statistical test for trend."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 340 – validate_follow_up_rate_reporting
+# ---------------------------------------------------------------------------
+
+_FOLLOW_UP_TRIGGER_RE = re.compile(
+    r"\b(?:follow[\s-]up\s+(?:period|assessments?|data|visit|measurement)|"
+    r"longitudinal\s+(?:follow[\s-]up|data|study|design)|"
+    r"repeated\s+(?:assessments?|measure|measurement|contact)|"
+    r"retention\s+(?:rate|at\s+follow[\s-]up)|"
+    r"participants?\s+(?:were\s+)?(?:re[\s-]?assessed|re[\s-]?contacted|"
+    r"followed\s+for|tracked))\b",
+    re.IGNORECASE,
+)
+_FOLLOW_UP_RATE_REPORTED_RE = re.compile(
+    r"(?:\d+(?:\.\d+)?%\s+of\s+participants?\s+"
+    r"(?:completed|returned|responded\s+at|attended)\s+follow[\s-]up|"
+    r"\bfollow[\s-]up\s+rate\s+(?:was|of)\s+\d+\s*%|"
+    r"\bretention\s+rate\s+(?:was|of)\s+\d+\s*%|"
+    r"\b(?:\d+)\s+(?:of\s+)?(?:\d+)\s+participants?\s+completed\s+follow[\s-]up\b|"
+    r"\battrition\s+rate\s+(?:was|of)\s+\d+\s*%)",
+    re.IGNORECASE,
+)
+
+
+def validate_follow_up_rate_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag longitudinal studies without follow-up rate reporting.
+
+    Emits ``missing-follow-up-rate`` (minor) when a longitudinal study
+    includes follow-up assessments but the follow-up or retention rate
+    is not reported.
+    """
+    _vid = "validate_follow_up_rate_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _FOLLOW_UP_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _FOLLOW_UP_RATE_REPORTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-follow-up-rate",
+                severity="minor",
+                message=(
+                    "A longitudinal study with follow-up assessments is described "
+                    "but the follow-up or retention rate is not reported. "
+                    "Report the proportion of participants completing each follow-up."
                 ),
                 validator=_vid,
             )
