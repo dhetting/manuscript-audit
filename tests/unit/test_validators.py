@@ -22790,3 +22790,335 @@ def test_no_event_study_trigger_no_fire() -> None:
     )
     result = validate_event_study_window_specification(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 381 – validate_propensity_matching_balance
+# ---------------------------------------------------------------------------
+
+def _psm381_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-psm381",
+            source_path="/tmp/psm381.md",
+            source_format="markdown",
+            title="PSM Balance Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_psm_without_balance_fires() -> None:
+    from manuscript_audit.validators.core import validate_propensity_matching_balance
+
+    ms, cl = _psm381_ms(
+        "Propensity score matching was used to create comparable treatment and control groups."
+    )
+    result = validate_propensity_matching_balance(ms, cl)
+    assert any(f.code == "missing-psm-balance-check" for f in result.findings)
+
+
+def test_psm_with_balance_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_matching_balance
+
+    ms, cl = _psm381_ms(
+        "Propensity score matching was used. Covariate balance after matching was "
+        "assessed using standardized mean differences (all SMD < 0.1)."
+    )
+    result = validate_propensity_matching_balance(ms, cl)
+    assert result.findings == []
+
+
+def test_psm_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_matching_balance
+
+    ms, cl = _psm381_ms("Propensity score matching was used for group creation.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_propensity_matching_balance(ms, cl)
+    assert result.findings == []
+
+
+def test_no_psm_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_matching_balance
+
+    ms, cl = _psm381_ms(
+        "Participants were randomly assigned to treatment or control."
+    )
+    result = validate_propensity_matching_balance(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 382 – validate_ipw_overlap_assumption
+# ---------------------------------------------------------------------------
+
+def _ipw382_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ipw382",
+            source_path="/tmp/ipw382.md",
+            source_format="markdown",
+            title="IPW Overlap Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ipw_without_overlap_fires() -> None:
+    from manuscript_audit.validators.core import validate_ipw_overlap_assumption
+
+    ms, cl = _ipw382_ms(
+        "Inverse probability weighting was used to adjust for confounding."
+    )
+    result = validate_ipw_overlap_assumption(ms, cl)
+    assert any(f.code == "missing-ipw-overlap-check" for f in result.findings)
+
+
+def test_ipw_with_overlap_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ipw_overlap_assumption
+
+    ms, cl = _ipw382_ms(
+        "Inverse probability weighting was used. Common support was verified by "
+        "inspecting propensity score distributions; weight trimming at the 99th "
+        "percentile was applied."
+    )
+    result = validate_ipw_overlap_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_ipw_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ipw_overlap_assumption
+
+    ms, cl = _ipw382_ms("IPW was used to adjust for time-varying confounding.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ipw_overlap_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ipw_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ipw_overlap_assumption
+
+    ms, cl = _ipw382_ms(
+        "We used Cox proportional hazards regression to model time to event."
+    )
+    result = validate_ipw_overlap_assumption(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 383 – validate_mediation_sensitivity_analysis
+# ---------------------------------------------------------------------------
+
+def _msa383_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-msa383",
+            source_path="/tmp/msa383.md",
+            source_format="markdown",
+            title="Mediation Sensitivity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mediation_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_mediation_sensitivity_analysis
+
+    ms, cl = _msa383_ms(
+        "Mediation analysis was conducted to test the indirect effect of X on Y through M."
+    )
+    result = validate_mediation_sensitivity_analysis(ms, cl)
+    assert any(f.code == "missing-mediation-sensitivity" for f in result.findings)
+
+
+def test_mediation_with_sensitivity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediation_sensitivity_analysis
+
+    ms, cl = _msa383_ms(
+        "Mediation analysis was conducted. Sensitivity analysis using the "
+        "E-value showed the indirect effect was robust to unmeasured confounding."
+    )
+    result = validate_mediation_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_mediation_sensitivity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mediation_sensitivity_analysis
+
+    ms, cl = _msa383_ms("Mediation analysis was conducted for the indirect effect.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_mediation_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mediation_trigger_no_fire_sensitivity() -> None:
+    from manuscript_audit.validators.core import validate_mediation_sensitivity_analysis
+
+    ms, cl = _msa383_ms(
+        "We used structural equation modelling without mediation."
+    )
+    result = validate_mediation_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 384 – validate_moderation_interaction_probing
+# ---------------------------------------------------------------------------
+
+def _mip384_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mip384",
+            source_path="/tmp/mip384.md",
+            source_format="markdown",
+            title="Moderation Probing Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_moderation_without_probing_fires() -> None:
+    from manuscript_audit.validators.core import validate_moderation_interaction_probing
+
+    ms, cl = _mip384_ms(
+        "The interaction term was significant, indicating that the effect of X "
+        "on Y was moderated by Z."
+    )
+    result = validate_moderation_interaction_probing(ms, cl)
+    assert any(f.code == "missing-moderation-probing" for f in result.findings)
+
+
+def test_moderation384_with_simple_slopes_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_moderation_interaction_probing
+
+    ms, cl = _mip384_ms(
+        "The interaction term was significant. Simple slopes analysis was conducted "
+        "at ±1 SD of the moderator."
+    )
+    result = validate_moderation_interaction_probing(ms, cl)
+    assert result.findings == []
+
+
+def test_moderation_probing_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_moderation_interaction_probing
+
+    ms, cl = _mip384_ms("The moderation analysis showed a significant interaction.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_moderation_interaction_probing(ms, cl)
+    assert result.findings == []
+
+
+def test_no_moderation_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_moderation_interaction_probing
+
+    ms, cl = _mip384_ms(
+        "We used a two-sample t-test to compare the groups on all outcomes."
+    )
+    result = validate_moderation_interaction_probing(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 385 – validate_ceiling_floor_effect_reporting
+# ---------------------------------------------------------------------------
+
+def _cfe385_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cfe385",
+            source_path="/tmp/cfe385.md",
+            source_format="markdown",
+            title="Ceiling Floor Effect Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rating_scale_without_ceiling_floor_fires() -> None:
+    from manuscript_audit.validators.core import validate_ceiling_floor_effect_reporting
+
+    ms, cl = _cfe385_ms(
+        "The outcome measure was a 5-point Likert scale administered to all participants."
+    )
+    result = validate_ceiling_floor_effect_reporting(ms, cl)
+    assert any(f.code == "missing-ceiling-floor-report" for f in result.findings)
+
+
+def test_rating_scale_with_ceiling_floor_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ceiling_floor_effect_reporting
+
+    ms, cl = _cfe385_ms(
+        "The outcome measure was a 5-point Likert scale. No ceiling or floor effects "
+        "were observed in the score distributions."
+    )
+    result = validate_ceiling_floor_effect_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_ceiling_floor_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ceiling_floor_effect_reporting
+
+    ms, cl = _cfe385_ms("The outcome variable was measured on a Likert scale.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ceiling_floor_effect_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_scale_trigger_no_fire_cfe() -> None:
+    from manuscript_audit.validators.core import validate_ceiling_floor_effect_reporting
+
+    ms, cl = _cfe385_ms(
+        "We measured cognitive performance using reaction time in milliseconds."
+    )
+    result = validate_ceiling_floor_effect_reporting(ms, cl)
+    assert result.findings == []

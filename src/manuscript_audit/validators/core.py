@@ -6887,6 +6887,11 @@ def run_deterministic_validators(
         validate_regression_discontinuity_bandwidth(parsed, classification),
         validate_synthetic_control_pre_period_fit(parsed, classification),
         validate_event_study_window_specification(parsed, classification),
+        validate_propensity_matching_balance(parsed, classification),
+        validate_ipw_overlap_assumption(parsed, classification),
+        validate_mediation_sensitivity_analysis(parsed, classification),
+        validate_moderation_interaction_probing(parsed, classification),
+        validate_ceiling_floor_effect_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -23093,6 +23098,290 @@ def validate_event_study_window_specification(
                 message=(
                     "An event study design is described but the event window "
                     "specification is not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 381 – propensity score matching balance reporting
+# ---------------------------------------------------------------------------
+
+_PSM_TRIGGER_RE = re.compile(
+    r"\b(?:propensity\s+score\s+(?:matching|weighting|method)"
+    r"|PSM\b"
+    r"|matched\s+sample\s+(?:using\s+)?propensity"
+    r"|nearest[\s-]neighbor\s+matching"
+    r"|caliper\s+matching)\b",
+    re.IGNORECASE,
+)
+
+_PSM_BALANCE_RE = re.compile(
+    r"\b(?:balance\s+(?:check|assessment|after\s+matching|table)"
+    r"|standardized\s+(?:mean\s+)?difference"
+    r"|SMD\b"
+    r"|covariate\s+balance"
+    r"|post[\s-]matching\s+balance"
+    r"|love\s+plot\b)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_propensity_matching_balance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag PSM analyses without covariate balance reporting.
+
+    Emits ``missing-psm-balance-check`` (minor) when propensity score
+    matching is described but no post-matching covariate balance is reported.
+    """
+    _vid = "validate_propensity_matching_balance"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _PSM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _PSM_BALANCE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-psm-balance-check",
+                message=(
+                    "Propensity score matching is described but no post-matching "
+                    "covariate balance check is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 382 – inverse probability weighting overlap
+# ---------------------------------------------------------------------------
+
+_IPW_TRIGGER_RE = re.compile(
+    r"\b(?:inverse\s+probability\s+(?:of\s+treatment\s+)?weighting"
+    r"|IPW\b"
+    r"|IPTW\b"
+    r"|inverse\s+propensity\s+weight"
+    r"|marginal\s+structural\s+model)\b",
+    re.IGNORECASE,
+)
+
+_IPW_OVERLAP_RE = re.compile(
+    r"\b(?:overlap\s+assumption"
+    r"|positivity\s+(?:assumption|condition)"
+    r"|common\s+support"
+    r"|propensity\s+score\s+(?:distribution|overlap|trimming)"
+    r"|weight\s+(?:trimming|truncation|stabilization)"
+    r"|stabilized\s+weight)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ipw_overlap_assumption(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag IPW analyses without overlap/positivity assumption reporting.
+
+    Emits ``missing-ipw-overlap-check`` (minor) when inverse probability
+    weighting is described but the overlap assumption is not addressed.
+    """
+    _vid = "validate_ipw_overlap_assumption"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _IPW_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _IPW_OVERLAP_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ipw-overlap-check",
+                message=(
+                    "Inverse probability weighting is described but the overlap "
+                    "or positivity assumption is not discussed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 383 – mediation analysis sensitivity to unmeasured confounding
+# ---------------------------------------------------------------------------
+
+_MED_SENS_TRIGGER_RE = re.compile(
+    r"\b(?:mediation\s+analysis"
+    r"|indirect\s+effect\s+(?:of|was|test)"
+    r"|mediating\s+(?:role|effect|pathway)"
+    r"|path\s+analysis\s+(?:with\s+mediation|mediation))\b",
+    re.IGNORECASE,
+)
+
+_MED_SENS_RE = re.compile(
+    r"\b(?:sensitivity\s+(?:analysis|to\s+unmeasured\s+confounding)"
+    r"|unmeasured\s+(?:confound(?:ing|er)s?|mediator)"
+    r"|E[\s-]value\b"
+    r"|VanderWeele\b"
+    r"|Imai\b.*sensitivity"
+    r"|mediation\s+sensitivity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_mediation_sensitivity_analysis(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag mediation analyses without sensitivity to unmeasured confounding.
+
+    Emits ``missing-mediation-sensitivity`` (minor) when mediation analysis
+    is described but no sensitivity analysis for unmeasured confounding is
+    performed.
+    """
+    _vid = "validate_mediation_sensitivity_analysis"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _MED_SENS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _MED_SENS_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-mediation-sensitivity",
+                message=(
+                    "Mediation analysis is described but no sensitivity analysis "
+                    "for unmeasured confounding is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 384 – moderation analysis probing
+# ---------------------------------------------------------------------------
+
+_MOD_TRIGGER_RE = re.compile(
+    r"\b(?:moderation\s+analysis"
+    r"|moderating\s+(?:role|effect|variable)"
+    r"|interaction\s+effect\s+(?:of|between)\s+\w+"
+    r"|interaction\s+term\s+(?:was|is)\s+significant"
+    r"|moderated\s+regression)\b",
+    re.IGNORECASE,
+)
+
+_MOD_PROBING_RE = re.compile(
+    r"\b(?:simple\s+slope(?:s)?\s+(?:analysis|test)"
+    r"|Johnson[\s-]Neyman\s+(?:technique|region|interval)"
+    r"|spotlight\s+analysis"
+    r"|floodlight\s+analysis"
+    r"|probing\s+(?:the\s+)?interaction"
+    r"|follow[\s-]up\s+(?:simple\s+effects?|analysis)\s+(?:of|for)\s+(?:the\s+)?interaction)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_moderation_interaction_probing(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag moderation analyses without interaction probing.
+
+    Emits ``missing-moderation-probing`` (minor) when a significant
+    moderation or interaction effect is reported but no simple slopes or
+    Johnson-Neyman analysis follows.
+    """
+    _vid = "validate_moderation_interaction_probing"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _MOD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _MOD_PROBING_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-moderation-probing",
+                message=(
+                    "A moderation or interaction effect is described but no simple "
+                    "slopes or Johnson-Neyman probing analysis is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 385 – ceiling/floor effect reporting in outcome measures
+# ---------------------------------------------------------------------------
+
+_CF_TRIGGER_RE = re.compile(
+    r"\b(?:(?:outcome|dependent)\s+(?:measure|variable|scale|score)"
+    r"|Likert\s+(?:scale|item)"
+    r"|rating\s+scale"
+    r"|response\s+scale)\b",
+    re.IGNORECASE,
+)
+
+_CF_REPORTED_RE = re.compile(
+    r"\b(?:ceiling\s+(?:or\s+floor\s+)?effects?"
+    r"|floor\s+(?:or\s+ceiling\s+)?effects?"
+    r"|score\s+distribution\s+(?:was\s+)?(?:examined|checked|reported|skewed)"
+    r"|distributional\s+(?:properties|checks?)"
+    r"|scale\s+range\s+(?:was|is)\s+(?:fully\s+)?utilized)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ceiling_floor_effect_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag scale-based measures without ceiling/floor effect checking.
+
+    Emits ``missing-ceiling-floor-report`` (minor) when outcome or rating
+    scales are used but ceiling or floor effects are not discussed.
+    """
+    _vid = "validate_ceiling_floor_effect_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _CF_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CF_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ceiling-floor-report",
+                message=(
+                    "Outcome or rating scales are used but ceiling and floor "
+                    "effects are not discussed."
                 ),
                 severity="minor",
                 validator=_vid,
