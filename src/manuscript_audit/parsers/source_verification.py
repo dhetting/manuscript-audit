@@ -21,6 +21,16 @@ YEAR_TOKEN_RE = re.compile(r"(19|20)\d{2}")
 DOI_URL_RE = re.compile(r"https?://doi\.org/(.+)$", re.IGNORECASE)
 TOKEN_RE = re.compile(r"[a-z0-9]+")
 
+# Matching/scoring thresholds (centralized for calibration)
+TITLE_EXACT_SCORE = 5.0
+TITLE_SUBSTRING_SCORE = 4.0
+TITLE_OVERLAP_THRESHOLDS = (0.75, 0.5, 0.3)
+TITLE_OVERLAP_SCORES = (3.0, 2.0, 1.0)
+
+# Selection thresholds
+MIN_CONFIDENT_SCORE = 3.0
+BEST_SECOND_SCORE_MARGIN = 1.0
+
 
 class SourceRegistryLookupError(RuntimeError):
     """Raised when a registry provider fails to answer a lookup request."""
@@ -230,20 +240,17 @@ def _title_score(entry_title: str | None, candidate_title: str | None) -> float:
     if normalized_entry is None or normalized_candidate is None:
         return 0.0
     if normalized_entry == normalized_candidate:
-        return 5.0
+        return TITLE_EXACT_SCORE
     if normalized_entry in normalized_candidate or normalized_candidate in normalized_entry:
-        return 4.0
+        return TITLE_SUBSTRING_SCORE
     entry_tokens = _token_set(normalized_entry)
     candidate_tokens = _token_set(normalized_candidate)
     if not entry_tokens or not candidate_tokens:
         return 0.0
     overlap = len(entry_tokens & candidate_tokens) / len(entry_tokens | candidate_tokens)
-    if overlap >= 0.75:
-        return 3.0
-    if overlap >= 0.5:
-        return 2.0
-    if overlap >= 0.3:
-        return 1.0
+    for threshold, score in zip(TITLE_OVERLAP_THRESHOLDS, TITLE_OVERLAP_SCORES, strict=True):
+        if overlap >= threshold:
+            return score
     return 0.0
 
 
@@ -281,9 +288,9 @@ def _select_best_candidate(
     scored.sort(key=lambda item: item[1], reverse=True)
     best_candidate, best_score = scored[0]
     second_score = scored[1][1] if len(scored) > 1 else None
-    if best_score < 3.0:
+    if best_score < MIN_CONFIDENT_SCORE:
         return None, None, ["no_confident_candidate_match"]
-    if second_score is not None and best_score - second_score < 1.0:
+    if second_score is not None and best_score - second_score < BEST_SECOND_SCORE_MARGIN:
         return None, None, ["multiple_candidate_matches"]
     return best_candidate, best_score, []
 
