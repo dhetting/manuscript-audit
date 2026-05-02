@@ -29135,3 +29135,336 @@ def test_no_abm475_trigger_no_fire() -> None:
     ms, cl = _abm475_ms("We used a generalized linear model on ecological count data.")
     result = validate_abm_sensitivity_analysis(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 476 – validate_sbi_coverage_testing
+# ---------------------------------------------------------------------------
+
+def _sbi476_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sbi476",
+            source_path="/tmp/sbi476.md",
+            source_format="markdown",
+            title="SBI Coverage Testing Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sbi_without_coverage_fires() -> None:
+    from manuscript_audit.validators.core import validate_sbi_coverage_testing
+
+    ms, cl = _sbi476_ms(
+        "We used approximate Bayesian computation (ABC) for posterior inference."
+    )
+    result = validate_sbi_coverage_testing(ms, cl)
+    assert any(f.code == "missing-sbi-coverage-testing" for f in result.findings)
+
+
+def test_sbi_with_coverage_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sbi_coverage_testing
+
+    ms, cl = _sbi476_ms(
+        "We used approximate Bayesian computation (ABC) for posterior inference. "
+        "Simulation-based calibration (SBC) and posterior coverage tests were reported."
+    )
+    result = validate_sbi_coverage_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_sbi_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sbi_coverage_testing
+
+    ms, cl = _sbi476_ms("We used ABC for likelihood-free Bayesian inference.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sbi_coverage_testing(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sbi_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sbi_coverage_testing
+
+    ms, cl = _sbi476_ms("We used ordinary least squares for regression analysis.")
+    result = validate_sbi_coverage_testing(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 477 – validate_bo_acquisition_function
+# ---------------------------------------------------------------------------
+
+def _bo477_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bo477",
+            source_path="/tmp/bo477.md",
+            source_format="markdown",
+            title="BO Acquisition Function Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bo_without_acquisition_fires() -> None:
+    from manuscript_audit.validators.core import validate_bo_acquisition_function
+
+    ms, cl = _bo477_ms(
+        "We used Bayesian optimization for hyperparameter tuning of neural networks."
+    )
+    result = validate_bo_acquisition_function(ms, cl)
+    assert any(f.code == "missing-bo-acquisition-function" for f in result.findings)
+
+
+def test_bo_with_ei_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bo_acquisition_function
+
+    ms, cl = _bo477_ms(
+        "We used Bayesian optimization for hyperparameter tuning. "
+        "The expected improvement (EI acquisition) was used as the acquisition function."
+    )
+    result = validate_bo_acquisition_function(ms, cl)
+    assert result.findings == []
+
+
+def test_bo_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bo_acquisition_function
+
+    ms, cl = _bo477_ms("We applied Bayesian optimization to the hyperparameter search.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_bo_acquisition_function(ms, cl)
+    assert result.findings == []
+
+
+def test_no_bo_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bo_acquisition_function
+
+    ms, cl = _bo477_ms("We used a Cox proportional hazards model for survival analysis.")
+    result = validate_bo_acquisition_function(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 478 – validate_sdm_evaluation_metrics
+# ---------------------------------------------------------------------------
+
+def _sdm478_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sdm478",
+            source_path="/tmp/sdm478.md",
+            source_format="markdown",
+            title="SDM Evaluation Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sdm_without_auc_fires() -> None:
+    from manuscript_audit.validators.core import validate_sdm_evaluation_metrics
+
+    ms, cl = _sdm478_ms(
+        "A species distribution model (SDM) was fit to occurrence data."
+    )
+    result = validate_sdm_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-sdm-evaluation-metrics" for f in result.findings)
+
+
+def test_sdm_with_auc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sdm_evaluation_metrics
+
+    ms, cl = _sdm478_ms(
+        "A species distribution model was fit to occurrence data. "
+        "AUC of ROC and true skill statistic (TSS) were reported."
+    )
+    result = validate_sdm_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_sdm_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sdm_evaluation_metrics
+
+    ms, cl = _sdm478_ms("A species distribution model was evaluated for robustness.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_sdm_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sdm_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sdm_evaluation_metrics
+
+    ms, cl = _sdm478_ms("We used elastic net regression for high-dimensional data.")
+    result = validate_sdm_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 479 – validate_epi_parameter_estimation
+# ---------------------------------------------------------------------------
+
+def _epicomp479_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-epicomp479",
+            source_path="/tmp/epicomp479.md",
+            source_format="markdown",
+            title="Epi Parameter Estimation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_epi_without_r0_fires() -> None:
+    from manuscript_audit.validators.core import validate_epi_parameter_estimation
+
+    ms, cl = _epicomp479_ms(
+        "We fitted an SEIR model to COVID-19 case data."
+    )
+    result = validate_epi_parameter_estimation(ms, cl)
+    assert any(f.code == "missing-epi-parameter-estimation" for f in result.findings)
+
+
+def test_epi_with_r0_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_epi_parameter_estimation
+
+    ms, cl = _epicomp479_ms(
+        "We fitted an SEIR model to COVID-19 case data. "
+        "The basic reproduction number R0 = 2.4 and transmission rate parameter "
+        "were estimated by maximum likelihood."
+    )
+    result = validate_epi_parameter_estimation(ms, cl)
+    assert result.findings == []
+
+
+def test_epi_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_epi_parameter_estimation
+
+    ms, cl = _epicomp479_ms("We fitted an SEIR model to epidemic outbreak data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_epi_parameter_estimation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_epi_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_epi_parameter_estimation
+
+    ms, cl = _epicomp479_ms(
+        "We used a random intercept model for repeated measures data."
+    )
+    result = validate_epi_parameter_estimation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 480 – validate_optimization_convergence_reporting
+# ---------------------------------------------------------------------------
+
+def _optbench480_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-optbench480",
+            source_path="/tmp/optbench480.md",
+            source_format="markdown",
+            title="Optimization Convergence Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_optbench_without_convergence_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_optimization_convergence_reporting,
+    )
+
+    ms, cl = _optbench480_ms(
+        "We evaluated a new algorithm on the CEC benchmark suite."
+    )
+    result = validate_optimization_convergence_reporting(ms, cl)
+    assert any(
+        f.code == "missing-optimization-convergence-reporting" for f in result.findings
+    )
+
+
+def test_optbench_with_convergence_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_optimization_convergence_reporting,
+    )
+
+    ms, cl = _optbench480_ms(
+        "We evaluated a new algorithm on the CEC benchmark suite. "
+        "Convergence curves and wall-clock time per run were reported."
+    )
+    result = validate_optimization_convergence_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_optbench_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_optimization_convergence_reporting,
+    )
+
+    ms, cl = _optbench480_ms("We evaluated algorithms on the BBOB benchmark suite.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_optimization_convergence_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_optbench_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_optimization_convergence_reporting,
+    )
+
+    ms, cl = _optbench480_ms("We used a negative binomial model for count outcomes.")
+    result = validate_optimization_convergence_reporting(ms, cl)
+    assert result.findings == []

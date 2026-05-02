@@ -6982,6 +6982,11 @@ def run_deterministic_validators(
         validate_panel_unit_root_testing(parsed, classification),
         validate_social_network_centrality_reporting(parsed, classification),
         validate_abm_sensitivity_analysis(parsed, classification),
+        validate_sbi_coverage_testing(parsed, classification),
+        validate_bo_acquisition_function(parsed, classification),
+        validate_sdm_evaluation_metrics(parsed, classification),
+        validate_epi_parameter_estimation(parsed, classification),
+        validate_optimization_convergence_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -27825,6 +27830,241 @@ def validate_abm_sensitivity_analysis(
                 ),
                 severity="minor",
                 validator=_ABM_SENS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 476 – Simulation-based inference: coverage testing
+# ---------------------------------------------------------------------------
+_SBI_TRIGGER_RE = re.compile(
+    r"\b(?:simulation.based\s+inference|approximate\s+Bayesian\s+computation|ABC\b|"
+    r"likelihood.free\s+inference|sequential\s+neural\s+posterior\s+estimation|SNPE\b|"
+    r"normalizing\s+flow\s+posterior)\b",
+    re.IGNORECASE,
+)
+_SBI_DETAIL_RE = re.compile(
+    r"\b(?:posterior\s+coverage\s+test|expected\s+coverage|simulation.based\s+calibration|"
+    r"SBC\b|posterior\s+predictive\s+check\s+for\s+SBI|"
+    r"rank\s+statistics\s+test|coverage\s+probability)\b",
+    re.IGNORECASE,
+)
+
+_SBI_VID = "missing-sbi-coverage-testing"
+
+
+def validate_sbi_coverage_testing(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when simulation-based inference papers lack coverage/calibration testing."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SBI_VID, findings=[])
+    text = parsed.full_text
+    if not _SBI_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SBI_VID, findings=[])
+    if _SBI_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_SBI_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SBI_VID,
+        findings=[
+            Finding(
+                code=_SBI_VID,
+                message=(
+                    "Simulation-based inference paper detected but no posterior "
+                    "coverage testing or simulation-based calibration was reported."
+                ),
+                severity="moderate",
+                validator=_SBI_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 477 – Bayesian optimization: acquisition function disclosure
+# ---------------------------------------------------------------------------
+_BO_TRIGGER_RE = re.compile(
+    r"\b(?:Bayesian\s+optimization|BO\s+(?:loop|framework)|"
+    r"Gaussian\s+process\s+(?:surrogate|optimization)|"
+    r"surrogate.based\s+optimization|hyperparameter\s+optimization\s+via\s+BO)\b",
+    re.IGNORECASE,
+)
+_BO_DETAIL_RE = re.compile(
+    r"\b(?:acquisition\s+function|expected\s+improvement|EI\s+acquisition|"
+    r"upper\s+confidence\s+bound|UCB\s+acquisition|probability\s+of\s+improvement|"
+    r"Thompson\s+sampling\s+acquisition)\b",
+    re.IGNORECASE,
+)
+
+_BO_VID = "missing-bo-acquisition-function"
+
+
+def validate_bo_acquisition_function(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when Bayesian optimization papers lack acquisition function disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_BO_VID, findings=[])
+    text = parsed.full_text
+    if not _BO_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_BO_VID, findings=[])
+    if _BO_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_BO_VID, findings=[])
+    return ValidationResult(
+        validator_name=_BO_VID,
+        findings=[
+            Finding(
+                code=_BO_VID,
+                message=(
+                    "Bayesian optimization paper detected but no acquisition "
+                    "function (EI, UCB, PI) was specified."
+                ),
+                severity="minor",
+                validator=_BO_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 478 – Ecological modeling: species distribution model evaluation
+# ---------------------------------------------------------------------------
+_SDM_TRIGGER_RE = re.compile(
+    r"\b(?:species\s+distribution\s+model(?:ing)?|SDM\b|habitat\s+suitability\s+model|"
+    r"MaxEnt\s+model|ecological\s+niche\s+model(?:ing)?|"
+    r"occupancy\s+model(?:ing)?)\b",
+    re.IGNORECASE,
+)
+_SDM_METRIC_RE = re.compile(
+    r"\b(?:AUC\s+(?:of\s+)?ROC|AUC\s*=|true\s+skill\s+statistic|TSS\s*=|"
+    r"Boyce\s+index|continuous\s+Boyce|Kappa\s+statistic\s+for\s+SDM|"
+    r"omission\s+rate\s+for\s+SDM)\b",
+    re.IGNORECASE,
+)
+
+_SDM_VID = "missing-sdm-evaluation-metrics"
+
+
+def validate_sdm_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when species distribution model papers lack AUC or TSS reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SDM_VID, findings=[])
+    text = parsed.full_text
+    if not _SDM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SDM_VID, findings=[])
+    if _SDM_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SDM_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SDM_VID,
+        findings=[
+            Finding(
+                code=_SDM_VID,
+                message=(
+                    "Species distribution model paper detected but no AUC, TSS, "
+                    "or Boyce index evaluation was reported."
+                ),
+                severity="moderate",
+                validator=_SDM_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 479 – Epidemiological compartment model: parameter estimation disclosure
+# ---------------------------------------------------------------------------
+_EPI_COMP_TRIGGER_RE = re.compile(
+    r"\b(?:compartment(?:al)?\s+model|SIR\s+model|SEIR\s+model|SEIRD\s+model|"
+    r"infectious\s+disease\s+model|epidemic\s+model\s+(?:fitting|estimation))\b",
+    re.IGNORECASE,
+)
+_EPI_COMP_DETAIL_RE = re.compile(
+    r"\b(?:basic\s+reproduction\s+number|R_?0\s*=|reproduction\s+number\s*=|"
+    r"transmission\s+rate\s+(?:estimation|parameter)|recovery\s+rate\s+parameter|"
+    r"parameter\s+(?:estimation|fitting)\s+for\s+(?:the\s+)?(?:SIR|SEIR|epidemic))\b",
+    re.IGNORECASE,
+)
+
+_EPI_COMP_VID = "missing-epi-parameter-estimation"
+
+
+def validate_epi_parameter_estimation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when epidemiological compartment model papers lack parameter estimation."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_EPI_COMP_VID, findings=[])
+    text = parsed.full_text
+    if not _EPI_COMP_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_EPI_COMP_VID, findings=[])
+    if _EPI_COMP_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_EPI_COMP_VID, findings=[])
+    return ValidationResult(
+        validator_name=_EPI_COMP_VID,
+        findings=[
+            Finding(
+                code=_EPI_COMP_VID,
+                message=(
+                    "Epidemiological compartment model paper detected but "
+                    "parameter estimation (R0, transmission rate) was not reported."
+                ),
+                severity="moderate",
+                validator=_EPI_COMP_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 480 – Optimization benchmark: convergence and wall-clock reporting
+# ---------------------------------------------------------------------------
+_OPT_BENCH_TRIGGER_RE = re.compile(
+    r"\b(?:optimization\s+benchmark|numerical\s+optimization\s+(?:benchmark|comparison)|"
+    r"benchmark\s+(?:function|suite)\s+for\s+optimization|"
+    r"CEC\s+benchmark|BBOB\s+benchmark|black.box\s+optimization\s+benchmark)\b",
+    re.IGNORECASE,
+)
+_OPT_BENCH_DETAIL_RE = re.compile(
+    r"\b(?:convergence\s+(?:curve|plot|rate)|wall.clock\s+time|"
+    r"function\s+evaluation\s+budget|number\s+of\s+function\s+evaluations?|"
+    r"best\s+fitness\s+over\s+(?:iterations?|generations?)|"
+    r"average\s+(?:runtime|computation\s+time)\s+(?:per|over)\s+run)\b",
+    re.IGNORECASE,
+)
+
+_OPT_BENCH_VID = "missing-optimization-convergence-reporting"
+
+
+def validate_optimization_convergence_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when optimization benchmark papers lack convergence or wall-clock reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_OPT_BENCH_VID, findings=[])
+    text = parsed.full_text
+    if not _OPT_BENCH_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_OPT_BENCH_VID, findings=[])
+    if _OPT_BENCH_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_OPT_BENCH_VID, findings=[])
+    return ValidationResult(
+        validator_name=_OPT_BENCH_VID,
+        findings=[
+            Finding(
+                code=_OPT_BENCH_VID,
+                message=(
+                    "Optimization benchmark paper detected but no convergence "
+                    "curve or wall-clock time was reported."
+                ),
+                severity="minor",
+                validator=_OPT_BENCH_VID,
             )
         ],
     )
