@@ -6778,6 +6778,11 @@ def run_deterministic_validators(
         validate_intention_to_treat_analysis(parsed, classification),
         validate_confidence_interval_direction_interpretation(parsed, classification),
         validate_longitudinal_missing_data_method(parsed, classification),
+        validate_cluster_sampling_correction(parsed, classification),
+        validate_non_experimental_confound_discussion(parsed, classification),
+        validate_complete_case_analysis_bias(parsed, classification),
+        validate_analytic_strategy_prespecification(parsed, classification),
+        validate_self_report_bias_acknowledgement(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -16585,6 +16590,323 @@ def validate_longitudinal_missing_data_method(
                     "multiple imputation, listwise deletion)."
                 ),
                 validator="validate_longitudinal_missing_data_method",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 271 – validate_cluster_sampling_correction
+# ---------------------------------------------------------------------------
+
+_CLUSTER_SAMPLE_TRIGGER_RE = re.compile(
+    r"\b(?:cluster(?:ed)?\s+(?:sampling|sample|design|randomis(?:ation|ed))|"
+    r"schools?\s+(?:were|as)\s+(?:the\s+)?(?:unit|cluster)|"
+    r"nested\s+(?:within|data|design)|multilevel\s+(?:sampling|design)|"
+    r"hierarchical\s+(?:sampling|data\s+structure)|"
+    r"stratified\s+cluster\s+sample)\b",
+    re.IGNORECASE,
+)
+_CLUSTER_CORRECTION_RE = re.compile(
+    r"\b(?:clustered\s+standard\s+errors?|"
+    r"cluster[\s-]robust\s+(?:standard\s+errors?|variance)|"
+    r"multilevel\s+model(?:ling|ing)?|mixed[\s-]effects?\s+model|"
+    r"generalised?\s+estimating\s+equations?|GEE|"
+    r"design\s+effect|DEFF|intraclass\s+correlation|ICC)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cluster_sampling_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag clustered samples without design-corrected analysis.
+
+    Emits ``missing-cluster-sampling-correction`` (moderate) when a clustered
+    or nested sampling design is described without clustered SEs or multilevel
+    modelling.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_cluster_sampling_correction", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _CLUSTER_SAMPLE_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_cluster_sampling_correction", findings=[]
+        )
+
+    if _CLUSTER_CORRECTION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_cluster_sampling_correction", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_cluster_sampling_correction",
+        findings=[
+            Finding(
+                code="missing-cluster-sampling-correction",
+                severity="moderate",
+                message=(
+                    "A clustered or nested sampling design is used but no cluster-corrected "
+                    "analysis (clustered SEs, multilevel model, or GEE) is reported. "
+                    "Account for non-independence due to clustering."
+                ),
+                validator="validate_cluster_sampling_correction",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 272 – validate_non_experimental_confound_discussion
+# ---------------------------------------------------------------------------
+
+_NON_EXPERIMENTAL_TRIGGER_RE = re.compile(
+    r"\b(?:cross[\s-]sectional|correlational\s+(?:study|design|analysis)|"
+    r"observational\s+(?:study|design)|survey\s+(?:study|data)|"
+    r"naturally\s+occurring\s+variation)\b",
+    re.IGNORECASE,
+)
+_CONFOUND_DISCUSSION_RE = re.compile(
+    r"\b(?:confound(?:ers?|ing)?|third\s+variable|spurious|"
+    r"alternative\s+explanation|unmeasured\s+variable|"
+    r"reverse\s+causation|reverse\s+causality|"
+    r"cannot\s+(?:rule\s+out|establish\s+causation|determine\s+directionality)|"
+    r"limitation\s+of\s+(?:the\s+)?(?:cross[\s-]sectional|correlational|observational))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_non_experimental_confound_discussion(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag non-experimental studies without confound discussion.
+
+    Emits ``missing-confound-discussion`` (minor) when an observational or
+    correlational design is used without any discussion of potential confounders.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_non_experimental_confound_discussion", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _NON_EXPERIMENTAL_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_non_experimental_confound_discussion", findings=[]
+        )
+
+    if _CONFOUND_DISCUSSION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_non_experimental_confound_discussion", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_non_experimental_confound_discussion",
+        findings=[
+            Finding(
+                code="missing-confound-discussion",
+                severity="minor",
+                message=(
+                    "An observational or correlational design is used without discussing "
+                    "potential confounders or alternative explanations. Acknowledge "
+                    "confounding as a limitation."
+                ),
+                validator="validate_non_experimental_confound_discussion",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 273 – validate_complete_case_analysis_bias
+# ---------------------------------------------------------------------------
+
+_COMPLETE_CASE_TRIGGER_RE = re.compile(
+    r"\b(?:complete[\s-]case\s+analysis|available\s+case\s+analysis|"
+    r"listwise\s+deletion|cases?\s+with\s+missing\s+data\s+(?:were|was)\s+excluded|"
+    r"excluded\s+(?:due\s+to\s+)?missing\s+data|"
+    r"only\s+(?:complete|non[\s-]missing)\s+cases?\s+(?:were|was)\s+(?:included|used|analysed))\b",
+    re.IGNORECASE,
+)
+_MCAR_CHECK_RE = re.compile(
+    r"\b(?:missing\s+completely\s+at\s+random|MCAR|Little'?s?\s+MCAR\s+test|"
+    r"data\s+(?:are|were)\s+(?:assumed\s+to\s+be\s+)?missing\s+(?:at|completely)\s+at\s+random|"
+    r"sensitivity\s+analysis\s+for\s+missing|"
+    r"(?:compared|tested)\s+(?:completers?|responders?)\s+(?:to|vs\.?|versus)\s+"
+    r"(?:non[\s-]completers?|non[\s-]responders?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_complete_case_analysis_bias(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag complete-case analysis without MCAR justification.
+
+    Emits ``unjustified-complete-case-analysis`` (moderate) when listwise
+    deletion or complete-case analysis is used without justifying MCAR
+    assumption or comparing completers to non-completers.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_complete_case_analysis_bias", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _COMPLETE_CASE_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_complete_case_analysis_bias", findings=[]
+        )
+
+    if _MCAR_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_complete_case_analysis_bias", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_complete_case_analysis_bias",
+        findings=[
+            Finding(
+                code="unjustified-complete-case-analysis",
+                severity="moderate",
+                message=(
+                    "Complete-case or listwise deletion is used without justifying the "
+                    "MCAR assumption or comparing completers to non-completers. "
+                    "This may introduce bias if data are not MCAR."
+                ),
+                validator="validate_complete_case_analysis_bias",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 274 – validate_analytic_strategy_prespecification
+# ---------------------------------------------------------------------------
+
+_EXPLORATORY_TRIGGER_RE = re.compile(
+    r"\b(?:exploratory\s+(?:analysis|study|investigation|approach)|"
+    r"post[\s-]hoc\s+(?:exploration|analysis|examination)|"
+    r"we\s+(?:also|additionally|further)\s+explored?|"
+    r"exploratory\s+(?:aim|objective|research\s+question))\b",
+    re.IGNORECASE,
+)
+_EXPLORATORY_LABELLED_RE = re.compile(
+    r"\b(?:exploratory\s+(?:\w+\s+){0,3}(?:should\s+be\s+interpreted|"
+    r"(?:are|were)\s+(?:preliminary|hypothesis[\s-]generating))|"
+    r"(?:labelled|noted|flagged)\s+as\s+exploratory|"
+    r"(?:these|such)\s+(?:exploratory\s+)?analyses?\s+(?:should|must)\s+be\s+replicated|"
+    r"exploratory\s+nature\s+(?:of|warrants?)|"
+    r"hypothesis[\s-]generating\s+(?:only|in\s+nature))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_analytic_strategy_prespecification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag exploratory analyses not labelled as such.
+
+    Emits ``unlabelled-exploratory-analysis`` (minor) when exploratory analyses
+    are described but not explicitly labelled as preliminary or hypothesis-generating.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_analytic_strategy_prespecification", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _EXPLORATORY_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_analytic_strategy_prespecification", findings=[]
+        )
+
+    if _EXPLORATORY_LABELLED_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_analytic_strategy_prespecification", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_analytic_strategy_prespecification",
+        findings=[
+            Finding(
+                code="unlabelled-exploratory-analysis",
+                severity="minor",
+                message=(
+                    "Exploratory analyses are described but not explicitly labelled as "
+                    "hypothesis-generating or preliminary. Flag exploratory findings "
+                    "to avoid overconfident interpretation."
+                ),
+                validator="validate_analytic_strategy_prespecification",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 275 – validate_self_report_bias_acknowledgement
+# ---------------------------------------------------------------------------
+
+_SELF_REPORT_TRIGGER_RE = re.compile(
+    r"\b(?:self[\s-]report(?:ed|ing)?|questionnaire\s+(?:data|responses?)|"
+    r"participants\s+reported|self[\s-]administered\s+(?:questionnaire|survey)|"
+    r"online\s+survey\s+(?:data|responses?))\b",
+    re.IGNORECASE,
+)
+_SELF_REPORT_CAVEAT_RE = re.compile(
+    r"\b(?:self[\s-]report\s+(?:bias|limitation)|social\s+desirability\s+(?:bias)?|"
+    r"recall\s+(?:bias|error)|response\s+bias|"
+    r"limitation\s+of\s+self[\s-](?:report|administered)|"
+    r"participants\s+may\s+have\s+(?:over[\s-]|under[\s-])?(?:reported|estimated)|"
+    r"subjective\s+(?:report|measure|assessment))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_self_report_bias_acknowledgement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag self-report data use without bias acknowledgement.
+
+    Emits ``missing-self-report-bias-acknowledgement`` (minor) when self-report
+    data are used without acknowledging potential response bias.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_self_report_bias_acknowledgement", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _SELF_REPORT_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_self_report_bias_acknowledgement", findings=[]
+        )
+
+    if _SELF_REPORT_CAVEAT_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_self_report_bias_acknowledgement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_self_report_bias_acknowledgement",
+        findings=[
+            Finding(
+                code="missing-self-report-bias-acknowledgement",
+                severity="minor",
+                message=(
+                    "Self-report data are used without acknowledging potential response "
+                    "bias (e.g., social desirability, recall bias). Acknowledge these "
+                    "limitations in the discussion."
+                ),
+                validator="validate_self_report_bias_acknowledgement",
             )
         ],
     )

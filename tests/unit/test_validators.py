@@ -15271,3 +15271,365 @@ def test_long_missing_non_empirical_no_fire() -> None:
     )
     result = validate_longitudinal_missing_data_method(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 271 – validate_cluster_sampling_correction
+# ---------------------------------------------------------------------------
+
+def _cluster_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cluster",
+            source_path="/tmp/cluster.md",
+            source_format="markdown",
+            title="Cluster Sampling Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cluster_sample_without_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_cluster_sampling_correction
+
+    ms, cl = _cluster_ms(
+        "Schools were the unit of randomisation in this cluster randomised trial. "
+        "Individual students within schools were assessed."
+    )
+    result = validate_cluster_sampling_correction(ms, cl)
+    assert any(f.code == "missing-cluster-sampling-correction" for f in result.findings)
+
+
+def test_cluster_sample_with_multilevel_model_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cluster_sampling_correction
+
+    ms, cl = _cluster_ms(
+        "Schools were randomised. Data were analysed using multilevel modelling "
+        "to account for the nested structure of students within schools."
+    )
+    result = validate_cluster_sampling_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cluster_design_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cluster_sampling_correction
+
+    ms, cl = _cluster_ms(
+        "Individual participants were recruited and randomly assigned to conditions."
+    )
+    result = validate_cluster_sampling_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_cluster_sampling_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cluster_sampling_correction
+
+    ms, cl = _cluster_ms("Clustered samples require design-corrected analyses.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cluster_sampling_correction(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 272 – validate_non_experimental_confound_discussion
+# ---------------------------------------------------------------------------
+
+def _confound_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-confound",
+            source_path="/tmp/confound.md",
+            source_format="markdown",
+            title="Confound Discussion Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_observational_without_confound_discussion_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_non_experimental_confound_discussion,
+    )
+
+    ms, cl = _confound_ms(
+        "This cross-sectional study examined the relationship between "
+        "physical activity and depression in 500 adults."
+    )
+    result = validate_non_experimental_confound_discussion(ms, cl)
+    assert any(f.code == "missing-confound-discussion" for f in result.findings)
+
+
+def test_observational_with_confound_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_non_experimental_confound_discussion,
+    )
+
+    ms, cl = _confound_ms(
+        "This cross-sectional study examined physical activity and depression. "
+        "We acknowledge that confounders such as age and socioeconomic status "
+        "cannot be ruled out in this design."
+    )
+    result = validate_non_experimental_confound_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_experimental_no_confound_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_non_experimental_confound_discussion,
+    )
+
+    ms, cl = _confound_ms(
+        "Participants were randomly assigned to conditions in a controlled experiment."
+    )
+    result = validate_non_experimental_confound_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_confound_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_non_experimental_confound_discussion,
+    )
+
+    ms, cl = _confound_ms("Confounding is a key threat to validity in observational research.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_non_experimental_confound_discussion(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 273 – validate_complete_case_analysis_bias
+# ---------------------------------------------------------------------------
+
+def _complete_case_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cc",
+            source_path="/tmp/cc.md",
+            source_format="markdown",
+            title="Complete Case Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_listwise_deletion_without_mcar_fires() -> None:
+    from manuscript_audit.validators.core import validate_complete_case_analysis_bias
+
+    ms, cl = _complete_case_ms(
+        "Cases with missing data were excluded from the analysis (listwise deletion), "
+        "resulting in a final sample of 182 participants."
+    )
+    result = validate_complete_case_analysis_bias(ms, cl)
+    assert any(f.code == "unjustified-complete-case-analysis" for f in result.findings)
+
+
+def test_listwise_deletion_with_mcar_test_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_complete_case_analysis_bias
+
+    ms, cl = _complete_case_ms(
+        "Listwise deletion was applied. Little's MCAR test indicated data were "
+        "missing completely at random (χ² = 14.2, df = 12, p = .29)."
+    )
+    result = validate_complete_case_analysis_bias(ms, cl)
+    assert result.findings == []
+
+
+def test_no_missing_data_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_complete_case_analysis_bias
+
+    ms, cl = _complete_case_ms(
+        "All 200 enrolled participants completed all measures at all time points."
+    )
+    result = validate_complete_case_analysis_bias(ms, cl)
+    assert result.findings == []
+
+
+def test_complete_case_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_complete_case_analysis_bias
+
+    ms, cl = _complete_case_ms("Listwise deletion assumes data are MCAR.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_complete_case_analysis_bias(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 274 – validate_analytic_strategy_prespecification
+# ---------------------------------------------------------------------------
+
+def _exploratory_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-exploratory",
+            source_path="/tmp/exploratory.md",
+            source_format="markdown",
+            title="Exploratory Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_unlabelled_exploratory_analysis_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_analytic_strategy_prespecification,
+    )
+
+    ms, cl = _exploratory_ms(
+        "We additionally explored whether gender moderated the relationship "
+        "between stress and burnout."
+    )
+    result = validate_analytic_strategy_prespecification(ms, cl)
+    assert any(f.code == "unlabelled-exploratory-analysis" for f in result.findings)
+
+
+def test_labelled_exploratory_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_analytic_strategy_prespecification,
+    )
+
+    ms, cl = _exploratory_ms(
+        "We conducted an exploratory analysis of gender moderation. "
+        "These exploratory findings should be interpreted as preliminary "
+        "and hypothesis-generating."
+    )
+    result = validate_analytic_strategy_prespecification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_exploratory_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_analytic_strategy_prespecification,
+    )
+
+    ms, cl = _exploratory_ms(
+        "All analyses were prespecified and reported in the registered protocol."
+    )
+    result = validate_analytic_strategy_prespecification(ms, cl)
+    assert result.findings == []
+
+
+def test_exploratory_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_analytic_strategy_prespecification,
+    )
+
+    ms, cl = _exploratory_ms("Exploratory analyses are hypothesis-generating by nature.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_analytic_strategy_prespecification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 275 – validate_self_report_bias_acknowledgement
+# ---------------------------------------------------------------------------
+
+def _self_report_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-self-report",
+            source_path="/tmp/self_report.md",
+            source_format="markdown",
+            title="Self-Report Bias Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_self_report_without_bias_acknowledgement_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_self_report_bias_acknowledgement,
+    )
+
+    ms, cl = _self_report_ms(
+        "Depression and anxiety were assessed via self-report questionnaire data "
+        "completed online by participants."
+    )
+    result = validate_self_report_bias_acknowledgement(ms, cl)
+    assert any(
+        f.code == "missing-self-report-bias-acknowledgement" for f in result.findings
+    )
+
+
+def test_self_report_with_bias_caveat_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_self_report_bias_acknowledgement,
+    )
+
+    ms, cl = _self_report_ms(
+        "Depression was assessed via self-report. A limitation of self-report measures "
+        "is social desirability bias, which may have influenced responses."
+    )
+    result = validate_self_report_bias_acknowledgement(ms, cl)
+    assert result.findings == []
+
+
+def test_objective_measures_no_self_report_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_self_report_bias_acknowledgement,
+    )
+
+    ms, cl = _self_report_ms(
+        "Physical activity was measured using accelerometers worn for seven days."
+    )
+    result = validate_self_report_bias_acknowledgement(ms, cl)
+    assert result.findings == []
+
+
+def test_self_report_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_self_report_bias_acknowledgement,
+    )
+
+    ms, cl = _self_report_ms("Self-report data are subject to social desirability bias.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_self_report_bias_acknowledgement(ms, cl)
+    assert result.findings == []
