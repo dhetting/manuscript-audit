@@ -14897,3 +14897,377 @@ def test_fidelity_non_empirical_no_fire() -> None:
     )
     result = validate_treatment_fidelity_reporting(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 266 – validate_factorial_design_interaction_test
+# ---------------------------------------------------------------------------
+
+def _factorial_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-factorial",
+            source_path="/tmp/factorial.md",
+            source_format="markdown",
+            title="Factorial Design Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_factorial_anova_without_interaction_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_factorial_design_interaction_test,
+    )
+
+    ms, cl = _factorial_ms(
+        "A 2 × 2 factorial ANOVA was conducted with condition (CBT vs. control) "
+        "and time (pre vs. post) as between-subjects factors. "
+        "The main effect of condition was significant (F(1,98) = 12.3, p < .001)."
+    )
+    result = validate_factorial_design_interaction_test(ms, cl)
+    assert any(f.code == "missing-factorial-interaction-test" for f in result.findings)
+
+
+def test_factorial_anova_with_interaction_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_factorial_design_interaction_test,
+    )
+
+    ms, cl = _factorial_ms(
+        "A 2 × 2 factorial ANOVA was conducted. "
+        "The interaction effect of condition × time was significant "
+        "(F(1,98) = 8.7, p = .004)."
+    )
+    result = validate_factorial_design_interaction_test(ms, cl)
+    assert result.findings == []
+
+
+def test_no_factorial_design_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_factorial_design_interaction_test,
+    )
+
+    ms, cl = _factorial_ms(
+        "A one-way ANOVA compared anxiety scores across three conditions."
+    )
+    result = validate_factorial_design_interaction_test(ms, cl)
+    assert result.findings == []
+
+
+def test_factorial_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_factorial_design_interaction_test,
+    )
+
+    ms, cl = _factorial_ms("Factorial designs require interaction tests.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_factorial_design_interaction_test(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 267 – validate_regression_multicollinearity_check
+# ---------------------------------------------------------------------------
+
+def _multicol_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-multicol",
+            source_path="/tmp/multicol.md",
+            source_format="markdown",
+            title="Multicollinearity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_regression_without_multicollinearity_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_regression_multicollinearity_check,
+    )
+
+    ms, cl = _multicol_ms(
+        "A hierarchical regression examined predictors of burnout "
+        "using six predictor variables entered in two blocks."
+    )
+    result = validate_regression_multicollinearity_check(ms, cl)
+    assert any(f.code == "missing-multicollinearity-check" for f in result.findings)
+
+
+def test_regression_vif_multicol_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_regression_multicollinearity_check,
+    )
+
+    ms, cl = _multicol_ms(
+        "A hierarchical regression was conducted. "
+        "Variance inflation factor (VIF) values were all below 3.0, "
+        "indicating no multicollinearity concerns."
+    )
+    result = validate_regression_multicollinearity_check(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_no_multicol_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_regression_multicollinearity_check,
+    )
+
+    ms, cl = _multicol_ms(
+        "Descriptive statistics are reported in Table 1."
+    )
+    result = validate_regression_multicollinearity_check(ms, cl)
+    assert result.findings == []
+
+
+def test_multicol_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_regression_multicollinearity_check,
+    )
+
+    ms, cl = _multicol_ms("Multicollinearity is assessed using VIF in regression.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_regression_multicollinearity_check(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 268 – validate_intention_to_treat_analysis
+# ---------------------------------------------------------------------------
+
+def _itt_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-itt",
+            source_path="/tmp/itt.md",
+            source_format="markdown",
+            title="ITT Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rct_without_itt_fires() -> None:
+    from manuscript_audit.validators.core import validate_intention_to_treat_analysis
+
+    ms, cl = _itt_ms(
+        "This randomised controlled trial compared CBT to a waitlist control condition "
+        "in adults with depression."
+    )
+    result = validate_intention_to_treat_analysis(ms, cl)
+    assert any(f.code == "missing-itt-analysis" for f in result.findings)
+
+
+def test_rct_with_itt_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_intention_to_treat_analysis
+
+    ms, cl = _itt_ms(
+        "This randomised controlled trial compared CBT to waitlist. "
+        "Analyses followed an intention-to-treat approach, "
+        "including all randomised participants."
+    )
+    result = validate_intention_to_treat_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_non_rct_no_itt_fire() -> None:
+    from manuscript_audit.validators.core import validate_intention_to_treat_analysis
+
+    ms, cl = _itt_ms(
+        "This cross-sectional survey examined predictors of depression."
+    )
+    result = validate_intention_to_treat_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_itt_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_intention_to_treat_analysis
+
+    ms, cl = _itt_ms("ITT analysis is the gold standard for RCTs.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_intention_to_treat_analysis(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 269 – validate_confidence_interval_direction_interpretation
+# ---------------------------------------------------------------------------
+
+def _ci_dir_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ci-dir",
+            source_path="/tmp/ci_dir.md",
+            source_format="markdown",
+            title="CI Direction Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ci_without_direction_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_confidence_interval_direction_interpretation,
+    )
+
+    ms, cl = _ci_dir_ms(
+        "The treatment effect was d = 0.42 (95% CI [0.21, 0.63])."
+    )
+    result = validate_confidence_interval_direction_interpretation(ms, cl)
+    assert any(f.code == "missing-ci-direction-interpretation" for f in result.findings)
+
+
+def test_ci_with_null_crossing_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_confidence_interval_direction_interpretation,
+    )
+
+    ms, cl = _ci_dir_ms(
+        "The treatment effect was d = 0.42 (95% CI [0.21, 0.63]). "
+        "Both bounds of the CI are positive, consistent with a beneficial effect."
+    )
+    result = validate_confidence_interval_direction_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ci_reported_no_ci_dir_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_confidence_interval_direction_interpretation,
+    )
+
+    ms, cl = _ci_dir_ms(
+        "The intervention was effective (p < .001). Effect sizes were not reported."
+    )
+    result = validate_confidence_interval_direction_interpretation(ms, cl)
+    assert result.findings == []
+
+
+def test_ci_direction_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_confidence_interval_direction_interpretation,
+    )
+
+    ms, cl = _ci_dir_ms("CIs should exclude the null for significant effects.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_confidence_interval_direction_interpretation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 270 – validate_longitudinal_missing_data_method
+# ---------------------------------------------------------------------------
+
+def _long_missing_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-long-miss",
+            source_path="/tmp/long_miss.md",
+            source_format="markdown",
+            title="Longitudinal Missing Data Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_longitudinal_without_missing_method_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_longitudinal_missing_data_method,
+    )
+
+    ms, cl = _long_missing_ms(
+        "A longitudinal study assessed participants at baseline, "
+        "6 months, and 12 months. Some participants did not complete all time points."
+    )
+    result = validate_longitudinal_missing_data_method(ms, cl)
+    assert any(
+        f.code == "missing-longitudinal-missing-data-method" for f in result.findings
+    )
+
+
+def test_longitudinal_with_missing_method_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_longitudinal_missing_data_method,
+    )
+
+    ms, cl = _long_missing_ms(
+        "A longitudinal study was conducted at three time points. "
+        "Missing data were handled using full information maximum likelihood (FIML) "
+        "estimation, which uses all available data."
+    )
+    result = validate_longitudinal_missing_data_method(ms, cl)
+    assert result.findings == []
+
+
+def test_cross_sectional_no_long_missing_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_longitudinal_missing_data_method,
+    )
+
+    ms, cl = _long_missing_ms(
+        "A cross-sectional survey was administered once to 300 adults."
+    )
+    result = validate_longitudinal_missing_data_method(ms, cl)
+    assert result.findings == []
+
+
+def test_long_missing_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_longitudinal_missing_data_method,
+    )
+
+    ms, cl = _long_missing_ms(
+        "Longitudinal studies require careful handling of missing data."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_longitudinal_missing_data_method(ms, cl)
+    assert result.findings == []

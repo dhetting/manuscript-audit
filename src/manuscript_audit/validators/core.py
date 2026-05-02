@@ -6773,6 +6773,11 @@ def run_deterministic_validators(
         validate_standardised_mean_difference_units(parsed, classification),
         validate_retrospective_data_collection_disclosure(parsed, classification),
         validate_treatment_fidelity_reporting(parsed, classification),
+        validate_factorial_design_interaction_test(parsed, classification),
+        validate_regression_multicollinearity_check(parsed, classification),
+        validate_intention_to_treat_analysis(parsed, classification),
+        validate_confidence_interval_direction_interpretation(parsed, classification),
+        validate_longitudinal_missing_data_method(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -16278,6 +16283,308 @@ def validate_treatment_fidelity_reporting(
                     "internal validity."
                 ),
                 validator="validate_treatment_fidelity_reporting",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 266 – validate_factorial_design_interaction_test
+# ---------------------------------------------------------------------------
+
+_FACTORIAL_TRIGGER_RE = re.compile(
+    r"\b(?:factorial\s+design|\d\s*[×x]\s*\d\s+(?:factorial|ANOVA|design)|"
+    r"two[\s-]way\s+ANOVA|three[\s-]way\s+ANOVA|"
+    r"between[\s-]subjects\s+factor|within[\s-]subjects\s+factor)\b",
+    re.IGNORECASE,
+)
+_FACTORIAL_INTERACTION_RE = re.compile(
+    r"\b(?:interaction\s+(?:effect|term|test|was\s+(?:significant|not\s+significant))|"
+    r"interaction\s+F[\s(]|"
+    r"main\s+effect\s+(?:of|for)\s+\w+\s+was\s+qualified\s+by|"
+    r"no\s+significant\s+interaction)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_factorial_design_interaction_test(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag factorial designs without interaction effect testing.
+
+    Emits ``missing-factorial-interaction-test`` (moderate) when a factorial
+    ANOVA design is described but interaction effects are not reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_factorial_design_interaction_test", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _FACTORIAL_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_factorial_design_interaction_test", findings=[]
+        )
+
+    if _FACTORIAL_INTERACTION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_factorial_design_interaction_test", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_factorial_design_interaction_test",
+        findings=[
+            Finding(
+                code="missing-factorial-interaction-test",
+                severity="moderate",
+                message=(
+                    "A factorial design is described but interaction effects are not "
+                    "reported or tested. Report interaction effects before interpreting "
+                    "main effects in factorial designs."
+                ),
+                validator="validate_factorial_design_interaction_test",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 267 – validate_regression_multicollinearity_check
+# ---------------------------------------------------------------------------
+
+_REGRESSION_MULTI_TRIGGER_RE = re.compile(
+    r"\b(?:multiple\s+regression|hierarchical\s+regression|logistic\s+regression|"
+    r"simultaneous\s+regression|predictor\s+variable(?:s)?)\b",
+    re.IGNORECASE,
+)
+_MULTICOL_CHECK_RE = re.compile(
+    r"\b(?:multicollinearity|variance\s+inflation\s+factor|VIF\s*[<=≤]?\s*\d|"
+    r"tolerance\s*[>=≥]?\s*0\.\d|VIF\s+(?:values?|was|were)|"
+    r"condition\s+index|collinearity\s+(?:statistics?|diagnostics?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_regression_multicollinearity_check(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag multiple regression without multicollinearity checks.
+
+    Emits ``missing-multicollinearity-check`` (minor) when multiple regression
+    is used without reporting multicollinearity diagnostics.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_regression_multicollinearity_check", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _REGRESSION_MULTI_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_regression_multicollinearity_check", findings=[]
+        )
+
+    if _MULTICOL_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_regression_multicollinearity_check", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_regression_multicollinearity_check",
+        findings=[
+            Finding(
+                code="missing-multicollinearity-check",
+                severity="minor",
+                message=(
+                    "Multiple regression is conducted without reporting multicollinearity "
+                    "diagnostics (e.g., VIF or tolerance). Check for multicollinearity "
+                    "among predictors."
+                ),
+                validator="validate_regression_multicollinearity_check",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 268 – validate_intention_to_treat_analysis
+# ---------------------------------------------------------------------------
+
+_ITT_TRIGGER_RE = re.compile(
+    r"\b(?:randomised?\s+(?:controlled\s+)?trial|RCT|"
+    r"randomly\s+assigned|random\s+assignment)\b",
+    re.IGNORECASE,
+)
+_ITT_ANALYSIS_RE = re.compile(
+    r"\b(?:intention[\s-]to[\s-]treat|intent[\s-]to[\s-]treat|ITT\s+(?:analysis|population)|"
+    r"modified\s+ITT|mITT|per[\s-]protocol\s+analysis|"
+    r"all\s+randomised\s+participants|analysed\s+as\s+randomised)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_intention_to_treat_analysis(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RCTs without intention-to-treat analysis reporting.
+
+    Emits ``missing-itt-analysis`` (major) when an RCT is described but no
+    mention of ITT or per-protocol analysis strategy is made.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_intention_to_treat_analysis", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _ITT_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_intention_to_treat_analysis", findings=[]
+        )
+
+    if _ITT_ANALYSIS_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_intention_to_treat_analysis", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_intention_to_treat_analysis",
+        findings=[
+            Finding(
+                code="missing-itt-analysis",
+                severity="major",
+                message=(
+                    "An RCT is described but intention-to-treat (ITT) or per-protocol "
+                    "analysis strategy is not reported. Specify the analysis population "
+                    "to ensure transparency about participant exclusions."
+                ),
+                validator="validate_intention_to_treat_analysis",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 269 – validate_confidence_interval_direction_interpretation
+# ---------------------------------------------------------------------------
+
+_CI_REPORTED_RE = re.compile(
+    r"\b(?:95\s*%\s*CI|confidence\s+interval|CI\s*[\[\(]\s*[-−]?\d+)",
+    re.IGNORECASE,
+)
+_CI_DIRECTION_RE = re.compile(
+    r"\b(?:(?:lower|upper)\s+(?:bound|limit|end)\s+of\s+(?:the\s+)?(?:CI|confidence\s+interval)|"
+    r"CI\s+(?:spans?|crosses?|includes?|excludes?)\s+(?:zero|null|one)|"
+    r"(?:confidence\s+interval|CI)\s+(?:above|below|containing)\s+(?:zero|null)|"
+    r"both\s+bounds?.{0,20}(?:are|were|remain)\s+(?:positive|negative|above|below))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_confidence_interval_direction_interpretation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag confidence intervals reported without directional interpretation.
+
+    Emits ``missing-ci-direction-interpretation`` (minor) when CIs are reported
+    but their direction or null-crossing status is not discussed.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_confidence_interval_direction_interpretation",
+            findings=[],
+        )
+
+    full = parsed.full_text
+    if not _CI_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_confidence_interval_direction_interpretation",
+            findings=[],
+        )
+
+    if _CI_DIRECTION_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_confidence_interval_direction_interpretation",
+            findings=[],
+        )
+
+    return ValidationResult(
+        validator_name="validate_confidence_interval_direction_interpretation",
+        findings=[
+            Finding(
+                code="missing-ci-direction-interpretation",
+                severity="minor",
+                message=(
+                    "Confidence intervals are reported without interpreting their "
+                    "direction or null-crossing status. Discuss whether CI bounds "
+                    "are consistent with the null hypothesis."
+                ),
+                validator="validate_confidence_interval_direction_interpretation",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 270 – validate_longitudinal_missing_data_method
+# ---------------------------------------------------------------------------
+
+_LONG_MISSING_TRIGGER_RE = re.compile(
+    r"\b(?:longitudinal|follow[\s-]?up\s+(?:wave|assessment|measurement)|"
+    r"repeated[\s-]measures?|panel\s+data|time\s+point)\b",
+    re.IGNORECASE,
+)
+_MISSING_METHOD_RE = re.compile(
+    r"\b(?:multiple\s+imputation|full\s+information\s+maximum\s+likelihood|FIML|"
+    r"missing\s+at\s+random|MAR|listwise\s+deletion|pairwise\s+deletion|"
+    r"last\s+observation\s+carried\s+forward|LOCF|"
+    r"missing\s+data\s+(?:were|was)\s+(?:handled|addressed|imputed|analysed)|"
+    r"imputation\s+(?:method|procedure|approach))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_longitudinal_missing_data_method(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag longitudinal studies without missing data method specification.
+
+    Emits ``missing-longitudinal-missing-data-method`` (moderate) when a
+    longitudinal study is described but no missing data handling method is named.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_longitudinal_missing_data_method", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _LONG_MISSING_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_longitudinal_missing_data_method", findings=[]
+        )
+
+    if _MISSING_METHOD_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_longitudinal_missing_data_method", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_longitudinal_missing_data_method",
+        findings=[
+            Finding(
+                code="missing-longitudinal-missing-data-method",
+                severity="moderate",
+                message=(
+                    "A longitudinal study is described but no missing data handling "
+                    "method is specified. Report the approach used (e.g., FIML, "
+                    "multiple imputation, listwise deletion)."
+                ),
+                validator="validate_longitudinal_missing_data_method",
             )
         ],
     )
