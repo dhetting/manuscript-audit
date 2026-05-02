@@ -36324,3 +36324,254 @@ def test_reid615_non_empirical_no_fire() -> None:
     )
     r = validate_person_reid_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 616 – validate_vehicle_reid_metrics
+# ---------------------------------------------------------------------------
+def _vreid616_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t616", source_path="t616.md", source_format="markdown",
+            title="Vehicle re-identification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vreid616_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_vehicle_reid_metrics
+    ms, cl = _vreid616_ms("We propose a vehicle ReID model on the VeRi-776 dataset.")
+    r = validate_vehicle_reid_metrics(ms, cl)
+    assert any(f.code == "missing-vehicle-reid-metrics" for f in r.findings)
+
+
+def test_vreid616_no_fire_when_map_reported() -> None:
+    from manuscript_audit.validators.core import validate_vehicle_reid_metrics
+    ms, cl = _vreid616_ms(
+        "Vehicle re-identification: mAP = 83.6%, Rank-1 = 96.8% on VeRi-776."
+    )
+    r = validate_vehicle_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vreid616_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_vehicle_reid_metrics
+    ms, cl = _vreid616_ms("We present a face alignment model.")
+    r = validate_vehicle_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vreid616_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vehicle_reid_metrics
+    ms, _ = _vreid616_ms("Vehicle re-id theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_vehicle_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 617 – validate_crowd_counting_metrics
+# ---------------------------------------------------------------------------
+def _crowd617_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t617", source_path="t617.md", source_format="markdown",
+            title="Crowd counting", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_crowd617_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_crowd_counting_metrics
+    ms, cl = _crowd617_ms(
+        "We propose a crowd counting model on ShanghaiTech Part B."
+    )
+    r = validate_crowd_counting_metrics(ms, cl)
+    assert any(f.code == "missing-crowd-counting-metrics" for f in r.findings)
+
+
+def test_crowd617_no_fire_when_mae_reported() -> None:
+    from manuscript_audit.validators.core import validate_crowd_counting_metrics
+    ms, cl = _crowd617_ms(
+        "Crowd counting: MAE = 6.3, MSE = 9.9 on ShanghaiTech Part B."
+    )
+    r = validate_crowd_counting_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_crowd617_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_crowd_counting_metrics
+    ms, cl = _crowd617_ms("We present a deepfake detection model.")
+    r = validate_crowd_counting_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_crowd617_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_crowd_counting_metrics
+    ms, _ = _crowd617_ms("Density estimation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_crowd_counting_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 618 – validate_gaze_estimation_metrics
+# ---------------------------------------------------------------------------
+def _gaze618_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t618", source_path="t618.md", source_format="markdown",
+            title="Gaze estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gaze618_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_gaze_estimation_metrics
+    ms, cl = _gaze618_ms("We propose a gaze estimation model on MPIIGaze.")
+    r = validate_gaze_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-gaze-estimation-metrics" for f in r.findings)
+
+
+def test_gaze618_no_fire_when_angular_error_reported() -> None:
+    from manuscript_audit.validators.core import validate_gaze_estimation_metrics
+    ms, cl = _gaze618_ms("Gaze estimation: angular error = 3.8° on MPIIGaze.")
+    r = validate_gaze_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_gaze618_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_gaze_estimation_metrics
+    ms, cl = _gaze618_ms("We present a sign language recognition model.")
+    r = validate_gaze_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_gaze618_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_gaze_estimation_metrics
+    ms, _ = _gaze618_ms("Eye tracking theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_gaze_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 619 – validate_action_quality_assessment_metrics
+# ---------------------------------------------------------------------------
+def _aqa619_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t619", source_path="t619.md", source_format="markdown",
+            title="Action quality assessment", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_aqa619_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_action_quality_assessment_metrics
+    ms, cl = _aqa619_ms("We propose an AQA model evaluated on MTL-AQA.")
+    r = validate_action_quality_assessment_metrics(ms, cl)
+    assert any(f.code == "missing-action-quality-assessment-metrics" for f in r.findings)
+
+
+def test_aqa619_no_fire_when_spearman_reported() -> None:
+    from manuscript_audit.validators.core import validate_action_quality_assessment_metrics
+    ms, cl = _aqa619_ms(
+        "Action quality assessment: Spearman correlation = 0.93 on MTL-AQA."
+    )
+    r = validate_action_quality_assessment_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_aqa619_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_action_quality_assessment_metrics
+    ms, cl = _aqa619_ms("We study crowd counting methods.")
+    r = validate_action_quality_assessment_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_aqa619_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_action_quality_assessment_metrics
+    ms, _ = _aqa619_ms("Sports scoring theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_action_quality_assessment_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 620 – validate_sign_language_recognition_metrics
+# ---------------------------------------------------------------------------
+def _slr620_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t620", source_path="t620.md", source_format="markdown",
+            title="Sign language recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_slr620_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_sign_language_recognition_metrics
+    ms, cl = _slr620_ms(
+        "We propose a continuous sign language recognition model on PHOENIX-2014."
+    )
+    r = validate_sign_language_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-sign-language-recognition-metrics" for f in r.findings)
+
+
+def test_slr620_no_fire_when_wer_reported() -> None:
+    from manuscript_audit.validators.core import validate_sign_language_recognition_metrics
+    ms, cl = _slr620_ms(
+        "Sign language recognition: WER = 18.5% on PHOENIX-2014 Weather."
+    )
+    r = validate_sign_language_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_slr620_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_sign_language_recognition_metrics
+    ms, cl = _slr620_ms("We study vehicle re-identification models.")
+    r = validate_sign_language_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_slr620_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sign_language_recognition_metrics
+    ms, _ = _slr620_ms("Gesture recognition theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_sign_language_recognition_metrics(ms, cl)
+    assert r.findings == []

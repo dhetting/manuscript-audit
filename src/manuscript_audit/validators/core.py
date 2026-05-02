@@ -7123,6 +7123,11 @@ def run_deterministic_validators(
         validate_face_anti_spoofing_metrics(parsed, classification),
         validate_deepfake_detection_metrics(parsed, classification),
         validate_person_reid_metrics(parsed, classification),
+        validate_vehicle_reid_metrics(parsed, classification),
+        validate_crowd_counting_metrics(parsed, classification),
+        validate_gaze_estimation_metrics(parsed, classification),
+        validate_action_quality_assessment_metrics(parsed, classification),
+        validate_sign_language_recognition_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -34437,6 +34442,237 @@ def validate_person_reid_metrics(
                 ),
                 location="full_text",
                 validator=_REID615_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 616 – vehicle re-identification evaluation
+# ---------------------------------------------------------------------------
+_VREID616_VID = "missing-vehicle-reid-metrics"
+
+_VREID616_TRIGGERS = re.compile(
+    r"\b(?:vehicle\s+re[- ]?identification|vehicle\s+ReID|"
+    r"VeRi[- ]?(?:776|dataset)|CityFlow|vehicle\s+re[- ]id)\b",
+    re.IGNORECASE,
+)
+_VREID616_METRICS = re.compile(
+    r"\b(?:mAP|Rank[- ]?1|CMC|mean\s+average\s+precision)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:mAP|Rank[- ]?1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_vehicle_reid_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VREID616_VID, findings=[])
+    text = parsed.full_text
+    if not _VREID616_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VREID616_VID, findings=[])
+    if _VREID616_METRICS.search(text):
+        return ValidationResult(validator_name=_VREID616_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VREID616_VID,
+        findings=[
+            Finding(
+                code=_VREID616_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses vehicle re-identification but does not report "
+                    "mAP or Rank-1 on VeRi-776/CityFlow."
+                ),
+                location="full_text",
+                validator=_VREID616_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 617 – crowd counting evaluation
+# ---------------------------------------------------------------------------
+_CROWD617_VID = "missing-crowd-counting-metrics"
+
+_CROWD617_TRIGGERS = re.compile(
+    r"\b(?:crowd\s+counting|density\s+estimation|"
+    r"ShanghaiTech\s+(?:Part|dataset)|UCF[- ]CC[- ]50|"
+    r"NWPU[- ]Crowd|crowd\s+density\s+map)\b",
+    re.IGNORECASE,
+)
+_CROWD617_METRICS = re.compile(
+    r"\b(?:MAE|MSE|RMSE|mean\s+absolute\s+error|mean\s+squared\s+error)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:MAE|MSE)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_crowd_counting_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CROWD617_VID, findings=[])
+    text = parsed.full_text
+    if not _CROWD617_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_CROWD617_VID, findings=[])
+    if _CROWD617_METRICS.search(text):
+        return ValidationResult(validator_name=_CROWD617_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CROWD617_VID,
+        findings=[
+            Finding(
+                code=_CROWD617_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses crowd counting but does not report "
+                    "MAE or MSE on ShanghaiTech/UCF-CC-50."
+                ),
+                location="full_text",
+                validator=_CROWD617_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 618 – gaze estimation evaluation
+# ---------------------------------------------------------------------------
+_GAZE618_VID = "missing-gaze-estimation-metrics"
+
+_GAZE618_TRIGGERS = re.compile(
+    r"\b(?:gaze\s+estimation|gaze\s+prediction|eye\s+gaze|"
+    r"MPIIGaze|GazeCapture|ETH[- ]XGaze|gaze\s+direction)\b",
+    re.IGNORECASE,
+)
+_GAZE618_METRICS = re.compile(
+    r"\b(?:angular\s+error|mean\s+angular\s+error|MAE|"
+    r"gaze\s+error)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*\s*°)|"
+    r"(?:\d[\d.]*)\s*°\s*(?:error|MAE)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_gaze_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_GAZE618_VID, findings=[])
+    text = parsed.full_text
+    if not _GAZE618_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_GAZE618_VID, findings=[])
+    if _GAZE618_METRICS.search(text):
+        return ValidationResult(validator_name=_GAZE618_VID, findings=[])
+    return ValidationResult(
+        validator_name=_GAZE618_VID,
+        findings=[
+            Finding(
+                code=_GAZE618_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses gaze estimation but does not report "
+                    "angular error on MPIIGaze/GazeCapture/ETH-XGaze."
+                ),
+                location="full_text",
+                validator=_GAZE618_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 619 – action quality assessment evaluation
+# ---------------------------------------------------------------------------
+_AQA619_VID = "missing-action-quality-assessment-metrics"
+
+_AQA619_TRIGGERS = re.compile(
+    r"\b(?:action\s+quality\s+assessment|AQA|skill\s+assessment|"
+    r"MTL[- ]AQA|AQA[- ]7|action\s+scoring|sports\s+scoring)\b",
+    re.IGNORECASE,
+)
+_AQA619_METRICS = re.compile(
+    r"\b(?:Spearman|correlation|R[- ]?squared|relative\s+L2\s+distance|"
+    r"ρ)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:correlation|Spearman)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_action_quality_assessment_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AQA619_VID, findings=[])
+    text = parsed.full_text
+    if not _AQA619_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_AQA619_VID, findings=[])
+    if _AQA619_METRICS.search(text):
+        return ValidationResult(validator_name=_AQA619_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AQA619_VID,
+        findings=[
+            Finding(
+                code=_AQA619_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses action quality assessment but does not report "
+                    "Spearman correlation on AQA-7/MTL-AQA."
+                ),
+                location="full_text",
+                validator=_AQA619_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 620 – sign language recognition evaluation
+# ---------------------------------------------------------------------------
+_SLR620_VID = "missing-sign-language-recognition-metrics"
+
+_SLR620_TRIGGERS = re.compile(
+    r"\b(?:sign\s+language\s+recognition|SLR|continuous\s+sign|"
+    r"isolated\s+sign|PHOENIX[- ]?(?:2014|Weather)|CSL\s+dataset|"
+    r"WLASL|gesture\s+recognition)\b",
+    re.IGNORECASE,
+)
+_SLR620_METRICS = re.compile(
+    r"\b(?:WER|word\s+error\s+rate|CER|recognition\s+accuracy|Top[- ]?1\s+accuracy)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:WER|accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sign_language_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SLR620_VID, findings=[])
+    text = parsed.full_text
+    if not _SLR620_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SLR620_VID, findings=[])
+    if _SLR620_METRICS.search(text):
+        return ValidationResult(validator_name=_SLR620_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SLR620_VID,
+        findings=[
+            Finding(
+                code=_SLR620_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses sign language recognition but does not report "
+                    "WER or recognition accuracy on PHOENIX/WLASL."
+                ),
+                location="full_text",
+                validator=_SLR620_VID,
             )
         ],
     )
