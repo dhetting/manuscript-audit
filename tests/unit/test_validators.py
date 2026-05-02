@@ -22460,3 +22460,333 @@ def test_no_seasonal_trigger_no_fire() -> None:
     )
     result = validate_seasonal_adjustment_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 376 – validate_interrupted_time_series_control
+# ---------------------------------------------------------------------------
+
+def _its376_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-its376",
+            source_path="/tmp/its376.md",
+            source_format="markdown",
+            title="ITS Control Group Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_its_without_control_group_fires() -> None:
+    from manuscript_audit.validators.core import validate_interrupted_time_series_control
+
+    ms, cl = _its376_ms(
+        "An interrupted time series analysis was conducted to evaluate the policy effect."
+    )
+    result = validate_interrupted_time_series_control(ms, cl)
+    assert any(f.code == "missing-its-control-group" for f in result.findings)
+
+
+def test_its_with_control_group_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrupted_time_series_control
+
+    ms, cl = _its376_ms(
+        "An interrupted time series analysis was conducted. A comparison group "
+        "series from a non-intervention region was included."
+    )
+    result = validate_interrupted_time_series_control(ms, cl)
+    assert result.findings == []
+
+
+def test_its_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrupted_time_series_control
+
+    ms, cl = _its376_ms("An interrupted time series analysis was conducted.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_interrupted_time_series_control(ms, cl)
+    assert result.findings == []
+
+
+def test_no_its_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_interrupted_time_series_control
+
+    ms, cl = _its376_ms(
+        "We used a cross-sectional survey design with 500 participants."
+    )
+    result = validate_interrupted_time_series_control(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 377 – validate_difference_in_differences_parallel_trends
+# ---------------------------------------------------------------------------
+
+def _did377_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-did377",
+            source_path="/tmp/did377.md",
+            source_format="markdown",
+            title="DiD Parallel Trends Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_did_without_parallel_trends_fires() -> None:
+    from manuscript_audit.validators.core import validate_difference_in_differences_parallel_trends
+
+    ms, cl = _did377_ms(
+        "A difference-in-differences design was used to estimate the treatment effect."
+    )
+    result = validate_difference_in_differences_parallel_trends(ms, cl)
+    assert any(f.code == "missing-did-parallel-trends" for f in result.findings)
+
+
+def test_did_with_parallel_trends_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_difference_in_differences_parallel_trends
+
+    ms, cl = _did377_ms(
+        "A difference-in-differences design was used. The parallel trends assumption "
+        "was tested using a placebo regression."
+    )
+    result = validate_difference_in_differences_parallel_trends(ms, cl)
+    assert result.findings == []
+
+
+def test_did_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_difference_in_differences_parallel_trends
+
+    ms, cl = _did377_ms("A DiD design was used to estimate the treatment effect.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_difference_in_differences_parallel_trends(ms, cl)
+    assert result.findings == []
+
+
+def test_no_did_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_difference_in_differences_parallel_trends
+
+    ms, cl = _did377_ms(
+        "We used propensity score matching to balance treatment and control groups."
+    )
+    result = validate_difference_in_differences_parallel_trends(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 378 – validate_regression_discontinuity_bandwidth
+# ---------------------------------------------------------------------------
+
+def _rd378_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rd378",
+            source_path="/tmp/rd378.md",
+            source_format="markdown",
+            title="RD Bandwidth Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rd_without_bandwidth_fires() -> None:
+    from manuscript_audit.validators.core import validate_regression_discontinuity_bandwidth
+
+    ms, cl = _rd378_ms(
+        "A regression discontinuity design was used to estimate the causal effect."
+    )
+    result = validate_regression_discontinuity_bandwidth(ms, cl)
+    assert any(f.code == "missing-rd-bandwidth" for f in result.findings)
+
+
+def test_rd_with_bandwidth_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_discontinuity_bandwidth
+
+    ms, cl = _rd378_ms(
+        "A regression discontinuity design was used with optimal bandwidth "
+        "selection using the Imbens-Kalyanaraman procedure."
+    )
+    result = validate_regression_discontinuity_bandwidth(ms, cl)
+    assert result.findings == []
+
+
+def test_rd_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_discontinuity_bandwidth
+
+    ms, cl = _rd378_ms("A regression discontinuity design was used.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_regression_discontinuity_bandwidth(ms, cl)
+    assert result.findings == []
+
+
+def test_no_rd_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_discontinuity_bandwidth
+
+    ms, cl = _rd378_ms(
+        "We used propensity score matching to compare treated and untreated units."
+    )
+    result = validate_regression_discontinuity_bandwidth(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 379 – validate_synthetic_control_pre_period_fit
+# ---------------------------------------------------------------------------
+
+def _sc379_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sc379",
+            source_path="/tmp/sc379.md",
+            source_format="markdown",
+            title="Synthetic Control Pre-Period Fit Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_synthetic_control_without_fit_fires() -> None:
+    from manuscript_audit.validators.core import validate_synthetic_control_pre_period_fit
+
+    ms, cl = _sc379_ms(
+        "The synthetic control method was applied to evaluate the policy impact."
+    )
+    result = validate_synthetic_control_pre_period_fit(ms, cl)
+    assert any(f.code == "missing-sc-pre-period-fit" for f in result.findings)
+
+
+def test_synthetic_control_with_rmspe_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_synthetic_control_pre_period_fit
+
+    ms, cl = _sc379_ms(
+        "The synthetic control method was applied. Pre-treatment RMSPE was 0.02, "
+        "indicating excellent pre-period fit."
+    )
+    result = validate_synthetic_control_pre_period_fit(ms, cl)
+    assert result.findings == []
+
+
+def test_synthetic_control_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_synthetic_control_pre_period_fit
+
+    ms, cl = _sc379_ms("The synthetic control method was applied.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_synthetic_control_pre_period_fit(ms, cl)
+    assert result.findings == []
+
+
+def test_no_synthetic_control_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_synthetic_control_pre_period_fit
+
+    ms, cl = _sc379_ms(
+        "We used a randomized controlled trial to evaluate the intervention."
+    )
+    result = validate_synthetic_control_pre_period_fit(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 380 – validate_event_study_window_specification
+# ---------------------------------------------------------------------------
+
+def _ew380_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ew380",
+            source_path="/tmp/ew380.md",
+            source_format="markdown",
+            title="Event Study Window Specification Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_event_study_without_window_fires() -> None:
+    from manuscript_audit.validators.core import validate_event_study_window_specification
+
+    ms, cl = _ew380_ms(
+        "An event study analysis was conducted to measure abnormal returns."
+    )
+    result = validate_event_study_window_specification(ms, cl)
+    assert any(f.code == "missing-event-window-specification" for f in result.findings)
+
+
+def test_event_study_with_window_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_event_study_window_specification
+
+    ms, cl = _ew380_ms(
+        "An event study analysis was conducted with event window [-1, +1] "
+        "and an estimation window of 250 days before the event."
+    )
+    result = validate_event_study_window_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_event_study_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_event_study_window_specification
+
+    ms, cl = _ew380_ms("An event study analysis was conducted.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_event_study_window_specification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_event_study_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_event_study_window_specification
+
+    ms, cl = _ew380_ms(
+        "We used a two-way fixed-effects panel data model."
+    )
+    result = validate_event_study_window_specification(ms, cl)
+    assert result.findings == []

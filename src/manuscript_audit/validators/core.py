@@ -6882,6 +6882,11 @@ def run_deterministic_validators(
         validate_impulse_response_identification(parsed, classification),
         validate_forecast_evaluation_metrics(parsed, classification),
         validate_seasonal_adjustment_disclosure(parsed, classification),
+        validate_interrupted_time_series_control(parsed, classification),
+        validate_difference_in_differences_parallel_trends(parsed, classification),
+        validate_regression_discontinuity_bandwidth(parsed, classification),
+        validate_synthetic_control_pre_period_fit(parsed, classification),
+        validate_event_study_window_specification(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -22806,6 +22811,288 @@ def validate_seasonal_adjustment_disclosure(
                 message=(
                     "Seasonal adjustment is described but the adjustment method "
                     "(e.g., X-12, SEATS, STL) is not specified."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 376 – interrupted time series control group
+# ---------------------------------------------------------------------------
+
+_ITS_TRIGGER_RE = re.compile(
+    r"\b(?:interrupted\s+time[\s-]series"
+    r"|ITS\s+(?:design|analysis|study)"
+    r"|segmented\s+regression\s+(?:analysis|approach)"
+    r"|time[\s-]series\s+intervention\s+(?:analysis|study))\b",
+    re.IGNORECASE,
+)
+
+_ITS_CONTROL_RE = re.compile(
+    r"\b(?:control\s+(?:group|series|time[\s-]series)"
+    r"|comparison\s+(?:group|series)"
+    r"|counterfactual\s+(?:group|series)"
+    r"|concurrent\s+control"
+    r"|no[\s-]intervention\s+(?:group|site))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_interrupted_time_series_control(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag ITS analyses without a control group or comparison series.
+
+    Emits ``missing-its-control-group`` (minor) when interrupted time series
+    design is described but no control group or comparison series is mentioned.
+    """
+    _vid = "validate_interrupted_time_series_control"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _ITS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ITS_CONTROL_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-its-control-group",
+                message=(
+                    "An interrupted time series design is described but no control "
+                    "group or comparison series is mentioned."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 377 – difference-in-differences parallel trends
+# ---------------------------------------------------------------------------
+
+_DID_TRIGGER_RE = re.compile(
+    r"\b(?:difference[\s-]in[\s-]differences?"
+    r"|DiD\b"
+    r"|diff[\s-]in[\s-]diff\b"
+    r"|double\s+difference\s+estimator"
+    r"|treatment\s+and\s+control\s+group\s+before\s+and\s+after)\b",
+    re.IGNORECASE,
+)
+
+_DID_PARALLEL_RE = re.compile(
+    r"\b(?:parallel\s+(?:trends?\s+assumption|trends?\s+test)"
+    r"|pre[\s-](?:treatment|intervention)\s+trend"
+    r"|placebo\s+(?:test|regression)"
+    r"|pre[\s-]period\s+(?:parallel|trend)"
+    r"|common\s+trends?\s+assumption)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_difference_in_differences_parallel_trends(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag DiD analyses without parallel trends assumption testing.
+
+    Emits ``missing-did-parallel-trends`` (minor) when a difference-in-
+    differences design is described but the parallel trends assumption is
+    not discussed or tested.
+    """
+    _vid = "validate_difference_in_differences_parallel_trends"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _DID_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _DID_PARALLEL_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-did-parallel-trends",
+                message=(
+                    "A difference-in-differences design is described but the "
+                    "parallel trends assumption is not discussed or tested."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 378 – regression discontinuity bandwidth
+# ---------------------------------------------------------------------------
+
+_RD_TRIGGER_RE = re.compile(
+    r"\b(?:regression\s+discontinuity"
+    r"|RD\s+(?:design|estimate|approach)"
+    r"|fuzzy\s+(?:RD|regression\s+discontinuity)"
+    r"|sharp\s+(?:RD|regression\s+discontinuity)"
+    r"|discontinuity\s+at\s+(?:the\s+)?threshold)\b",
+    re.IGNORECASE,
+)
+
+_RD_BANDWIDTH_RE = re.compile(
+    r"\b(?:bandwidth\s+(?:selection|choice|of)"
+    r"|optimal\s+bandwidth"
+    r"|Imbens[\s-]Kalyanaraman"
+    r"|IK\s+bandwidth"
+    r"|mean\s+squared\s+error[\s-]optimal"
+    r"|local\s+polynomial\s+(?:regression|estimation)"
+    r"|triangular\s+kernel"
+    r"|bandwidth\s*=\s*[\d.]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_regression_discontinuity_bandwidth(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RD analyses without bandwidth specification.
+
+    Emits ``missing-rd-bandwidth`` (minor) when regression discontinuity
+    design is described but no bandwidth selection method is reported.
+    """
+    _vid = "validate_regression_discontinuity_bandwidth"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _RD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _RD_BANDWIDTH_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-rd-bandwidth",
+                message=(
+                    "A regression discontinuity design is described but no bandwidth "
+                    "selection method is reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 379 – synthetic control pre-period fit
+# ---------------------------------------------------------------------------
+
+_SC_TRIGGER_RE = re.compile(
+    r"\b(?:synthetic\s+control\s+(?:method|approach|estimator)"
+    r"|synth(?:etic)?\s+counterfactual"
+    r"|donor\s+pool\b)\b",
+    re.IGNORECASE,
+)
+
+_SC_FIT_RE = re.compile(
+    r"\b(?:pre[\s-](?:treatment|intervention)\s+(?:fit|period|RMSPE)"
+    r"|pre[\s-]period\s+(?:balance|fit|performance)"
+    r"|root\s+mean\s+square\s+prediction\s+error"
+    r"|RMSPE\b"
+    r"|predictor\s+(?:weight|balance|fit)"
+    r"|synthetic\s+control\s+fit)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_synthetic_control_pre_period_fit(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag synthetic control analyses without pre-period fit reporting.
+
+    Emits ``missing-sc-pre-period-fit`` (minor) when a synthetic control
+    method is described but the pre-treatment period fit is not reported.
+    """
+    _vid = "validate_synthetic_control_pre_period_fit"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _SC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _SC_FIT_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-sc-pre-period-fit",
+                message=(
+                    "A synthetic control method is described but the pre-treatment "
+                    "period fit (e.g., RMSPE) is not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 380 – event study window specification
+# ---------------------------------------------------------------------------
+
+_EVENT_STUDY_TRIGGER_RE = re.compile(
+    r"\b(?:event\s+study\s+(?:analysis|design|methodology|approach)"
+    r"|event[\s-]window"
+    r"|abnormal\s+return\b"
+    r"|cumulative\s+abnormal\s+return"
+    r"|CAR\b)\b",
+    re.IGNORECASE,
+)
+
+_EVENT_WINDOW_RE = re.compile(
+    r"\b(?:event\s+window\s+of\s*(?:\[?\s*[-\d,\s]+\]?|[^\s,]+\s+days?)"
+    r"|\[[-\d]+\s*,\s*[-\d]+\]"
+    r"|pre[\s-]event\s+window"
+    r"|estimation\s+window"
+    r"|days?\s+(?:before|after|around)\s+(?:the\s+)?event)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_event_study_window_specification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag event studies without event window specification.
+
+    Emits ``missing-event-window-specification`` (minor) when an event study
+    design is described but the event window length is not specified.
+    """
+    _vid = "validate_event_study_window_specification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text or ""
+    if not _EVENT_STUDY_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _EVENT_WINDOW_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-event-window-specification",
+                message=(
+                    "An event study design is described but the event window "
+                    "specification is not reported."
                 ),
                 severity="minor",
                 validator=_vid,
