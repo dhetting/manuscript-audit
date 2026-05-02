@@ -30699,3 +30699,242 @@ def test_kgc500_non_empirical_no_fire() -> None:
     )
     r = validate_kg_completion_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 501 – validate_optical_flow_metrics
+# ---------------------------------------------------------------------------
+def _optflow501_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t501", source_path="t501.md", source_format="markdown",
+            title="Optical flow", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_optflow501_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_metrics
+    ms, cl = _optflow501_ms("We propose an optical flow estimation network.")
+    r = validate_optical_flow_metrics(ms, cl)
+    assert any(f.code == "missing-optical-flow-metrics" for f in r.findings)
+
+
+def test_optflow501_no_fire_when_epe_reported() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_metrics
+    ms, cl = _optflow501_ms("Optical flow estimation network: EPE = 1.43 on Sintel.")
+    r = validate_optical_flow_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_optflow501_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_metrics
+    ms, cl = _optflow501_ms("We propose a text classification model.")
+    r = validate_optical_flow_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_optflow501_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_optical_flow_metrics
+    ms, _ = _optflow501_ms("Dense optical flow theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_optical_flow_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 502 – validate_depth_estimation_metrics
+# ---------------------------------------------------------------------------
+def _depth502_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t502", source_path="t502.md", source_format="markdown",
+            title="Depth estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_depth502_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_depth_estimation_metrics
+    ms, cl = _depth502_ms("We present a monocular depth estimation method.")
+    r = validate_depth_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-depth-estimation-metrics" for f in r.findings)
+
+
+def test_depth502_no_fire_when_absrel_reported() -> None:
+    from manuscript_audit.validators.core import validate_depth_estimation_metrics
+    ms, cl = _depth502_ms("Monocular depth estimation: AbsRel = 0.115 on NYUv2.")
+    r = validate_depth_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_depth502_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_depth_estimation_metrics
+    ms, cl = _depth502_ms("We introduce a generative model for text.")
+    r = validate_depth_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_depth502_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_depth_estimation_metrics
+    ms, _ = _depth502_ms("Depth prediction theoretical analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_depth_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 503 – validate_visual_place_recognition_metrics
+# ---------------------------------------------------------------------------
+def _vpr503_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t503", source_path="t503.md", source_format="markdown",
+            title="VPR", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vpr503_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_visual_place_recognition_metrics
+    ms, cl = _vpr503_ms("We address visual place recognition in outdoor environments.")
+    r = validate_visual_place_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-visual-place-recognition-metrics" for f in r.findings)
+
+
+def test_vpr503_no_fire_when_recall_reported() -> None:
+    from manuscript_audit.validators.core import validate_visual_place_recognition_metrics
+    ms, cl = _vpr503_ms("Visual place recognition: Recall@1 = 87.3% on Pittsburgh30k.")
+    r = validate_visual_place_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vpr503_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_visual_place_recognition_metrics
+    ms, cl = _vpr503_ms("We present a machine translation model.")
+    r = validate_visual_place_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vpr503_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_visual_place_recognition_metrics
+    ms, _ = _vpr503_ms("Place recognition theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_visual_place_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 504 – validate_action_recognition_metrics
+# ---------------------------------------------------------------------------
+def _actrecog504_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t504", source_path="t504.md", source_format="markdown",
+            title="Action recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_actrecog504_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_action_recognition_metrics
+    ms, cl = _actrecog504_ms("We propose a model for action recognition on Kinetics.")
+    r = validate_action_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-action-recognition-metrics" for f in r.findings)
+
+
+def test_actrecog504_no_fire_when_top1_reported() -> None:
+    from manuscript_audit.validators.core import validate_action_recognition_metrics
+    ms, cl = _actrecog504_ms("Action recognition: top-1 accuracy = 82.4% on Kinetics-400.")
+    r = validate_action_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_actrecog504_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_action_recognition_metrics
+    ms, cl = _actrecog504_ms("We propose a regression model for housing prices.")
+    r = validate_action_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_actrecog504_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_action_recognition_metrics
+    ms, _ = _actrecog504_ms("Activity recognition theory.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_action_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 505 – validate_trajectory_prediction_metrics
+# ---------------------------------------------------------------------------
+def _trajpred505_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t505", source_path="t505.md", source_format="markdown",
+            title="Trajectory prediction", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_trajpred505_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_prediction_metrics
+    ms, cl = _trajpred505_ms("We model pedestrian trajectory prediction on ETH/UCY.")
+    r = validate_trajectory_prediction_metrics(ms, cl)
+    assert any(f.code == "missing-trajectory-prediction-metrics" for f in r.findings)
+
+
+def test_trajpred505_no_fire_when_ade_reported() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_prediction_metrics
+    ms, cl = _trajpred505_ms("Trajectory prediction: ADE = 0.39 m, FDE = 0.58 m.")
+    r = validate_trajectory_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_trajpred505_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_prediction_metrics
+    ms, cl = _trajpred505_ms("We present a clustering algorithm.")
+    r = validate_trajectory_prediction_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_trajpred505_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_trajectory_prediction_metrics
+    ms, _ = _trajpred505_ms("Future trajectory theoretical bounds.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_trajectory_prediction_metrics(ms, cl)
+    assert r.findings == []

@@ -7007,6 +7007,11 @@ def run_deterministic_validators(
         validate_panoptic_segmentation_metrics(parsed, classification),
         validate_medical_report_generation_metrics(parsed, classification),
         validate_kg_completion_metrics(parsed, classification),
+        validate_optical_flow_metrics(parsed, classification),
+        validate_depth_estimation_metrics(parsed, classification),
+        validate_visual_place_recognition_metrics(parsed, classification),
+        validate_action_recognition_metrics(parsed, classification),
+        validate_trajectory_prediction_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -29006,6 +29011,232 @@ def validate_kg_completion_metrics(
                 ),
                 severity="moderate",
                 validator=_KGC_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 501 – Optical flow estimation metrics
+# ---------------------------------------------------------------------------
+_OPTFLOW_VID = "missing-optical-flow-metrics"
+_OPTFLOW_TRIGGER_RE = re.compile(
+    r"\b(?:optical\s+flow\s+estimation|optical\s+flow\s+method|dense\s+optical\s+flow"
+    r"|flow\s+estimation\s+network)\b",
+    re.IGNORECASE,
+)
+_OPTFLOW_METRIC_RE = re.compile(
+    r"\b(?:EPE|end-?point\s+error|average\s+end-?point|Fl-all|flow\s+error)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_optical_flow_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when optical flow papers omit EPE/Fl-all metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_OPTFLOW_VID, findings=[])
+    text = parsed.full_text
+    if not _OPTFLOW_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_OPTFLOW_VID, findings=[])
+    if _OPTFLOW_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_OPTFLOW_VID, findings=[])
+    return ValidationResult(
+        validator_name=_OPTFLOW_VID,
+        findings=[
+            Finding(
+                code=_OPTFLOW_VID,
+                message=(
+                    "Optical flow estimation paper detected but standard metrics "
+                    "(EPE, Fl-all) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_OPTFLOW_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 502 – Depth estimation metrics
+# ---------------------------------------------------------------------------
+_DEPTH_VID = "missing-depth-estimation-metrics"
+_DEPTH_TRIGGER_RE = re.compile(
+    r"\b(?:monocular\s+depth\s+estimation|depth\s+prediction|"
+    r"depth\s+estimation\s+(?:method|model|network))\b",
+    re.IGNORECASE,
+)
+_DEPTH_METRIC_RE = re.compile(
+    r"\b(?:AbsRel|abs\s+rel(?:ative)?|SqRel|sq\s+rel(?:ative)?|"
+    r"RMSE(?:\s+log)?|delta\s*<\s*1\.\d+)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_depth_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when monocular depth estimation papers omit AbsRel/RMSE metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DEPTH_VID, findings=[])
+    text = parsed.full_text
+    if not _DEPTH_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_DEPTH_VID, findings=[])
+    if _DEPTH_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_DEPTH_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DEPTH_VID,
+        findings=[
+            Finding(
+                code=_DEPTH_VID,
+                message=(
+                    "Monocular depth estimation paper detected but standard "
+                    "metrics (AbsRel, SqRel, RMSE) with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_DEPTH_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 503 – Visual place recognition metrics
+# ---------------------------------------------------------------------------
+_VPR_VID = "missing-visual-place-recognition-metrics"
+_VPR_TRIGGER_RE = re.compile(
+    r"\b(?:visual\s+place\s+recognition|image-based\s+localization|"
+    r"place\s+recognition|loop\s+closure\s+detection)\b",
+    re.IGNORECASE,
+)
+_VPR_METRIC_RE = re.compile(
+    r"\b(?:Recall@[1-9]\d*|R@[1-9]\d*|top-[1-9]\d*\s+recall|"
+    r"localization\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_visual_place_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when visual place recognition papers omit Recall@k metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VPR_VID, findings=[])
+    text = parsed.full_text
+    if not _VPR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_VPR_VID, findings=[])
+    if _VPR_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_VPR_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VPR_VID,
+        findings=[
+            Finding(
+                code=_VPR_VID,
+                message=(
+                    "Visual place recognition paper detected but standard "
+                    "Recall@k metrics with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_VPR_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 504 – Action recognition metrics
+# ---------------------------------------------------------------------------
+_ACTRECOG_VID = "missing-action-recognition-metrics"
+_ACTRECOG_TRIGGER_RE = re.compile(
+    r"\b(?:action\s+recognition|activity\s+recognition|"
+    r"video\s+action\s+classification|gesture\s+recognition)\b",
+    re.IGNORECASE,
+)
+_ACTRECOG_METRIC_RE = re.compile(
+    r"\b(?:top-1\s+accuracy|top-5\s+accuracy|mAP|mean\s+average\s+precision|"
+    r"per-class\s+accuracy|recognition\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_action_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when action recognition papers omit top-1/top-5 accuracy or mAP."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ACTRECOG_VID, findings=[])
+    text = parsed.full_text
+    if not _ACTRECOG_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ACTRECOG_VID, findings=[])
+    if _ACTRECOG_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_ACTRECOG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ACTRECOG_VID,
+        findings=[
+            Finding(
+                code=_ACTRECOG_VID,
+                message=(
+                    "Action recognition paper detected but standard metrics "
+                    "(top-1/top-5 accuracy, mAP) with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_ACTRECOG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 505 – Trajectory prediction metrics
+# ---------------------------------------------------------------------------
+_TRAJPRED_VID = "missing-trajectory-prediction-metrics"
+_TRAJPRED_TRIGGER_RE = re.compile(
+    r"\b(?:trajectory\s+prediction|pedestrian\s+trajectory|"
+    r"motion\s+forecasting|future\s+trajectory)\b",
+    re.IGNORECASE,
+)
+_TRAJPRED_METRIC_RE = re.compile(
+    r"\b(?:ADE|average\s+displacement\s+error|FDE|final\s+displacement\s+error|"
+    r"minADE|minFDE)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_trajectory_prediction_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when trajectory prediction papers omit ADE/FDE metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TRAJPRED_VID, findings=[])
+    text = parsed.full_text
+    if not _TRAJPRED_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_TRAJPRED_VID, findings=[])
+    if _TRAJPRED_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_TRAJPRED_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TRAJPRED_VID,
+        findings=[
+            Finding(
+                code=_TRAJPRED_VID,
+                message=(
+                    "Trajectory prediction paper detected but standard metrics "
+                    "(ADE, FDE, minADE, minFDE) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_TRAJPRED_VID,
             )
         ],
     )
