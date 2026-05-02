@@ -31,11 +31,23 @@ def synthesize_report(report: FinalVettingReport) -> FinalVettingReport:
                 "Bibliography confidence is critical; resolve verification "
                 "blockers before submission."
             )
+            details = (
+                "Detailed bibliography confidence: level "
+                f"{confidence.confidence_level} (score: {confidence.confidence_score}, "
+                f"manual_review_required: {confidence.manual_review_required_count})."
+            )
+            priorities.append(details)
         elif confidence.confidence_level == "low":
             priorities.append(
                 "Bibliography confidence is low; manual review is still required "
                 "for several entries."
             )
+            details = (
+                "Detailed bibliography confidence: level "
+                f"{confidence.confidence_level} (score: {confidence.confidence_score}, "
+                f"manual_review_required: {confidence.manual_review_required_count})."
+            )
+            priorities.append(details)
     if report.source_verification_summary is not None:
         summary = report.source_verification_summary
         if summary.metadata_mismatch_count:
@@ -98,8 +110,20 @@ def synthesize_source_record_verification_report(
         confidence = report.bibliography_confidence_summary
         if confidence.confidence_level == "critical":
             priorities.append("Bibliography confidence is critical after source verification.")
+            details = (
+                "Detailed bibliography confidence after source verification: level "
+                f"{confidence.confidence_level} (score: {confidence.confidence_score}, "
+                f"manual_review_required: {confidence.manual_review_required_count})."
+            )
+            priorities.append(details)
         elif confidence.confidence_level == "low":
             priorities.append("Bibliography confidence remains low after source verification.")
+            details = (
+                "Detailed bibliography confidence after source verification: level "
+                f"{confidence.confidence_level} (score: {confidence.confidence_score}, "
+                f"manual_review_required: {confidence.manual_review_required_count})."
+            )
+            priorities.append(details)
     for item in report.verifications:
         if item.status == "metadata_mismatch":
             priorities.append(
