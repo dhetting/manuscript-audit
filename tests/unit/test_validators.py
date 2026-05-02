@@ -24449,3 +24449,336 @@ def test_no_influential_obs_trigger_no_fire() -> None:
     )
     result = validate_influential_observation_sensitivity(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 406 – validate_goodness_of_fit_reporting
+# ---------------------------------------------------------------------------
+
+def _gof406_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gof406",
+            source_path="/tmp/gof406.md",
+            source_format="markdown",
+            title="Goodness of Fit Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_logistic_regression_without_gof_fires() -> None:
+    from manuscript_audit.validators.core import validate_goodness_of_fit_reporting
+
+    ms, cl = _gof406_ms(
+        "Logistic regression was used to predict the binary outcome variable."
+    )
+    result = validate_goodness_of_fit_reporting(ms, cl)
+    assert any(f.code == "missing-goodness-of-fit" for f in result.findings)
+
+
+def test_logistic_regression_with_hosmer_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_goodness_of_fit_reporting
+
+    ms, cl = _gof406_ms(
+        "Logistic regression was used to predict the outcome. "
+        "The Hosmer-Lemeshow test confirmed adequate model fit (χ²=8.2, p=.41)."
+    )
+    result = validate_goodness_of_fit_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_gof_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_goodness_of_fit_reporting
+
+    ms, cl = _gof406_ms("Logistic regression was used to predict the outcome.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_goodness_of_fit_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_glm_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_goodness_of_fit_reporting
+
+    ms, cl = _gof406_ms(
+        "We used a paired t-test to compare pre- and post-intervention scores."
+    )
+    result = validate_goodness_of_fit_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 407 – validate_aic_bic_model_selection
+# ---------------------------------------------------------------------------
+
+def _aic407_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-aic407",
+            source_path="/tmp/aic407.md",
+            source_format="markdown",
+            title="AIC BIC Model Selection Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_model_comparison_without_criterion_fires() -> None:
+    from manuscript_audit.validators.core import validate_aic_bic_model_selection
+
+    ms, cl = _aic407_ms(
+        "We compared several models and selected the best-fitting model."
+    )
+    result = validate_aic_bic_model_selection(ms, cl)
+    assert any(f.code == "missing-model-selection-criterion" for f in result.findings)
+
+
+def test_model_comparison_with_aic_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_aic_bic_model_selection
+
+    ms, cl = _aic407_ms(
+        "We compared several models; model selection used AIC (AIC=432.1 vs 451.7)."
+    )
+    result = validate_aic_bic_model_selection(ms, cl)
+    assert result.findings == []
+
+
+def test_aic_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_aic_bic_model_selection
+
+    ms, cl = _aic407_ms("We compared several models and selected the best-fitting model.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_aic_bic_model_selection(ms, cl)
+    assert result.findings == []
+
+
+def test_no_model_selection_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_aic_bic_model_selection
+
+    ms, cl = _aic407_ms(
+        "We used an OLS regression to estimate the effect of the treatment."
+    )
+    result = validate_aic_bic_model_selection(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 408 – validate_log_likelihood_reporting
+# ---------------------------------------------------------------------------
+
+def _ll408_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ll408",
+            source_path="/tmp/ll408.md",
+            source_format="markdown",
+            title="Log Likelihood Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mle_without_loglik_fires() -> None:
+    from manuscript_audit.validators.core import validate_log_likelihood_reporting
+
+    ms, cl = _ll408_ms(
+        "Parameters were estimated via maximum likelihood estimation."
+    )
+    result = validate_log_likelihood_reporting(ms, cl)
+    assert any(f.code == "missing-log-likelihood" for f in result.findings)
+
+
+def test_mle_with_loglik_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_log_likelihood_reporting
+
+    ms, cl = _ll408_ms(
+        "Parameters were estimated via maximum likelihood estimation. "
+        "The log-likelihood value was -1234.5."
+    )
+    result = validate_log_likelihood_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_loglik_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_log_likelihood_reporting
+
+    ms, cl = _ll408_ms("Parameters were estimated via maximum likelihood estimation.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_log_likelihood_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_mle_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_log_likelihood_reporting
+
+    ms, cl = _ll408_ms(
+        "We used ordinary least squares to fit the regression model."
+    )
+    result = validate_log_likelihood_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 409 – validate_link_function_justification
+# ---------------------------------------------------------------------------
+
+def _link409_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-link409",
+            source_path="/tmp/link409.md",
+            source_format="markdown",
+            title="Link Function Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_glm_with_custom_link_no_justification_fires() -> None:
+    from manuscript_audit.validators.core import validate_link_function_justification
+
+    ms, cl = _link409_ms(
+        "A generalized linear model with a complementary log-log link was fitted."
+    )
+    result = validate_link_function_justification(ms, cl)
+    assert any(
+        f.code == "missing-link-function-justification" for f in result.findings
+    )
+
+
+def test_glm_with_link_justified_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_link_function_justification
+
+    ms, cl = _link409_ms(
+        "A generalized linear model was used. We chose a log link because "
+        "the outcome is a count variable and the log link is the canonical link."
+    )
+    result = validate_link_function_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_link_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_link_function_justification
+
+    ms, cl = _link409_ms(
+        "A generalized linear model with a complementary log-log link was used."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_link_function_justification(ms, cl)
+    assert result.findings == []
+
+
+def test_no_link_function_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_link_function_justification
+
+    ms, cl = _link409_ms(
+        "We applied a paired t-test to compare baseline and follow-up outcomes."
+    )
+    result = validate_link_function_justification(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 410 – validate_functional_form_test
+# ---------------------------------------------------------------------------
+
+def _ff410_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ff410",
+            source_path="/tmp/ff410.md",
+            source_format="markdown",
+            title="Functional Form Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ols_without_reset_fires() -> None:
+    from manuscript_audit.validators.core import validate_functional_form_test
+
+    ms, cl = _ff410_ms(
+        "An OLS regression model was estimated with four predictor variables."
+    )
+    result = validate_functional_form_test(ms, cl)
+    assert any(f.code == "missing-functional-form-test" for f in result.findings)
+
+
+def test_ols_with_reset_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_functional_form_test
+
+    ms, cl = _ff410_ms(
+        "An OLS regression model was estimated. The Ramsey RESET test "
+        "confirmed the linear functional form was appropriate (F=1.4, p=.24)."
+    )
+    result = validate_functional_form_test(ms, cl)
+    assert result.findings == []
+
+
+def test_ff_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_functional_form_test
+
+    ms, cl = _ff410_ms("An OLS regression model was estimated with four predictors.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_functional_form_test(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_form_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_functional_form_test
+
+    ms, cl = _ff410_ms(
+        "We used a Wilcoxon signed-rank test for the non-parametric comparison."
+    )
+    result = validate_functional_form_test(ms, cl)
+    assert result.findings == []

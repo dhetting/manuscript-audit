@@ -6912,6 +6912,11 @@ def run_deterministic_validators(
         validate_prediction_interval_distinction(parsed, classification),
         validate_missing_data_imputation_method(parsed, classification),
         validate_influential_observation_sensitivity(parsed, classification),
+        validate_goodness_of_fit_reporting(parsed, classification),
+        validate_aic_bic_model_selection(parsed, classification),
+        validate_log_likelihood_reporting(parsed, classification),
+        validate_link_function_justification(parsed, classification),
+        validate_functional_form_test(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -24424,6 +24429,242 @@ def validate_influential_observation_sensitivity(
                 message=(
                     "Influential observations (Cook's D, leverage, DFFITS) were "
                     "identified but no sensitivity analysis excluding them was reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 406 – Goodness-of-fit reporting
+# ---------------------------------------------------------------------------
+
+_GOF_TRIGGER_RE = re.compile(
+    r"\b(?:logistic\s+regression|logit\s+model|probit\s+model|"
+    r"generalized\s+linear\s+model|GLM|ordinal\s+regression|"
+    r"multinomial\s+(?:logistic|regression)|Poisson\s+regression|"
+    r"negative\s+binomial\s+regression|structural\s+equation\s+model|SEM)\b",
+    re.IGNORECASE,
+)
+_GOF_REPORTED_RE = re.compile(
+    r"\b(?:goodness[- ]of[- ]fit|Hosmer[- ]Lemeshow|pseudo[- ]R[- ]?squared|"
+    r"McFadden.s\s+R|Nagelkerke|Cox\s+and\s+Snell|deviance\s+statistic|"
+    r"chi[- ]squared\s+fit|likelihood[- ]ratio\s+test|"
+    r"CFI|TLI|RMSEA|SRMR|model\s+fit\s+(?:index|statistic|was|indices))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_goodness_of_fit_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_goodness_of_fit_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _GOF_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _GOF_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-goodness-of-fit",
+                message=(
+                    "A generalized linear or structural equation model was used but "
+                    "no goodness-of-fit statistic was reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 407 – AIC/BIC model selection reporting
+# ---------------------------------------------------------------------------
+
+_AIC_TRIGGER_RE = re.compile(
+    r"\b(?:model\s+selection|model\s+comparison|competing\s+model|alternative\s+model|"
+    r"best[- ]fitting\s+model|we\s+compared\s+(?:several|multiple|two|three)\s+model)\b",
+    re.IGNORECASE,
+)
+_AIC_REPORTED_RE = re.compile(
+    r"\b(?:AIC|BIC|DIC|WAIC|LOOIC|Akaike|Bayesian\s+information\s+criterion|"
+    r"Akaike\s+information\s+criterion|deviance\s+information\s+criterion|"
+    r"leave[- ]one[- ]out\s+(?:cross[- ]validation|information)|"
+    r"model\s+selection\s+(?:criterion|criteria)|cross[- ]validation\s+(?:score|error))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_aic_bic_model_selection(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_aic_bic_model_selection"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _AIC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _AIC_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-model-selection-criterion",
+                message=(
+                    "Model comparison or selection was performed but no information "
+                    "criterion (AIC, BIC, or cross-validation score) was reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 408 – Log-likelihood / deviance reporting in ML models
+# ---------------------------------------------------------------------------
+
+_LOGLIK_TRIGGER_RE = re.compile(
+    r"\b(?:maximum\s+likelihood|MLE|log[- ]likelihood\s+function|"
+    r"likelihood[- ]based\s+(?:estimation|inference)|"
+    r"EM\s+algorithm|expectation[- ]maximization|"
+    r"latent\s+(?:variable\s+model|class\s+analysis|profile\s+analysis))\b",
+    re.IGNORECASE,
+)
+_LOGLIK_REPORTED_RE = re.compile(
+    r"\b(?:log[- ]likelihood\s+(?:value|ratio|=|:)|"
+    r"deviance\s+(?:statistic|=|value|\d)|"
+    r"-2LL|minus\s+2\s+log[- ]likelihood|"
+    r"likelihood\s+ratio\s+(?:test|statistic|chi[- ]square))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_log_likelihood_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_log_likelihood_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _LOGLIK_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _LOGLIK_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-log-likelihood",
+                message=(
+                    "Maximum likelihood estimation was used but the log-likelihood "
+                    "value or deviance statistic was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 409 – Link function justification in GLMs
+# ---------------------------------------------------------------------------
+
+_LINK_TRIGGER_RE = re.compile(
+    r"\b(?:generalized\s+linear\s+model|GLM|link\s+function|"
+    r"canonical\s+link|logit\s+link|probit\s+link|"
+    r"log\s+link|identity\s+link|complementary\s+log[- ]log)\b",
+    re.IGNORECASE,
+)
+_LINK_JUSTIFIED_RE = re.compile(
+    r"\b(?:link\s+function\s+(?:was|is|were)\s+(?:chosen|selected|used|"
+    r"specified|justified|appropriate)|"
+    r"we\s+(?:chose|selected|used|specified)\s+(?:a\s+)?(?:logit|probit|log|identity|cloglog)\s+link|"
+    r"canonical\s+link\s+(?:was|is)\s+(?:used|appropriate)|"
+    r"link\s+function\s+choice)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_link_function_justification(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_link_function_justification"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _LINK_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _LINK_JUSTIFIED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-link-function-justification",
+                message=(
+                    "A generalized linear model with a non-default link function was "
+                    "used but the choice of link function was not justified."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 410 – Functional form / RESET test reporting
+# ---------------------------------------------------------------------------
+
+_RESET_TRIGGER_RE = re.compile(
+    r"\b(?:OLS\s+regression|linear\s+regression|multiple\s+regression|"
+    r"ordinary\s+least\s+squares|regression\s+(?:model|analysis|equation))\b",
+    re.IGNORECASE,
+)
+_RESET_REPORTED_RE = re.compile(
+    r"\b(?:RESET\s+test|Ramsey\s+RESET|functional\s+form\s+test|"
+    r"misspecification\s+test|linearity\s+(?:test|assumption|was\s+tested)|"
+    r"non[- ]linear(?:ity)?\s+test|specification\s+error\s+test|"
+    r"link\s+test\s+for\s+misspecification)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_functional_form_test(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_functional_form_test"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _RESET_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _RESET_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-functional-form-test",
+                message=(
+                    "OLS or linear regression was used but no functional form "
+                    "test (e.g., Ramsey RESET) was reported."
                 ),
                 severity="minor",
                 validator=_vid,
