@@ -13532,3 +13532,341 @@ def test_citation_currency_non_empirical_no_fire() -> None:
     )
     result = validate_citation_currency(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 246 – validate_proportion_confidence_interval
+# ---------------------------------------------------------------------------
+
+def _prop_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-prop",
+            source_path="/tmp/prop.md",
+            source_format="markdown",
+            title="Proportion CI Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_proportion_without_ci_fires() -> None:
+    from manuscript_audit.validators.core import validate_proportion_confidence_interval
+
+    ms, cl = _prop_ms(
+        "Depression was present in 34% of participants at baseline."
+    )
+    result = validate_proportion_confidence_interval(ms, cl)
+    assert any(f.code == "missing-proportion-ci" for f in result.findings)
+
+
+def test_proportion_with_ci_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_proportion_confidence_interval
+
+    ms, cl = _prop_ms(
+        "Depression was present in 34% of participants (95% CI [28.1, 40.3]) "
+        "at baseline."
+    )
+    result = validate_proportion_confidence_interval(ms, cl)
+    assert result.findings == []
+
+
+def test_no_proportion_reported_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_proportion_confidence_interval
+
+    ms, cl = _prop_ms(
+        "Mean depression scores were higher in the treatment group than the control group."
+    )
+    result = validate_proportion_confidence_interval(ms, cl)
+    assert result.findings == []
+
+
+def test_proportion_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_proportion_confidence_interval
+
+    ms, cl = _prop_ms("34% of participants reported depression symptoms.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_proportion_confidence_interval(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 247 – validate_blinding_procedure_description
+# ---------------------------------------------------------------------------
+
+def _blind_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-blind",
+            source_path="/tmp/blind.md",
+            source_format="markdown",
+            title="Blinding Procedure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_blinding_claimed_without_procedure_fires() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure_description
+
+    ms, cl = _blind_ms(
+        "This double-blind randomised trial compared active treatment to placebo. "
+        "Both participants and assessors were blinded."
+    )
+    result = validate_blinding_procedure_description(ms, cl)
+    assert any(f.code == "missing-blinding-procedure" for f in result.findings)
+
+
+def test_blinding_with_procedure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure_description
+
+    ms, cl = _blind_ms(
+        "This double-blind trial used identical packaging of active and placebo tablets. "
+        "Blinding was maintained via allocation concealment."
+    )
+    result = validate_blinding_procedure_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_blinding_claim_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure_description
+
+    ms, cl = _blind_ms(
+        "This open-label trial compared CBT to treatment as usual."
+    )
+    result = validate_blinding_procedure_description(ms, cl)
+    assert result.findings == []
+
+
+def test_blinding_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_blinding_procedure_description
+
+    ms, cl = _blind_ms("Double-blind procedures are recommended in clinical trials.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_blinding_procedure_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 248 – validate_primary_outcome_change_disclosure
+# ---------------------------------------------------------------------------
+
+def _outcome_change_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-outcome-change",
+            source_path="/tmp/outcome_change.md",
+            source_format="markdown",
+            title="Outcome Change Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_outcome_changed_without_disclosure_fires() -> None:
+    from manuscript_audit.validators.core import validate_primary_outcome_change_disclosure
+
+    ms, cl = _outcome_change_ms(
+        "The primary outcome was changed from depression scores to anxiety scores "
+        "after reviewing preliminary data."
+    )
+    result = validate_primary_outcome_change_disclosure(ms, cl)
+    assert any(f.code == "undisclosed-outcome-change" for f in result.findings)
+
+
+def test_outcome_changed_with_disclosure_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_primary_outcome_change_disclosure
+
+    ms, cl = _outcome_change_ms(
+        "The primary outcome was changed from depression to anxiety. "
+        "This change was prespecified in the pre-registration amendment filed "
+        "prior to data analysis."
+    )
+    result = validate_primary_outcome_change_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_outcome_change_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_primary_outcome_change_disclosure
+
+    ms, cl = _outcome_change_ms(
+        "The primary outcome was depression severity at 8 weeks, "
+        "as planned prior to data collection."
+    )
+    result = validate_primary_outcome_change_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_outcome_change_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_primary_outcome_change_disclosure
+
+    ms, cl = _outcome_change_ms("The primary outcome was changed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_primary_outcome_change_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 249 – validate_null_result_discussion
+# ---------------------------------------------------------------------------
+
+def _null_disc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-null-disc",
+            source_path="/tmp/null_disc.md",
+            source_format="markdown",
+            title="Null Result Discussion Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_null_result_without_discussion_fires() -> None:
+    from manuscript_audit.validators.core import validate_null_result_discussion
+
+    ms, cl = _null_disc_ms(
+        "The intervention was not statistically significant in reducing depression "
+        "symptoms at 8-week follow-up (p = 0.18)."
+    )
+    result = validate_null_result_discussion(ms, cl)
+    assert any(f.code == "missing-null-result-discussion" for f in result.findings)
+
+
+def test_null_result_with_discussion_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_discussion
+
+    ms, cl = _null_disc_ms(
+        "The intervention was not statistically significant (p = 0.18). "
+        "This null result may be due to the study being underpowered, "
+        "as the achieved sample was below our power analysis target."
+    )
+    result = validate_null_result_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_all_significant_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_discussion
+
+    ms, cl = _null_disc_ms(
+        "The primary outcome improved significantly (p = 0.003). "
+        "Secondary outcomes also showed meaningful improvements."
+    )
+    result = validate_null_result_discussion(ms, cl)
+    assert result.findings == []
+
+
+def test_null_disc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_null_result_discussion
+
+    ms, cl = _null_disc_ms(
+        "Results were not statistically significant."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_null_result_discussion(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 250 – validate_racial_ethnic_composition
+# ---------------------------------------------------------------------------
+
+def _race_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-race",
+            source_path="/tmp/race.md",
+            source_format="markdown",
+            title="Racial Ethnic Composition Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_race_mention_without_breakdown_fires() -> None:
+    from manuscript_audit.validators.core import validate_racial_ethnic_composition
+
+    ms, cl = _race_ms(
+        "The sample was racially diverse, recruited from urban community centres."
+    )
+    result = validate_racial_ethnic_composition(ms, cl)
+    assert any(f.code == "missing-racial-ethnic-composition" for f in result.findings)
+
+
+def test_race_with_breakdown_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_racial_ethnic_composition
+
+    ms, cl = _race_ms(
+        "The sample was racially diverse: 42% White, 28% Black, "
+        "18% Hispanic, and 12% Asian participants."
+    )
+    result = validate_racial_ethnic_composition(ms, cl)
+    assert result.findings == []
+
+
+def test_no_race_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_racial_ethnic_composition
+
+    ms, cl = _race_ms(
+        "The sample consisted of 200 adults recruited from a university community."
+    )
+    result = validate_racial_ethnic_composition(ms, cl)
+    assert result.findings == []
+
+
+def test_race_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_racial_ethnic_composition
+
+    ms, cl = _race_ms("Racial diversity in samples is discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_racial_ethnic_composition(ms, cl)
+    assert result.findings == []

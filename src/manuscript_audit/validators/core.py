@@ -6754,6 +6754,11 @@ def run_deterministic_validators(
         validate_outlier_removal_impact(parsed, classification),
         validate_multilevel_icc_reporting(parsed, classification),
         validate_citation_currency(parsed, classification),
+        validate_proportion_confidence_interval(parsed, classification),
+        validate_blinding_procedure_description(parsed, classification),
+        validate_primary_outcome_change_disclosure(parsed, classification),
+        validate_null_result_discussion(parsed, classification),
+        validate_racial_ethnic_composition(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -15056,6 +15061,365 @@ def validate_citation_currency(
                 ),
                 validator="citation_currency",
                 location="Introduction / Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 246 – Missing confidence interval for proportion/percentage
+# ---------------------------------------------------------------------------
+
+_PROPORTION_RE = re.compile(
+    r"\b(?:\d{1,3}\s*%\s+of\s+(?:participants?|respondents?|patients?|"
+    r"subjects?|individuals?|women|men|adults?|children)|"
+    r"prevalence\s+(?:was|of)\s+\d{1,3}\s*%|"
+    r"(?:incidence|proportion)\s+(?:was|of)\s+\d{1,3}\s*%|"
+    r"\d{1,3}\s*%\s+(?:prevalence|incidence|rate))\b",
+    re.IGNORECASE,
+)
+_PROPORTION_CI_RE = re.compile(
+    r"(?:95\s*%\s*CI|confidence\s+interval)(?:\s|\[|,|\()",
+    re.IGNORECASE,
+)
+
+
+def validate_proportion_confidence_interval(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag reported proportions or prevalences without confidence intervals.
+
+    Emits ``missing-proportion-ci`` (minor) when a percentage prevalence or
+    proportion is reported but no confidence interval is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="proportion_confidence_interval", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="proportion_confidence_interval", findings=[]
+        )
+
+    if not _PROPORTION_RE.search(full):
+        return ValidationResult(
+            validator_name="proportion_confidence_interval", findings=[]
+        )
+
+    if _PROPORTION_CI_RE.search(full):
+        return ValidationResult(
+            validator_name="proportion_confidence_interval", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="proportion_confidence_interval",
+        findings=[
+            Finding(
+                code="missing-proportion-ci",
+                severity="minor",
+                message=(
+                    "A proportion or prevalence percentage is reported but no confidence "
+                    "interval is given. Report 95% CIs for all key proportions."
+                ),
+                validator="proportion_confidence_interval",
+                location="Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 247 – Missing description of blinding procedure
+# ---------------------------------------------------------------------------
+
+_BLINDING_TRIGGER_RE = re.compile(
+    r"\b(?:double.?blind|single.?blind|blinded?\s+(?:assessment|outcome|rating|"
+    r"evaluation|observer|assessor|rater)|"
+    r"assessors?\s+(?:were\s+)?blinded?|"
+    r"raters?\s+(?:were\s+)?blinded?|"
+    r"(?:outcome|data)\s+assessors?\s+(?:were\s+)?blinded?)\b",
+    re.IGNORECASE,
+)
+_BLINDING_PROCEDURE_RE = re.compile(
+    r"\b(?:blinding\s+(?:was|were)\s+(?:maintained?|ensured?|achieved?|verified?)|"
+    r"blinding\s+procedure|blinded?\s+(?:by\s+using|through|via|by\s+means?\s+of)|"
+    r"masked?\s+(?:allocation|assignment|coding|labels?)|"
+    r"identical\s+(?:appearance|packaging|labelling)\s+(?:of\s+)?(?:active|placebo)|"
+    r"allocation\s+(?:was\s+)?concealed?|concealment\s+of\s+allocation)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_blinding_procedure_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag blinding claims without a description of how blinding was implemented.
+
+    Emits ``missing-blinding-procedure`` (moderate) when double- or single-blind
+    methodology is claimed but no blinding procedure is described.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="blinding_procedure_description", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="blinding_procedure_description", findings=[]
+        )
+
+    if not _BLINDING_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="blinding_procedure_description", findings=[]
+        )
+
+    if _BLINDING_PROCEDURE_RE.search(full):
+        return ValidationResult(
+            validator_name="blinding_procedure_description", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="blinding_procedure_description",
+        findings=[
+            Finding(
+                code="missing-blinding-procedure",
+                severity="moderate",
+                message=(
+                    "Blinding is claimed but no procedure for how blinding was "
+                    "implemented or verified is described. "
+                    "Describe the blinding method (e.g., identical packaging, "
+                    "allocation concealment, masked coding)."
+                ),
+                validator="blinding_procedure_description",
+                location="Methods",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 248 – Undisclosed change in primary outcome
+# ---------------------------------------------------------------------------
+
+_OUTCOME_CHANGE_RE = re.compile(
+    r"\b(?:primary\s+outcome\s+(?:was\s+)?(?:changed?|modified?|revised?|"
+    r"switched?|updated?|altered?|redefined?)|"
+    r"original(?:ly)?\s+(?:primary|secondary|planned?)\s+outcome|"
+    r"(?:we|the\s+authors?)\s+(?:changed?|modified?|revised?|switched?)\s+(?:the\s+)?"
+    r"(?:primary|secondary|main|planned?)\s+outcome|"
+    r"outcome\s+(?:was\s+)?(?:changed?|switched?|modified?)\s+"
+    r"(?:from|after|during|before)\s+(?:data\s+collection|analysis|the\s+trial))\b",
+    re.IGNORECASE,
+)
+_OUTCOME_CHANGE_DISCLOSURE_RE = re.compile(
+    r"\b(?:this\s+change\s+(?:was\s+)?(?:prespecified?|pre.?planned?|registered?|"
+    r"noted?\s+in\s+the\s+(?:pre.?registration|protocol|registry))|"
+    r"(?:the\s+)?(?:pre.?registration|protocol|registry)\s+"
+    r"(?:specif(?:ied?|ies?)|noted?|listed?)\s+this\s+outcome\s+change|"
+    r"amendment\s+to\s+the\s+(?:protocol|registry|registration)|"
+    r"CONSORT\s+flow|transparency\s+(?:about|regarding)\s+outcome\s+changes?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_primary_outcome_change_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts disclosing a primary outcome change without justification.
+
+    Emits ``undisclosed-outcome-change`` (major) when the primary outcome is
+    mentioned as changed but no protocol amendment or pre-specification is cited.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="primary_outcome_change_disclosure", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="primary_outcome_change_disclosure", findings=[]
+        )
+
+    if not _OUTCOME_CHANGE_RE.search(full):
+        return ValidationResult(
+            validator_name="primary_outcome_change_disclosure", findings=[]
+        )
+
+    if _OUTCOME_CHANGE_DISCLOSURE_RE.search(full):
+        return ValidationResult(
+            validator_name="primary_outcome_change_disclosure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="primary_outcome_change_disclosure",
+        findings=[
+            Finding(
+                code="undisclosed-outcome-change",
+                severity="major",
+                message=(
+                    "The primary outcome appears to have changed during the study "
+                    "but no protocol amendment, pre-registration update, or explicit "
+                    "justification is provided. Disclose and justify any primary outcome changes."
+                ),
+                validator="primary_outcome_change_disclosure",
+                location="Methods / Results",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 249 – Missing discussion of non-significant results
+# ---------------------------------------------------------------------------
+
+_NULL_RESULT_RE = re.compile(
+    r"\b(?:(?:was|were)\s+not\s+(?:statistically\s+)?significant|"
+    r"did\s+not\s+(?:reach|achieve|attain)\s+(?:statistical\s+)?significance|"
+    r"no\s+(?:significant|statistically\s+significant)\s+"
+    r"(?:difference|effect|association|relationship|change|improvement)|"
+    r"p\s*(?:=|>)\s*0\.\s*(?:0[6-9]|[1-9]\d))\b",
+    re.IGNORECASE,
+)
+_NULL_RESULT_DISCUSSION_RE = re.compile(
+    r"\b(?:(?:the\s+)?null\s+(?:result|finding)|(?:lack\s+of\s+)?significance\s+"
+    r"(?:may\s+(?:be\s+due\s+to|reflect)|(?:could|might)\s+(?:be\s+explained?\s+by|"
+    r"reflect))|"
+    r"(?:the\s+)?non.?significant\s+(?:result|finding|outcome)\s+"
+    r"(?:may|could|might|is|could\s+be)|"
+    r"underpowered|insufficient\s+(?:power|sample\s+size)|"
+    r"type\s+II\s+error|beta\s+error)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_null_result_discussion(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag manuscripts with null results that do not discuss their meaning.
+
+    Emits ``missing-null-result-discussion`` (minor) when non-significant
+    results are reported but no interpretation or explanation is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="null_result_discussion", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="null_result_discussion", findings=[]
+        )
+
+    if not _NULL_RESULT_RE.search(full):
+        return ValidationResult(
+            validator_name="null_result_discussion", findings=[]
+        )
+
+    if _NULL_RESULT_DISCUSSION_RE.search(full):
+        return ValidationResult(
+            validator_name="null_result_discussion", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="null_result_discussion",
+        findings=[
+            Finding(
+                code="missing-null-result-discussion",
+                severity="minor",
+                message=(
+                    "Non-significant results are reported but no interpretation "
+                    "or explanation of the null finding is given. "
+                    "Discuss possible reasons (e.g., insufficient power, Type II error, "
+                    "true null effect)."
+                ),
+                validator="null_result_discussion",
+                location="Discussion",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 250 – Missing racial/ethnic composition description
+# ---------------------------------------------------------------------------
+
+_RACE_ETHNICITY_TRIGGER_RE = re.compile(
+    r"\b(?:racial(?:ly)?|ethnic(?:ity|ally)?|race\s+and\s+ethnicity|"
+    r"racial/ethnic|ethnic\s+(?:diversity|composition|background|minority|"
+    r"minority\s+group)|racially\s+diverse|predominantly\s+White|"
+    r"White\s+participants?|Black\s+participants?|Hispanic\s+participants?|"
+    r"Asian\s+participants?)\b",
+    re.IGNORECASE,
+)
+_RACE_ETHNICITY_REPORTED_RE = re.compile(
+    r"\b(?:\d+\.?\d*\s*%\s+(?:White|Black|Hispanic|Latino|Latina|Asian|"
+    r"African\s+American|Native\s+American|Pacific\s+Islander|"
+    r"multiracial|biracial|other)|"
+    r"racial\s+(?:and\s+ethnic\s+)?composition\s+(?:of\s+the\s+sample\s+)?was|"
+    r"sample\s+(?:was|consisted?\s+of)\s+\d+\.?\d*\s*%\s+(?:White|Black|Hispanic|"
+    r"Asian|African\s+American)|"
+    r"participants?\s+identified?\s+as\s+(?:White|Black|Hispanic|Asian|"
+    r"African\s+American|Native))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_racial_ethnic_composition(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies mentioning race/ethnicity without reporting sample composition.
+
+    Emits ``missing-racial-ethnic-composition`` (minor) when racial or ethnic
+    groups are mentioned but no demographic breakdown of the sample is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="racial_ethnic_composition", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="racial_ethnic_composition", findings=[]
+        )
+
+    if not _RACE_ETHNICITY_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="racial_ethnic_composition", findings=[]
+        )
+
+    if _RACE_ETHNICITY_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="racial_ethnic_composition", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="racial_ethnic_composition",
+        findings=[
+            Finding(
+                code="missing-racial-ethnic-composition",
+                severity="minor",
+                message=(
+                    "Race or ethnicity is mentioned but no breakdown of the sample's "
+                    "racial/ethnic composition is reported. "
+                    "Describe the racial/ethnic composition of the sample."
+                ),
+                validator="racial_ethnic_composition",
+                location="Participants",
                 evidence=[],
             )
         ],
