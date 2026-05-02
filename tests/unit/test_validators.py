@@ -35057,3 +35057,260 @@ def test_cskgc590_non_empirical_no_fire() -> None:
     )
     r = validate_commonsense_kg_completion_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 591 – validate_temporal_action_detection_metrics
+# ---------------------------------------------------------------------------
+def _temporalaction591_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t591", source_path="t591.md", source_format="markdown",
+            title="Temporal action detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_temporalaction591_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_temporal_action_detection_metrics
+    ms, cl = _temporalaction591_ms(
+        "We propose a model for temporal action localization on the THUMOS benchmark."
+    )
+    r = validate_temporal_action_detection_metrics(ms, cl)
+    assert any(f.code == "missing-temporal-action-detection-metrics" for f in r.findings)
+
+
+def test_temporalaction591_no_fire_when_map_reported() -> None:
+    from manuscript_audit.validators.core import validate_temporal_action_detection_metrics
+    ms, cl = _temporalaction591_ms(
+        "Temporal action detection: mAP = 56.3% at tIoU=0.5 on THUMOS14."
+    )
+    r = validate_temporal_action_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_temporalaction591_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_temporal_action_detection_metrics
+    ms, cl = _temporalaction591_ms("We present a code generation model.")
+    r = validate_temporal_action_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_temporalaction591_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_temporal_action_detection_metrics
+    ms, _ = _temporalaction591_ms("Action proposal generation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_temporal_action_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 592 – validate_video_moment_retrieval_metrics
+# ---------------------------------------------------------------------------
+def _vidmoment592_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t592", source_path="t592.md", source_format="markdown",
+            title="Video moment retrieval", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vidmoment592_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_video_moment_retrieval_metrics
+    ms, cl = _vidmoment592_ms(
+        "We propose a model for temporal sentence grounding on Charades-STA."
+    )
+    r = validate_video_moment_retrieval_metrics(ms, cl)
+    assert any(f.code == "missing-video-moment-retrieval-metrics" for f in r.findings)
+
+
+def test_vidmoment592_no_fire_when_iou_reported() -> None:
+    from manuscript_audit.validators.core import validate_video_moment_retrieval_metrics
+    ms, cl = _vidmoment592_ms(
+        "Video moment retrieval: Recall@1 = 53.4%, mIoU = 45.2 on Charades-STA."
+    )
+    r = validate_video_moment_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidmoment592_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_video_moment_retrieval_metrics
+    ms, cl = _vidmoment592_ms("We present an audio source separation model.")
+    r = validate_video_moment_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidmoment592_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_moment_retrieval_metrics
+    ms, _ = _vidmoment592_ms("Natural language video grounding theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_video_moment_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 593 – validate_vos_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _vidoseg593_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t593", source_path="t593.md", source_format="markdown",
+            title="Video object segmentation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vidoseg593_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_vos_benchmark_metrics
+    ms, cl = _vidoseg593_ms(
+        "We propose a semi-supervised VOS model evaluated on DAVIS 2017."
+    )
+    r = validate_vos_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-vos-benchmark-metrics" for f in r.findings)
+
+
+def test_vidoseg593_no_fire_when_jf_reported() -> None:
+    from manuscript_audit.validators.core import validate_vos_benchmark_metrics
+    ms, cl = _vidoseg593_ms("Video object segmentation: J&F = 81.4 on DAVIS 2017 val.")
+    r = validate_vos_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidoseg593_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_vos_benchmark_metrics
+    ms, cl = _vidoseg593_ms("We study multilingual summarization methods.")
+    r = validate_vos_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidoseg593_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_vos_benchmark_metrics
+    ms, _ = _vidoseg593_ms("YouTube-VOS instance segmentation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_vos_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 594 – validate_video_retrieval_metrics
+# ---------------------------------------------------------------------------
+def _vidretrieval594_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t594", source_path="t594.md", source_format="markdown",
+            title="Video-text retrieval", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vidretrieval594_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_video_retrieval_metrics
+    ms, cl = _vidretrieval594_ms(
+        "We propose a model for text-to-video retrieval on MSR-VTT."
+    )
+    r = validate_video_retrieval_metrics(ms, cl)
+    assert any(f.code == "missing-video-retrieval-metrics" for f in r.findings)
+
+
+def test_vidretrieval594_no_fire_when_recall_reported() -> None:
+    from manuscript_audit.validators.core import validate_video_retrieval_metrics
+    ms, cl = _vidretrieval594_ms(
+        "Video retrieval: R@1 = 43.2%, MedR = 2 on MSR-VTT test."
+    )
+    r = validate_video_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidretrieval594_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_video_retrieval_metrics
+    ms, cl = _vidretrieval594_ms("We present a formal verification model.")
+    r = validate_video_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidretrieval594_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_retrieval_metrics
+    ms, _ = _vidretrieval594_ms("Video-to-text retrieval theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_video_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 595 – validate_3d_object_detection_metrics
+# ---------------------------------------------------------------------------
+def _3ddet595_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t595", source_path="t595.md", source_format="markdown",
+            title="3D object detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_3ddet595_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_3d_object_detection_metrics
+    ms, cl = _3ddet595_ms(
+        "We propose a LiDAR-based detection model evaluated on the KITTI benchmark."
+    )
+    r = validate_3d_object_detection_metrics(ms, cl)
+    assert any(f.code == "missing-3d-object-detection-metrics" for f in r.findings)
+
+
+def test_3ddet595_no_fire_when_map_reported() -> None:
+    from manuscript_audit.validators.core import validate_3d_object_detection_metrics
+    ms, cl = _3ddet595_ms(
+        "3D object detection: AP_3D = 79.4% on KITTI test, car class."
+    )
+    r = validate_3d_object_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_3ddet595_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_3d_object_detection_metrics
+    ms, cl = _3ddet595_ms("We present a chart understanding model.")
+    r = validate_3d_object_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_3ddet595_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_3d_object_detection_metrics
+    ms, _ = _3ddet595_ms("Point cloud detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_3d_object_detection_metrics(ms, cl)
+    assert r.findings == []

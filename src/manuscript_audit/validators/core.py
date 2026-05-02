@@ -7097,6 +7097,11 @@ def run_deterministic_validators(
         validate_grounded_language_learning_metrics(parsed, classification),
         validate_text_to_sql_metrics(parsed, classification),
         validate_commonsense_kg_completion_metrics(parsed, classification),
+        validate_temporal_action_detection_metrics(parsed, classification),
+        validate_video_moment_retrieval_metrics(parsed, classification),
+        validate_vos_benchmark_metrics(parsed, classification),
+        validate_video_retrieval_metrics(parsed, classification),
+        validate_3d_object_detection_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -33231,6 +33236,241 @@ def validate_commonsense_kg_completion_metrics(
                 ),
                 location="full_text",
                 validator=_CSKGC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 591 – temporal action detection evaluation
+# ---------------------------------------------------------------------------
+_TEMPORALACTION_VID = "missing-temporal-action-detection-metrics"
+
+_TEMPORALACTION_TRIGGERS = re.compile(
+    r"\b(?:temporal\s+action\s+(?:detection|localization)|"
+    r"action\s+proposal\s+(?:generation|network)|"
+    r"ActivityNet\s+(?:detection|localization)|THUMOS\s+(?:benchmark|dataset))\b",
+    re.IGNORECASE,
+)
+_TEMPORALACTION_METRICS = re.compile(
+    r"\b(?:mAP|mean\s+average\s+precision|AR@\s*[0-9]+|average\s+recall)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:mAP|AR@[0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_temporal_action_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TEMPORALACTION_VID, findings=[])
+    text = parsed.full_text
+    if not _TEMPORALACTION_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_TEMPORALACTION_VID, findings=[])
+    if _TEMPORALACTION_METRICS.search(text):
+        return ValidationResult(validator_name=_TEMPORALACTION_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TEMPORALACTION_VID,
+        findings=[
+            Finding(
+                code=_TEMPORALACTION_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses temporal action detection but does not "
+                    "report mAP or average recall on ActivityNet/THUMOS."
+                ),
+                location="full_text",
+                validator=_TEMPORALACTION_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 592 – video moment retrieval evaluation
+# ---------------------------------------------------------------------------
+_VIDMOMENT_VID = "missing-video-moment-retrieval-metrics"
+
+_VIDMOMENT_TRIGGERS = re.compile(
+    r"\b(?:video\s+moment\s+retrieval|natural\s+language\s+video\s+grounding|"
+    r"temporal\s+sentence\s+grounding|Charades[- ]STA|"
+    r"ActivityNet\s+Captions\s+(?:retrieval|grounding))\b",
+    re.IGNORECASE,
+)
+_VIDMOMENT_METRICS = re.compile(
+    r"\b(?:R@[0-9]+\s*,\s*tIoU|Recall@[0-9]+|mIoU|IoU|"
+    r"temporal\s+IoU|mean\s+IoU)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:mIoU|IoU|Recall@[0-9]+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_video_moment_retrieval_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VIDMOMENT_VID, findings=[])
+    text = parsed.full_text
+    if not _VIDMOMENT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VIDMOMENT_VID, findings=[])
+    if _VIDMOMENT_METRICS.search(text):
+        return ValidationResult(validator_name=_VIDMOMENT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VIDMOMENT_VID,
+        findings=[
+            Finding(
+                code=_VIDMOMENT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses video moment retrieval but does not "
+                    "report Recall@k with tIoU threshold or mIoU."
+                ),
+                location="full_text",
+                validator=_VIDMOMENT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 593 – video object segmentation evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_VIDOSEG593_VID = "missing-vos-benchmark-metrics"
+
+_VIDOSEG593_TRIGGERS = re.compile(
+    r"\b(?:video\s+object\s+segmentation|semi[- ]supervised\s+VOS|"
+    r"DAVIS\s+(?:benchmark|dataset)|YouTube[- ]VOS\s+(?:benchmark|dataset)|"
+    r"video\s+instance\s+segmentation)\b",
+    re.IGNORECASE,
+)
+_VIDOSEG593_METRICS = re.compile(
+    r"\b(?:J[&\s]+F|Jaccard|mean\s+IOU|mIoU|contour\s+accuracy|"
+    r"J\s+mean|F\s+mean)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:J&F|Jaccard|mIoU)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_vos_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VIDOSEG593_VID, findings=[])
+    text = parsed.full_text
+    if not _VIDOSEG593_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VIDOSEG593_VID, findings=[])
+    if _VIDOSEG593_METRICS.search(text):
+        return ValidationResult(validator_name=_VIDOSEG593_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VIDOSEG593_VID,
+        findings=[
+            Finding(
+                code=_VIDOSEG593_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses video object segmentation but does not "
+                    "report J&F, Jaccard mean, or mIoU on DAVIS/YouTube-VOS."
+                ),
+                location="full_text",
+                validator=_VIDOSEG593_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 594 – video retrieval evaluation
+# ---------------------------------------------------------------------------
+_VIDRETRIEVAL_VID = "missing-video-retrieval-metrics"
+
+_VIDRETRIEVAL_TRIGGERS = re.compile(
+    r"\b(?:video[- ]text\s+retrieval|text[- ](?:to[- ])?video\s+retrieval|"
+    r"video[- ](?:to[- ])?text\s+retrieval|MSR[- ]VTT|"
+    r"MSVD\s+(?:retrieval|benchmark))\b",
+    re.IGNORECASE,
+)
+_VIDRETRIEVAL_METRICS = re.compile(
+    r"\b(?:R@[0-9]+|Recall@[0-9]+|MedR|MnR|mean\s+rank|median\s+rank)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:R@[0-9]+|Recall@[0-9]+|MedR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_video_retrieval_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VIDRETRIEVAL_VID, findings=[])
+    text = parsed.full_text
+    if not _VIDRETRIEVAL_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VIDRETRIEVAL_VID, findings=[])
+    if _VIDRETRIEVAL_METRICS.search(text):
+        return ValidationResult(validator_name=_VIDRETRIEVAL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VIDRETRIEVAL_VID,
+        findings=[
+            Finding(
+                code=_VIDRETRIEVAL_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses video-text retrieval but does not report "
+                    "R@k, MedR, or MnR on MSR-VTT or a similar benchmark."
+                ),
+                location="full_text",
+                validator=_VIDRETRIEVAL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 595 – 3D object detection evaluation
+# ---------------------------------------------------------------------------
+_3DDET_VID = "missing-3d-object-detection-metrics"
+
+_3DDET_TRIGGERS = re.compile(
+    r"\b(?:3D\s+object\s+detection|LiDAR[- ]based\s+detection|"
+    r"point\s+cloud\s+(?:detection|object\s+detection)|"
+    r"KITTI\s+(?:3D\s+)?detection|nuScenes\s+detection|Waymo\s+detection)\b",
+    re.IGNORECASE,
+)
+_3DDET_METRICS = re.compile(
+    r"\b(?:AP_3D|AP\s+3D|mAP|mean\s+average\s+precision|BEV\s+AP|"
+    r"NDS|nuScenes\s+detection\s+score)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:AP_3D|mAP|NDS)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_3d_object_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_3DDET_VID, findings=[])
+    text = parsed.full_text
+    if not _3DDET_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_3DDET_VID, findings=[])
+    if _3DDET_METRICS.search(text):
+        return ValidationResult(validator_name=_3DDET_VID, findings=[])
+    return ValidationResult(
+        validator_name=_3DDET_VID,
+        findings=[
+            Finding(
+                code=_3DDET_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses 3D object detection but does not report "
+                    "AP_3D, mAP, BEV AP, or NDS on KITTI/nuScenes/Waymo."
+                ),
+                location="full_text",
+                validator=_3DDET_VID,
             )
         ],
     )
