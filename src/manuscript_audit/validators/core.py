@@ -6837,6 +6837,11 @@ def run_deterministic_validators(
         validate_neuroimaging_atlas_disclosure(parsed, classification),
         validate_multiple_comparisons_neuroimaging(parsed, classification),
         validate_roi_definition_disclosure(parsed, classification),
+        validate_rna_seq_normalization_disclosure(parsed, classification),
+        validate_batch_effect_correction(parsed, classification),
+        validate_multiple_testing_genomics(parsed, classification),
+        validate_pathway_enrichment_method(parsed, classification),
+        validate_genome_reference_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -20155,6 +20160,309 @@ def validate_roi_definition_disclosure(
                     "ROI-based analysis is performed but how the region of interest "
                     "was defined is not described. Specify whether ROIs were anatomically "
                     "defined, functionally defined, or derived from atlas coordinates."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 331 – validate_rna_seq_normalization_disclosure
+# ---------------------------------------------------------------------------
+
+_RNA_SEQ_TRIGGER_RE = re.compile(
+    r"\b(?:RNA[\s-]?seq\b|RNA\s+sequencing|transcriptome\s+sequencing|"
+    r"differential\s+(?:gene\s+)?expression|DESeq|edgeR|"
+    r"read\s+counts?|gene\s+counts?|count\s+matrix|"
+    r"CPM\b|RPKM\b|FPKM\b|TPM\b)\b",
+    re.IGNORECASE,
+)
+_RNA_NORM_DISCLOSED_RE = re.compile(
+    r"\b(?:normaliz(?:ation|ed|ing)\s+(?:using|via|with)|"
+    r"DESeq2?\s+normaliz|"
+    r"TMM\s+normaliz|"
+    r"upper\s+quartile\s+normaliz|"
+    r"library\s+size\s+normaliz|"
+    r"CPM\s+normaliz|"
+    r"voom\s+transform|"
+    r"counts\s+were\s+normaliz)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_rna_seq_normalization_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag RNA-seq analyses without normalization method disclosure.
+
+    Emits ``missing-rna-seq-normalization`` (minor) when RNA-seq data are
+    analysed but the normalization method is not reported.
+    """
+    _vid = "validate_rna_seq_normalization_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _RNA_SEQ_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _RNA_NORM_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-rna-seq-normalization",
+                severity="minor",
+                message=(
+                    "RNA-seq data are analysed but the normalization method is not "
+                    "reported. Specify the normalization approach (e.g., DESeq2 size "
+                    "factors, TMM, CPM) to support reproducibility."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 332 – validate_batch_effect_correction
+# ---------------------------------------------------------------------------
+
+_BATCH_EFFECT_TRIGGER_RE = re.compile(
+    r"\b(?:batch\s+effect|batch\s+correction|"
+    r"multiple\s+(?:batches?|cohorts?|runs?|plates?|sites?)\s+"
+    r"(?:were|was)\s+(?:combined|merged|processed|analysed)|"
+    r"samples?\s+(?:were\s+|was\s+)?(?:collected|processed|run)\s+"
+    r"(?:in|across)\s+(?:multiple\s+)?(?:batches?|runs?|plates?)|"
+    r"technical\s+variability\s+(?:between|across)\s+(?:batches?|runs?))\b",
+    re.IGNORECASE,
+)
+_BATCH_CORRECTED_RE = re.compile(
+    r"\b(?:batch\s+(?:correction|effect)\s+(?:was|were)\s+"
+    r"(?:corrected|addressed|removed|accounted\s+for)|"
+    r"ComBat\b|limma\s+removeBatchEffect|"
+    r"batch\s+covariate|included\s+batch\s+as\s+a\s+covariate|"
+    r"batch[\s-]corrected|harmoniz(?:ation|ed|ing)\s+(?:the\s+)?(?:data|batches?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_batch_effect_correction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag multi-batch studies without batch effect correction disclosure.
+
+    Emits ``missing-batch-effect-correction`` (minor) when multiple batches
+    or processing runs are described but batch correction is not reported.
+    """
+    _vid = "validate_batch_effect_correction"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _BATCH_EFFECT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _BATCH_CORRECTED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-batch-effect-correction",
+                severity="minor",
+                message=(
+                    "Multiple processing batches are described but batch effect "
+                    "correction is not reported. Disclose whether batch correction "
+                    "(e.g., ComBat, batch covariate) was applied."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 333 – validate_multiple_testing_genomics
+# ---------------------------------------------------------------------------
+
+_GENOMIC_TESTING_TRIGGER_RE = re.compile(
+    r"\b(?:genome[\s-]wide\s+(?:association|analysis|study|GWAS)|"
+    r"GWAS\b|"
+    r"differential\s+(?:gene\s+)?expression\s+(?:analysis|testing)|"
+    r"(?:\d+(?:,\d+)*)\s+(?:SNPs?|variants?|genes?)\s+(?:were\s+)?tested|"
+    r"multiple\s+(?:genetic|genomic|gene)\s+(?:variants?|loci|tests?))\b",
+    re.IGNORECASE,
+)
+_GENOMIC_CORRECTION_RE = re.compile(
+    r"\b(?:Bonferroni\s+correct(?:ion|ed)|"
+    r"false\s+discovery\s+rate|FDR\b|"
+    r"genome[\s-]wide\s+significance\s+(?:threshold|level)|"
+    r"p\s*<\s*5\s*[×x]\s*10[\s-]?(?:\^?\s*)?[-−]?8|"
+    r"q[\s-]?value|Benjamini[\s-]Hochberg|"
+    r"adjusted\s+p[\s-]?value)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multiple_testing_genomics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag genomics studies without multiple testing correction.
+
+    Emits ``missing-genomics-multiple-testing`` (moderate) when large-scale
+    genomic testing (GWAS, DEA) is performed but no multiple testing
+    correction is described.
+    """
+    _vid = "validate_multiple_testing_genomics"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _GENOMIC_TESTING_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _GENOMIC_CORRECTION_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-genomics-multiple-testing",
+                severity="moderate",
+                message=(
+                    "Large-scale genomic testing is performed but no multiple testing "
+                    "correction is described. Report the correction method "
+                    "(e.g., FDR q-value, genome-wide significance threshold p < 5×10⁻⁸)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 334 – validate_pathway_enrichment_method
+# ---------------------------------------------------------------------------
+
+_ENRICHMENT_TRIGGER_RE = re.compile(
+    r"\b(?:pathway\s+(?:enrichment|analysis)|"
+    r"gene\s+set\s+(?:enrichment|analysis|testing)|"
+    r"GSEA\b|GO\s+(?:enrichment|term|analysis)|"
+    r"gene\s+ontology\s+(?:analysis|enrichment|term)|"
+    r"overrepresentation\s+analysis|"
+    r"Reactome\s+(?:pathway|analysis)|KEGG\s+pathway)\b",
+    re.IGNORECASE,
+)
+_ENRICHMENT_METHOD_DISCLOSED_RE = re.compile(
+    r"\b(?:GSEA\b\s+(?:was|were|using|with|v\d)|"
+    r"Fisher.s\s+exact\s+test\s+for\s+enrichment|"
+    r"hypergeometric\s+test|"
+    r"gene\s+set\s+enrichment\s+(?:analysis\s+was|using\s+)|"
+    r"clusterProfiler\b|fgsea\b|EnrichmentMap\b|"
+    r"background\s+gene\s+set|universe\s+(?:set|of\s+genes?)|"
+    r"enrichment\s+(?:was\s+)?tested\s+(?:using|via|with))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_pathway_enrichment_method(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag pathway enrichment analyses without method disclosure.
+
+    Emits ``missing-pathway-enrichment-method`` (minor) when pathway or gene
+    set enrichment is reported but the analysis method is not described.
+    """
+    _vid = "validate_pathway_enrichment_method"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _ENRICHMENT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _ENRICHMENT_METHOD_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-pathway-enrichment-method",
+                severity="minor",
+                message=(
+                    "Pathway or gene set enrichment is reported but the analysis "
+                    "method is not described. Specify the tool and statistical test "
+                    "(e.g., GSEA, Fisher's exact, hypergeometric test, background set)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 335 – validate_genome_reference_disclosure
+# ---------------------------------------------------------------------------
+
+_GENOME_REF_TRIGGER_RE = re.compile(
+    r"\b(?:genome\s+(?:assembly|reference|alignment|mapping|build)|"
+    r"reference\s+genome|reads?\s+(?:were\s+)?(?:aligned|mapped)\s+to|"
+    r"STAR\s+(?:aligner|alignment)|BWA\b|Bowtie\b|HISAT\d?\b|"
+    r"variant\s+calling|SNP\s+calling|GATK\b|samtools\b)\b",
+    re.IGNORECASE,
+)
+_GENOME_REF_DISCLOSED_RE = re.compile(
+    r"\b(?:GRCh\d+|hg\d+|GRCm\d+|mm\d+|"
+    r"human\s+genome\s+(?:reference\s+)?(?:assembly\s+)?(?:GRCh|hg)\d+|"
+    r"reference\s+genome\s+(?:GRCh|hg|mm|GRCm)\d+|"
+    r"(?:GRCh|GRCm|hg|mm)\d+\s+(?:reference|assembly|genome|build)|"
+    r"ENSEMBL\s+(?:release\s+)?\d+|gencode\s+(?:v|version\s+)\d+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_genome_reference_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag genomic alignment studies without reference genome disclosure.
+
+    Emits ``missing-genome-reference`` (minor) when genomic reads are
+    aligned or variants are called but the reference genome assembly
+    version is not stated.
+    """
+    _vid = "validate_genome_reference_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _GENOME_REF_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _GENOME_REF_DISCLOSED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-genome-reference",
+                severity="minor",
+                message=(
+                    "Genomic reads are aligned or variants are called but the "
+                    "reference genome assembly version is not stated. "
+                    "Report the reference genome (e.g., GRCh38, hg19) used for alignment."
                 ),
                 validator=_vid,
             )

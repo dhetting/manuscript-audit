@@ -19463,3 +19463,334 @@ def test_no_roi_no_fire() -> None:
     )
     result = validate_roi_definition_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 331 – validate_rna_seq_normalization_disclosure
+# ---------------------------------------------------------------------------
+
+def _rna331_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rna331",
+            source_path="/tmp/rna331.md",
+            source_format="markdown",
+            title="RNA-seq Normalization Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rna_seq_without_normalization_fires() -> None:
+    from manuscript_audit.validators.core import validate_rna_seq_normalization_disclosure
+
+    ms, cl = _rna331_ms(
+        "RNA-seq data were analysed to identify differentially expressed genes."
+    )
+    result = validate_rna_seq_normalization_disclosure(ms, cl)
+    assert any(f.code == "missing-rna-seq-normalization" for f in result.findings)
+
+
+def test_rna_seq_with_normalization_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rna_seq_normalization_disclosure
+
+    ms, cl = _rna331_ms(
+        "RNA-seq counts were normalized using DESeq2 size factors before "
+        "differential expression analysis."
+    )
+    result = validate_rna_seq_normalization_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_rna_seq_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rna_seq_normalization_disclosure
+
+    ms, cl = _rna331_ms("RNA-seq data were analysed for differential expression.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_rna_seq_normalization_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_rna_seq_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_rna_seq_normalization_disclosure
+
+    ms, cl = _rna331_ms(
+        "We conducted a randomised controlled trial with 120 participants."
+    )
+    result = validate_rna_seq_normalization_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 332 – validate_batch_effect_correction
+# ---------------------------------------------------------------------------
+
+def _batch332_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-batch332",
+            source_path="/tmp/batch332.md",
+            source_format="markdown",
+            title="Batch Effect Correction Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multi_batch_without_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_batch_effect_correction
+
+    ms, cl = _batch332_ms(
+        "Samples were collected in multiple batches across three recruitment sites."
+    )
+    result = validate_batch_effect_correction(ms, cl)
+    assert any(f.code == "missing-batch-effect-correction" for f in result.findings)
+
+
+def test_multi_batch_with_combat_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_batch_effect_correction
+
+    ms, cl = _batch332_ms(
+        "Samples were collected in multiple batches. Batch correction was applied "
+        "using ComBat to remove technical variability between batches."
+    )
+    result = validate_batch_effect_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_batch_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_batch_effect_correction
+
+    ms, cl = _batch332_ms(
+        "Samples were collected in multiple batches across three sites."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_batch_effect_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_no_batch_effect_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_batch_effect_correction
+
+    ms, cl = _batch332_ms(
+        "All participants were recruited from a single centre and assessed once."
+    )
+    result = validate_batch_effect_correction(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 333 – validate_multiple_testing_genomics
+# ---------------------------------------------------------------------------
+
+def _gwas333_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gwas333",
+            source_path="/tmp/gwas333.md",
+            source_format="markdown",
+            title="Genomics Multiple Testing Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_gwas_without_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_multiple_testing_genomics
+
+    ms, cl = _gwas333_ms(
+        "A genome-wide association study was conducted on 500,000 SNPs."
+    )
+    result = validate_multiple_testing_genomics(ms, cl)
+    assert any(f.code == "missing-genomics-multiple-testing" for f in result.findings)
+
+
+def test_gwas_with_fdr_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_testing_genomics
+
+    ms, cl = _gwas333_ms(
+        "A genome-wide association study was conducted. Genome-wide significance "
+        "threshold was set at p < 5×10⁻⁸."
+    )
+    result = validate_multiple_testing_genomics(ms, cl)
+    assert result.findings == []
+
+
+def test_gwas_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_testing_genomics
+
+    ms, cl = _gwas333_ms("A genome-wide association study was conducted.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multiple_testing_genomics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_genomic_testing_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_testing_genomics
+
+    ms, cl = _gwas333_ms(
+        "We used linear mixed models to analyse longitudinal data from the cohort."
+    )
+    result = validate_multiple_testing_genomics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 334 – validate_pathway_enrichment_method
+# ---------------------------------------------------------------------------
+
+def _pe334_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pe334",
+            source_path="/tmp/pe334.md",
+            source_format="markdown",
+            title="Pathway Enrichment Method Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pathway_enrichment_without_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_pathway_enrichment_method
+
+    ms, cl = _pe334_ms(
+        "Gene ontology enrichment analysis identified enriched biological processes."
+    )
+    result = validate_pathway_enrichment_method(ms, cl)
+    assert any(f.code == "missing-pathway-enrichment-method" for f in result.findings)
+
+
+def test_pathway_enrichment_with_gsea_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pathway_enrichment_method
+
+    ms, cl = _pe334_ms(
+        "Gene set enrichment analysis was performed using fgsea with the Reactome "
+        "pathway database. Enrichment was tested using a hypergeometric test."
+    )
+    result = validate_pathway_enrichment_method(ms, cl)
+    assert result.findings == []
+
+
+def test_pathway_enrichment_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pathway_enrichment_method
+
+    ms, cl = _pe334_ms("Gene ontology analysis identified enriched biological processes.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_pathway_enrichment_method(ms, cl)
+    assert result.findings == []
+
+
+def test_no_enrichment_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pathway_enrichment_method
+
+    ms, cl = _pe334_ms(
+        "We compared group means using repeated-measures ANOVA with Bonferroni correction."
+    )
+    result = validate_pathway_enrichment_method(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 335 – validate_genome_reference_disclosure
+# ---------------------------------------------------------------------------
+
+def _gr335_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-gr335",
+            source_path="/tmp/gr335.md",
+            source_format="markdown",
+            title="Genome Reference Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_alignment_without_reference_fires() -> None:
+    from manuscript_audit.validators.core import validate_genome_reference_disclosure
+
+    ms, cl = _gr335_ms(
+        "Sequencing reads were aligned to the reference genome using STAR aligner."
+    )
+    result = validate_genome_reference_disclosure(ms, cl)
+    assert any(f.code == "missing-genome-reference" for f in result.findings)
+
+
+def test_alignment_with_reference_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_genome_reference_disclosure
+
+    ms, cl = _gr335_ms(
+        "Sequencing reads were aligned to the GRCh38 reference genome using STAR."
+    )
+    result = validate_genome_reference_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_genome_reference_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_genome_reference_disclosure
+
+    ms, cl = _gr335_ms("Reads were aligned to the reference genome using STAR.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_genome_reference_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_genomic_alignment_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_genome_reference_disclosure
+
+    ms, cl = _gr335_ms(
+        "We collected blood pressure measurements from participants at rest."
+    )
+    result = validate_genome_reference_disclosure(ms, cl)
+    assert result.findings == []
