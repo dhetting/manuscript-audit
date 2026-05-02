@@ -17029,3 +17029,363 @@ def test_adaptive_non_empirical_no_fire() -> None:
     )
     result = validate_adaptive_design_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 296 – validate_kaplan_meier_censoring_note
+# ---------------------------------------------------------------------------
+
+def _km_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-km",
+            source_path="/tmp/km.md",
+            source_format="markdown",
+            title="Kaplan-Meier Censoring Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_km_without_censoring_note_fires() -> None:
+    from manuscript_audit.validators.core import validate_kaplan_meier_censoring_note
+
+    ms, cl = _km_ms(
+        "Kaplan-Meier curves were plotted for overall survival. Median survival "
+        "was 18 months in the treatment group versus 12 months in controls."
+    )
+    result = validate_kaplan_meier_censoring_note(ms, cl)
+    assert any(f.code == "missing-km-censoring-note" for f in result.findings)
+
+
+def test_km_with_censoring_note_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_kaplan_meier_censoring_note
+
+    ms, cl = _km_ms(
+        "Kaplan-Meier survival curves were produced. Participants lost to "
+        "follow-up were right-censored at their last known alive date. "
+        "Tick marks on the curves denote censoring events."
+    )
+    result = validate_kaplan_meier_censoring_note(ms, cl)
+    assert result.findings == []
+
+
+def test_km296_no_survival_analysis_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_kaplan_meier_censoring_note
+
+    ms, cl = _km_ms(
+        "We used logistic regression to predict treatment response at 12 weeks."
+    )
+    result = validate_kaplan_meier_censoring_note(ms, cl)
+    assert result.findings == []
+
+
+def test_km_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_kaplan_meier_censoring_note
+
+    ms, cl = _km_ms("Kaplan-Meier estimation is a nonparametric method.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_kaplan_meier_censoring_note(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 297 – validate_cox_proportional_hazards_assumption
+# ---------------------------------------------------------------------------
+
+def _cox_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cox",
+            source_path="/tmp/cox.md",
+            source_format="markdown",
+            title="Cox PH Assumption Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cox_without_ph_assumption_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cox_proportional_hazards_assumption,
+    )
+
+    ms, cl = _cox_ms(
+        "We used Cox proportional hazards regression to estimate the hazard ratio "
+        "for treatment versus control. HR = 0.62 (95% CI: 0.48–0.79), p < .001."
+    )
+    result = validate_cox_proportional_hazards_assumption(ms, cl)
+    assert any(f.code == "missing-cox-ph-assumption-check" for f in result.findings)
+
+
+def test_cox_with_ph_assumption_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cox_proportional_hazards_assumption,
+    )
+
+    ms, cl = _cox_ms(
+        "Cox proportional hazards regression was used. The proportional hazards "
+        "assumption was tested using Schoenfeld residuals and was not violated."
+    )
+    result = validate_cox_proportional_hazards_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_no_cox_model_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cox_proportional_hazards_assumption,
+    )
+
+    ms, cl = _cox_ms(
+        "A linear regression model was fitted to the continuous outcome."
+    )
+    result = validate_cox_proportional_hazards_assumption(ms, cl)
+    assert result.findings == []
+
+
+def test_cox_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cox_proportional_hazards_assumption,
+    )
+
+    ms, cl = _cox_ms("Cox proportional hazards is a widely used survival model.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cox_proportional_hazards_assumption(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 298 – validate_competing_risks_disclosure
+# ---------------------------------------------------------------------------
+
+def _competing_risk_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-comp-risk",
+            source_path="/tmp/comp_risk.md",
+            source_format="markdown",
+            title="Competing Risks Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_tte_without_competing_risks_fires() -> None:
+    from manuscript_audit.validators.core import validate_competing_risks_disclosure
+
+    ms, cl = _competing_risk_ms(
+        "Time-to-event analysis was used for disease recurrence as the event "
+        "of interest. Overall survival was also tracked."
+    )
+    result = validate_competing_risks_disclosure(ms, cl)
+    assert any(f.code == "missing-competing-risks-disclosure" for f in result.findings)
+
+
+def test_tte_with_competing_risks_handled_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_competing_risks_disclosure
+
+    ms, cl = _competing_risk_ms(
+        "Given the presence of competing risks (death from other causes), we "
+        "used the Fine-Gray subdistribution hazard model for disease recurrence."
+    )
+    result = validate_competing_risks_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_tte_no_competing_fire() -> None:
+    from manuscript_audit.validators.core import validate_competing_risks_disclosure
+
+    ms, cl = _competing_risk_ms(
+        "Binary outcomes were analysed with logistic regression."
+    )
+    result = validate_competing_risks_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_competing_risks_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_competing_risks_disclosure
+
+    ms, cl = _competing_risk_ms(
+        "Competing risks arise when multiple types of events can terminate follow-up."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_competing_risks_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 299 – validate_propensity_score_balance
+# ---------------------------------------------------------------------------
+
+def _propensity_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-propensity",
+            source_path="/tmp/propensity.md",
+            source_format="markdown",
+            title="Propensity Score Balance Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_propensity_without_balance_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_balance
+
+    ms, cl = _propensity_ms(
+        "We used propensity score matching to create comparable groups. "
+        "After matching, 120 matched pairs were retained for analysis."
+    )
+    result = validate_propensity_score_balance(ms, cl)
+    assert any(f.code == "missing-propensity-balance-check" for f in result.findings)
+
+
+def test_propensity_with_balance_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_balance
+
+    ms, cl = _propensity_ms(
+        "Propensity score matching was used. Post-matching covariate balance "
+        "was assessed using standardised mean differences (SMDs < 0.10 for all "
+        "covariates), confirming adequate balance."
+    )
+    result = validate_propensity_score_balance(ms, cl)
+    assert result.findings == []
+
+
+def test_no_propensity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_balance
+
+    ms, cl = _propensity_ms(
+        "Randomisation ensured group equivalence. No matching was required."
+    )
+    result = validate_propensity_score_balance(ms, cl)
+    assert result.findings == []
+
+
+def test_propensity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_propensity_score_balance
+
+    ms, cl = _propensity_ms(
+        "Propensity score matching reduces confounding in observational studies."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_propensity_score_balance(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 300 – validate_instrumental_variable_disclosure
+# ---------------------------------------------------------------------------
+
+def _iv_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-iv",
+            source_path="/tmp/iv.md",
+            source_format="markdown",
+            title="Instrumental Variable Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_iv_without_validity_argument_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_instrumental_variable_disclosure,
+    )
+
+    ms, cl = _iv_ms(
+        "We used two-stage least squares (2SLS) with rainfall as an instrumental "
+        "variable for agricultural income to estimate the causal effect on health."
+    )
+    result = validate_instrumental_variable_disclosure(ms, cl)
+    assert any(f.code == "missing-iv-validity-argument" for f in result.findings)
+
+
+def test_iv_with_validity_argument_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_instrumental_variable_disclosure,
+    )
+
+    ms, cl = _iv_ms(
+        "We used 2SLS with a genetic instrument. The first-stage F-statistic "
+        "was 48.3, indicating instrument relevance. The exclusion restriction "
+        "was argued based on the biological pathway."
+    )
+    result = validate_instrumental_variable_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_iv_method_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_instrumental_variable_disclosure,
+    )
+
+    ms, cl = _iv_ms(
+        "We used ordinary least squares regression to estimate treatment effects."
+    )
+    result = validate_instrumental_variable_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_iv_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_instrumental_variable_disclosure,
+    )
+
+    ms, cl = _iv_ms(
+        "Instrumental variables exploit exogenous variation to estimate causal effects."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_instrumental_variable_disclosure(ms, cl)
+    assert result.findings == []

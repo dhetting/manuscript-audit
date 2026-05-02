@@ -6802,6 +6802,11 @@ def run_deterministic_validators(
         validate_cohens_d_reporting(parsed, classification),
         validate_sequential_testing_correction(parsed, classification),
         validate_adaptive_design_disclosure(parsed, classification),
+        validate_kaplan_meier_censoring_note(parsed, classification),
+        validate_cox_proportional_hazards_assumption(parsed, classification),
+        validate_competing_risks_disclosure(parsed, classification),
+        validate_propensity_score_balance(parsed, classification),
+        validate_instrumental_variable_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -18049,6 +18054,296 @@ def validate_adaptive_design_disclosure(
                     "of adaptation rules and Type I error control procedures are not "
                     "disclosed. Report how adaptations were governed and how error "
                     "rates were controlled."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 296 – validate_kaplan_meier_censoring_note
+# ---------------------------------------------------------------------------
+
+_KM_TRIGGER_RE = re.compile(
+    r"\b(?:Kaplan[\s-]?Meier|survival\s+curve|KM\s+curve|"
+    r"time[\s-]to[\s-]event|event[\s-]free\s+survival|"
+    r"overall\s+survival|progression[\s-]free\s+survival)\b",
+    re.IGNORECASE,
+)
+_CENSORING_NOTE_RE = re.compile(
+    r"\b(?:censored|censoring|right[\s-]?censored|administratively\s+censored|"
+    r"loss\s+to\s+follow[\s-]?up\s+(?:was|were)\s+(?:censored|treated\s+as)|"
+    r"participants?\s+(?:who\s+were|with\s+)?(?:lost|withdrew|dropped)\s+"
+    r"(?:to\s+follow[\s-]?up\s+)?were\s+censored|"
+    r"number\s+at\s+risk|tick\s+marks?\s+(?:denote|indicate|show)\s+censoring)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_kaplan_meier_censoring_note(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Kaplan-Meier survival analyses without a censoring description.
+
+    Emits ``missing-km-censoring-note`` (minor) when a KM curve or survival
+    analysis is described but the handling of censored observations is not
+    mentioned.
+    """
+    _vid = "validate_kaplan_meier_censoring_note"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _KM_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _CENSORING_NOTE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-km-censoring-note",
+                severity="minor",
+                message=(
+                    "A Kaplan-Meier or survival analysis is presented but the "
+                    "treatment of censored observations is not described. Report "
+                    "the censoring mechanism and number of censored participants."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 297 – validate_cox_proportional_hazards_assumption
+# ---------------------------------------------------------------------------
+
+_COX_TRIGGER_RE = re.compile(
+    r"\b(?:Cox\s+(?:proportional[\s-]?hazards?|regression|model)|"
+    r"proportional[\s-]?hazards?\s+(?:regression|model|assumption)|"
+    r"hazard\s+ratio\s+(?:was|were|is|are)\s+(?:estimated|obtained)\s+using|"
+    r"Cox\s+PH\b)\b",
+    re.IGNORECASE,
+)
+_PH_ASSUMPTION_RE = re.compile(
+    r"\b(?:proportional[\s-]?hazards?\s+assumption|"
+    r"Schoenfeld\s+residuals?|log[\s-]?log\s+(?:plot|survival\s+curve)|"
+    r"PH\s+assumption|time[\s-]?varying\s+(?:covariate|coefficient)|"
+    r"test(?:ed|ing)\s+(?:the\s+)?proportional\s+hazards?)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_cox_proportional_hazards_assumption(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag Cox regression without proportional hazards assumption check.
+
+    Emits ``missing-cox-ph-assumption-check`` (moderate) when a Cox PH model
+    is used but the proportional hazards assumption is not tested or mentioned.
+    """
+    _vid = "validate_cox_proportional_hazards_assumption"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _COX_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PH_ASSUMPTION_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-cox-ph-assumption-check",
+                severity="moderate",
+                message=(
+                    "A Cox proportional hazards model is used but the proportional "
+                    "hazards assumption is not tested. Check the assumption using "
+                    "Schoenfeld residuals or log-log plots and report the result."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 298 – validate_competing_risks_disclosure
+# ---------------------------------------------------------------------------
+
+_COMPETING_RISK_TRIGGER_RE = re.compile(
+    r"\b(?:time[\s-]to[\s-]event|cause[\s-]specific\s+(?:hazard|survival)|"
+    r"cumulative\s+incidence|event\s+of\s+interest|"
+    r"(?:death|mortality|relapse|recurrence)\s+(?:precluded?|prevented?)\s+"
+    r"(?:the\s+)?(?:event|outcome))\b",
+    re.IGNORECASE,
+)
+_COMPETING_RISK_HANDLED_RE = re.compile(
+    r"\b(?:competing\s+(?:risks?|events?)|subdistribution\s+hazard|"
+    r"Fine[\s-]Gray|cause[\s-]specific\s+hazard\s+(?:model|analysis|approach)|"
+    r"Aalen[\s-]Johansen|competing\s+event\s+(?:was|were)\s+(?:accounted|considered|handled))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_competing_risks_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag time-to-event analyses without competing risk consideration.
+
+    Emits ``missing-competing-risks-disclosure`` (moderate) when a
+    time-to-event outcome is analysed but competing risks are not addressed.
+    """
+    _vid = "validate_competing_risks_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _COMPETING_RISK_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _COMPETING_RISK_HANDLED_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-competing-risks-disclosure",
+                severity="moderate",
+                message=(
+                    "A time-to-event outcome is analysed but competing risks are "
+                    "not addressed. Assess whether competing events exist and, "
+                    "if so, report competing risks analyses (e.g., Fine-Gray model)."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 299 – validate_propensity_score_balance
+# ---------------------------------------------------------------------------
+
+_PROPENSITY_TRIGGER_RE = re.compile(
+    r"\b(?:propensity\s+(?:score|matched?|matching|weighting|method)|"
+    r"inverse\s+probability\s+(?:weighting|treatment\s+weighting)|IPTW\b|"
+    r"average\s+treatment\s+effect\s+(?:on\s+the\s+treated|in\s+the\s+population)|"
+    r"ATT\b|ATE\b)\b",
+    re.IGNORECASE,
+)
+_PROPENSITY_BALANCE_RE = re.compile(
+    r"\b(?:standardised?\s+(?:mean\s+difference|difference\s+in\s+means?)|SMD\b|"
+    r"covariate\s+balance|balance\s+(?:was|were|is|are)\s+(?:achieved|checked|assessed)|"
+    r"love\s+plot|balance\s+plot|post[\s-]?match(?:ing)?\s+(?:balance|comparison|check)|"
+    r"absolute\s+standardised\s+(?:mean\s+)?difference)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_propensity_score_balance(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag propensity score analyses without covariate balance assessment.
+
+    Emits ``missing-propensity-balance-check`` (moderate) when propensity
+    score methods are used but covariate balance after matching/weighting
+    is not assessed.
+    """
+    _vid = "validate_propensity_score_balance"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _PROPENSITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _PROPENSITY_BALANCE_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-propensity-balance-check",
+                severity="moderate",
+                message=(
+                    "Propensity score methods are used but post-matching or "
+                    "post-weighting covariate balance is not assessed. Report "
+                    "standardised mean differences (SMDs) or a balance plot."
+                ),
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 300 – validate_instrumental_variable_disclosure
+# ---------------------------------------------------------------------------
+
+_IV_TRIGGER_RE = re.compile(
+    r"\b(?:instrumental\s+variable|instrument(?:al)?\s+approach|"
+    r"two[\s-]stage\s+least\s+squares|2SLS\b|TSLS\b|"
+    r"Mendelian\s+randomis(?:ation|ation)|MR\s+analysis|"
+    r"IV\s+(?:estimation|method|approach|analysis))\b",
+    re.IGNORECASE,
+)
+_IV_VALIDITY_RE = re.compile(
+    r"\b(?:instrument\s+(?:validity|relevance|exclusion\s+restriction)|"
+    r"exclusion\s+restriction|first[\s-]?stage\s+(?:F[\s-]?statistic|result)|"
+    r"weak\s+instrument|relevance\s+condition|"
+    r"F[\s-]?statistic\s+(?:for\s+)?(?:the\s+)?(?:instrument|first\s+stage)|"
+    r"instrument(?:al)?\s+variable\s+(?:satisfies?|meets?)\s+"
+    r"(?:the\s+)?(?:relevance|validity)\s+(?:assumption|condition))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_instrumental_variable_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag IV analyses without instrument validity argument.
+
+    Emits ``missing-iv-validity-argument`` (moderate) when instrumental
+    variable or Mendelian randomisation methods are used but instrument
+    validity (relevance, exclusion restriction) is not argued or tested.
+    """
+    _vid = "validate_instrumental_variable_disclosure"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    full = parsed.full_text
+    if not _IV_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    if _IV_VALIDITY_RE.search(full):
+        return ValidationResult(validator_name=_vid, findings=[])
+
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-iv-validity-argument",
+                severity="moderate",
+                message=(
+                    "An instrumental variable or Mendelian randomisation analysis "
+                    "is used but instrument validity (relevance and exclusion "
+                    "restriction) is not argued or tested. Report the first-stage "
+                    "F-statistic and argue for the exclusion restriction."
                 ),
                 validator=_vid,
             )
