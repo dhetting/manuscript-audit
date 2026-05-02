@@ -7017,6 +7017,11 @@ def run_deterministic_validators(
         validate_lane_detection_metrics(parsed, classification),
         validate_salient_object_detection_metrics(parsed, classification),
         validate_image_restoration_metrics(parsed, classification),
+        validate_reid_metrics(parsed, classification),
+        validate_inpainting_evaluation_metrics(parsed, classification),
+        validate_lidar_3d_detection_metrics(parsed, classification),
+        validate_visual_question_generation_metrics(parsed, classification),
+        validate_captioning_hallucination_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -29470,6 +29475,232 @@ def validate_image_restoration_metrics(
                 ),
                 severity="moderate",
                 validator=_IMGREST_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 511 – Person/vehicle re-identification metrics
+# ---------------------------------------------------------------------------
+_REID_VID = "missing-reid-metrics"
+_REID_TRIGGER_RE = re.compile(
+    r"\b(?:person\s+re-?identification|vehicle\s+re-?identification|"
+    r"re-?ID|pedestrian\s+re-?ID)\b",
+    re.IGNORECASE,
+)
+_REID_METRIC_RE = re.compile(
+    r"\b(?:mAP|mean\s+average\s+precision|Rank-1|CMC|cumulative\s+matching\s+characteristic)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_reid_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when person/vehicle re-ID papers omit mAP or Rank-1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_REID_VID, findings=[])
+    text = parsed.full_text
+    if not _REID_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_REID_VID, findings=[])
+    if _REID_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_REID_VID, findings=[])
+    return ValidationResult(
+        validator_name=_REID_VID,
+        findings=[
+            Finding(
+                code=_REID_VID,
+                message=(
+                    "Re-identification paper detected but standard metrics "
+                    "(mAP, Rank-1) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_REID_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 512 – Image inpainting evaluation metrics
+# ---------------------------------------------------------------------------
+_INPAINT_VID = "missing-inpainting-evaluation-metrics"
+_INPAINT_TRIGGER_RE = re.compile(
+    r"\b(?:image\s+inpainting|image\s+completion|missing\s+region\s+fill|"
+    r"hole\s+filling)\b",
+    re.IGNORECASE,
+)
+_INPAINT_METRIC_RE = re.compile(
+    r"\b(?:PSNR|SSIM|FID|Fréchet\s+inception\s+distance|"
+    r"perceptual\s+similarity|LPIPS)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_inpainting_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when image inpainting papers omit PSNR/SSIM/FID metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_INPAINT_VID, findings=[])
+    text = parsed.full_text
+    if not _INPAINT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_INPAINT_VID, findings=[])
+    if _INPAINT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_INPAINT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_INPAINT_VID,
+        findings=[
+            Finding(
+                code=_INPAINT_VID,
+                message=(
+                    "Image inpainting paper detected but standard evaluation "
+                    "metrics (PSNR, SSIM, FID) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_INPAINT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 513 – 3D LiDAR object detection metrics
+# ---------------------------------------------------------------------------
+_LIDAR3D_VID = "missing-lidar-3d-detection-metrics"
+_LIDAR3D_TRIGGER_RE = re.compile(
+    r"\b(?:LiDAR\s+(?:object\s+)?detection|3D\s+object\s+detection|"
+    r"point\s+cloud\s+(?:object\s+)?detection|BEV\s+detection)\b",
+    re.IGNORECASE,
+)
+_LIDAR3D_METRIC_RE = re.compile(
+    r"\b(?:mAP|AP(?:3D|BEV)|3D\s+IoU|BEV\s+IoU|"
+    r"average\s+precision)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_lidar_3d_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when 3D LiDAR detection papers omit mAP/AP3D/APBEV metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_LIDAR3D_VID, findings=[])
+    text = parsed.full_text
+    if not _LIDAR3D_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_LIDAR3D_VID, findings=[])
+    if _LIDAR3D_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_LIDAR3D_VID, findings=[])
+    return ValidationResult(
+        validator_name=_LIDAR3D_VID,
+        findings=[
+            Finding(
+                code=_LIDAR3D_VID,
+                message=(
+                    "3D LiDAR object detection paper detected but standard "
+                    "metrics (mAP, AP3D, APBEV) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_LIDAR3D_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 514 – Visual question generation evaluation
+# ---------------------------------------------------------------------------
+_VQG_VID = "missing-visual-question-generation-metrics"
+_VQG_TRIGGER_RE = re.compile(
+    r"\b(?:visual\s+question\s+generation|VQG|image\s+question\s+generation)\b",
+    re.IGNORECASE,
+)
+_VQG_METRIC_RE = re.compile(
+    r"\b(?:BLEU(?:-[14])?|ROUGE-L|METEOR|CIDEr|diversity|"
+    r"answerability)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_visual_question_generation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when VQG papers omit standard generation and quality metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VQG_VID, findings=[])
+    text = parsed.full_text
+    if not _VQG_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_VQG_VID, findings=[])
+    if _VQG_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_VQG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VQG_VID,
+        findings=[
+            Finding(
+                code=_VQG_VID,
+                message=(
+                    "Visual question generation paper detected but standard "
+                    "generation metrics (BLEU, CIDEr, METEOR) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_VQG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 515 – Image captioning hallucination evaluation
+# ---------------------------------------------------------------------------
+_CAPHALLU_VID = "missing-captioning-hallucination-evaluation"
+_CAPHALLU_TRIGGER_RE = re.compile(
+    r"\b(?:captioning\s+hallucination|image\s+caption\s+hallucination|"
+    r"visual\s+grounding\s+hallucination|object\s+hallucination)\b",
+    re.IGNORECASE,
+)
+_CAPHALLU_METRIC_RE = re.compile(
+    r"\b(?:CHAIR|coverage|hallucination\s+rate|object\s+recall|"
+    r"POPE|AMBER)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_captioning_hallucination_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when captioning hallucination papers omit CHAIR/POPE metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CAPHALLU_VID, findings=[])
+    text = parsed.full_text
+    if not _CAPHALLU_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CAPHALLU_VID, findings=[])
+    if _CAPHALLU_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CAPHALLU_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CAPHALLU_VID,
+        findings=[
+            Finding(
+                code=_CAPHALLU_VID,
+                message=(
+                    "Image captioning hallucination paper detected but "
+                    "standard metrics (CHAIR, POPE, AMBER) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_CAPHALLU_VID,
             )
         ],
     )

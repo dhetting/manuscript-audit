@@ -31177,3 +31177,244 @@ def test_imgrest510_non_empirical_no_fire() -> None:
     )
     r = validate_image_restoration_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 511 – validate_reid_metrics
+# ---------------------------------------------------------------------------
+def _reid511_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t511", source_path="t511.md", source_format="markdown",
+            title="ReID", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_reid511_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_reid_metrics
+    ms, cl = _reid511_ms("We propose a method for person re-identification on Market-1501.")
+    r = validate_reid_metrics(ms, cl)
+    assert any(f.code == "missing-reid-metrics" for f in r.findings)
+
+
+def test_reid511_no_fire_when_map_reported() -> None:
+    from manuscript_audit.validators.core import validate_reid_metrics
+    ms, cl = _reid511_ms("Person re-ID: mAP = 87.6% and Rank-1 = 94.2% on Market-1501.")
+    r = validate_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_reid511_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_reid_metrics
+    ms, cl = _reid511_ms("We present a text generation model.")
+    r = validate_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_reid511_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reid_metrics
+    ms, _ = _reid511_ms("Pedestrian re-ID theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 512 – validate_inpainting_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _inpaint512_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t512", source_path="t512.md", source_format="markdown",
+            title="Inpainting", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_inpaint512_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_inpainting_evaluation_metrics
+    ms, cl = _inpaint512_ms("We address image inpainting with a deep generative model.")
+    r = validate_inpainting_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-inpainting-evaluation-metrics" for f in r.findings)
+
+
+def test_inpaint512_no_fire_when_psnr_reported() -> None:
+    from manuscript_audit.validators.core import validate_inpainting_evaluation_metrics
+    ms, cl = _inpaint512_ms("Image inpainting: PSNR = 30.1 dB on Places2.")
+    r = validate_inpainting_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_inpaint512_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_inpainting_evaluation_metrics
+    ms, cl = _inpaint512_ms("We train a transformer for speech recognition.")
+    r = validate_inpainting_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_inpaint512_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_inpainting_evaluation_metrics
+    ms, _ = _inpaint512_ms("Hole filling theory analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_inpainting_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 513 – validate_lidar_3d_detection_metrics
+# ---------------------------------------------------------------------------
+def _lidar513_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t513", source_path="t513.md", source_format="markdown",
+            title="LiDAR 3D det", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lidar513_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_lidar_3d_detection_metrics
+    ms, cl = _lidar513_ms("We propose a LiDAR detection model on KITTI.")
+    r = validate_lidar_3d_detection_metrics(ms, cl)
+    assert any(f.code == "missing-lidar-3d-detection-metrics" for f in r.findings)
+
+
+def test_lidar513_no_fire_when_map_reported() -> None:
+    from manuscript_audit.validators.core import validate_lidar_3d_detection_metrics
+    ms, cl = _lidar513_ms("3D object detection: mAP = 77.2% on KITTI val.")
+    r = validate_lidar_3d_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lidar513_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_lidar_3d_detection_metrics
+    ms, cl = _lidar513_ms("We study survival analysis methods.")
+    r = validate_lidar_3d_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lidar513_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_lidar_3d_detection_metrics
+    ms, _ = _lidar513_ms("BEV detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_lidar_3d_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 514 – validate_visual_question_generation_metrics
+# ---------------------------------------------------------------------------
+def _vqg514_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t514", source_path="t514.md", source_format="markdown",
+            title="VQG", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vqg514_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_visual_question_generation_metrics
+    ms, cl = _vqg514_ms("We address visual question generation from images.")
+    r = validate_visual_question_generation_metrics(ms, cl)
+    assert any(f.code == "missing-visual-question-generation-metrics" for f in r.findings)
+
+
+def test_vqg514_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_visual_question_generation_metrics
+    ms, cl = _vqg514_ms("VQG evaluation: BLEU-4 = 18.3 on VQA v2.")
+    r = validate_visual_question_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vqg514_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_visual_question_generation_metrics
+    ms, cl = _vqg514_ms("We present a recommender system.")
+    r = validate_visual_question_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vqg514_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_visual_question_generation_metrics
+    ms, _ = _vqg514_ms("VQG theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_visual_question_generation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 515 – validate_captioning_hallucination_evaluation
+# ---------------------------------------------------------------------------
+def _caphallu515_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t515", source_path="t515.md", source_format="markdown",
+            title="Caption hallucination", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_caphallu515_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_captioning_hallucination_evaluation
+    ms, cl = _caphallu515_ms("We study object hallucination in image captioning models.")
+    r = validate_captioning_hallucination_evaluation(ms, cl)
+    assert any(f.code == "missing-captioning-hallucination-evaluation" for f in r.findings)
+
+
+def test_caphallu515_no_fire_when_chair_reported() -> None:
+    from manuscript_audit.validators.core import validate_captioning_hallucination_evaluation
+    ms, cl = _caphallu515_ms(
+        "Captioning hallucination: CHAIR = 8.2% on MSCOCO."
+    )
+    r = validate_captioning_hallucination_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_caphallu515_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_captioning_hallucination_evaluation
+    ms, cl = _caphallu515_ms("We propose a graph-based recommendation system.")
+    r = validate_captioning_hallucination_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_caphallu515_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_captioning_hallucination_evaluation
+    ms, _ = _caphallu515_ms("Visual grounding hallucination theory.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_captioning_hallucination_evaluation(ms, cl)
+    assert r.findings == []
