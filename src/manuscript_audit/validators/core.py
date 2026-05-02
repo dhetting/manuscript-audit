@@ -7118,6 +7118,11 @@ def run_deterministic_validators(
         validate_trajectory_benchmark_metrics(parsed, classification),
         validate_occupancy_prediction_metrics(parsed, classification),
         validate_human_pose_forecasting_metrics(parsed, classification),
+        validate_hand_pose_benchmark_metrics(parsed, classification),
+        validate_face_alignment_metrics(parsed, classification),
+        validate_face_anti_spoofing_metrics(parsed, classification),
+        validate_deepfake_detection_metrics(parsed, classification),
+        validate_person_reid_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -34195,6 +34200,243 @@ def validate_human_pose_forecasting_metrics(
                 ),
                 location="full_text",
                 validator=_POSEFORECAST_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 611 – hand pose estimation evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_HANDPOSE611_VID = "missing-hand-pose-benchmark-metrics"
+
+_HANDPOSE611_TRIGGERS = re.compile(
+    r"\b(?:hand\s+pose\s+estimation|hand\s+keypoint\s+detection|"
+    r"hand\s+joint\s+localization|FreiHAND\s+(?:dataset|benchmark)|"
+    r"HO3D\s+(?:dataset|benchmark)|InterHand2\.6M)\b",
+    re.IGNORECASE,
+)
+_HANDPOSE611_METRICS = re.compile(
+    r"\b(?:MPJPE|AUC|PA[- ]MPJPE|F[- ]score|PCK|"
+    r"mean\s+joint\s+error)\b.*?(?:\d[\d.]*\s*(?:mm|m)?|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:MPJPE|AUC|PCK)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_hand_pose_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_HANDPOSE611_VID, findings=[])
+    text = parsed.full_text
+    if not _HANDPOSE611_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_HANDPOSE611_VID, findings=[])
+    if _HANDPOSE611_METRICS.search(text):
+        return ValidationResult(validator_name=_HANDPOSE611_VID, findings=[])
+    return ValidationResult(
+        validator_name=_HANDPOSE611_VID,
+        findings=[
+            Finding(
+                code=_HANDPOSE611_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses hand pose estimation but does not report "
+                    "MPJPE, AUC, or PCK on FreiHAND/HO3D."
+                ),
+                location="full_text",
+                validator=_HANDPOSE611_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 612 – face alignment evaluation
+# ---------------------------------------------------------------------------
+_FACEALIGN_VID = "missing-face-alignment-metrics"
+
+_FACEALIGN_TRIGGERS = re.compile(
+    r"\b(?:face\s+alignment|facial\s+landmark\s+(?:detection|localization)|"
+    r"300W\s+(?:dataset|benchmark)|WFLW\s+(?:dataset|benchmark)|"
+    r"COFW\s+(?:dataset|benchmark))\b",
+    re.IGNORECASE,
+)
+_FACEALIGN_METRICS = re.compile(
+    r"\b(?:NME|normalized\s+mean\s+error|FR|failure\s+rate|AUC|"
+    r"mean\s+face\s+alignment\s+error)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:NME|failure\s+rate|AUC)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_face_alignment_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FACEALIGN_VID, findings=[])
+    text = parsed.full_text
+    if not _FACEALIGN_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_FACEALIGN_VID, findings=[])
+    if _FACEALIGN_METRICS.search(text):
+        return ValidationResult(validator_name=_FACEALIGN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FACEALIGN_VID,
+        findings=[
+            Finding(
+                code=_FACEALIGN_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses face alignment but does not report "
+                    "NME, failure rate, or AUC on 300W/WFLW/COFW."
+                ),
+                location="full_text",
+                validator=_FACEALIGN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 613 – face anti-spoofing evaluation
+# ---------------------------------------------------------------------------
+_FACESPOOF_VID = "missing-face-anti-spoofing-metrics"
+
+_FACESPOOF_TRIGGERS = re.compile(
+    r"\b(?:face\s+anti[- ]spoofing|face\s+liveness\s+detection|"
+    r"presentation\s+attack\s+detection|PAD\s+(?:system|method)|"
+    r"NUAA\s+dataset|MSU[- ]MFSD|CASIA[- ]FASD|replay[- ]attack)\b",
+    re.IGNORECASE,
+)
+_FACESPOOF_METRICS = re.compile(
+    r"\b(?:HTER|half\s+total\s+error\s+rate|EER|equal\s+error\s+rate|"
+    r"APCER|BPCER|AUC|TPR@FPR|detection\s+accuracy)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:HTER|EER|AUC|APCER)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_face_anti_spoofing_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FACESPOOF_VID, findings=[])
+    text = parsed.full_text
+    if not _FACESPOOF_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_FACESPOOF_VID, findings=[])
+    if _FACESPOOF_METRICS.search(text):
+        return ValidationResult(validator_name=_FACESPOOF_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FACESPOOF_VID,
+        findings=[
+            Finding(
+                code=_FACESPOOF_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses face anti-spoofing but does not report "
+                    "HTER, EER, APCER, BPCER, or AUC on a benchmark."
+                ),
+                location="full_text",
+                validator=_FACESPOOF_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 614 – deepfake detection evaluation
+# ---------------------------------------------------------------------------
+_DEEPFAKE_VID = "missing-deepfake-detection-metrics"
+
+_DEEPFAKE_TRIGGERS = re.compile(
+    r"\b(?:deepfake\s+detection|face\s+forgery\s+detection|"
+    r"manipulated\s+face\s+detection|FaceForensics\+?\+?|"
+    r"DFD\s+(?:dataset|benchmark)|Celeb[- ]DF)\b",
+    re.IGNORECASE,
+)
+_DEEPFAKE_METRICS = re.compile(
+    r"\b(?:AUC|accuracy|AP|average\s+precision|"
+    r"video[- ]level\s+accuracy|frame[- ]level\s+AUC)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:AUC|accuracy|AP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_deepfake_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DEEPFAKE_VID, findings=[])
+    text = parsed.full_text
+    if not _DEEPFAKE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_DEEPFAKE_VID, findings=[])
+    if _DEEPFAKE_METRICS.search(text):
+        return ValidationResult(validator_name=_DEEPFAKE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DEEPFAKE_VID,
+        findings=[
+            Finding(
+                code=_DEEPFAKE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses deepfake detection but does not report "
+                    "AUC, accuracy, or AP on FaceForensics++ or Celeb-DF."
+                ),
+                location="full_text",
+                validator=_DEEPFAKE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 615 – person re-identification evaluation
+# ---------------------------------------------------------------------------
+_REID615_VID = "missing-person-reid-metrics"
+
+_REID615_TRIGGERS = re.compile(
+    r"\b(?:person\s+re[- ]identification|person\s+ReID|pedestrian\s+re[- ]id|"
+    r"Market[- ]1501|DukeMTMC[- ]reID|MSMT17\s+(?:dataset|benchmark)|"
+    r"CUHK03\s+(?:dataset|benchmark))\b",
+    re.IGNORECASE,
+)
+_REID615_METRICS = re.compile(
+    r"\b(?:Rank[- ]1|mAP|CMC|cumulative\s+matching\s+characteristics|"
+    r"top[- ]1\s+accuracy)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:Rank-1|mAP|CMC)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_person_reid_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_REID615_VID, findings=[])
+    text = parsed.full_text
+    if not _REID615_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_REID615_VID, findings=[])
+    if _REID615_METRICS.search(text):
+        return ValidationResult(validator_name=_REID615_VID, findings=[])
+    return ValidationResult(
+        validator_name=_REID615_VID,
+        findings=[
+            Finding(
+                code=_REID615_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses person re-identification but does not "
+                    "report Rank-1, mAP, or CMC on Market-1501/DukeMTMC."
+                ),
+                location="full_text",
+                validator=_REID615_VID,
             )
         ],
     )

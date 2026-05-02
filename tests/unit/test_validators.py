@@ -36073,3 +36073,254 @@ def test_poseforecast610_non_empirical_no_fire() -> None:
     )
     r = validate_human_pose_forecasting_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 611 – validate_hand_pose_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _handpose611_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t611", source_path="t611.md", source_format="markdown",
+            title="Hand pose estimation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_handpose611_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_benchmark_metrics
+    ms, cl = _handpose611_ms(
+        "We propose a hand keypoint detection model evaluated on FreiHAND."
+    )
+    r = validate_hand_pose_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-hand-pose-benchmark-metrics" for f in r.findings)
+
+
+def test_handpose611_no_fire_when_mpjpe_reported() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_benchmark_metrics
+    ms, cl = _handpose611_ms("Hand pose estimation: MPJPE = 6.3 mm on FreiHAND.")
+    r = validate_hand_pose_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_handpose611_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_benchmark_metrics
+    ms, cl = _handpose611_ms("We present an occupancy prediction model.")
+    r = validate_hand_pose_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_handpose611_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_benchmark_metrics
+    ms, _ = _handpose611_ms("Hand joint localization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_hand_pose_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 612 – validate_face_alignment_metrics
+# ---------------------------------------------------------------------------
+def _facealign612_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t612", source_path="t612.md", source_format="markdown",
+            title="Face alignment", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_facealign612_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_face_alignment_metrics
+    ms, cl = _facealign612_ms(
+        "We propose a facial landmark detection model on the 300W dataset."
+    )
+    r = validate_face_alignment_metrics(ms, cl)
+    assert any(f.code == "missing-face-alignment-metrics" for f in r.findings)
+
+
+def test_facealign612_no_fire_when_nme_reported() -> None:
+    from manuscript_audit.validators.core import validate_face_alignment_metrics
+    ms, cl = _facealign612_ms("Face alignment: NME = 3.49% on 300W full set.")
+    r = validate_face_alignment_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_facealign612_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_face_alignment_metrics
+    ms, cl = _facealign612_ms("We study scene flow estimation methods.")
+    r = validate_face_alignment_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_facealign612_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_face_alignment_metrics
+    ms, _ = _facealign612_ms("Facial landmark localization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_face_alignment_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 613 – validate_face_anti_spoofing_metrics
+# ---------------------------------------------------------------------------
+def _facespoof613_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t613", source_path="t613.md", source_format="markdown",
+            title="Face anti-spoofing", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_facespoof613_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_face_anti_spoofing_metrics
+    ms, cl = _facespoof613_ms(
+        "We propose a presentation attack detection system on replay-attack."
+    )
+    r = validate_face_anti_spoofing_metrics(ms, cl)
+    assert any(f.code == "missing-face-anti-spoofing-metrics" for f in r.findings)
+
+
+def test_facespoof613_no_fire_when_hter_reported() -> None:
+    from manuscript_audit.validators.core import validate_face_anti_spoofing_metrics
+    ms, cl = _facespoof613_ms("Face anti-spoofing: HTER = 3.2% on CASIA-FASD.")
+    r = validate_face_anti_spoofing_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_facespoof613_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_face_anti_spoofing_metrics
+    ms, cl = _facespoof613_ms("We present a video retrieval model.")
+    r = validate_face_anti_spoofing_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_facespoof613_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_face_anti_spoofing_metrics
+    ms, _ = _facespoof613_ms("Face liveness detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_face_anti_spoofing_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 614 – validate_deepfake_detection_metrics
+# ---------------------------------------------------------------------------
+def _deepfake614_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t614", source_path="t614.md", source_format="markdown",
+            title="Deepfake detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_deepfake614_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_deepfake_detection_metrics
+    ms, cl = _deepfake614_ms(
+        "We propose a face forgery detection model on FaceForensics++."
+    )
+    r = validate_deepfake_detection_metrics(ms, cl)
+    assert any(f.code == "missing-deepfake-detection-metrics" for f in r.findings)
+
+
+def test_deepfake614_no_fire_when_auc_reported() -> None:
+    from manuscript_audit.validators.core import validate_deepfake_detection_metrics
+    ms, cl = _deepfake614_ms("Deepfake detection: AUC = 99.2% on Celeb-DF benchmark.")
+    r = validate_deepfake_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_deepfake614_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_deepfake_detection_metrics
+    ms, cl = _deepfake614_ms("We study SLAM approaches for robotics.")
+    r = validate_deepfake_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_deepfake614_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_deepfake_detection_metrics
+    ms, _ = _deepfake614_ms("Manipulated face detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_deepfake_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 615 – validate_person_reid_metrics
+# ---------------------------------------------------------------------------
+def _reid615_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t615", source_path="t615.md", source_format="markdown",
+            title="Person re-identification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_reid615_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_person_reid_metrics
+    ms, cl = _reid615_ms(
+        "We propose a person ReID model on the Market-1501 benchmark."
+    )
+    r = validate_person_reid_metrics(ms, cl)
+    assert any(f.code == "missing-person-reid-metrics" for f in r.findings)
+
+
+def test_reid615_no_fire_when_rank1_reported() -> None:
+    from manuscript_audit.validators.core import validate_person_reid_metrics
+    ms, cl = _reid615_ms(
+        "Person re-identification: Rank-1 = 95.3%, mAP = 87.2% on Market-1501."
+    )
+    r = validate_person_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_reid615_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_person_reid_metrics
+    ms, cl = _reid615_ms("We present a program synthesis model.")
+    r = validate_person_reid_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_reid615_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_person_reid_metrics
+    ms, _ = _reid615_ms("Pedestrian re-id theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_person_reid_metrics(ms, cl)
+    assert r.findings == []
