@@ -31,6 +31,13 @@ TITLE_OVERLAP_SCORES = (3.0, 2.0, 1.0)
 MIN_CONFIDENT_SCORE = 3.0
 BEST_SECOND_SCORE_MARGIN = 1.0
 
+# Additional scoring weights (centralized for easy calibration)
+YEAR_MATCH_SCORE = 2.0
+VENUE_EXACT_SCORE = 2.0
+VENUE_PARTIAL_SCORE = 1.0
+AUTHOR_FULL_OVERLAP_SCORE = 1.5
+AUTHOR_PARTIAL_OVERLAP_SCORE = 0.5
+
 
 class SourceRegistryLookupError(RuntimeError):
     """Raised when a registry provider fails to answer a lookup request."""
@@ -259,22 +266,22 @@ def _similarity_score(entry: BibliographyEntry, candidate: RegistryMetadataRecor
     entry_year = _normalize_year(entry.year)
     candidate_year = _normalize_year(candidate.year)
     if entry_year and candidate_year and entry_year == candidate_year:
-        score += 2.0
+        score += YEAR_MATCH_SCORE
     entry_venue = _normalize_text(_entry_venue(entry))
     candidate_venue = _normalize_text(candidate.venue)
     if entry_venue and candidate_venue:
         if entry_venue == candidate_venue:
-            score += 2.0
+            score += VENUE_EXACT_SCORE
         elif entry_venue in candidate_venue or candidate_venue in entry_venue:
-            score += 1.0
+            score += VENUE_PARTIAL_SCORE
     entry_author_tokens = _token_set(" ".join(entry.authors))
     candidate_author_tokens = _token_set(" ".join(candidate.authors))
     if entry_author_tokens and candidate_author_tokens:
         overlap = len(entry_author_tokens & candidate_author_tokens)
         if overlap >= 2:
-            score += 1.5
+            score += AUTHOR_FULL_OVERLAP_SCORE
         elif overlap == 1:
-            score += 0.5
+            score += AUTHOR_PARTIAL_OVERLAP_SCORE
     return score
 
 
