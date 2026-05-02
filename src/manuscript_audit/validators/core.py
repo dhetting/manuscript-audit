@@ -7072,6 +7072,11 @@ def run_deterministic_validators(
         validate_speaker_verification_metrics(parsed, classification),
         validate_audio_captioning_metrics(parsed, classification),
         validate_singing_voice_synthesis_evaluation(parsed, classification),
+        validate_sound_event_detection_metrics(parsed, classification),
+        validate_video_grounding_metrics(parsed, classification),
+        validate_3d_scene_understanding_metrics(parsed, classification),
+        validate_table_to_text_metrics(parsed, classification),
+        validate_scene_text_recognition_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -32043,6 +32048,241 @@ def validate_singing_voice_synthesis_evaluation(
                 ),
                 location="full_text",
                 validator=_SINGSYN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 566 – sound event detection evaluation
+# ---------------------------------------------------------------------------
+_SOUNDEVT_VID = "missing-sound-event-detection-metrics"
+
+_SOUNDEVT_TRIGGERS = re.compile(
+    r"\b(?:sound\s+event\s+detection|SED\b|acoustic\s+event\s+detection|"
+    r"polyphonic\s+sound\s+(?:detection|classification))\b",
+    re.IGNORECASE,
+)
+_SOUNDEVT_METRICS = re.compile(
+    r"\b(?:F[- ]?1|error\s+rate|ER\b|segment[- ]based\s+F1|"
+    r"event[- ]based\s+F1|PSDS|poly[- ]phonic\s+sound\s+detection\s+score)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:F[- ]?1|ER)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_sound_event_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SOUNDEVT_VID, findings=[])
+    text = parsed.full_text
+    if not _SOUNDEVT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SOUNDEVT_VID, findings=[])
+    if _SOUNDEVT_METRICS.search(text):
+        return ValidationResult(validator_name=_SOUNDEVT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SOUNDEVT_VID,
+        findings=[
+            Finding(
+                code=_SOUNDEVT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses sound event detection but does not report "
+                    "F1, error rate, or PSDS on a benchmark (e.g., DCASE)."
+                ),
+                location="full_text",
+                validator=_SOUNDEVT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 567 – video grounding evaluation
+# ---------------------------------------------------------------------------
+_VIDGROUND_VID = "missing-video-grounding-metrics"
+
+_VIDGROUND_TRIGGERS = re.compile(
+    r"\b(?:temporal\s+video\s+grounding|video\s+moment\s+retrieval|"
+    r"natural\s+language\s+video\s+grounding|video\s+temporal\s+localization|"
+    r"video\s+sentence\s+grounding)\b",
+    re.IGNORECASE,
+)
+_VIDGROUND_METRICS = re.compile(
+    r"\b(?:R@[0-9]+|Recall@[0-9]+|IoU|tIoU|mIoU|temporal\s+IoU)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:R@[0-9]+|IoU)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_video_grounding_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VIDGROUND_VID, findings=[])
+    text = parsed.full_text
+    if not _VIDGROUND_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VIDGROUND_VID, findings=[])
+    if _VIDGROUND_METRICS.search(text):
+        return ValidationResult(validator_name=_VIDGROUND_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VIDGROUND_VID,
+        findings=[
+            Finding(
+                code=_VIDGROUND_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses video temporal grounding but does not report "
+                    "Recall@k or tIoU on a benchmark."
+                ),
+                location="full_text",
+                validator=_VIDGROUND_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 568 – 3D scene understanding evaluation
+# ---------------------------------------------------------------------------
+_3DSCENE_VID = "missing-3d-scene-understanding-metrics"
+
+_3DSCENE_TRIGGERS = re.compile(
+    r"\b(?:3D\s+(?:scene\s+understanding|semantic\s+segmentation|instance\s+segmentation)|"
+    r"indoor\s+scene\s+(?:reconstruction|understanding)|"
+    r"ScanNet\s+(?:benchmark|dataset)|3D\s+panoptic\s+segmentation)\b",
+    re.IGNORECASE,
+)
+_3DSCENE_METRICS = re.compile(
+    r"\b(?:mIoU|mAP|mean\s+(?:IoU|average\s+precision)|"
+    r"instance\s+mAP|panoptic\s+quality|PQ)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:mIoU|mAP|PQ)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_3d_scene_understanding_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_3DSCENE_VID, findings=[])
+    text = parsed.full_text
+    if not _3DSCENE_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_3DSCENE_VID, findings=[])
+    if _3DSCENE_METRICS.search(text):
+        return ValidationResult(validator_name=_3DSCENE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_3DSCENE_VID,
+        findings=[
+            Finding(
+                code=_3DSCENE_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses 3D scene understanding but does not report "
+                    "mIoU, mAP, or panoptic quality on a 3D benchmark."
+                ),
+                location="full_text",
+                validator=_3DSCENE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 569 – table-to-text generation evaluation
+# ---------------------------------------------------------------------------
+_TBL2TXT_VID = "missing-table-to-text-metrics"
+
+_TBL2TXT_TRIGGERS = re.compile(
+    r"\b(?:table[- ]to[- ]text\s+generation|data[- ]to[- ]text\s+from\s+tables?|"
+    r"WikiTableT[a-z]*|ToTTo\s+(?:benchmark|dataset)|logical\s+table\s+grounding)\b",
+    re.IGNORECASE,
+)
+_TBL2TXT_METRICS = re.compile(
+    r"\b(?:BLEU(?:-[0-9]+)?|ROUGE(?:-[A-Z0-9]+)?|METEOR|PARENT|"
+    r"accuracy|faithfulness)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:BLEU|ROUGE|PARENT)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_table_to_text_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TBL2TXT_VID, findings=[])
+    text = parsed.full_text
+    if not _TBL2TXT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_TBL2TXT_VID, findings=[])
+    if _TBL2TXT_METRICS.search(text):
+        return ValidationResult(validator_name=_TBL2TXT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TBL2TXT_VID,
+        findings=[
+            Finding(
+                code=_TBL2TXT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses table-to-text generation but does not report "
+                    "BLEU, ROUGE, METEOR, or PARENT on a benchmark."
+                ),
+                location="full_text",
+                validator=_TBL2TXT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 570 – scene text recognition evaluation
+# ---------------------------------------------------------------------------
+_SCENETXT_VID = "missing-scene-text-recognition-metrics"
+
+_SCENETXT_TRIGGERS = re.compile(
+    r"\b(?:scene\s+text\s+(?:recognition|detection|spotting)|"
+    r"STR\s+(?:benchmark|model)|text\s+recognition\s+in\s+(?:the\s+wild|natural\s+images?)|"
+    r"IIIT[- ]5K|SVT\s+(?:dataset|benchmark))\b",
+    re.IGNORECASE,
+)
+_SCENETXT_METRICS = re.compile(
+    r"\b(?:word\s+accuracy|recognition\s+accuracy|F[- ]?1|H[- ]?mean|"
+    r"end[- ]to[- ]end\s+recognition)\b.*?(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:word\s+accuracy|recognition\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_scene_text_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SCENETXT_VID, findings=[])
+    text = parsed.full_text
+    if not _SCENETXT_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SCENETXT_VID, findings=[])
+    if _SCENETXT_METRICS.search(text):
+        return ValidationResult(validator_name=_SCENETXT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SCENETXT_VID,
+        findings=[
+            Finding(
+                code=_SCENETXT_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses scene text recognition but does not report "
+                    "word accuracy or H-mean on a standard STR benchmark."
+                ),
+                location="full_text",
+                validator=_SCENETXT_VID,
             )
         ],
     )

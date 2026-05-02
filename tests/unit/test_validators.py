@@ -33822,3 +33822,242 @@ def test_singsyn565_non_empirical_no_fire() -> None:
     )
     r = validate_singing_voice_synthesis_evaluation(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 566 – validate_sound_event_detection_metrics
+# ---------------------------------------------------------------------------
+def _soundevt566_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t566", source_path="t566.md", source_format="markdown",
+            title="Sound event detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_soundevt566_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_sound_event_detection_metrics
+    ms, cl = _soundevt566_ms("We propose a model for sound event detection on DCASE.")
+    r = validate_sound_event_detection_metrics(ms, cl)
+    assert any(f.code == "missing-sound-event-detection-metrics" for f in r.findings)
+
+
+def test_soundevt566_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_sound_event_detection_metrics
+    ms, cl = _soundevt566_ms("Sound event detection: F1 = 64.3% on DCASE2019 Task 4.")
+    r = validate_sound_event_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_soundevt566_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_sound_event_detection_metrics
+    ms, cl = _soundevt566_ms("We propose a depth estimation model for autonomous driving.")
+    r = validate_sound_event_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_soundevt566_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_sound_event_detection_metrics
+    ms, _ = _soundevt566_ms("Polyphonic sound detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_sound_event_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 567 – validate_video_grounding_metrics
+# ---------------------------------------------------------------------------
+def _vidground567_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t567", source_path="t567.md", source_format="markdown",
+            title="Video grounding", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vidground567_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_video_grounding_metrics
+    ms, cl = _vidground567_ms("We address temporal video grounding on ActivityNet-Captions.")
+    r = validate_video_grounding_metrics(ms, cl)
+    assert any(f.code == "missing-video-grounding-metrics" for f in r.findings)
+
+
+def test_vidground567_no_fire_when_recall_reported() -> None:
+    from manuscript_audit.validators.core import validate_video_grounding_metrics
+    ms, cl = _vidground567_ms("Video grounding: R@1 = 58.2% at IoU = 0.5.")
+    r = validate_video_grounding_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidground567_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_video_grounding_metrics
+    ms, cl = _vidground567_ms("We study image-text matching methods.")
+    r = validate_video_grounding_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vidground567_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_grounding_metrics
+    ms, _ = _vidground567_ms("Video moment retrieval theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_video_grounding_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 568 – validate_3d_scene_understanding_metrics
+# ---------------------------------------------------------------------------
+def _3dscene568_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t568", source_path="t568.md", source_format="markdown",
+            title="3D scene understanding", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_3dscene568_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_3d_scene_understanding_metrics
+    ms, cl = _3dscene568_ms("We propose a model for 3D semantic segmentation on ScanNet.")
+    r = validate_3d_scene_understanding_metrics(ms, cl)
+    assert any(f.code == "missing-3d-scene-understanding-metrics" for f in r.findings)
+
+
+def test_3dscene568_no_fire_when_miou_reported() -> None:
+    from manuscript_audit.validators.core import validate_3d_scene_understanding_metrics
+    ms, cl = _3dscene568_ms("3D scene understanding: mIoU = 71.6% on ScanNet v2.")
+    r = validate_3d_scene_understanding_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_3dscene568_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_3d_scene_understanding_metrics
+    ms, cl = _3dscene568_ms("We propose a face recognition approach.")
+    r = validate_3d_scene_understanding_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_3dscene568_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_3d_scene_understanding_metrics
+    ms, _ = _3dscene568_ms("3D panoptic segmentation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_3d_scene_understanding_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 569 – validate_table_to_text_metrics
+# ---------------------------------------------------------------------------
+def _tbl2txt569_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t569", source_path="t569.md", source_format="markdown",
+            title="Table-to-text generation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_tbl2txt569_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_table_to_text_metrics
+    ms, cl = _tbl2txt569_ms("We propose a table-to-text generation model on ToTTo.")
+    r = validate_table_to_text_metrics(ms, cl)
+    assert any(f.code == "missing-table-to-text-metrics" for f in r.findings)
+
+
+def test_tbl2txt569_no_fire_when_bleu_reported() -> None:
+    from manuscript_audit.validators.core import validate_table_to_text_metrics
+    ms, cl = _tbl2txt569_ms("Table-to-text generation: BLEU = 49.1 on ToTTo.")
+    r = validate_table_to_text_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_tbl2txt569_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_table_to_text_metrics
+    ms, cl = _tbl2txt569_ms("We present a point cloud registration method.")
+    r = validate_table_to_text_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_tbl2txt569_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_to_text_metrics
+    ms, _ = _tbl2txt569_ms("Logical table grounding theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_table_to_text_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 570 – validate_scene_text_recognition_metrics
+# ---------------------------------------------------------------------------
+def _scenetxt570_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t570", source_path="t570.md", source_format="markdown",
+            title="Scene text recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_scenetxt570_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_scene_text_recognition_metrics
+    ms, cl = _scenetxt570_ms("We address scene text recognition on IIIT-5K and SVT.")
+    r = validate_scene_text_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-scene-text-recognition-metrics" for f in r.findings)
+
+
+def test_scenetxt570_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_scene_text_recognition_metrics
+    ms, cl = _scenetxt570_ms("Scene text recognition: word accuracy = 97.4% on IIIT-5K.")
+    r = validate_scene_text_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_scenetxt570_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_scene_text_recognition_metrics
+    ms, cl = _scenetxt570_ms("We present a speaker recognition model.")
+    r = validate_scene_text_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_scenetxt570_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scene_text_recognition_metrics
+    ms, _ = _scenetxt570_ms("Scene text spotting theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_scene_text_recognition_metrics(ms, cl)
+    assert r.findings == []
