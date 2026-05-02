@@ -6957,6 +6957,11 @@ def run_deterministic_validators(
         validate_knowledge_distillation_setup(parsed, classification),
         validate_federated_learning_setup(parsed, classification),
         validate_continual_learning_forgetting_metric(parsed, classification),
+        validate_ssl_augmentation_details(parsed, classification),
+        validate_prompt_template_disclosure(parsed, classification),
+        validate_augmentation_parameter_disclosure(parsed, classification),
+        validate_pruning_sparsity_disclosure(parsed, classification),
+        validate_nas_search_space_disclosure(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -26618,6 +26623,237 @@ def validate_continual_learning_forgetting_metric(
                 ),
                 severity="moderate",
                 validator=_CL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 451 – Self-supervised / contrastive learning: augmentation disclosure
+# ---------------------------------------------------------------------------
+_SSL_TRIGGER_RE = re.compile(
+    r"\b(?:self-supervised\s+learning|contrastive\s+learning|"
+    r"SimCLR|MoCo|BYOL|DINO|masked\s+autoencoder|MAE\s+pretraining)\b",
+    re.IGNORECASE,
+)
+_SSL_DETAIL_RE = re.compile(
+    r"\b(?:augmentation\s+strategy|data\s+augmentation\s+(?:pipeline|pair|view)|"
+    r"positive\s+pairs?|negative\s+pairs?|projection\s+head|"
+    r"momentum\s+encoder|contrastive\s+loss)\b",
+    re.IGNORECASE,
+)
+
+_SSL_VID = "missing-ssl-augmentation-details"
+
+
+def validate_ssl_augmentation_details(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when self-supervised or contrastive learning papers lack augmentation details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SSL_VID, findings=[])
+    text = parsed.full_text
+    if not _SSL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SSL_VID, findings=[])
+    if _SSL_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_SSL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SSL_VID,
+        findings=[
+            Finding(
+                code=_SSL_VID,
+                message=(
+                    "Self-supervised or contrastive learning paper detected but "
+                    "augmentation strategy or pair construction details were not reported."
+                ),
+                severity="moderate",
+                validator=_SSL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 452 – Prompt engineering: chain-of-thought / template disclosure
+# ---------------------------------------------------------------------------
+_PROMPT_ENG_TRIGGER_RE = re.compile(
+    r"\b(?:prompt\s+engineering|chain-of-thought\s+prompting|CoT\s+prompting|"
+    r"instruction\s+tuning|prompt\s+template|system\s+prompt)\b",
+    re.IGNORECASE,
+)
+_PROMPT_ENG_DETAIL_RE = re.compile(
+    r"\b(?:prompt\s+template\s+(?:is|are|was|were|provided|shown|listed)|"
+    r"chain-of-thought\s+example|reasoning\s+chain\s+example|"
+    r"full\s+prompt\s+in\s+appendix|prompt\s+text\s+in\s+appendix|"
+    r"see\s+appendix\s+for\s+(?:the\s+)?prompt)\b",
+    re.IGNORECASE,
+)
+
+_PROMPT_ENG_VID = "missing-prompt-template-disclosure"
+
+
+def validate_prompt_template_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when prompt engineering papers lack prompt template disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PROMPT_ENG_VID, findings=[])
+    text = parsed.full_text
+    if not _PROMPT_ENG_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PROMPT_ENG_VID, findings=[])
+    if _PROMPT_ENG_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_PROMPT_ENG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PROMPT_ENG_VID,
+        findings=[
+            Finding(
+                code=_PROMPT_ENG_VID,
+                message=(
+                    "Prompt engineering paper detected but no prompt template or "
+                    "chain-of-thought example was disclosed."
+                ),
+                severity="minor",
+                validator=_PROMPT_ENG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 453 – Data augmentation: reproducibility disclosure
+# ---------------------------------------------------------------------------
+_AUGMENT_REPR_TRIGGER_RE = re.compile(
+    r"\b(?:data\s+augmentation\s+(?:techniques?|methods?|strategy|pipeline|procedure)|"
+    r"augmented\s+training\s+(?:data|set|samples?)|augmentation\s+was\s+applied)\b",
+    re.IGNORECASE,
+)
+_AUGMENT_REPR_DETAIL_RE = re.compile(
+    r"\b(?:augmentation\s+parameter|flip\s+probability|rotation\s+angle|"
+    r"crop\s+ratio|mixup\s+alpha|cutout\s+size|color\s+jitter|"
+    r"augmentation\s+hyperparameter)\b",
+    re.IGNORECASE,
+)
+
+_AUGMENT_REPR_VID = "missing-augmentation-parameters"
+
+
+def validate_augmentation_parameter_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when papers using data augmentation lack parameter details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AUGMENT_REPR_VID, findings=[])
+    text = parsed.full_text
+    if not _AUGMENT_REPR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_AUGMENT_REPR_VID, findings=[])
+    if _AUGMENT_REPR_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_AUGMENT_REPR_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AUGMENT_REPR_VID,
+        findings=[
+            Finding(
+                code=_AUGMENT_REPR_VID,
+                message=(
+                    "Data augmentation was applied but augmentation parameters "
+                    "were not reported, limiting reproducibility."
+                ),
+                severity="minor",
+                validator=_AUGMENT_REPR_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 454 – Model pruning: sparsity level and method disclosure
+# ---------------------------------------------------------------------------
+_PRUNING_TRIGGER_RE = re.compile(
+    r"\b(?:model\s+pruning|weight\s+pruning|structured\s+pruning|"
+    r"unstructured\s+pruning|magnitude\s+pruning|lottery\s+ticket)\b",
+    re.IGNORECASE,
+)
+_PRUNING_DETAIL_RE = re.compile(
+    r"\b(?:sparsity\s+(?:level|ratio|rate)|pruning\s+(?:ratio|rate|percentage)|"
+    r"\d+\s*%\s+(?:sparse|pruned|sparsity)|fine-tuning\s+after\s+pruning|"
+    r"pruned\s+to\s+\d+\s*%)\b",
+    re.IGNORECASE,
+)
+
+_PRUNING_VID = "missing-pruning-sparsity-details"
+
+
+def validate_pruning_sparsity_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when model pruning papers lack sparsity level disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PRUNING_VID, findings=[])
+    text = parsed.full_text
+    if not _PRUNING_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PRUNING_VID, findings=[])
+    if _PRUNING_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_PRUNING_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PRUNING_VID,
+        findings=[
+            Finding(
+                code=_PRUNING_VID,
+                message=(
+                    "Model pruning paper detected but sparsity level or pruning "
+                    "ratio was not reported."
+                ),
+                severity="minor",
+                validator=_PRUNING_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 455 – Neural architecture search: search space / cost disclosure
+# ---------------------------------------------------------------------------
+_NAS_TRIGGER_RE = re.compile(
+    r"\b(?:neural\s+architecture\s+search|NAS\b|differentiable\s+NAS|DARTS|"
+    r"one-shot\s+NAS|evolutionary\s+architecture\s+search)\b",
+    re.IGNORECASE,
+)
+_NAS_DETAIL_RE = re.compile(
+    r"\b(?:search\s+space\s+(?:description|definition|size)|GPU\s+days?|"
+    r"search\s+cost|architecture\s+search\s+budget|"
+    r"proxy\s+task\s+for\s+search|supernet\s+training)\b",
+    re.IGNORECASE,
+)
+
+_NAS_VID = "missing-nas-search-space-details"
+
+
+def validate_nas_search_space_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when NAS papers lack search space or compute cost disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_NAS_VID, findings=[])
+    text = parsed.full_text
+    if not _NAS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_NAS_VID, findings=[])
+    if _NAS_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_NAS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_NAS_VID,
+        findings=[
+            Finding(
+                code=_NAS_VID,
+                message=(
+                    "Neural architecture search paper detected but search space "
+                    "definition or compute cost was not disclosed."
+                ),
+                severity="moderate",
+                validator=_NAS_VID,
             )
         ],
     )

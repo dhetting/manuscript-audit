@@ -27479,3 +27479,339 @@ def test_no_cl_trigger_no_fire() -> None:
     )
     result = validate_continual_learning_forgetting_metric(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 451 – validate_ssl_augmentation_details
+# ---------------------------------------------------------------------------
+
+def _ssl451_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ssl451",
+            source_path="/tmp/ssl451.md",
+            source_format="markdown",
+            title="SSL Augmentation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ssl_without_augmentation_fires() -> None:
+    from manuscript_audit.validators.core import validate_ssl_augmentation_details
+
+    ms, cl = _ssl451_ms(
+        "We used contrastive learning to pre-train a vision encoder on ImageNet."
+    )
+    result = validate_ssl_augmentation_details(ms, cl)
+    assert any(f.code == "missing-ssl-augmentation-details" for f in result.findings)
+
+
+def test_ssl_with_augmentation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ssl_augmentation_details
+
+    ms, cl = _ssl451_ms(
+        "We used contrastive learning to pre-train a vision encoder. "
+        "The augmentation strategy included random crop, color jitter, and flip. "
+        "Positive pairs were generated from two views of the same image."
+    )
+    result = validate_ssl_augmentation_details(ms, cl)
+    assert result.findings == []
+
+
+def test_ssl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ssl_augmentation_details
+
+    ms, cl = _ssl451_ms("We used contrastive learning to pre-train a vision encoder.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ssl_augmentation_details(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ssl_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ssl_augmentation_details
+
+    ms, cl = _ssl451_ms("We used a Cox model for survival analysis on clinical data.")
+    result = validate_ssl_augmentation_details(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 452 – validate_prompt_template_disclosure
+# ---------------------------------------------------------------------------
+
+def _prompt452_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-prompt452",
+            source_path="/tmp/prompt452.md",
+            source_format="markdown",
+            title="Prompt Template Disclosure Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_prompt_eng_without_template_fires() -> None:
+    from manuscript_audit.validators.core import validate_prompt_template_disclosure
+
+    ms, cl = _prompt452_ms(
+        "We used chain-of-thought prompting to evaluate GPT-4 on math tasks."
+    )
+    result = validate_prompt_template_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-prompt-template-disclosure" for f in result.findings
+    )
+
+
+def test_prompt_eng_with_appendix_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prompt_template_disclosure
+
+    ms, cl = _prompt452_ms(
+        "We used chain-of-thought prompting to evaluate GPT-4 on math tasks. "
+        "See appendix for the prompt template used in all experiments."
+    )
+    result = validate_prompt_template_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_prompt_eng_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prompt_template_disclosure
+
+    ms, cl = _prompt452_ms("We used chain-of-thought prompting to evaluate models.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_prompt_template_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_prompt_eng_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prompt_template_disclosure
+
+    ms, cl = _prompt452_ms("We fit a mixed-effects model to longitudinal data.")
+    result = validate_prompt_template_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 453 – validate_augmentation_parameter_disclosure
+# ---------------------------------------------------------------------------
+
+def _augparam453_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-augparam453",
+            source_path="/tmp/augparam453.md",
+            source_format="markdown",
+            title="Augmentation Parameter Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_augmentation_without_params_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_augmentation_parameter_disclosure,
+    )
+
+    ms, cl = _augparam453_ms(
+        "Data augmentation techniques were applied during training."
+    )
+    result = validate_augmentation_parameter_disclosure(ms, cl)
+    assert any(
+        f.code == "missing-augmentation-parameters" for f in result.findings
+    )
+
+
+def test_augmentation_with_params_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_augmentation_parameter_disclosure,
+    )
+
+    ms, cl = _augparam453_ms(
+        "A data augmentation pipeline was applied during training. "
+        "The rotation angle was set to 15 degrees and the flip probability was 0.5."
+    )
+    result = validate_augmentation_parameter_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_augmentation453_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_augmentation_parameter_disclosure,
+    )
+
+    ms, cl = _augparam453_ms("Data augmentation techniques were applied during training.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_augmentation_parameter_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_augmentation453_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_augmentation_parameter_disclosure,
+    )
+
+    ms, cl = _augparam453_ms("We used structural equation modeling to test hypotheses.")
+    result = validate_augmentation_parameter_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 454 – validate_pruning_sparsity_disclosure
+# ---------------------------------------------------------------------------
+
+def _pruning454_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pruning454",
+            source_path="/tmp/pruning454.md",
+            source_format="markdown",
+            title="Model Pruning Sparsity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pruning_without_sparsity_fires() -> None:
+    from manuscript_audit.validators.core import validate_pruning_sparsity_disclosure
+
+    ms, cl = _pruning454_ms(
+        "We applied model pruning to reduce the size of the ResNet-50 network."
+    )
+    result = validate_pruning_sparsity_disclosure(ms, cl)
+    assert any(f.code == "missing-pruning-sparsity-details" for f in result.findings)
+
+
+def test_pruning_with_sparsity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pruning_sparsity_disclosure
+
+    ms, cl = _pruning454_ms(
+        "We applied model pruning to ResNet-50. "
+        "The sparsity ratio was set to 90% with fine-tuning after pruning."
+    )
+    result = validate_pruning_sparsity_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_pruning_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pruning_sparsity_disclosure
+
+    ms, cl = _pruning454_ms(
+        "We applied model pruning to reduce the network size."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_pruning_sparsity_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pruning_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_pruning_sparsity_disclosure
+
+    ms, cl = _pruning454_ms("We used LASSO regression for variable selection.")
+    result = validate_pruning_sparsity_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 455 – validate_nas_search_space_disclosure
+# ---------------------------------------------------------------------------
+
+def _nas455_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-nas455",
+            source_path="/tmp/nas455.md",
+            source_format="markdown",
+            title="NAS Search Space Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nas_without_search_space_fires() -> None:
+    from manuscript_audit.validators.core import validate_nas_search_space_disclosure
+
+    ms, cl = _nas455_ms(
+        "We used neural architecture search (NAS) to find an optimal network."
+    )
+    result = validate_nas_search_space_disclosure(ms, cl)
+    assert any(f.code == "missing-nas-search-space-details" for f in result.findings)
+
+
+def test_nas_with_search_space_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nas_search_space_disclosure
+
+    ms, cl = _nas455_ms(
+        "We used neural architecture search (NAS). "
+        "The search space description included 7 operation types per cell. "
+        "The total search cost was 4 GPU days."
+    )
+    result = validate_nas_search_space_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_nas_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nas_search_space_disclosure
+
+    ms, cl = _nas455_ms("We used neural architecture search to find an optimal design.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_nas_search_space_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_nas_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_nas_search_space_disclosure
+
+    ms, cl = _nas455_ms("We used a Gaussian process regression for surrogate modeling.")
+    result = validate_nas_search_space_disclosure(ms, cl)
+    assert result.findings == []
