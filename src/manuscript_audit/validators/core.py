@@ -6972,6 +6972,11 @@ def run_deterministic_validators(
         validate_generative_model_metrics(parsed, classification),
         validate_tts_evaluation(parsed, classification),
         validate_video_evaluation_metrics(parsed, classification),
+        validate_point_cloud_metrics(parsed, classification),
+        validate_segmentation_dice_metrics(parsed, classification),
+        validate_eeg_preprocessing_details(parsed, classification),
+        validate_admet_reporting(parsed, classification),
+        validate_variant_calling_pipeline(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -27333,6 +27338,244 @@ def validate_video_evaluation_metrics(
                 ),
                 severity="moderate",
                 validator=_VIDEO_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 466 – Point cloud processing: metric and dataset disclosure
+# ---------------------------------------------------------------------------
+_PC_TRIGGER_RE = re.compile(
+    r"\b(?:point\s+cloud\s+(?:processing|classification|segmentation|registration)|"
+    r"3D\s+point\s+cloud|PointNet|PointNet\+\+|DGCNN|point\s+cloud\s+deep\s+learning)\b",
+    re.IGNORECASE,
+)
+_PC_METRIC_RE = re.compile(
+    r"\b(?:mean\s+Intersection\s+over\s+Union|mIoU\s*=|part\s+IoU|"
+    r"overall\s+accuracy\s+for\s+3D|shape\s+mAP|"
+    r"registration\s+error|Chamfer\s+distance|Earth\s+Mover.s\s+Distance)\b",
+    re.IGNORECASE,
+)
+
+_PC_VID = "missing-point-cloud-metrics"
+
+
+def validate_point_cloud_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when point cloud papers lack mIoU or Chamfer distance metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_PC_VID, findings=[])
+    text = parsed.full_text
+    if not _PC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_PC_VID, findings=[])
+    if _PC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_PC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_PC_VID,
+        findings=[
+            Finding(
+                code=_PC_VID,
+                message=(
+                    "Point cloud processing paper detected but no mIoU, Chamfer "
+                    "distance, or shape accuracy metrics were reported."
+                ),
+                severity="moderate",
+                validator=_PC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 467 – Medical image segmentation: Dice/Hausdorff reporting
+# ---------------------------------------------------------------------------
+_MED_SEG_TRIGGER_RE = re.compile(
+    r"\b(?:medical\s+image\s+segmentation|organ\s+segmentation|"
+    r"lesion\s+segmentation|tumor\s+segmentation|"
+    r"prostate\s+segmentation|cardiac\s+segmentation|"
+    r"brain\s+tumor\s+segmentation)\b",
+    re.IGNORECASE,
+)
+_MED_SEG_METRIC_RE = re.compile(
+    r"\b(?:Dice\s+(?:coefficient|score|similarity)|DSC\s*=|"
+    r"Hausdorff\s+(?:distance|95th\s+percentile)|HD95\s*=|"
+    r"mean\s+Dice\s*=|volumetric\s+overlap)\b",
+    re.IGNORECASE,
+)
+
+_MED_SEG_VID = "missing-segmentation-dice-metrics"
+
+
+def validate_segmentation_dice_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when medical segmentation papers lack Dice or Hausdorff metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MED_SEG_VID, findings=[])
+    text = parsed.full_text
+    if not _MED_SEG_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_MED_SEG_VID, findings=[])
+    if _MED_SEG_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_MED_SEG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MED_SEG_VID,
+        findings=[
+            Finding(
+                code=_MED_SEG_VID,
+                message=(
+                    "Medical image segmentation paper detected but no Dice coefficient "
+                    "or Hausdorff distance metrics were reported."
+                ),
+                severity="moderate",
+                validator=_MED_SEG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 468 – EEG/neuroimaging: epoch length and preprocessing disclosure
+# ---------------------------------------------------------------------------
+_EEG_TRIGGER_RE = re.compile(
+    r"\b(?:EEG\s+(?:classification|decoding|analysis)|"
+    r"electroencephalograph(?:y|ic)\s+(?:data|analysis)|"
+    r"brain-computer\s+interface|BCI\s+(?:system|evaluation)|"
+    r"motor\s+imagery\s+EEG)\b",
+    re.IGNORECASE,
+)
+_EEG_DETAIL_RE = re.compile(
+    r"\b(?:epoch\s+length|trial\s+length|EEG\s+preprocessing|"
+    r"band.pass\s+filter(?:ing)?|artifact\s+rejection|"
+    r"baseline\s+correction\s+for\s+EEG|independent\s+component\s+analysis)\b",
+    re.IGNORECASE,
+)
+
+_EEG_VID = "missing-eeg-preprocessing-details"
+
+
+def validate_eeg_preprocessing_details(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when EEG papers lack epoch length or preprocessing disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_EEG_VID, findings=[])
+    text = parsed.full_text
+    if not _EEG_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_EEG_VID, findings=[])
+    if _EEG_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_EEG_VID, findings=[])
+    return ValidationResult(
+        validator_name=_EEG_VID,
+        findings=[
+            Finding(
+                code=_EEG_VID,
+                message=(
+                    "EEG/BCI paper detected but epoch length or preprocessing "
+                    "details were not reported."
+                ),
+                severity="moderate",
+                validator=_EEG_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 469 – Drug discovery: ADMET property reporting
+# ---------------------------------------------------------------------------
+_DRUG_DISC_TRIGGER_RE = re.compile(
+    r"\b(?:drug\s+discovery|molecular\s+property\s+prediction|"
+    r"virtual\s+screening|compound\s+screening|"
+    r"QSAR\s+model|structure.activity\s+relationship)\b",
+    re.IGNORECASE,
+)
+_ADMET_RE = re.compile(
+    r"\b(?:ADMET|ADME\s+properties?|absorption|distribution|metabolism|"
+    r"excretion|toxicity\s+prediction|lipophilicity\s+prediction|"
+    r"solubility\s+prediction|bioavailability\s+prediction)\b",
+    re.IGNORECASE,
+)
+
+_DRUG_DISC_VID = "missing-admet-reporting"
+
+
+def validate_admet_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when drug discovery papers lack ADMET property reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DRUG_DISC_VID, findings=[])
+    text = parsed.full_text
+    if not _DRUG_DISC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_DRUG_DISC_VID, findings=[])
+    if _ADMET_RE.search(text):
+        return ValidationResult(validator_name=_DRUG_DISC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DRUG_DISC_VID,
+        findings=[
+            Finding(
+                code=_DRUG_DISC_VID,
+                message=(
+                    "Drug discovery or QSAR paper detected but ADMET properties "
+                    "were not reported or evaluated."
+                ),
+                severity="minor",
+                validator=_DRUG_DISC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 470 – Genomics: variant calling pipeline disclosure
+# ---------------------------------------------------------------------------
+_VARIANT_TRIGGER_RE = re.compile(
+    r"\b(?:variant\s+calling|SNP\s+calling|single\s+nucleotide\s+variant|"
+    r"whole\s+genome\s+sequencing\s+analysis|WGS\s+(?:pipeline|variant)|"
+    r"GATK\s+pipeline|variant\s+filtration)\b",
+    re.IGNORECASE,
+)
+_VARIANT_DETAIL_RE = re.compile(
+    r"\b(?:variant\s+calling\s+pipeline|GATK\s+version|"
+    r"minimum\s+(?:read\s+depth|allele\s+frequency)|"
+    r"quality\s+filter(?:ing)?\s+(?:for\s+)?variant|"
+    r"VQSR|variant\s+quality\s+score\s+recalibration|"
+    r"depth\s+of\s+coverage\s+filter)\b",
+    re.IGNORECASE,
+)
+
+_VARIANT_VID = "missing-variant-calling-pipeline"
+
+
+def validate_variant_calling_pipeline(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when genomics papers lack variant calling pipeline details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VARIANT_VID, findings=[])
+    text = parsed.full_text
+    if not _VARIANT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_VARIANT_VID, findings=[])
+    if _VARIANT_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_VARIANT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VARIANT_VID,
+        findings=[
+            Finding(
+                code=_VARIANT_VID,
+                message=(
+                    "Genomics variant calling paper detected but pipeline details "
+                    "or quality filter thresholds were not reported."
+                ),
+                severity="moderate",
+                validator=_VARIANT_VID,
             )
         ],
     )

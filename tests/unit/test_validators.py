@@ -28474,3 +28474,328 @@ def test_no_video_trigger_no_fire() -> None:
     ms, cl = _video465_ms("We used a multilevel Poisson regression on count data.")
     result = validate_video_evaluation_metrics(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 466 – validate_point_cloud_metrics
+# ---------------------------------------------------------------------------
+
+def _pc466_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pc466",
+            source_path="/tmp/pc466.md",
+            source_format="markdown",
+            title="Point Cloud Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_pc_without_miou_fires() -> None:
+    from manuscript_audit.validators.core import validate_point_cloud_metrics
+
+    ms, cl = _pc466_ms(
+        "We used PointNet++ for 3D point cloud segmentation on ShapeNet."
+    )
+    result = validate_point_cloud_metrics(ms, cl)
+    assert any(f.code == "missing-point-cloud-metrics" for f in result.findings)
+
+
+def test_pc_with_miou_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_point_cloud_metrics
+
+    ms, cl = _pc466_ms(
+        "We used PointNet++ for 3D point cloud segmentation. "
+        "Part IoU and mean Intersection over Union were reported on ShapeNet."
+    )
+    result = validate_point_cloud_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_pc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_point_cloud_metrics
+
+    ms, cl = _pc466_ms("We used PointNet++ for 3D point cloud segmentation tasks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_point_cloud_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pc_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_point_cloud_metrics
+
+    ms, cl = _pc466_ms("We used logistic regression on tabular patient data.")
+    result = validate_point_cloud_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 467 – validate_segmentation_dice_metrics
+# ---------------------------------------------------------------------------
+
+def _medseg467_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-medseg467",
+            source_path="/tmp/medseg467.md",
+            source_format="markdown",
+            title="Medical Segmentation Dice Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_medseg_without_dice_fires() -> None:
+    from manuscript_audit.validators.core import validate_segmentation_dice_metrics
+
+    ms, cl = _medseg467_ms(
+        "A U-Net was applied for medical image segmentation of brain tumors."
+    )
+    result = validate_segmentation_dice_metrics(ms, cl)
+    assert any(f.code == "missing-segmentation-dice-metrics" for f in result.findings)
+
+
+def test_medseg_with_dice_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_segmentation_dice_metrics
+
+    ms, cl = _medseg467_ms(
+        "A U-Net was applied for brain tumor segmentation. "
+        "Dice coefficient (DSC = 0.87) and Hausdorff distance were reported."
+    )
+    result = validate_segmentation_dice_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_medseg_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_segmentation_dice_metrics
+
+    ms, cl = _medseg467_ms(
+        "A U-Net was applied for medical image segmentation tasks."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_segmentation_dice_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_medseg_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_segmentation_dice_metrics
+
+    ms, cl = _medseg467_ms("We applied Cox regression to survival data from clinical trials.")
+    result = validate_segmentation_dice_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 468 – validate_eeg_preprocessing_details
+# ---------------------------------------------------------------------------
+
+def _eeg468_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-eeg468",
+            source_path="/tmp/eeg468.md",
+            source_format="markdown",
+            title="EEG Preprocessing Details Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_eeg_without_preprocessing_fires() -> None:
+    from manuscript_audit.validators.core import validate_eeg_preprocessing_details
+
+    ms, cl = _eeg468_ms(
+        "EEG classification was performed for motor imagery decoding."
+    )
+    result = validate_eeg_preprocessing_details(ms, cl)
+    assert any(f.code == "missing-eeg-preprocessing-details" for f in result.findings)
+
+
+def test_eeg_with_preprocessing_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_eeg_preprocessing_details
+
+    ms, cl = _eeg468_ms(
+        "EEG classification was performed for motor imagery decoding. "
+        "EEG preprocessing included band-pass filtering at 8-30 Hz and "
+        "artifact rejection was applied before epoching."
+    )
+    result = validate_eeg_preprocessing_details(ms, cl)
+    assert result.findings == []
+
+
+def test_eeg_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_eeg_preprocessing_details
+
+    ms, cl = _eeg468_ms("EEG classification was performed for motor imagery BCI.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_eeg_preprocessing_details(ms, cl)
+    assert result.findings == []
+
+
+def test_no_eeg_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_eeg_preprocessing_details
+
+    ms, cl = _eeg468_ms("We applied random effects models to panel data.")
+    result = validate_eeg_preprocessing_details(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 469 – validate_admet_reporting
+# ---------------------------------------------------------------------------
+
+def _admet469_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-admet469",
+            source_path="/tmp/admet469.md",
+            source_format="markdown",
+            title="ADMET Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_drug_disc_without_admet_fires() -> None:
+    from manuscript_audit.validators.core import validate_admet_reporting
+
+    ms, cl = _admet469_ms(
+        "We used a QSAR model to predict compound activity in drug discovery."
+    )
+    result = validate_admet_reporting(ms, cl)
+    assert any(f.code == "missing-admet-reporting" for f in result.findings)
+
+
+def test_drug_disc_with_admet_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_admet_reporting
+
+    ms, cl = _admet469_ms(
+        "We used a QSAR model for drug discovery. "
+        "ADMET properties including absorption and toxicity prediction were reported."
+    )
+    result = validate_admet_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_admet_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_admet_reporting
+
+    ms, cl = _admet469_ms("We used a QSAR model for compound activity prediction.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_admet_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_admet_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_admet_reporting
+
+    ms, cl = _admet469_ms("We applied a survival model to patient follow-up data.")
+    result = validate_admet_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 470 – validate_variant_calling_pipeline
+# ---------------------------------------------------------------------------
+
+def _variant470_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-variant470",
+            source_path="/tmp/variant470.md",
+            source_format="markdown",
+            title="Variant Calling Pipeline Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_variant_without_pipeline_fires() -> None:
+    from manuscript_audit.validators.core import validate_variant_calling_pipeline
+
+    ms, cl = _variant470_ms(
+        "We performed variant calling on whole genome sequencing data."
+    )
+    result = validate_variant_calling_pipeline(ms, cl)
+    assert any(f.code == "missing-variant-calling-pipeline" for f in result.findings)
+
+
+def test_variant_with_pipeline_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variant_calling_pipeline
+
+    ms, cl = _variant470_ms(
+        "We performed variant calling on WGS data. "
+        "The variant calling pipeline used GATK version 4.2 with VQSR filtering."
+    )
+    result = validate_variant_calling_pipeline(ms, cl)
+    assert result.findings == []
+
+
+def test_variant_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variant_calling_pipeline
+
+    ms, cl = _variant470_ms(
+        "We performed variant calling analysis on whole genome sequencing samples."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_variant_calling_pipeline(ms, cl)
+    assert result.findings == []
+
+
+def test_no_variant_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_variant_calling_pipeline
+
+    ms, cl = _variant470_ms("We applied a linear mixed model to phenotype prediction.")
+    result = validate_variant_calling_pipeline(ms, cl)
+    assert result.findings == []
