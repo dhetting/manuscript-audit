@@ -6764,6 +6764,10 @@ def run_deterministic_validators(
         validate_effect_size_interpretation(parsed, classification),
         validate_comparison_group_equivalence(parsed, classification),
         validate_implicit_theory_test(parsed, classification),
+        validate_non_normal_distribution_test(parsed, classification),
+        validate_regression_sample_size_adequacy(parsed, classification),
+        validate_scale_directionality_disclosure(parsed, classification),
+        validate_attrition_rate_reporting(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -15712,6 +15716,248 @@ def validate_implicit_theory_test(
                     "acknowledge this limitation."
                 ),
                 validator="validate_implicit_theory_test",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 257 – validate_non_normal_distribution_test
+# ---------------------------------------------------------------------------
+
+_PARAMETRIC_TEST_RE = re.compile(
+    r"\b(?:t[\s-]test|independent[\s-]samples?\s+t[\s-]?test|paired[\s-]?t[\s-]?test|"
+    r"one[\s-]way\s+ANOVA|two[\s-]way\s+ANOVA|ANCOVA|MANOVA|"
+    r"Pearson'?s?\s+(?:r|correlation))\b",
+    re.IGNORECASE,
+)
+_NORMALITY_CHECK_RE = re.compile(
+    r"\b(?:Shapiro[\s-]Wilk|Kolmogorov[\s-]Smirnov|Anderson[\s-]Darling|"
+    r"normal(?:ity)?\s+(?:test|assumption|check)|"
+    r"data\s+(?:were|was|are)\s+(?:normally|approximately\s+normally)\s+distributed|"
+    r"Q[\s-]?Q\s+plot|non[\s-]?parametric\s+alternative|Mann[\s-]Whitney|"
+    r"Wilcoxon|Kruskal[\s-]Wallis|violated\s+normality|normality\s+violated)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_non_normal_distribution_test(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag parametric tests without normality checks.
+
+    Emits ``missing-normality-check`` (minor) when parametric tests are used
+    without any normality testing or reporting.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_non_normal_distribution_test", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _PARAMETRIC_TEST_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_non_normal_distribution_test", findings=[]
+        )
+
+    if _NORMALITY_CHECK_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_non_normal_distribution_test", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_non_normal_distribution_test",
+        findings=[
+            Finding(
+                code="missing-normality-check",
+                severity="minor",
+                message=(
+                    "Parametric tests are reported without any normality check or "
+                    "justification. Verify or test distributional assumptions."
+                ),
+                validator="validate_non_normal_distribution_test",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 258 – validate_regression_sample_size_adequacy
+# ---------------------------------------------------------------------------
+
+_REGRESSION_TRIGGER_RE = re.compile(
+    r"\b(?:logistic\s+regression|linear\s+regression|multiple\s+regression|"
+    r"hierarchical\s+regression|regression\s+model|predictor\s+variable)\b",
+    re.IGNORECASE,
+)
+_REGRESSION_SAMPLE_RE = re.compile(
+    r"\b(?:rule\s+of\s+(?:\d+|thumb)|10\s+(?:cases?|participants?)\s+per\s+(?:predictor|variable)|"
+    r"events?\s+per\s+variable|EPV|adequate\s+sample|sample\s+size\s+(?:was|is|met)|"
+    r"power\s+analysis\s+(?:for|to\s+determine)|minimum\s+(?:sample\s+size|n\s+=))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_regression_sample_size_adequacy(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag regression analyses without sample size adequacy discussion.
+
+    Emits ``missing-regression-sample-adequacy`` (minor) when regression is
+    conducted without addressing predictor-to-sample ratio or power.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_regression_sample_size_adequacy", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _REGRESSION_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_regression_sample_size_adequacy", findings=[]
+        )
+
+    if _REGRESSION_SAMPLE_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_regression_sample_size_adequacy", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_regression_sample_size_adequacy",
+        findings=[
+            Finding(
+                code="missing-regression-sample-adequacy",
+                severity="minor",
+                message=(
+                    "Regression analysis is conducted without discussing sample size "
+                    "adequacy relative to the number of predictors. Address "
+                    "predictor-to-sample ratio or power requirements."
+                ),
+                validator="validate_regression_sample_size_adequacy",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 259 – validate_scale_directionality_disclosure
+# ---------------------------------------------------------------------------
+
+_SCALE_USED_RE = re.compile(
+    r"\b(?:Likert\s+scale|rating\s+scale|questionnaire\s+items?|"
+    r"scored?\s+(?:from|on\s+a)\s+\d\s+to\s+\d|"
+    r"\d[\s-]point\s+(?:Likert|rating|response)\s+scale)\b",
+    re.IGNORECASE,
+)
+_DIRECTIONALITY_RE = re.compile(
+    r"\b(?:higher\s+scores?\s+(?:indicate|reflect|represent|correspond)|"
+    r"lower\s+scores?\s+(?:indicate|reflect|represent|correspond)|"
+    r"reverse[\s-]scored?|reverse[\s-]coded?|item\s+directionality|"
+    r"scoring\s+(?:direction|key)|recoded\s+so\s+that|"
+    r"(?:minimum|maximum)\s+score\s+(?:indicates?|reflects?))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_scale_directionality_disclosure(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag scale use without directionality disclosure.
+
+    Emits ``missing-scale-directionality`` (minor) when Likert or rating scales
+    are used without clarifying score direction.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_scale_directionality_disclosure", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _SCALE_USED_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_scale_directionality_disclosure", findings=[]
+        )
+
+    if _DIRECTIONALITY_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_scale_directionality_disclosure", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_scale_directionality_disclosure",
+        findings=[
+            Finding(
+                code="missing-scale-directionality",
+                severity="minor",
+                message=(
+                    "A rating or Likert scale is used without clarifying score "
+                    "direction (e.g., higher = more of X). Disclose scale "
+                    "directionality to aid interpretation."
+                ),
+                validator="validate_scale_directionality_disclosure",
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 260 – validate_attrition_rate_reporting
+# ---------------------------------------------------------------------------
+
+_ATTRITION_TRIGGER_RE = re.compile(
+    r"\b(?:drop(?:p(?:ed|ing))?\s*out|dropout|attrition|lost\s+to\s+follow[\s-]?up|"
+    r"withdrew\s+from\s+(?:the\s+)?study|did\s+not\s+complete|"
+    r"retention\s+rate|follow[\s-]up\s+(?:rate|completion))\b",
+    re.IGNORECASE,
+)
+_ATTRITION_RATE_RE = re.compile(
+    r"\b(?:\d+\s*(?:%|percent)\s*(?:drop[\s-]?out|attrition|lost\s+to\s+follow[\s-]?up)|"
+    r"attrition\s+(?:rate|was|of)\s*(?:\d+|[A-Z])|"
+    r"\d+\s+(?:participants?|patients?|subjects?)\s+(?:withdrew|drop(?:p(?:ed|ing))?\s*out|"
+    r"were\s+lost)|retention\s+(?:rate\s+)?(?:was|of)\s*\d+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_attrition_rate_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag mentions of dropout/attrition without quantified rates.
+
+    Emits ``missing-attrition-rate`` (minor) when attrition or dropout is
+    mentioned but not quantified.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="validate_attrition_rate_reporting", findings=[]
+        )
+
+    full = parsed.full_text
+    if not _ATTRITION_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_attrition_rate_reporting", findings=[]
+        )
+
+    if _ATTRITION_RATE_RE.search(full):
+        return ValidationResult(
+            validator_name="validate_attrition_rate_reporting", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="validate_attrition_rate_reporting",
+        findings=[
+            Finding(
+                code="missing-attrition-rate",
+                severity="minor",
+                message=(
+                    "Attrition or dropout is mentioned but not quantified. "
+                    "Report attrition rates and reasons for dropout."
+                ),
+                validator="validate_attrition_rate_reporting",
             )
         ],
     )

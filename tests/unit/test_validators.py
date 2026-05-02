@@ -14205,3 +14205,334 @@ def test_implicit_theory_non_empirical_no_fire() -> None:
     )
     result = validate_implicit_theory_test(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 256 – validate_multiple_comparison_correction
+# ---------------------------------------------------------------------------
+
+def _mcc256_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mcc",
+            source_path="/tmp/mcc.md",
+            source_format="markdown",
+            title="Multiple Comparison Correction Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multiple_comparisons_without_correction_fires() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc256_ms(
+        "We conducted multiple comparisons across six outcomes "
+        "using independent t-tests for each."
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert any(f.code == "missing-multiple-comparison-correction" for f in result.findings)
+
+
+def test_multiple_comparisons_bonferroni_phase256_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc256_ms(
+        "We conducted multiple comparisons across six outcomes. "
+        "A Bonferroni correction was applied to control the family-wise error rate."
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_single_test_no_multiple_comparisons_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc256_ms(
+        "We tested the primary hypothesis using a paired t-test."
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert result.findings == []
+
+
+def test_mcc_phase256_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multiple_comparison_correction
+
+    ms, cl = _mcc256_ms("Multiple comparisons require correction procedures.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multiple_comparison_correction(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 257 – validate_non_normal_distribution_test
+# ---------------------------------------------------------------------------
+
+def _normality_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-normality",
+            source_path="/tmp/normality.md",
+            source_format="markdown",
+            title="Normality Check Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_parametric_without_normality_check_fires() -> None:
+    from manuscript_audit.validators.core import validate_non_normal_distribution_test
+
+    ms, cl = _normality_ms(
+        "We compared group means using an independent-samples t-test."
+    )
+    result = validate_non_normal_distribution_test(ms, cl)
+    assert any(f.code == "missing-normality-check" for f in result.findings)
+
+
+def test_parametric_with_normality_check_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_non_normal_distribution_test
+
+    ms, cl = _normality_ms(
+        "We compared group means using an independent-samples t-test. "
+        "Data were normally distributed as confirmed by the Shapiro-Wilk test."
+    )
+    result = validate_non_normal_distribution_test(ms, cl)
+    assert result.findings == []
+
+
+def test_no_parametric_test_no_normality_fire() -> None:
+    from manuscript_audit.validators.core import validate_non_normal_distribution_test
+
+    ms, cl = _normality_ms(
+        "We used thematic analysis to identify recurring patterns."
+    )
+    result = validate_non_normal_distribution_test(ms, cl)
+    assert result.findings == []
+
+
+def test_normality_phase257_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_non_normal_distribution_test
+
+    ms, cl = _normality_ms("t-tests assume normally distributed data.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_non_normal_distribution_test(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 258 – validate_regression_sample_size_adequacy
+# ---------------------------------------------------------------------------
+
+def _reg_sample_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-reg-sample",
+            source_path="/tmp/reg_sample.md",
+            source_format="markdown",
+            title="Regression Sample Size Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_regression_without_sample_adequacy_fires() -> None:
+    from manuscript_audit.validators.core import validate_regression_sample_size_adequacy
+
+    ms, cl = _reg_sample_ms(
+        "A multiple regression analysis examined the predictors of burnout "
+        "using eight predictor variables in a sample of 45 participants."
+    )
+    result = validate_regression_sample_size_adequacy(ms, cl)
+    assert any(f.code == "missing-regression-sample-adequacy" for f in result.findings)
+
+
+def test_regression_with_sample_adequacy_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_sample_size_adequacy
+
+    ms, cl = _reg_sample_ms(
+        "A multiple regression analysis was conducted. "
+        "A power analysis confirmed adequate sample size for the number of predictors."
+    )
+    result = validate_regression_sample_size_adequacy(ms, cl)
+    assert result.findings == []
+
+
+def test_no_regression_no_sample_adequacy_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_sample_size_adequacy
+
+    ms, cl = _reg_sample_ms(
+        "Descriptive statistics were computed for all variables."
+    )
+    result = validate_regression_sample_size_adequacy(ms, cl)
+    assert result.findings == []
+
+
+def test_regression_sample_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_regression_sample_size_adequacy
+
+    ms, cl = _reg_sample_ms("Regression models require adequate sample sizes.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_regression_sample_size_adequacy(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 259 – validate_scale_directionality_disclosure
+# ---------------------------------------------------------------------------
+
+def _scale_dir_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-scale-dir",
+            source_path="/tmp/scale_dir.md",
+            source_format="markdown",
+            title="Scale Directionality Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_scale_without_directionality_fires() -> None:
+    from manuscript_audit.validators.core import validate_scale_directionality_disclosure
+
+    ms, cl = _scale_dir_ms(
+        "Anxiety was assessed using a 7-point Likert scale."
+    )
+    result = validate_scale_directionality_disclosure(ms, cl)
+    assert any(f.code == "missing-scale-directionality" for f in result.findings)
+
+
+def test_scale_with_directionality_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scale_directionality_disclosure
+
+    ms, cl = _scale_dir_ms(
+        "Anxiety was assessed using a 7-point Likert scale, "
+        "where higher scores indicate greater anxiety."
+    )
+    result = validate_scale_directionality_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_no_scale_used_no_directionality_fire() -> None:
+    from manuscript_audit.validators.core import validate_scale_directionality_disclosure
+
+    ms, cl = _scale_dir_ms(
+        "Structured clinical interviews were used to assess diagnosis."
+    )
+    result = validate_scale_directionality_disclosure(ms, cl)
+    assert result.findings == []
+
+
+def test_scale_directionality_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_scale_directionality_disclosure
+
+    ms, cl = _scale_dir_ms("Likert scales require directionality disclosure.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_scale_directionality_disclosure(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 260 – validate_attrition_rate_reporting
+# ---------------------------------------------------------------------------
+
+def _attrition260_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-attrition",
+            source_path="/tmp/attrition.md",
+            source_format="markdown",
+            title="Attrition Rate Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_attrition_without_rate_fires() -> None:
+    from manuscript_audit.validators.core import validate_attrition_rate_reporting
+
+    ms, cl = _attrition260_ms(
+        "Several participants dropped out before the final assessment."
+    )
+    result = validate_attrition_rate_reporting(ms, cl)
+    assert any(f.code == "missing-attrition-rate" for f in result.findings)
+
+
+def test_attrition_with_rate_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attrition_rate_reporting
+
+    ms, cl = _attrition260_ms(
+        "12 participants dropped out before the final assessment, "
+        "yielding an attrition rate of 9.8%."
+    )
+    result = validate_attrition_rate_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_attrition_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attrition_rate_reporting
+
+    ms, cl = _attrition260_ms(
+        "All 120 enrolled participants completed the 8-week intervention."
+    )
+    result = validate_attrition_rate_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_attrition_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_attrition_rate_reporting
+
+    ms, cl = _attrition260_ms("Attrition rates should be reported in longitudinal studies.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_attrition_rate_reporting(ms, cl)
+    assert result.findings == []
