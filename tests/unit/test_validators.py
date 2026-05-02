@@ -30116,3 +30116,343 @@ def test_no_codegen_trigger_no_fire() -> None:
     ms, cl = _codegen490_ms("We applied a latent growth curve model to panel data.")
     result = validate_code_gen_pass_at_k(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 491 – validate_coreference_resolution_metrics
+# ---------------------------------------------------------------------------
+
+def _coref491_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-coref491",
+            source_path="/tmp/coref491.md",
+            source_format="markdown",
+            title="Coreference Resolution Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_coref_without_muc_fires() -> None:
+    from manuscript_audit.validators.core import validate_coreference_resolution_metrics
+
+    ms, cl = _coref491_ms(
+        "A coreference resolution system was trained on the OntoNotes dataset."
+    )
+    result = validate_coreference_resolution_metrics(ms, cl)
+    assert any(f.code == "missing-coreference-metrics" for f in result.findings)
+
+
+def test_coref_with_muc_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coreference_resolution_metrics
+
+    ms, cl = _coref491_ms(
+        "A coreference resolution system was trained on OntoNotes. "
+        "MUC score, B-Cubed F1, and CEAFe score were all reported."
+    )
+    result = validate_coreference_resolution_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_coref_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coreference_resolution_metrics
+
+    ms, cl = _coref491_ms(
+        "A coreference resolution system was evaluated on OntoNotes coreference."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_coreference_resolution_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_coref_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_coreference_resolution_metrics
+
+    ms, cl = _coref491_ms("We applied logistic regression to predict student outcomes.")
+    result = validate_coreference_resolution_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 492 – validate_srl_evaluation_metrics
+# ---------------------------------------------------------------------------
+
+def _srl492_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-srl492",
+            source_path="/tmp/srl492.md",
+            source_format="markdown",
+            title="SRL Evaluation Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_srl_without_f1_fires() -> None:
+    from manuscript_audit.validators.core import validate_srl_evaluation_metrics
+
+    ms, cl = _srl492_ms(
+        "A semantic role labeling (SRL) system was evaluated on PropBank."
+    )
+    result = validate_srl_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-srl-evaluation-metrics" for f in result.findings)
+
+
+def test_srl_with_f1_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_srl_evaluation_metrics
+
+    ms, cl = _srl492_ms(
+        "A semantic role labeling system was evaluated on PropBank. "
+        "Argument F1 and predicate identification F1 were reported."
+    )
+    result = validate_srl_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_srl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_srl_evaluation_metrics
+
+    ms, cl = _srl492_ms("A semantic role labeling system was evaluated on PropBank.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_srl_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_srl_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_srl_evaluation_metrics
+
+    ms, cl = _srl492_ms("We applied a Bayesian linear model to experimental data.")
+    result = validate_srl_evaluation_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 493 – validate_dependency_parsing_metrics
+# ---------------------------------------------------------------------------
+
+def _dep493_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-dep493",
+            source_path="/tmp/dep493.md",
+            source_format="markdown",
+            title="Dependency Parsing Metrics Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_dep_without_uas_fires() -> None:
+    from manuscript_audit.validators.core import validate_dependency_parsing_metrics
+
+    ms, cl = _dep493_ms(
+        "A dependency parser was trained on Universal Dependencies treebanks."
+    )
+    result = validate_dependency_parsing_metrics(ms, cl)
+    assert any(
+        f.code == "missing-dependency-parsing-metrics" for f in result.findings
+    )
+
+
+def test_dep_with_uas_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dependency_parsing_metrics
+
+    ms, cl = _dep493_ms(
+        "A dependency parser was trained on Universal Dependencies treebanks. "
+        "Unlabeled attachment score (UAS) and labeled attachment score (LAS) were reported."
+    )
+    result = validate_dependency_parsing_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_dep_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dependency_parsing_metrics
+
+    ms, cl = _dep493_ms(
+        "A dependency parsing model was evaluated on UD treebanks."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_dependency_parsing_metrics(ms, cl)
+    assert result.findings == []
+
+
+def test_no_dep_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_dependency_parsing_metrics
+
+    ms, cl = _dep493_ms("We used elastic net for high-dimensional genomic data.")
+    result = validate_dependency_parsing_metrics(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 494 – validate_cross_lingual_per_language_results
+# ---------------------------------------------------------------------------
+
+def _xling494_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-xling494",
+            source_path="/tmp/xling494.md",
+            source_format="markdown",
+            title="Cross-lingual Per-Language Results Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_xling_without_per_language_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_lingual_per_language_results,
+    )
+
+    ms, cl = _xling494_ms(
+        "We evaluated multilingual transfer learning on the XTREME benchmark."
+    )
+    result = validate_cross_lingual_per_language_results(ms, cl)
+    assert any(
+        f.code == "missing-cross-lingual-per-language-results" for f in result.findings
+    )
+
+
+def test_xling_with_per_language_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_lingual_per_language_results,
+    )
+
+    ms, cl = _xling494_ms(
+        "We evaluated multilingual transfer learning on XTREME. "
+        "Per-language F1 and average cross-lingual score were reported."
+    )
+    result = validate_cross_lingual_per_language_results(ms, cl)
+    assert result.findings == []
+
+
+def test_xling_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_lingual_per_language_results,
+    )
+
+    ms, cl = _xling494_ms("We evaluated multilingual transfer learning on XTREME.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_cross_lingual_per_language_results(ms, cl)
+    assert result.findings == []
+
+
+def test_no_xling_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_cross_lingual_per_language_results,
+    )
+
+    ms, cl = _xling494_ms("We fitted a Poisson regression model to count data.")
+    result = validate_cross_lingual_per_language_results(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 495 – validate_multimodal_modality_ablation
+# ---------------------------------------------------------------------------
+
+def _mm495_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-mm495",
+            source_path="/tmp/mm495.md",
+            source_format="markdown",
+            title="Multimodal Modality Ablation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multimodal_without_ablation_fires() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_modality_ablation
+
+    ms, cl = _mm495_ms(
+        "We proposed a vision-language model for multimodal fusion of images and text."
+    )
+    result = validate_multimodal_modality_ablation(ms, cl)
+    assert any(
+        f.code == "missing-multimodal-modality-ablation" for f in result.findings
+    )
+
+
+def test_multimodal_with_ablation_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_modality_ablation
+
+    ms, cl = _mm495_ms(
+        "We proposed a vision-language model. "
+        "Modality ablation and a unimodal baseline were reported."
+    )
+    result = validate_multimodal_modality_ablation(ms, cl)
+    assert result.findings == []
+
+
+def test_multimodal_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_modality_ablation
+
+    ms, cl = _mm495_ms(
+        "We proposed a multimodal fusion model for vision and language."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_multimodal_modality_ablation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_multimodal_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multimodal_modality_ablation
+
+    ms, cl = _mm495_ms("We used a generalized estimating equations model.")
+    result = validate_multimodal_modality_ablation(ms, cl)
+    assert result.findings == []

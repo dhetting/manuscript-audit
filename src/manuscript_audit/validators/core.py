@@ -6997,6 +6997,11 @@ def run_deterministic_validators(
         validate_audio_event_detection_metrics(parsed, classification),
         validate_table_qa_execution_accuracy(parsed, classification),
         validate_code_gen_pass_at_k(parsed, classification),
+        validate_coreference_resolution_metrics(parsed, classification),
+        validate_srl_evaluation_metrics(parsed, classification),
+        validate_dependency_parsing_metrics(parsed, classification),
+        validate_cross_lingual_per_language_results(parsed, classification),
+        validate_multimodal_modality_ablation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -28543,6 +28548,239 @@ def validate_code_gen_pass_at_k(
                 ),
                 severity="moderate",
                 validator=_CODE_GEN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 491 – Coreference resolution: MUC/B-Cubed/CEAFe reporting
+# ---------------------------------------------------------------------------
+_COREF_TRIGGER_RE = re.compile(
+    r"\b(?:coreference\s+resolution|coreference\s+system|"
+    r"entity\s+coreference|CoNLL\s+coreference|OntoNotes\s+coreference)\b",
+    re.IGNORECASE,
+)
+_COREF_METRIC_RE = re.compile(
+    r"\b(?:MUC\s+(?:score|F1)|B-?Cubed\s+(?:score|F1)|CEAFe?\s+(?:score|F1)|"
+    r"CoNLL\s+average\s+F1|average\s+F1\s+of\s+MUC|LEA\s+metric)\b",
+    re.IGNORECASE,
+)
+
+_COREF_VID = "missing-coreference-metrics"
+
+
+def validate_coreference_resolution_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when coreference resolution papers lack MUC/B-Cubed/CEAFe metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_COREF_VID, findings=[])
+    text = parsed.full_text
+    if not _COREF_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_COREF_VID, findings=[])
+    if _COREF_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_COREF_VID, findings=[])
+    return ValidationResult(
+        validator_name=_COREF_VID,
+        findings=[
+            Finding(
+                code=_COREF_VID,
+                message=(
+                    "Coreference resolution paper detected but no MUC, B-Cubed, "
+                    "or CEAFe metrics were reported."
+                ),
+                severity="moderate",
+                validator=_COREF_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 492 – Semantic role labeling: PropBank/FrameNet evaluation
+# ---------------------------------------------------------------------------
+_SRL_TRIGGER_RE = re.compile(
+    r"\b(?:semantic\s+role\s+labeling|SRL\b|argument\s+labeling|"
+    r"predicate.argument\s+structure|PropBank\s+(?:SRL|evaluation)|"
+    r"FrameNet\s+parsing)\b",
+    re.IGNORECASE,
+)
+_SRL_METRIC_RE = re.compile(
+    r"\b(?:argument\s+(?:F1|span\s+F1)|predicate\s+(?:identification\s+F1|F1)|"
+    r"labeled\s+(?:argument\s+)?F1|unlabeled\s+(?:argument\s+)?F1|"
+    r"SRL\s+F1\s+score|CoNLL.2009\s+evaluation)\b",
+    re.IGNORECASE,
+)
+
+_SRL_VID = "missing-srl-evaluation-metrics"
+
+
+def validate_srl_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when SRL papers lack argument F1 or CoNLL evaluation metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SRL_VID, findings=[])
+    text = parsed.full_text
+    if not _SRL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SRL_VID, findings=[])
+    if _SRL_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SRL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SRL_VID,
+        findings=[
+            Finding(
+                code=_SRL_VID,
+                message=(
+                    "Semantic role labeling paper detected but no argument F1 "
+                    "or CoNLL-style evaluation metrics were reported."
+                ),
+                severity="moderate",
+                validator=_SRL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 493 – Dependency parsing: UAS/LAS reporting
+# ---------------------------------------------------------------------------
+_DEP_TRIGGER_RE = re.compile(
+    r"\b(?:dependency\s+parsing|dependency\s+parser|"
+    r"Universal\s+Dependencies|UD\s+treebank|"
+    r"graph.based\s+dependency|transition.based\s+dependency)\b",
+    re.IGNORECASE,
+)
+_DEP_METRIC_RE = re.compile(
+    r"\b(?:UAS\s*=|LAS\s*=|unlabeled\s+attachment\s+score|"
+    r"labeled\s+attachment\s+score|UPOS\s+accuracy|"
+    r"dependency\s+accuracy\s+score)\b",
+    re.IGNORECASE,
+)
+
+_DEP_VID = "missing-dependency-parsing-metrics"
+
+
+def validate_dependency_parsing_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when dependency parsing papers lack UAS/LAS metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DEP_VID, findings=[])
+    text = parsed.full_text
+    if not _DEP_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_DEP_VID, findings=[])
+    if _DEP_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_DEP_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DEP_VID,
+        findings=[
+            Finding(
+                code=_DEP_VID,
+                message=(
+                    "Dependency parsing paper detected but no UAS or LAS "
+                    "metrics were reported."
+                ),
+                severity="moderate",
+                validator=_DEP_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 494 – Cross-lingual transfer: zero-shot language generalization
+# ---------------------------------------------------------------------------
+_XLING_TRIGGER_RE = re.compile(
+    r"\b(?:cross.lingual\s+(?:transfer|evaluation|generalization)|"
+    r"zero.shot\s+cross.lingual|multilingual\s+(?:transfer\s+learning|NLP)|"
+    r"XTREME\s+benchmark|XNLI\s+benchmark|mBERT\s+evaluation)\b",
+    re.IGNORECASE,
+)
+_XLING_DETAIL_RE = re.compile(
+    r"\b(?:zero.shot\s+(?:transfer\s+)?performance|per.language\s+(?:result|F1|accuracy)|"
+    r"average\s+(?:cross.lingual|multilingual)\s+(?:score|F1)|"
+    r"transfer\s+gap|cross.lingual\s+F1)\b",
+    re.IGNORECASE,
+)
+
+_XLING_VID = "missing-cross-lingual-per-language-results"
+
+
+def validate_cross_lingual_per_language_results(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when cross-lingual transfer papers lack per-language result reporting."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_XLING_VID, findings=[])
+    text = parsed.full_text
+    if not _XLING_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_XLING_VID, findings=[])
+    if _XLING_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_XLING_VID, findings=[])
+    return ValidationResult(
+        validator_name=_XLING_VID,
+        findings=[
+            Finding(
+                code=_XLING_VID,
+                message=(
+                    "Cross-lingual transfer paper detected but no per-language "
+                    "results or transfer gap analysis was reported."
+                ),
+                severity="minor",
+                validator=_XLING_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 495 – Multimodal fusion: ablation by modality
+# ---------------------------------------------------------------------------
+_MULTIMODAL_TRIGGER_RE = re.compile(
+    r"\b(?:multimodal\s+(?:fusion|model|learning|representation)|"
+    r"vision.language\s+(?:model|pretraining)|"
+    r"audio.visual\s+(?:fusion|model)|text.image\s+fusion)\b",
+    re.IGNORECASE,
+)
+_MULTIMODAL_ABLATION_RE = re.compile(
+    r"\b(?:modality\s+ablation|ablation\s+(?:by|of)\s+modality|"
+    r"unimodal\s+baseline|single.modality\s+baseline|"
+    r"ablation\s+removing\s+(?:text|image|audio|video)\s+(?:modality|stream))\b",
+    re.IGNORECASE,
+)
+
+_MULTIMODAL_VID = "missing-multimodal-modality-ablation"
+
+
+def validate_multimodal_modality_ablation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when multimodal fusion papers lack per-modality ablation studies."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MULTIMODAL_VID, findings=[])
+    text = parsed.full_text
+    if not _MULTIMODAL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_MULTIMODAL_VID, findings=[])
+    if _MULTIMODAL_ABLATION_RE.search(text):
+        return ValidationResult(validator_name=_MULTIMODAL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MULTIMODAL_VID,
+        findings=[
+            Finding(
+                code=_MULTIMODAL_VID,
+                message=(
+                    "Multimodal fusion paper detected but no per-modality "
+                    "ablation or unimodal baseline was reported."
+                ),
+                severity="moderate",
+                validator=_MULTIMODAL_VID,
             )
         ],
     )
