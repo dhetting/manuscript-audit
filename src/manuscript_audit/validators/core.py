@@ -6907,6 +6907,11 @@ def run_deterministic_validators(
         validate_benchmark_baseline_comparison(parsed, classification),
         validate_dataset_version_disclosure(parsed, classification),
         validate_hyperparameter_sensitivity(parsed, classification),
+        validate_ensemble_method_description(parsed, classification),
+        validate_calibration_curve_reporting(parsed, classification),
+        validate_prediction_interval_distinction(parsed, classification),
+        validate_missing_data_imputation_method(parsed, classification),
+        validate_influential_observation_sensitivity(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -24186,6 +24191,239 @@ def validate_hyperparameter_sensitivity(
                 message=(
                     "Hyperparameters were mentioned but no sensitivity analysis, "
                     "search strategy, or tuning procedure was described."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 401 – Ensemble method description
+# ---------------------------------------------------------------------------
+
+_ENSEMBLE_TRIGGER_RE = re.compile(
+    r"\b(?:ensemble\s+(?:method|model|approach|learning)|random\s+forest|"
+    r"gradient\s+boost(?:ing|ed)|XGBoost|LightGBM|CatBoost|bagging|boosting|stacking)\b",
+    re.IGNORECASE,
+)
+_ENSEMBLE_DESCRIBED_RE = re.compile(
+    r"\b(?:number\s+of\s+(?:tree|estimator)s?|n_estimators|max_depth|"
+    r"base\s+(?:learner|classifier|regressor|estimator)s?|"
+    r"ensemble\s+(?:size|configuration|combination\s+strategy)|"
+    r"voting|averaging|weighted\s+average|stacking\s+(?:with|using|via))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ensemble_method_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_ensemble_method_description"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _ENSEMBLE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ENSEMBLE_DESCRIBED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-ensemble-description",
+                message=(
+                    "Ensemble methods were used but the ensemble configuration "
+                    "(number of estimators, base learners, combination strategy) "
+                    "was not described."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 402 – Calibration curve / probability calibration reporting
+# ---------------------------------------------------------------------------
+
+_CALIBRATION_TRIGGER_RE = re.compile(
+    r"\b(?:probabilistic\s+(?:prediction|forecast|output)|predicted\s+probabilit(?:y|ies)|"
+    r"probability\s+(?:estimate|calibration|output)|classification\s+probability|"
+    r"soft\s+(?:label|prediction)|Platt\s+scal(?:ing|ed)|isotonic\s+regression\s+calibration)\b",
+    re.IGNORECASE,
+)
+_CALIBRATION_REPORTED_RE = re.compile(
+    r"\b(?:calibration\s+(?:curve|plot|diagram|test|error)|reliability\s+diagram|"
+    r"Brier\s+score|Expected\s+Calibration\s+Error|ECE|"
+    r"calibration\s+(?:was|is)\s+(?:assessed|evaluated|reported|shown)|"
+    r"well[- ]calibrated|over[- ]confident|under[- ]confident)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_calibration_curve_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_calibration_curve_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _CALIBRATION_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _CALIBRATION_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-calibration-reporting",
+                message=(
+                    "Predicted probabilities were reported but calibration "
+                    "(calibration curve, Brier score, or ECE) was not assessed."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 403 – Prediction interval vs confidence interval distinction
+# ---------------------------------------------------------------------------
+
+_PI_TRIGGER_RE = re.compile(
+    r"\b(?:prediction\s+interval|forecast\s+interval|predictive\s+interval|"
+    r"out[- ]of[- ]sample\s+(?:prediction|forecast))\b",
+    re.IGNORECASE,
+)
+_PI_DISTINCT_RE = re.compile(
+    r"\b(?:prediction\s+interval|PI|forecast\s+interval|"
+    r"individual\s+(?:observation|prediction)|future\s+(?:observation|value))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_prediction_interval_distinction(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_prediction_interval_distinction"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _PI_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _PI_DISTINCT_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-prediction-interval-distinction",
+                message=(
+                    "Prediction or forecast intervals were mentioned but were not "
+                    "clearly distinguished from confidence intervals."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 404 – Missing data imputation method disclosure
+# ---------------------------------------------------------------------------
+
+_IMPUTATION_TRIGGER_RE = re.compile(
+    r"\b(?:missing\s+(?:data|values?|observations?)|imputed?|imputation|"
+    r"multiple\s+imputation|single\s+imputation|mean\s+imputation|"
+    r"MICE|missingness|listwise\s+deletion|complete[- ]case\s+analysis)\b",
+    re.IGNORECASE,
+)
+_IMPUTATION_METHOD_RE = re.compile(
+    r"\b(?:imputed?\s+(?:using|with|by|via)|imputation\s+(?:method|procedure|strategy|"
+    r"model|approach)|multiple\s+imputation\s+(?:by|using|with|via)|"
+    r"MICE|predictive\s+mean\s+matching|hot\s+deck|cold\s+deck|"
+    r"k[- ]nearest\s+neighbo[urs]+\s+imputation|regression\s+imputation|"
+    r"missing\s+at\s+random|MAR|MCAR|MNAR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_missing_data_imputation_method(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_missing_data_imputation_method"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _IMPUTATION_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _IMPUTATION_METHOD_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-imputation-method",
+                message=(
+                    "Missing data or imputation was mentioned but the imputation "
+                    "method and missing data mechanism were not described."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 405 – Influential observation sensitivity check disclosure
+# ---------------------------------------------------------------------------
+
+_INFL_OBS_TRIGGER_RE = re.compile(
+    r"\b(?:Cook.s\s+[Dd]istance|Cook.s\s+D|leverage\s+(?:value|statistic|point)|"
+    r"hat\s+(?:matrix|value)|DFFITS|DFBETAS?|influential\s+(?:observation|case|point))\b",
+    re.IGNORECASE,
+)
+_INFL_OBS_SENSITIVITY_RE = re.compile(
+    r"\b(?:sensitivity\s+(?:analysis|check)\s+(?:excluding|without|removing)|"
+    r"results?\s+(?:were\s+)?robust\s+(?:to|after)\s+(?:excluding|removing)|"
+    r"re[- ]ran?\s+(?:the\s+)?(?:model|analysis)\s+(?:excluding|without)|"
+    r"removed?\s+(?:the\s+)?influential|excluded?\s+(?:the\s+)?influential|"
+    r"analysis\s+was\s+repeated\s+without)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_influential_observation_sensitivity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_influential_observation_sensitivity"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _INFL_OBS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _INFL_OBS_SENSITIVITY_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-influential-obs-sensitivity",
+                message=(
+                    "Influential observations (Cook's D, leverage, DFFITS) were "
+                    "identified but no sensitivity analysis excluding them was reported."
                 ),
                 severity="minor",
                 validator=_vid,

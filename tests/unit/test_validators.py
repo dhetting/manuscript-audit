@@ -24116,3 +24116,336 @@ def test_no_hyperparameter_trigger_no_fire() -> None:
     )
     result = validate_hyperparameter_sensitivity(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 401 – validate_ensemble_method_description
+# ---------------------------------------------------------------------------
+
+def _ens401_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ens401",
+            source_path="/tmp/ens401.md",
+            source_format="markdown",
+            title="Ensemble Method Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ensemble_without_description_fires() -> None:
+    from manuscript_audit.validators.core import validate_ensemble_method_description
+
+    ms, cl = _ens401_ms(
+        "We used a random forest classifier for prediction."
+    )
+    result = validate_ensemble_method_description(ms, cl)
+    assert any(f.code == "missing-ensemble-description" for f in result.findings)
+
+
+def test_ensemble_with_description_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ensemble_method_description
+
+    ms, cl = _ens401_ms(
+        "We used a random forest classifier with n_estimators=500 and max_depth=10."
+    )
+    result = validate_ensemble_method_description(ms, cl)
+    assert result.findings == []
+
+
+def test_ensemble_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ensemble_method_description
+
+    ms, cl = _ens401_ms("We used a random forest classifier for prediction.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_ensemble_method_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_ensemble_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ensemble_method_description
+
+    ms, cl = _ens401_ms(
+        "We used a linear regression model to estimate the coefficients."
+    )
+    result = validate_ensemble_method_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 402 – validate_calibration_curve_reporting
+# ---------------------------------------------------------------------------
+
+def _cal402_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-cal402",
+            source_path="/tmp/cal402.md",
+            source_format="markdown",
+            title="Calibration Curve Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_predicted_probs_without_calibration_fires() -> None:
+    from manuscript_audit.validators.core import validate_calibration_curve_reporting
+
+    ms, cl = _cal402_ms(
+        "The model outputs predicted probabilities for each class."
+    )
+    result = validate_calibration_curve_reporting(ms, cl)
+    assert any(f.code == "missing-calibration-reporting" for f in result.findings)
+
+
+def test_predicted_probs_with_calibration_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_calibration_curve_reporting
+
+    ms, cl = _cal402_ms(
+        "The model outputs predicted probabilities for each class. "
+        "A calibration curve was assessed and the Brier score was 0.12."
+    )
+    result = validate_calibration_curve_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_calibration402_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_calibration_curve_reporting
+
+    ms, cl = _cal402_ms("The model outputs predicted probabilities for each class.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_calibration_curve_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_calibration_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_calibration_curve_reporting
+
+    ms, cl = _cal402_ms(
+        "We used ordinary least squares regression to estimate the effect."
+    )
+    result = validate_calibration_curve_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 403 – validate_prediction_interval_distinction
+# ---------------------------------------------------------------------------
+
+def _pi403_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-pi403",
+            source_path="/tmp/pi403.md",
+            source_format="markdown",
+            title="Prediction Interval Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_prediction_interval_without_distinction_fires() -> None:
+    from manuscript_audit.validators.core import validate_prediction_interval_distinction
+
+    ms, cl = _pi403_ms(
+        "We report out-of-sample prediction intervals for the forecast horizon."
+    )
+    result = validate_prediction_interval_distinction(ms, cl)
+    assert any(
+        f.code == "missing-prediction-interval-distinction" for f in result.findings
+    )
+
+
+def test_prediction_interval_with_distinction_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prediction_interval_distinction
+
+    ms, cl = _pi403_ms(
+        "We report out-of-sample forecast intervals (PI) representing uncertainty "
+        "for individual future observations, not the mean."
+    )
+    result = validate_prediction_interval_distinction(ms, cl)
+    assert result.findings == []
+
+
+def test_pi_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prediction_interval_distinction
+
+    ms, cl = _pi403_ms("We report out-of-sample prediction intervals.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_prediction_interval_distinction(ms, cl)
+    assert result.findings == []
+
+
+def test_no_pi_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_prediction_interval_distinction
+
+    ms, cl = _pi403_ms(
+        "We report 95% confidence intervals for all regression coefficients."
+    )
+    result = validate_prediction_interval_distinction(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 404 – validate_missing_data_imputation_method
+# ---------------------------------------------------------------------------
+
+def _imp404_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-imp404",
+            source_path="/tmp/imp404.md",
+            source_format="markdown",
+            title="Imputation Method Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_imputation_without_method_fires() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_imputation_method
+
+    ms, cl = _imp404_ms(
+        "Missing data were imputed prior to model fitting."
+    )
+    result = validate_missing_data_imputation_method(ms, cl)
+    assert any(f.code == "missing-imputation-method" for f in result.findings)
+
+
+def test_imputation_with_mice_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_imputation_method
+
+    ms, cl = _imp404_ms(
+        "Missing data were imputed using MICE (multiple imputation by chained equations). "
+        "Data were assumed missing at random (MAR)."
+    )
+    result = validate_missing_data_imputation_method(ms, cl)
+    assert result.findings == []
+
+
+def test_imputation_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_imputation_method
+
+    ms, cl = _imp404_ms("Missing data were imputed prior to analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_missing_data_imputation_method(ms, cl)
+    assert result.findings == []
+
+
+def test_no_imputation_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_missing_data_imputation_method
+
+    ms, cl = _imp404_ms(
+        "All 250 participants provided complete responses. No data were absent."
+    )
+    result = validate_missing_data_imputation_method(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 405 – validate_influential_observation_sensitivity
+# ---------------------------------------------------------------------------
+
+def _inf405_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-inf405",
+            source_path="/tmp/inf405.md",
+            source_format="markdown",
+            title="Influential Observation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_cooks_distance_without_sensitivity_fires() -> None:
+    from manuscript_audit.validators.core import validate_influential_observation_sensitivity
+
+    ms, cl = _inf405_ms(
+        "Cook's Distance was computed to identify influential observations in the regression."
+    )
+    result = validate_influential_observation_sensitivity(ms, cl)
+    assert any(
+        f.code == "missing-influential-obs-sensitivity" for f in result.findings
+    )
+
+
+def test_cooks_distance_with_sensitivity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_influential_observation_sensitivity
+
+    ms, cl = _inf405_ms(
+        "Cook's Distance was computed to identify influential observations. "
+        "Results were robust after excluding the three most influential cases."
+    )
+    result = validate_influential_observation_sensitivity(ms, cl)
+    assert result.findings == []
+
+
+def test_influential_obs_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_influential_observation_sensitivity
+
+    ms, cl = _inf405_ms("Cook's Distance was computed to identify influential cases.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_influential_observation_sensitivity(ms, cl)
+    assert result.findings == []
+
+
+def test_no_influential_obs_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_influential_observation_sensitivity
+
+    ms, cl = _inf405_ms(
+        "We used a standard paired t-test to compare group means."
+    )
+    result = validate_influential_observation_sensitivity(ms, cl)
+    assert result.findings == []
