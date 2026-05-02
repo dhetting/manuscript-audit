@@ -27815,3 +27815,334 @@ def test_no_nas_trigger_no_fire() -> None:
     ms, cl = _nas455_ms("We used a Gaussian process regression for surrogate modeling.")
     result = validate_nas_search_space_disclosure(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 456 – validate_adversarial_attack_details
+# ---------------------------------------------------------------------------
+
+def _adv456_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-adv456",
+            source_path="/tmp/adv456.md",
+            source_format="markdown",
+            title="Adversarial Attack Details Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_adversarial_without_budget_fires() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_attack_details
+
+    ms, cl = _adv456_ms(
+        "We evaluated model robustness under PGD attack on CIFAR-10."
+    )
+    result = validate_adversarial_attack_details(ms, cl)
+    assert any(f.code == "missing-adversarial-attack-details" for f in result.findings)
+
+
+def test_adversarial_with_budget_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_attack_details
+
+    ms, cl = _adv456_ms(
+        "We evaluated model robustness under PGD attack. "
+        "The perturbation budget was epsilon=8/255 with 20 PGD steps."
+    )
+    result = validate_adversarial_attack_details(ms, cl)
+    assert result.findings == []
+
+
+def test_adversarial_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_attack_details
+
+    ms, cl = _adv456_ms("We evaluated adversarial robustness with a defense method.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_adversarial_attack_details(ms, cl)
+    assert result.findings == []
+
+
+def test_no_adversarial_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_attack_details
+
+    ms, cl = _adv456_ms("We trained a ridge regression model on tabular data.")
+    result = validate_adversarial_attack_details(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 457 – validate_uncertainty_decomposition
+# ---------------------------------------------------------------------------
+
+def _uq457_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-uq457",
+            source_path="/tmp/uq457.md",
+            source_format="markdown",
+            title="Uncertainty Decomposition Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_uq_without_decomposition_fires() -> None:
+    from manuscript_audit.validators.core import validate_uncertainty_decomposition
+
+    ms, cl = _uq457_ms(
+        "We used MC dropout to estimate epistemic uncertainty in predictions."
+    )
+    result = validate_uncertainty_decomposition(ms, cl)
+    assert any(f.code == "missing-uncertainty-decomposition" for f in result.findings)
+
+
+def test_uq_with_decomposition_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_uncertainty_decomposition
+
+    ms, cl = _uq457_ms(
+        "We used MC dropout to estimate uncertainty. "
+        "Epistemic and aleatoric uncertainty decomposition was performed."
+    )
+    result = validate_uncertainty_decomposition(ms, cl)
+    assert result.findings == []
+
+
+def test_uq_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_uncertainty_decomposition
+
+    ms, cl = _uq457_ms("We used MC dropout to quantify epistemic uncertainty.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_uncertainty_decomposition(ms, cl)
+    assert result.findings == []
+
+
+def test_no_uq_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_uncertainty_decomposition
+
+    ms, cl = _uq457_ms("We applied factor analysis to the questionnaire items.")
+    result = validate_uncertainty_decomposition(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 458 – validate_causal_discovery_assumptions
+# ---------------------------------------------------------------------------
+
+def _causal_disc458_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-causdisc458",
+            source_path="/tmp/causdisc458.md",
+            source_format="markdown",
+            title="Causal Discovery Assumptions Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_causal_disc_without_assumptions_fires() -> None:
+    from manuscript_audit.validators.core import validate_causal_discovery_assumptions
+
+    ms, cl = _causal_disc458_ms(
+        "We used the PC algorithm to learn the causal structure from observational data."
+    )
+    result = validate_causal_discovery_assumptions(ms, cl)
+    assert any(
+        f.code == "missing-causal-discovery-assumptions" for f in result.findings
+    )
+
+
+def test_causal_disc_with_faithfulness_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_causal_discovery_assumptions
+
+    ms, cl = _causal_disc458_ms(
+        "We used the PC algorithm to learn causal structure. "
+        "The faithfulness assumption and Markov condition were stated explicitly."
+    )
+    result = validate_causal_discovery_assumptions(ms, cl)
+    assert result.findings == []
+
+
+def test_causal_disc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_causal_discovery_assumptions
+
+    ms, cl = _causal_disc458_ms(
+        "We applied the PC algorithm for causal structure learning."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_causal_discovery_assumptions(ms, cl)
+    assert result.findings == []
+
+
+def test_no_causal_disc_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_causal_discovery_assumptions
+
+    ms, cl = _causal_disc458_ms("We used a multilevel model on educational data.")
+    result = validate_causal_discovery_assumptions(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 459 – validate_domain_adaptation_description
+# ---------------------------------------------------------------------------
+
+def _da459_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-da459",
+            source_path="/tmp/da459.md",
+            source_format="markdown",
+            title="Domain Adaptation Description Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_da_without_description_fires() -> None:
+    from manuscript_audit.validators.core import validate_domain_adaptation_description
+
+    ms, cl = _da459_ms(
+        "We used domain adaptation to transfer from source domain to target domain."
+    )
+    result = validate_domain_adaptation_description(ms, cl)
+    assert any(
+        f.code == "missing-domain-adaptation-description" for f in result.findings
+    )
+
+
+def test_da_with_domain_gap_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_domain_adaptation_description
+
+    ms, cl = _da459_ms(
+        "We used domain adaptation to transfer from source domain to target domain. "
+        "Source domain statistics and target domain statistics were compared to quantify "
+        "the domain gap between datasets."
+    )
+    result = validate_domain_adaptation_description(ms, cl)
+    assert result.findings == []
+
+
+def test_da_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_domain_adaptation_description
+
+    ms, cl = _da459_ms(
+        "We applied domain adaptation from source domain to target domain."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_domain_adaptation_description(ms, cl)
+    assert result.findings == []
+
+
+def test_no_da_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_domain_adaptation_description
+
+    ms, cl = _da459_ms("We used a Bayesian network for probabilistic inference.")
+    result = validate_domain_adaptation_description(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 460 – validate_meta_learning_task_setup
+# ---------------------------------------------------------------------------
+
+def _meta460_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-meta460",
+            source_path="/tmp/meta460.md",
+            source_format="markdown",
+            title="Meta-learning Task Setup Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_meta_learning_without_setup_fires() -> None:
+    from manuscript_audit.validators.core import validate_meta_learning_task_setup
+
+    ms, cl = _meta460_ms(
+        "We used MAML for meta-learning on few-shot classification tasks."
+    )
+    result = validate_meta_learning_task_setup(ms, cl)
+    assert any(
+        f.code == "missing-meta-learning-task-setup" for f in result.findings
+    )
+
+
+def test_meta_learning_with_nway_kshot_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_meta_learning_task_setup
+
+    ms, cl = _meta460_ms(
+        "We used MAML for meta-learning. "
+        "Episodes used a 5-way 1-shot task construction from the meta-training task split."
+    )
+    result = validate_meta_learning_task_setup(ms, cl)
+    assert result.findings == []
+
+
+def test_meta_learning_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_meta_learning_task_setup
+
+    ms, cl = _meta460_ms("We used MAML for meta-learning on classification benchmarks.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_meta_learning_task_setup(ms, cl)
+    assert result.findings == []
+
+
+def test_no_meta_learning_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_meta_learning_task_setup
+
+    ms, cl = _meta460_ms("We applied a generalized estimating equations model.")
+    result = validate_meta_learning_task_setup(ms, cl)
+    assert result.findings == []

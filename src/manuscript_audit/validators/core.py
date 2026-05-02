@@ -6962,6 +6962,11 @@ def run_deterministic_validators(
         validate_augmentation_parameter_disclosure(parsed, classification),
         validate_pruning_sparsity_disclosure(parsed, classification),
         validate_nas_search_space_disclosure(parsed, classification),
+        validate_adversarial_attack_details(parsed, classification),
+        validate_uncertainty_decomposition(parsed, classification),
+        validate_causal_discovery_assumptions(parsed, classification),
+        validate_domain_adaptation_description(parsed, classification),
+        validate_meta_learning_task_setup(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -26854,6 +26859,241 @@ def validate_nas_search_space_disclosure(
                 ),
                 severity="moderate",
                 validator=_NAS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 456 – Adversarial robustness: attack/defense specification
+# ---------------------------------------------------------------------------
+_ADV_TRIGGER_RE = re.compile(
+    r"\b(?:adversarial\s+(?:attack|example|robustness|training|perturbation)|"
+    r"adversarial\s+defense|PGD\s+attack|FGSM\s+attack|AutoAttack)\b",
+    re.IGNORECASE,
+)
+_ADV_DETAIL_RE = re.compile(
+    r"\b(?:perturbation\s+budget|epsilon\s*=\s*[\d.]+|L_?inf\s+norm|L_?2\s+norm|"
+    r"attack\s+steps?|step\s+size\s+for\s+attack|PGD\s+steps?|"
+    r"adversarial\s+training\s+(?:method|procedure))\b",
+    re.IGNORECASE,
+)
+
+_ADV_VID = "missing-adversarial-attack-details"
+
+
+def validate_adversarial_attack_details(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when adversarial robustness papers lack attack specification."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ADV_VID, findings=[])
+    text = parsed.full_text
+    if not _ADV_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_ADV_VID, findings=[])
+    if _ADV_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_ADV_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ADV_VID,
+        findings=[
+            Finding(
+                code=_ADV_VID,
+                message=(
+                    "Adversarial robustness paper detected but perturbation budget "
+                    "or attack specification details were not reported."
+                ),
+                severity="moderate",
+                validator=_ADV_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 457 – Uncertainty quantification: epistemic/aleatoric decomposition
+# ---------------------------------------------------------------------------
+_UQ_TRIGGER_RE = re.compile(
+    r"\b(?:uncertainty\s+quantification|epistemic\s+uncertainty|"
+    r"aleatoric\s+uncertainty|predictive\s+uncertainty|"
+    r"Bayesian\s+deep\s+learning|MC\s+dropout|deep\s+ensemble)\b",
+    re.IGNORECASE,
+)
+_UQ_DETAIL_RE = re.compile(
+    r"\b(?:epistemic\s+(?:and|vs\.?)\s+aleatoric|aleatoric\s+(?:and|vs\.?)\s+epistemic|"
+    r"uncertainty\s+decomposition|total\s+uncertainty|"
+    r"variance\s+decomposition\s+into\s+(?:epistemic|aleatoric)|"
+    r"calibration\s+error\s+for\s+uncertainty)\b",
+    re.IGNORECASE,
+)
+
+_UQ_VID = "missing-uncertainty-decomposition"
+
+
+def validate_uncertainty_decomposition(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when uncertainty quantification papers lack epistemic/aleatoric decomposition."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_UQ_VID, findings=[])
+    text = parsed.full_text
+    if not _UQ_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_UQ_VID, findings=[])
+    if _UQ_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_UQ_VID, findings=[])
+    return ValidationResult(
+        validator_name=_UQ_VID,
+        findings=[
+            Finding(
+                code=_UQ_VID,
+                message=(
+                    "Uncertainty quantification paper detected but no "
+                    "epistemic/aleatoric uncertainty decomposition was reported."
+                ),
+                severity="minor",
+                validator=_UQ_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 458 – Causal discovery: algorithm and faithfulness assumption
+# ---------------------------------------------------------------------------
+_CAUSAL_DISC_TRIGGER_RE = re.compile(
+    r"\b(?:causal\s+discovery|causal\s+structure\s+learning|"
+    r"PC\s+algorithm|FCI\s+algorithm|LiNGAM|NOTEARS|DAG\s+learning)\b",
+    re.IGNORECASE,
+)
+_CAUSAL_DISC_DETAIL_RE = re.compile(
+    r"\b(?:faithfulness\s+assumption|Markov\s+condition|causal\s+sufficiency|"
+    r"skeleton\s+discovery|v-structure|CI\s+test|conditional\s+independence\s+test|"
+    r"significance\s+threshold\s+for\s+(?:CI|independence))\b",
+    re.IGNORECASE,
+)
+
+_CAUSAL_DISC_VID = "missing-causal-discovery-assumptions"
+
+
+def validate_causal_discovery_assumptions(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when causal discovery papers lack algorithm assumption disclosure."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CAUSAL_DISC_VID, findings=[])
+    text = parsed.full_text
+    if not _CAUSAL_DISC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CAUSAL_DISC_VID, findings=[])
+    if _CAUSAL_DISC_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_CAUSAL_DISC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CAUSAL_DISC_VID,
+        findings=[
+            Finding(
+                code=_CAUSAL_DISC_VID,
+                message=(
+                    "Causal discovery paper detected but no faithfulness assumption "
+                    "or conditional independence test details were reported."
+                ),
+                severity="moderate",
+                validator=_CAUSAL_DISC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 459 – Domain adaptation: source/target domain description
+# ---------------------------------------------------------------------------
+_DOM_ADAPT_TRIGGER_RE = re.compile(
+    r"\b(?:domain\s+adaptation|domain\s+shift|covariate\s+shift|"
+    r"source\s+domain\s+to\s+target\s+domain|unsupervised\s+domain\s+adaptation|"
+    r"transfer\s+from\s+(?:source|one)\s+domain)\b",
+    re.IGNORECASE,
+)
+_DOM_ADAPT_DETAIL_RE = re.compile(
+    r"\b(?:source\s+domain\s+(?:description|statistics|distribution)|"
+    r"target\s+domain\s+(?:description|statistics|distribution)|"
+    r"domain\s+gap|distribution\s+shift\s+(?:between|across)|"
+    r"H-divergence|domain\s+discrepancy)\b",
+    re.IGNORECASE,
+)
+
+_DOM_ADAPT_VID = "missing-domain-adaptation-description"
+
+
+def validate_domain_adaptation_description(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when domain adaptation papers lack source/target domain description."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DOM_ADAPT_VID, findings=[])
+    text = parsed.full_text
+    if not _DOM_ADAPT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_DOM_ADAPT_VID, findings=[])
+    if _DOM_ADAPT_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_DOM_ADAPT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DOM_ADAPT_VID,
+        findings=[
+            Finding(
+                code=_DOM_ADAPT_VID,
+                message=(
+                    "Domain adaptation paper detected but source/target domain "
+                    "description or domain gap measurement was not reported."
+                ),
+                severity="minor",
+                validator=_DOM_ADAPT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 460 – Meta-learning: n-way k-shot task construction
+# ---------------------------------------------------------------------------
+_META_LEARN_TRIGGER_RE = re.compile(
+    r"\b(?:meta-learning|meta\s+learning|MAML\b|Prototypical\s+Network|"
+    r"Matching\s+Network|learning\s+to\s+learn|few-shot\s+meta-learning)\b",
+    re.IGNORECASE,
+)
+_META_LEARN_DETAIL_RE = re.compile(
+    r"\b(?:\d+-way\s+\d+-shot|\d+-shot\s+\d+-way|"
+    r"episode\s+construction|support\s+set\s+and\s+query\s+set|"
+    r"meta-train(?:ing)?\s+task|meta-test(?:ing)?\s+task|"
+    r"inner\s+loop\s+learning\s+rate|outer\s+loop\s+learning\s+rate)\b",
+    re.IGNORECASE,
+)
+
+_META_LEARN_VID = "missing-meta-learning-task-setup"
+
+
+def validate_meta_learning_task_setup(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when meta-learning papers lack n-way k-shot task construction details."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_META_LEARN_VID, findings=[])
+    text = parsed.full_text
+    if not _META_LEARN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_META_LEARN_VID, findings=[])
+    if _META_LEARN_DETAIL_RE.search(text):
+        return ValidationResult(validator_name=_META_LEARN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_META_LEARN_VID,
+        findings=[
+            Finding(
+                code=_META_LEARN_VID,
+                message=(
+                    "Meta-learning paper detected but n-way k-shot task construction "
+                    "or episode setup details were not reported."
+                ),
+                severity="moderate",
+                validator=_META_LEARN_VID,
             )
         ],
     )
