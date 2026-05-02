@@ -31659,3 +31659,242 @@ def test_crossmod520_non_empirical_no_fire() -> None:
     )
     r = validate_cross_modal_retrieval_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 521 – validate_emotion_recognition_metrics
+# ---------------------------------------------------------------------------
+def _emorec521_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t521", source_path="t521.md", source_format="markdown",
+            title="Emotion recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_emorec521_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_emotion_recognition_metrics
+    ms, cl = _emorec521_ms("We propose a model for facial expression recognition.")
+    r = validate_emotion_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-emotion-recognition-metrics" for f in r.findings)
+
+
+def test_emorec521_no_fire_when_uar_reported() -> None:
+    from manuscript_audit.validators.core import validate_emotion_recognition_metrics
+    ms, cl = _emorec521_ms("Emotion recognition: UAR = 67.3% on IEMOCAP.")
+    r = validate_emotion_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_emorec521_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_emotion_recognition_metrics
+    ms, cl = _emorec521_ms("We train a graph neural network for link prediction.")
+    r = validate_emotion_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_emorec521_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_emotion_recognition_metrics
+    ms, _ = _emorec521_ms("Affective computing theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_emotion_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 522 – validate_document_layout_metrics
+# ---------------------------------------------------------------------------
+def _doclayout522_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t522", source_path="t522.md", source_format="markdown",
+            title="Doc layout", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_doclayout522_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_document_layout_metrics
+    ms, cl = _doclayout522_ms("We address document layout analysis on PubLayNet.")
+    r = validate_document_layout_metrics(ms, cl)
+    assert any(f.code == "missing-document-layout-metrics" for f in r.findings)
+
+
+def test_doclayout522_no_fire_when_map_reported() -> None:
+    from manuscript_audit.validators.core import validate_document_layout_metrics
+    ms, cl = _doclayout522_ms("Document layout analysis: mAP = 91.4% on PubLayNet.")
+    r = validate_document_layout_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_doclayout522_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_document_layout_metrics
+    ms, cl = _doclayout522_ms("We study federated learning with differential privacy.")
+    r = validate_document_layout_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_doclayout522_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_document_layout_metrics
+    ms, _ = _doclayout522_ms("Page segmentation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_document_layout_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 523 – validate_table_structure_recognition_metrics
+# ---------------------------------------------------------------------------
+def _tabstruct523_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t523", source_path="t523.md", source_format="markdown",
+            title="Table struct", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_tabstruct523_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_table_structure_recognition_metrics
+    ms, cl = _tabstruct523_ms("We tackle table structure recognition on PubTables-1M.")
+    r = validate_table_structure_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-table-structure-recognition-metrics" for f in r.findings)
+
+
+def test_tabstruct523_no_fire_when_teds_reported() -> None:
+    from manuscript_audit.validators.core import validate_table_structure_recognition_metrics
+    ms, cl = _tabstruct523_ms("Table structure recognition: TEDS = 96.2% on PubTables.")
+    r = validate_table_structure_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_tabstruct523_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_table_structure_recognition_metrics
+    ms, cl = _tabstruct523_ms("We present a topic model for scientific texts.")
+    r = validate_table_structure_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_tabstruct523_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_table_structure_recognition_metrics
+    ms, _ = _tabstruct523_ms("Cell detection theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_table_structure_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 524 – validate_handwriting_recognition_metrics
+# ---------------------------------------------------------------------------
+def _hwrec524_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t524", source_path="t524.md", source_format="markdown",
+            title="HWR", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_hwrec524_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_handwriting_recognition_metrics
+    ms, cl = _hwrec524_ms("We present an offline handwriting recognition system.")
+    r = validate_handwriting_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-handwriting-recognition-metrics" for f in r.findings)
+
+
+def test_hwrec524_no_fire_when_cer_reported() -> None:
+    from manuscript_audit.validators.core import validate_handwriting_recognition_metrics
+    ms, cl = _hwrec524_ms("Handwritten text recognition: CER = 4.1% on IAM.")
+    r = validate_handwriting_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_hwrec524_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_handwriting_recognition_metrics
+    ms, cl = _hwrec524_ms("We propose a model for image classification.")
+    r = validate_handwriting_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_hwrec524_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_handwriting_recognition_metrics
+    ms, _ = _hwrec524_ms("Online handwriting theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_handwriting_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 525 – validate_entity_normalization_metrics
+# ---------------------------------------------------------------------------
+def _nenorm525_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t525", source_path="t525.md", source_format="markdown",
+            title="Entity normalization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nenorm525_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_entity_normalization_metrics
+    ms, cl = _nenorm525_ms("We address named entity normalization on NCBI Disease.")
+    r = validate_entity_normalization_metrics(ms, cl)
+    assert any(f.code == "missing-entity-normalization-metrics" for f in r.findings)
+
+
+def test_nenorm525_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_entity_normalization_metrics
+    ms, cl = _nenorm525_ms("Entity linking: accuracy = 88.3% on NCBI Disease.")
+    r = validate_entity_normalization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_nenorm525_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_entity_normalization_metrics
+    ms, cl = _nenorm525_ms("We study Bayesian optimization methods.")
+    r = validate_entity_normalization_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_nenorm525_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_entity_normalization_metrics
+    ms, _ = _nenorm525_ms("Entity disambiguation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_entity_normalization_metrics(ms, cl)
+    assert r.findings == []

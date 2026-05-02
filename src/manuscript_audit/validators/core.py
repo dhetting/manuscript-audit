@@ -7027,6 +7027,11 @@ def run_deterministic_validators(
         validate_video_object_segmentation_metrics(parsed, classification),
         validate_referring_expression_comprehension_metrics(parsed, classification),
         validate_cross_modal_retrieval_metrics(parsed, classification),
+        validate_emotion_recognition_metrics(parsed, classification),
+        validate_document_layout_metrics(parsed, classification),
+        validate_table_structure_recognition_metrics(parsed, classification),
+        validate_handwriting_recognition_metrics(parsed, classification),
+        validate_entity_normalization_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -29934,6 +29939,229 @@ def validate_cross_modal_retrieval_metrics(
                 ),
                 severity="moderate",
                 validator=_CROSSMOD_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 521 – Facial emotion recognition metrics
+# ---------------------------------------------------------------------------
+_EMOREC_VID = "missing-emotion-recognition-metrics"
+_EMOREC_TRIGGER_RE = re.compile(
+    r"\b(?:emotion\s+recognition|facial\s+expression\s+recognition|"
+    r"affective\s+computing|sentiment\s+recognition\s+from\s+video)\b",
+    re.IGNORECASE,
+)
+_EMOREC_METRIC_RE = re.compile(
+    r"\b(?:accuracy|weighted\s+average\s+F1|unweighted\s+average\s+recall|UAR|WAR)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_emotion_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when emotion recognition papers omit accuracy/UAR/WAR metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_EMOREC_VID, findings=[])
+    text = parsed.full_text
+    if not _EMOREC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_EMOREC_VID, findings=[])
+    if _EMOREC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_EMOREC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_EMOREC_VID,
+        findings=[
+            Finding(
+                code=_EMOREC_VID,
+                message=(
+                    "Emotion recognition paper detected but standard metrics "
+                    "(accuracy, UAR, WAR) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_EMOREC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 522 – Document layout analysis metrics
+# ---------------------------------------------------------------------------
+_DOCLAYOUT_VID = "missing-document-layout-metrics"
+_DOCLAYOUT_TRIGGER_RE = re.compile(
+    r"\b(?:document\s+layout\s+analysis|page\s+segmentation|"
+    r"document\s+understanding|layout\s+detection)\b",
+    re.IGNORECASE,
+)
+_DOCLAYOUT_METRIC_RE = re.compile(
+    r"\b(?:mAP|IoU|F1|pixel\s+accuracy|region\s+detection\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_document_layout_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when document layout analysis papers omit mAP/IoU/F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DOCLAYOUT_VID, findings=[])
+    text = parsed.full_text
+    if not _DOCLAYOUT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_DOCLAYOUT_VID, findings=[])
+    if _DOCLAYOUT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_DOCLAYOUT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DOCLAYOUT_VID,
+        findings=[
+            Finding(
+                code=_DOCLAYOUT_VID,
+                message=(
+                    "Document layout analysis paper detected but standard "
+                    "metrics (mAP, IoU, F1) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_DOCLAYOUT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 523 – Table structure recognition metrics
+# ---------------------------------------------------------------------------
+_TABSTRUCT_VID = "missing-table-structure-recognition-metrics"
+_TABSTRUCT_TRIGGER_RE = re.compile(
+    r"\b(?:table\s+structure\s+recognition|table\s+detection\s+and\s+recognition|"
+    r"table\s+parsing|cell\s+detection)\b",
+    re.IGNORECASE,
+)
+_TABSTRUCT_METRIC_RE = re.compile(
+    r"\b(?:TEDS|tree-?edit\s+distance\s+similarity|F1|precision|recall)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_table_structure_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when table structure recognition papers omit TEDS/F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_TABSTRUCT_VID, findings=[])
+    text = parsed.full_text
+    if not _TABSTRUCT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_TABSTRUCT_VID, findings=[])
+    if _TABSTRUCT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_TABSTRUCT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_TABSTRUCT_VID,
+        findings=[
+            Finding(
+                code=_TABSTRUCT_VID,
+                message=(
+                    "Table structure recognition paper detected but standard "
+                    "metrics (TEDS, F1) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_TABSTRUCT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 524 – Handwriting recognition metrics
+# ---------------------------------------------------------------------------
+_HWREC_VID = "missing-handwriting-recognition-metrics"
+_HWREC_TRIGGER_RE = re.compile(
+    r"\b(?:handwriting\s+recognition|handwritten\s+text\s+recognition|"
+    r"offline\s+handwriting|online\s+handwriting)\b",
+    re.IGNORECASE,
+)
+_HWREC_METRIC_RE = re.compile(
+    r"\b(?:CER|character\s+error\s+rate|WER|word\s+error\s+rate|"
+    r"recognition\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_handwriting_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when handwriting recognition papers omit CER/WER metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_HWREC_VID, findings=[])
+    text = parsed.full_text
+    if not _HWREC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_HWREC_VID, findings=[])
+    if _HWREC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_HWREC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_HWREC_VID,
+        findings=[
+            Finding(
+                code=_HWREC_VID,
+                message=(
+                    "Handwriting recognition paper detected but standard "
+                    "metrics (CER, WER) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_HWREC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 525 – Named entity normalization metrics
+# ---------------------------------------------------------------------------
+_NENORM_VID = "missing-entity-normalization-metrics"
+_NENORM_TRIGGER_RE = re.compile(
+    r"\b(?:named\s+entity\s+normalization|entity\s+linking|"
+    r"entity\s+disambiguation|entity\s+resolution)\b",
+    re.IGNORECASE,
+)
+_NENORM_METRIC_RE = re.compile(
+    r"\b(?:accuracy|precision|recall|F1|micro\s+F1|macro\s+F1|"
+    r"linking\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_entity_normalization_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when entity normalization/linking papers omit accuracy/F1 metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_NENORM_VID, findings=[])
+    text = parsed.full_text
+    if not _NENORM_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_NENORM_VID, findings=[])
+    if _NENORM_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_NENORM_VID, findings=[])
+    return ValidationResult(
+        validator_name=_NENORM_VID,
+        findings=[
+            Finding(
+                code=_NENORM_VID,
+                message=(
+                    "Entity normalization/linking paper detected but standard "
+                    "metrics (accuracy, F1, linking accuracy) with numeric "
+                    "values were not reported."
+                ),
+                severity="moderate",
+                validator=_NENORM_VID,
             )
         ],
     )
