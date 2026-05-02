@@ -26480,3 +26480,348 @@ def test_no_nlp_eval_trigger_no_fire() -> None:
     )
     result = validate_nlp_heldout_evaluation(ms, cl)
     assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 436 – validate_bleu_rouge_evaluation
+# ---------------------------------------------------------------------------
+
+def _bleu436_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-bleu436",
+            source_path="/tmp/bleu436.md",
+            source_format="markdown",
+            title="BLEU ROUGE Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_summarization_without_bleu_fires() -> None:
+    from manuscript_audit.validators.core import validate_bleu_rouge_evaluation
+
+    ms, cl = _bleu436_ms(
+        "An abstractive summarization model was trained and evaluated on news articles."
+    )
+    result = validate_bleu_rouge_evaluation(ms, cl)
+    assert any(f.code == "missing-bleu-rouge-evaluation" for f in result.findings)
+
+
+def test_summarization_with_rouge_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bleu_rouge_evaluation
+
+    ms, cl = _bleu436_ms(
+        "An abstractive summarization model was evaluated. "
+        "ROUGE-1, ROUGE-2, and ROUGE-L scores were reported on the test set."
+    )
+    result = validate_bleu_rouge_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_bleu_rouge_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bleu_rouge_evaluation
+
+    ms, cl = _bleu436_ms(
+        "An abstractive summarization model was trained on news articles."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_bleu_rouge_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_text_gen_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bleu_rouge_evaluation
+
+    ms, cl = _bleu436_ms(
+        "We used a logistic regression model for binary classification."
+    )
+    result = validate_bleu_rouge_evaluation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 437 – validate_human_evaluation_for_text_generation
+# ---------------------------------------------------------------------------
+
+def _heval437_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-heval437",
+            source_path="/tmp/heval437.md",
+            source_format="markdown",
+            title="Human Eval Text Generation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_nlg_without_human_eval_fires() -> None:
+    from manuscript_audit.validators.core import (
+        validate_human_evaluation_for_text_generation,
+    )
+
+    ms, cl = _heval437_ms(
+        "A dialogue generation system was trained and evaluated on conversation data."
+    )
+    result = validate_human_evaluation_for_text_generation(ms, cl)
+    assert any(
+        f.code == "missing-human-eval-text-generation" for f in result.findings
+    )
+
+
+def test_nlg_with_human_eval_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_human_evaluation_for_text_generation,
+    )
+
+    ms, cl = _heval437_ms(
+        "A dialogue generation system was trained. Human raters evaluated "
+        "the fluency and coherence rating of generated responses."
+    )
+    result = validate_human_evaluation_for_text_generation(ms, cl)
+    assert result.findings == []
+
+
+def test_human_eval_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_human_evaluation_for_text_generation,
+    )
+
+    ms, cl = _heval437_ms("A dialogue generation system was trained and evaluated.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_human_evaluation_for_text_generation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_text_gen_human_eval_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import (
+        validate_human_evaluation_for_text_generation,
+    )
+
+    ms, cl = _heval437_ms(
+        "We used a regression model to predict student performance outcomes."
+    )
+    result = validate_human_evaluation_for_text_generation(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 438 – validate_asr_wer_reporting
+# ---------------------------------------------------------------------------
+
+def _asr438_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-asr438",
+            source_path="/tmp/asr438.md",
+            source_format="markdown",
+            title="ASR WER Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_asr_without_wer_fires() -> None:
+    from manuscript_audit.validators.core import validate_asr_wer_reporting
+
+    ms, cl = _asr438_ms(
+        "An automatic speech recognition system was trained on the LibriSpeech corpus."
+    )
+    result = validate_asr_wer_reporting(ms, cl)
+    assert any(f.code == "missing-asr-wer" for f in result.findings)
+
+
+def test_asr_with_wer_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_asr_wer_reporting
+
+    ms, cl = _asr438_ms(
+        "An automatic speech recognition system was trained. "
+        "The word error rate (WER) on the test-clean set was 3.2%."
+    )
+    result = validate_asr_wer_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_asr_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_asr_wer_reporting
+
+    ms, cl = _asr438_ms(
+        "An automatic speech recognition system was trained on the corpus."
+    )
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_asr_wer_reporting(ms, cl)
+    assert result.findings == []
+
+
+def test_no_asr_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_asr_wer_reporting
+
+    ms, cl = _asr438_ms(
+        "We used a convolutional neural network for image classification."
+    )
+    result = validate_asr_wer_reporting(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 439 – validate_language_model_perplexity
+# ---------------------------------------------------------------------------
+
+def _lm439_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-lm439",
+            source_path="/tmp/lm439.md",
+            source_format="markdown",
+            title="Language Model Perplexity Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lm_without_perplexity_fires() -> None:
+    from manuscript_audit.validators.core import validate_language_model_perplexity
+
+    ms, cl = _lm439_ms(
+        "A neural language model was trained on the Penn Treebank dataset."
+    )
+    result = validate_language_model_perplexity(ms, cl)
+    assert any(f.code == "missing-perplexity-reporting" for f in result.findings)
+
+
+def test_lm_with_perplexity_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_language_model_perplexity
+
+    ms, cl = _lm439_ms(
+        "A neural language model was trained. Perplexity was 58.3 on the test set."
+    )
+    result = validate_language_model_perplexity(ms, cl)
+    assert result.findings == []
+
+
+def test_lm_ppl_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_language_model_perplexity
+
+    ms, cl = _lm439_ms("A neural language model was trained on the corpus.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_language_model_perplexity(ms, cl)
+    assert result.findings == []
+
+
+def test_no_lm_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_language_model_perplexity
+
+    ms, cl = _lm439_ms(
+        "We used a random forest classifier for tabular data prediction."
+    )
+    result = validate_language_model_perplexity(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 440 – validate_reading_comprehension_evaluation
+# ---------------------------------------------------------------------------
+
+def _rc440_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-rc440",
+            source_path="/tmp/rc440.md",
+            source_format="markdown",
+            title="Reading Comprehension Evaluation Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_qa_without_exact_match_fires() -> None:
+    from manuscript_audit.validators.core import validate_reading_comprehension_evaluation
+
+    ms, cl = _rc440_ms(
+        "A reading comprehension model was evaluated on the SQuAD benchmark."
+    )
+    result = validate_reading_comprehension_evaluation(ms, cl)
+    assert any(
+        f.code == "missing-reading-comprehension-eval" for f in result.findings
+    )
+
+
+def test_qa_with_exact_match_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reading_comprehension_evaluation
+
+    ms, cl = _rc440_ms(
+        "A reading comprehension model was evaluated on the SQuAD benchmark. "
+        "Exact match (EM=78.3) and F1 score for SQuAD (F1=87.1) were reported."
+    )
+    result = validate_reading_comprehension_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_rc_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reading_comprehension_evaluation
+
+    ms, cl = _rc440_ms("A reading comprehension model was evaluated on SQuAD.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_reading_comprehension_evaluation(ms, cl)
+    assert result.findings == []
+
+
+def test_no_rc_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_reading_comprehension_evaluation
+
+    ms, cl = _rc440_ms(
+        "We used a mixed-effects model to analyze the experimental data."
+    )
+    result = validate_reading_comprehension_evaluation(ms, cl)
+    assert result.findings == []

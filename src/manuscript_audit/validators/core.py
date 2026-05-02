@@ -6942,6 +6942,11 @@ def run_deterministic_validators(
         validate_active_learning_strategy(parsed, classification),
         validate_sequence_labeling_evaluation(parsed, classification),
         validate_nlp_heldout_evaluation(parsed, classification),
+        validate_bleu_rouge_evaluation(parsed, classification),
+        validate_human_evaluation_for_text_generation(parsed, classification),
+        validate_asr_wer_reporting(parsed, classification),
+        validate_language_model_perplexity(parsed, classification),
+        validate_reading_comprehension_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -25906,6 +25911,245 @@ def validate_nlp_heldout_evaluation(
                 message=(
                     "An NLP model was evaluated but results on a held-out test "
                     "set were not reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 436 – BLEU/ROUGE evaluation for text generation
+# ---------------------------------------------------------------------------
+
+_TEXT_GEN_TRIGGER_RE = re.compile(
+    r"\b(?:machine\s+translation|text\s+(?:generation|summarization)|"
+    r"abstractive\s+summarization|extractive\s+summarization|"
+    r"neural\s+machine\s+translation|NMT|seq2seq|"
+    r"dialogue\s+(?:generation|system)|caption\s+generation)\b",
+    re.IGNORECASE,
+)
+_BLEU_ROUGE_RE = re.compile(
+    r"\b(?:BLEU|ROUGE[- ][0-9LW]*|METEOR|CIDEr|BERTScore|"
+    r"automatic\s+(?:evaluation\s+metric|metric)|"
+    r"reference[- ]based\s+(?:evaluation|metric)|"
+    r"n[- ]gram\s+overlap|sacreBLEU)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_bleu_rouge_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_bleu_rouge_evaluation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _TEXT_GEN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _BLEU_ROUGE_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-bleu-rouge-evaluation",
+                message=(
+                    "Text generation or summarization was evaluated but no "
+                    "automatic evaluation metric (BLEU, ROUGE, METEOR) was reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 437 – Human evaluation for text generation
+# ---------------------------------------------------------------------------
+
+_HUMAN_EVAL_TEXT_TRIGGER_RE = re.compile(
+    r"\b(?:machine\s+translation|text\s+(?:generation|summarization)|"
+    r"dialogue\s+(?:generation|system)|caption\s+generation|"
+    r"language\s+generation|natural\s+language\s+generation|NLG)\b",
+    re.IGNORECASE,
+)
+_HUMAN_EVAL_REPORTED_RE = re.compile(
+    r"\b(?:human\s+evaluation|human\s+(?:judges?|annotators?|raters?)\s+"
+    r"(?:evaluated|rated|assessed|scored)|"
+    r"human\s+preference\s+(?:study|evaluation)|"
+    r"side[- ]by[- ]side\s+evaluation|pairwise\s+preference|"
+    r"fluency\s+(?:rating|evaluation|score)|"
+    r"adequacy\s+(?:rating|evaluation|score)|"
+    r"coherence\s+(?:rating|evaluation|score))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_human_evaluation_for_text_generation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_human_evaluation_for_text_generation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _HUMAN_EVAL_TEXT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _HUMAN_EVAL_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-human-eval-text-generation",
+                message=(
+                    "Text generation or NLG system was evaluated but no human "
+                    "evaluation of output quality was reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 438 – ASR word error rate reporting
+# ---------------------------------------------------------------------------
+
+_ASR_TRIGGER_RE = re.compile(
+    r"\b(?:automatic\s+speech\s+recognition|ASR|speech[- ]to[- ]text|"
+    r"speech\s+transcription|acoustic\s+model|language\s+model\s+(?:for\s+)?speech|"
+    r"end[- ]to[- ]end\s+speech)\b",
+    re.IGNORECASE,
+)
+_ASR_WER_RE = re.compile(
+    r"\b(?:word\s+error\s+rate|WER|character\s+error\s+rate|CER|"
+    r"token\s+error\s+rate|TER|phone\s+error\s+rate|PER|"
+    r"recognition\s+(?:accuracy|error)\s+(?:was|of\s+\d))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_asr_wer_reporting(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_asr_wer_reporting"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _ASR_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _ASR_WER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-asr-wer",
+                message=(
+                    "Automatic speech recognition was evaluated but Word Error "
+                    "Rate (WER) or Character Error Rate (CER) was not reported."
+                ),
+                severity="moderate",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 439 – Language model perplexity reporting
+# ---------------------------------------------------------------------------
+
+_LM_PPL_TRIGGER_RE = re.compile(
+    r"\b(?:language\s+model(?:ing)?|neural\s+language\s+model|"
+    r"n[- ]gram\s+language\s+model|statistical\s+language\s+model|"
+    r"GPT|LSTM\s+language\s+model|Transformer\s+language\s+model)\b",
+    re.IGNORECASE,
+)
+_LM_PPL_REPORTED_RE = re.compile(
+    r"\b(?:perplexity\s*(?:=|was|of\s+\d|\(\s*PPL)|"
+    r"PPL\s*(?:=|was|\d|:)|"
+    r"bits[- ]per[- ](?:word|character|byte)|BPW|BPC|"
+    r"cross[- ]entropy\s+(?:loss|per\s+(?:word|token))|"
+    r"log[- ]perplexity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_language_model_perplexity(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_language_model_perplexity"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _LM_PPL_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _LM_PPL_REPORTED_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-perplexity-reporting",
+                message=(
+                    "A language model was evaluated but perplexity or bits-per-word "
+                    "was not reported."
+                ),
+                severity="minor",
+                validator=_vid,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 440 – Reading comprehension exact match / F1 reporting
+# ---------------------------------------------------------------------------
+
+_RC_TRIGGER_RE = re.compile(
+    r"\b(?:reading\s+comprehension|question\s+answering\s+(?:dataset|task|model)|"
+    r"extractive\s+(?:QA|question\s+answering)|"
+    r"SQuAD|TriviaQA|Natural\s+Questions|CoQA|QuALITY)\b",
+    re.IGNORECASE,
+)
+_RC_EVAL_RE = re.compile(
+    r"\b(?:exact\s+match|EM\s*(?:=|score|\d)|F1\s+score\s+(?:on|for)\s+(?:SQuAD|QA|the)|"
+    r"answer\s+(?:F1|exact\s+match)|"
+    r"token[- ]level\s+F1|span\s+(?:accuracy|F1)|"
+    r"answer\s+accuracy)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_reading_comprehension_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    _vid = "validate_reading_comprehension_evaluation"
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_vid, findings=[])
+    text = parsed.full_text
+    if not _RC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    if _RC_EVAL_RE.search(text):
+        return ValidationResult(validator_name=_vid, findings=[])
+    return ValidationResult(
+        validator_name=_vid,
+        findings=[
+            Finding(
+                code="missing-reading-comprehension-eval",
+                message=(
+                    "A reading comprehension or QA task was evaluated but "
+                    "exact match or F1 score was not reported."
                 ),
                 severity="moderate",
                 validator=_vid,
