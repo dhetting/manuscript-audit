@@ -7143,6 +7143,11 @@ def run_deterministic_validators(
         validate_acoustic_scene_classification_metrics(parsed, classification),
         validate_environmental_sound_classification_metrics(parsed, classification),
         validate_urban_sound_tagging_metrics(parsed, classification),
+        validate_bioacoustic_event_detection_metrics(parsed, classification),
+        validate_ecg_arrhythmia_classification_metrics(parsed, classification),
+        validate_eeg_motor_imagery_metrics(parsed, classification),
+        validate_emg_gesture_recognition_metrics(parsed, classification),
+        validate_fmri_brain_decoding_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -35388,6 +35393,244 @@ def validate_urban_sound_tagging_metrics(
                 ),
                 location="full_text",
                 validator=_URBANSOUND635_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 636 – bioacoustic event detection evaluation
+# ---------------------------------------------------------------------------
+_BIOACO636_VID = "missing-bioacoustic-event-detection-metrics"
+
+_BIOACO636_TRIGGERS = re.compile(
+    r"\b(?:bioacoustic\s+(?:event\s+)?detection|few[- ]shot\s+bioacoustic|"
+    r"DCASE\s+(?:task\s*5|bioacoustic)|BirdCLEF|FISHES\s+dataset|"
+    r"animal\s+vocalization\s+detection)\b",
+    re.IGNORECASE,
+)
+_BIOACO636_METRICS = re.compile(
+    r"\b(?:F1|AUPRC|mAP|precision|recall)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*(?:AUPRC|F1|mAP)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_bioacoustic_event_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_BIOACO636_VID, findings=[])
+    text = parsed.full_text
+    if not _BIOACO636_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_BIOACO636_VID, findings=[])
+    if _BIOACO636_METRICS.search(text):
+        return ValidationResult(validator_name=_BIOACO636_VID, findings=[])
+    return ValidationResult(
+        validator_name=_BIOACO636_VID,
+        findings=[
+            Finding(
+                code=_BIOACO636_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses bioacoustic event detection but does not "
+                    "report F1 or AUPRC on BirdCLEF/DCASE."
+                ),
+                location="full_text",
+                validator=_BIOACO636_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 637 – ECG arrhythmia classification evaluation
+# ---------------------------------------------------------------------------
+_ECGARR637_VID = "missing-ecg-arrhythmia-classification-metrics"
+
+_ECGARR637_TRIGGERS = re.compile(
+    r"\b(?:ECG\s+(?:arrhythmia\s+)?classification|"
+    r"cardiac\s+arrhythmia\s+detection|"
+    r"MIT[- ]BIH\s+(?:arrhythmia\s+)?(?:database|dataset)|"
+    r"PhysioNet\s+(?:challenge|dataset)|"
+    r"atrial\s+fibrillation\s+detection)\b",
+    re.IGNORECASE,
+)
+_ECGARR637_METRICS = re.compile(
+    r"\b(?:F1|accuracy|sensitivity|specificity|AUC|AUROC|"
+    r"positive\s+predictive\s+value|PPV)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:accuracy|sensitivity|F1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_ecg_arrhythmia_classification_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ECGARR637_VID, findings=[])
+    text = parsed.full_text
+    if not _ECGARR637_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ECGARR637_VID, findings=[])
+    if _ECGARR637_METRICS.search(text):
+        return ValidationResult(validator_name=_ECGARR637_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ECGARR637_VID,
+        findings=[
+            Finding(
+                code=_ECGARR637_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses ECG arrhythmia classification but does not "
+                    "report F1, AUC, or accuracy on MIT-BIH/PhysioNet."
+                ),
+                location="full_text",
+                validator=_ECGARR637_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 638 – EEG motor imagery decoding evaluation
+# ---------------------------------------------------------------------------
+_EEGMI638_VID = "missing-eeg-motor-imagery-metrics"
+
+_EEGMI638_TRIGGERS = re.compile(
+    r"\b(?:motor\s+imagery\s+(?:decoding|classification)|EEG\s+BCI|"
+    r"brain[- ]computer\s+interface|BCI\s+Competition|"
+    r"BCICIV(?:\s+dataset)?|EEG\s+motor\s+imagery)\b",
+    re.IGNORECASE,
+)
+_EEGMI638_METRICS = re.compile(
+    r"\b(?:accuracy|kappa|Cohen['\u2019]?s\s+kappa|AUC|F1)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:accuracy|kappa)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_eeg_motor_imagery_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_EEGMI638_VID, findings=[])
+    text = parsed.full_text
+    if not _EEGMI638_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_EEGMI638_VID, findings=[])
+    if _EEGMI638_METRICS.search(text):
+        return ValidationResult(validator_name=_EEGMI638_VID, findings=[])
+    return ValidationResult(
+        validator_name=_EEGMI638_VID,
+        findings=[
+            Finding(
+                code=_EEGMI638_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses EEG motor imagery decoding but does not "
+                    "report accuracy or kappa on BCI Competition datasets."
+                ),
+                location="full_text",
+                validator=_EEGMI638_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 639 – EMG gesture recognition evaluation
+# ---------------------------------------------------------------------------
+_EMGGEST639_VID = "missing-emg-gesture-recognition-metrics"
+
+_EMGGEST639_TRIGGERS = re.compile(
+    r"\b(?:EMG\s+(?:gesture|hand\s+gesture)\s+recognition|"
+    r"surface\s+EMG\s+classification|sEMG\s+(?:gesture|classification)|"
+    r"NinaPro\s+(?:dataset|database)|CapgMyo)\b",
+    re.IGNORECASE,
+)
+_EMGGEST639_METRICS = re.compile(
+    r"\b(?:accuracy|F1|classification\s+rate)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:accuracy|F1)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_emg_gesture_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_EMGGEST639_VID, findings=[])
+    text = parsed.full_text
+    if not _EMGGEST639_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_EMGGEST639_VID, findings=[])
+    if _EMGGEST639_METRICS.search(text):
+        return ValidationResult(validator_name=_EMGGEST639_VID, findings=[])
+    return ValidationResult(
+        validator_name=_EMGGEST639_VID,
+        findings=[
+            Finding(
+                code=_EMGGEST639_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses EMG gesture recognition but does not report "
+                    "accuracy on NinaPro/CapgMyo."
+                ),
+                location="full_text",
+                validator=_EMGGEST639_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 640 – fMRI brain decoding evaluation
+# ---------------------------------------------------------------------------
+_FMRIDEC640_VID = "missing-fmri-brain-decoding-metrics"
+
+_FMRIDEC640_TRIGGERS = re.compile(
+    r"\b(?:fMRI\s+(?:brain\s+)?decoding|brain\s+decoding|"
+    r"neural\s+decoding|NSD\s+(?:dataset|benchmark)|"
+    r"Algonauts\s+(?:challenge|dataset)|BOLD5000)\b",
+    re.IGNORECASE,
+)
+_FMRIDEC640_METRICS = re.compile(
+    r"\b(?:top[- ]?1\s+accuracy|pairwise\s+accuracy|"
+    r"noise\s+ceiling|Pearson|brain\s+score|RSA)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:accuracy|noise\s+ceiling)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_fmri_brain_decoding_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FMRIDEC640_VID, findings=[])
+    text = parsed.full_text
+    if not _FMRIDEC640_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_FMRIDEC640_VID, findings=[])
+    if _FMRIDEC640_METRICS.search(text):
+        return ValidationResult(validator_name=_FMRIDEC640_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FMRIDEC640_VID,
+        findings=[
+            Finding(
+                code=_FMRIDEC640_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses fMRI brain decoding but does not report "
+                    "decoding accuracy or brain score on NSD/Algonauts."
+                ),
+                location="full_text",
+                validator=_FMRIDEC640_VID,
             )
         ],
     )

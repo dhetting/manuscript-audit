@@ -37344,3 +37344,264 @@ def test_urbansound635_non_empirical_no_fire() -> None:
     )
     r = validate_urban_sound_tagging_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 636 – validate_bioacoustic_event_detection_metrics
+# ---------------------------------------------------------------------------
+def _bioaco636_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t636", source_path="t636.md", source_format="markdown",
+            title="Bioacoustic event detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_bioaco636_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_bioacoustic_event_detection_metrics
+    ms, cl = _bioaco636_ms(
+        "We propose a few-shot bioacoustic detection model on DCASE task 5."
+    )
+    r = validate_bioacoustic_event_detection_metrics(ms, cl)
+    assert any(f.code == "missing-bioacoustic-event-detection-metrics" for f in r.findings)
+
+
+def test_bioaco636_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_bioacoustic_event_detection_metrics
+    ms, cl = _bioaco636_ms(
+        "Bioacoustic event detection: F1 = 64.3% on BirdCLEF 2023."
+    )
+    r = validate_bioacoustic_event_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_bioaco636_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_bioacoustic_event_detection_metrics
+    ms, cl = _bioaco636_ms("We study urban sound tagging methods.")
+    r = validate_bioacoustic_event_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_bioaco636_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_bioacoustic_event_detection_metrics
+    ms, _ = _bioaco636_ms("Animal vocalization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_bioacoustic_event_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 637 – validate_ecg_arrhythmia_classification_metrics
+# ---------------------------------------------------------------------------
+def _ecgarr637_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t637", source_path="t637.md", source_format="markdown",
+            title="ECG arrhythmia classification", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_ecgarr637_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_ecg_arrhythmia_classification_metrics
+    ms, cl = _ecgarr637_ms(
+        "We propose an ECG arrhythmia classification model on MIT-BIH database."
+    )
+    r = validate_ecg_arrhythmia_classification_metrics(ms, cl)
+    assert any(
+        f.code == "missing-ecg-arrhythmia-classification-metrics" for f in r.findings
+    )
+
+
+def test_ecgarr637_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_ecg_arrhythmia_classification_metrics
+    ms, cl = _ecgarr637_ms(
+        "Cardiac arrhythmia detection: F1 = 97.2%, AUC = 0.994 on MIT-BIH."
+    )
+    r = validate_ecg_arrhythmia_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_ecgarr637_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_ecg_arrhythmia_classification_metrics
+    ms, cl = _ecgarr637_ms("We study bioacoustic event detection methods.")
+    r = validate_ecg_arrhythmia_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_ecgarr637_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_ecg_arrhythmia_classification_metrics
+    ms, _ = _ecgarr637_ms("Cardiac signal processing theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_ecg_arrhythmia_classification_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 638 – validate_eeg_motor_imagery_metrics
+# ---------------------------------------------------------------------------
+def _eegmi638_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t638", source_path="t638.md", source_format="markdown",
+            title="EEG motor imagery decoding", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_eegmi638_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_eeg_motor_imagery_metrics
+    ms, cl = _eegmi638_ms(
+        "We propose an EEG BCI motor imagery decoding model on BCICIV dataset."
+    )
+    r = validate_eeg_motor_imagery_metrics(ms, cl)
+    assert any(f.code == "missing-eeg-motor-imagery-metrics" for f in r.findings)
+
+
+def test_eegmi638_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_eeg_motor_imagery_metrics
+    ms, cl = _eegmi638_ms(
+        "Motor imagery classification: accuracy = 83.6%, kappa = 0.78 on BCI Competition IV."
+    )
+    r = validate_eeg_motor_imagery_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_eegmi638_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_eeg_motor_imagery_metrics
+    ms, cl = _eegmi638_ms("We study ECG arrhythmia classification approaches.")
+    r = validate_eeg_motor_imagery_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_eegmi638_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_eeg_motor_imagery_metrics
+    ms, _ = _eegmi638_ms("Brain-computer interface theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_eeg_motor_imagery_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 639 – validate_emg_gesture_recognition_metrics
+# ---------------------------------------------------------------------------
+def _emggest639_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t639", source_path="t639.md", source_format="markdown",
+            title="EMG gesture recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_emggest639_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_emg_gesture_recognition_metrics
+    ms, cl = _emggest639_ms(
+        "We propose a sEMG gesture recognition model on the NinaPro dataset."
+    )
+    r = validate_emg_gesture_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-emg-gesture-recognition-metrics" for f in r.findings)
+
+
+def test_emggest639_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_emg_gesture_recognition_metrics
+    ms, cl = _emggest639_ms(
+        "EMG gesture recognition: accuracy = 91.4% on NinaPro DB2."
+    )
+    r = validate_emg_gesture_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_emggest639_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_emg_gesture_recognition_metrics
+    ms, cl = _emggest639_ms("We study EEG motor imagery methods.")
+    r = validate_emg_gesture_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_emggest639_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_emg_gesture_recognition_metrics
+    ms, _ = _emggest639_ms("Surface EMG signal processing theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_emg_gesture_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 640 – validate_fmri_brain_decoding_metrics
+# ---------------------------------------------------------------------------
+def _fmridec640_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t640", source_path="t640.md", source_format="markdown",
+            title="fMRI brain decoding", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_fmridec640_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_fmri_brain_decoding_metrics
+    ms, cl = _fmridec640_ms(
+        "We propose an fMRI brain decoding model on the NSD dataset."
+    )
+    r = validate_fmri_brain_decoding_metrics(ms, cl)
+    assert any(f.code == "missing-fmri-brain-decoding-metrics" for f in r.findings)
+
+
+def test_fmridec640_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_fmri_brain_decoding_metrics
+    ms, cl = _fmridec640_ms(
+        "Neural decoding: top-1 accuracy = 74.3% on Algonauts challenge dataset."
+    )
+    r = validate_fmri_brain_decoding_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_fmridec640_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_fmri_brain_decoding_metrics
+    ms, cl = _fmridec640_ms("We study EMG gesture recognition methods.")
+    r = validate_fmri_brain_decoding_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_fmridec640_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_fmri_brain_decoding_metrics
+    ms, _ = _fmridec640_ms("Cognitive neuroscience theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_fmri_brain_decoding_metrics(ms, cl)
+    assert r.findings == []
