@@ -31418,3 +31418,244 @@ def test_caphallu515_non_empirical_no_fire() -> None:
     )
     r = validate_captioning_hallucination_evaluation(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 516 – validate_semantic_image_synthesis_metrics
+# ---------------------------------------------------------------------------
+def _semsyn516_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t516", source_path="t516.md", source_format="markdown",
+            title="Semantic synthesis", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_semsyn516_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_semantic_image_synthesis_metrics
+    ms, cl = _semsyn516_ms("We propose a semantic image synthesis model.")
+    r = validate_semantic_image_synthesis_metrics(ms, cl)
+    assert any(f.code == "missing-semantic-image-synthesis-metrics" for f in r.findings)
+
+
+def test_semsyn516_no_fire_when_fid_reported() -> None:
+    from manuscript_audit.validators.core import validate_semantic_image_synthesis_metrics
+    ms, cl = _semsyn516_ms("Semantic image synthesis: FID = 22.6 on Cityscapes.")
+    r = validate_semantic_image_synthesis_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_semsyn516_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_semantic_image_synthesis_metrics
+    ms, cl = _semsyn516_ms("We study transformer architectures for NLP.")
+    r = validate_semantic_image_synthesis_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_semsyn516_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_semantic_image_synthesis_metrics
+    ms, _ = _semsyn516_ms("Layout-to-image theoretical analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_semantic_image_synthesis_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 517 – validate_mot_metrics
+# ---------------------------------------------------------------------------
+def _mot517_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t517", source_path="t517.md", source_format="markdown",
+            title="MOT", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_mot517_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_mot_metrics
+    ms, cl = _mot517_ms("We address multi-object tracking on MOT17.")
+    r = validate_mot_metrics(ms, cl)
+    assert any(f.code == "missing-mot-metrics" for f in r.findings)
+
+
+def test_mot517_no_fire_when_mota_reported() -> None:
+    from manuscript_audit.validators.core import validate_mot_metrics
+    ms, cl = _mot517_ms("Multi-object tracking: MOTA = 76.3% on MOT17.")
+    r = validate_mot_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_mot517_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_mot_metrics
+    ms, cl = _mot517_ms("We introduce a causal discovery method.")
+    r = validate_mot_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_mot517_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_mot_metrics
+    ms, _ = _mot517_ms("Pedestrian tracking theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_mot_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 518 – validate_video_object_segmentation_metrics
+# ---------------------------------------------------------------------------
+def _vos518_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t518", source_path="t518.md", source_format="markdown",
+            title="VOS", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_vos518_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_video_object_segmentation_metrics
+    ms, cl = _vos518_ms("We tackle video object segmentation on DAVIS.")
+    r = validate_video_object_segmentation_metrics(ms, cl)
+    assert any(f.code == "missing-video-object-segmentation-metrics" for f in r.findings)
+
+
+def test_vos518_no_fire_when_jf_reported() -> None:
+    from manuscript_audit.validators.core import validate_video_object_segmentation_metrics
+    ms, cl = _vos518_ms("Video object segmentation: mean J = 81.4 on DAVIS-2017.")
+    r = validate_video_object_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vos518_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_video_object_segmentation_metrics
+    ms, cl = _vos518_ms("We train a language model for summarization.")
+    r = validate_video_object_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_vos518_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_video_object_segmentation_metrics
+    ms, _ = _vos518_ms("Semi-supervised VOS theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_video_object_segmentation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 519 – validate_referring_expression_comprehension_metrics
+# ---------------------------------------------------------------------------
+def _rec519_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t519", source_path="t519.md", source_format="markdown",
+            title="REC", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_rec519_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_referring_expression_comprehension_metrics
+    ms, cl = _rec519_ms("We address referring expression comprehension on RefCOCO.")
+    r = validate_referring_expression_comprehension_metrics(ms, cl)
+    assert any(f.code == "missing-referring-expression-comprehension-metrics" for f in r.findings)
+
+
+def test_rec519_no_fire_when_acc_reported() -> None:
+    from manuscript_audit.validators.core import validate_referring_expression_comprehension_metrics
+    ms, cl = _rec519_ms(
+        "Visual grounding: Acc@0.5 = 82.1% on RefCOCO+ val."
+    )
+    r = validate_referring_expression_comprehension_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_rec519_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_referring_expression_comprehension_metrics
+    ms, cl = _rec519_ms("We present a new optimizer for training.")
+    r = validate_referring_expression_comprehension_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_rec519_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_referring_expression_comprehension_metrics
+    ms, _ = _rec519_ms("Phrase grounding theory analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_referring_expression_comprehension_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 520 – validate_cross_modal_retrieval_metrics
+# ---------------------------------------------------------------------------
+def _crossmod520_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t520", source_path="t520.md", source_format="markdown",
+            title="Cross-modal retrieval", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_crossmod520_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_cross_modal_retrieval_metrics
+    ms, cl = _crossmod520_ms("We study image-text matching on MS-COCO.")
+    r = validate_cross_modal_retrieval_metrics(ms, cl)
+    assert any(f.code == "missing-cross-modal-retrieval-metrics" for f in r.findings)
+
+
+def test_crossmod520_no_fire_when_recall_reported() -> None:
+    from manuscript_audit.validators.core import validate_cross_modal_retrieval_metrics
+    ms, cl = _crossmod520_ms("Cross-modal retrieval: R@1 = 76.4% on MS-COCO 5k.")
+    r = validate_cross_modal_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_crossmod520_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_cross_modal_retrieval_metrics
+    ms, cl = _crossmod520_ms("We train a model for tabular data.")
+    r = validate_cross_modal_retrieval_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_crossmod520_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_cross_modal_retrieval_metrics
+    ms, _ = _crossmod520_ms("Visual-semantic embedding theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_cross_modal_retrieval_metrics(ms, cl)
+    assert r.findings == []

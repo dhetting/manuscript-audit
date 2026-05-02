@@ -7022,6 +7022,11 @@ def run_deterministic_validators(
         validate_lidar_3d_detection_metrics(parsed, classification),
         validate_visual_question_generation_metrics(parsed, classification),
         validate_captioning_hallucination_evaluation(parsed, classification),
+        validate_semantic_image_synthesis_metrics(parsed, classification),
+        validate_mot_metrics(parsed, classification),
+        validate_video_object_segmentation_metrics(parsed, classification),
+        validate_referring_expression_comprehension_metrics(parsed, classification),
+        validate_cross_modal_retrieval_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -29701,6 +29706,234 @@ def validate_captioning_hallucination_evaluation(
                 ),
                 severity="moderate",
                 validator=_CAPHALLU_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 516 – Semantic image synthesis evaluation
+# ---------------------------------------------------------------------------
+_SEMSYN_VID = "missing-semantic-image-synthesis-metrics"
+_SEMSYN_TRIGGER_RE = re.compile(
+    r"\b(?:semantic\s+image\s+synthesis|semantic\s+image\s+generation|"
+    r"layout-to-image|segmentation-to-image)\b",
+    re.IGNORECASE,
+)
+_SEMSYN_METRIC_RE = re.compile(
+    r"\b(?:FID|Fréchet\s+inception\s+distance|mIoU|mean\s+IoU|"
+    r"LPIPS|segmentation\s+accuracy)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_semantic_image_synthesis_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when semantic image synthesis papers omit FID/mIoU metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SEMSYN_VID, findings=[])
+    text = parsed.full_text
+    if not _SEMSYN_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SEMSYN_VID, findings=[])
+    if _SEMSYN_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SEMSYN_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SEMSYN_VID,
+        findings=[
+            Finding(
+                code=_SEMSYN_VID,
+                message=(
+                    "Semantic image synthesis paper detected but standard "
+                    "metrics (FID, mIoU, LPIPS) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_SEMSYN_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 517 – Multi-object tracking metrics
+# ---------------------------------------------------------------------------
+_MOT_VID = "missing-mot-metrics"
+_MOT_TRIGGER_RE = re.compile(
+    r"\b(?:multi-?object\s+tracking|multiple\s+object\s+tracking|MOT\s+benchmark|"
+    r"pedestrian\s+tracking)\b",
+    re.IGNORECASE,
+)
+_MOT_METRIC_RE = re.compile(
+    r"\b(?:MOTA|multi-?object\s+tracking\s+accuracy|MOTP|IDF1|"
+    r"identity\s+F1|HOTA|higher\s+order\s+tracking)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_mot_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when multi-object tracking papers omit MOTA/MOTP/IDF1/HOTA."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MOT_VID, findings=[])
+    text = parsed.full_text
+    if not _MOT_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_MOT_VID, findings=[])
+    if _MOT_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_MOT_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MOT_VID,
+        findings=[
+            Finding(
+                code=_MOT_VID,
+                message=(
+                    "Multi-object tracking paper detected but standard metrics "
+                    "(MOTA, MOTP, IDF1, HOTA) with numeric values were not "
+                    "reported."
+                ),
+                severity="moderate",
+                validator=_MOT_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 518 – Video object segmentation metrics
+# ---------------------------------------------------------------------------
+_VOS_VID = "missing-video-object-segmentation-metrics"
+_VOS_TRIGGER_RE = re.compile(
+    r"\b(?:video\s+object\s+segmentation|semi-?supervised\s+VOS|"
+    r"unsupervised\s+VOS|video\s+segmentation\s+propagation)\b",
+    re.IGNORECASE,
+)
+_VOS_METRIC_RE = re.compile(
+    r"\b(?:J&F|J\s+score|F\s+score|region\s+similarity|contour\s+accuracy|"
+    r"mean\s+J|mean\s+F)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_video_object_segmentation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when video object segmentation papers omit J&F/J/F metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VOS_VID, findings=[])
+    text = parsed.full_text
+    if not _VOS_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_VOS_VID, findings=[])
+    if _VOS_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_VOS_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VOS_VID,
+        findings=[
+            Finding(
+                code=_VOS_VID,
+                message=(
+                    "Video object segmentation paper detected but standard "
+                    "metrics (J&F, J score, F score) with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_VOS_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 519 – Referring expression comprehension metrics
+# ---------------------------------------------------------------------------
+_REC_VID = "missing-referring-expression-comprehension-metrics"
+_REC_TRIGGER_RE = re.compile(
+    r"\b(?:referring\s+expression\s+comprehension|visual\s+grounding|"
+    r"phrase\s+grounding|referring\s+expression\s+segmentation)\b",
+    re.IGNORECASE,
+)
+_REC_METRIC_RE = re.compile(
+    r"\b(?:Acc@0\.\d|accuracy\s+@\s*0\.\d|IoU\s+threshold|"
+    r"grounding\s+accuracy|precision@0\.\d)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_referring_expression_comprehension_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when referring expression comprehension papers omit accuracy@IoU."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_REC_VID, findings=[])
+    text = parsed.full_text
+    if not _REC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_REC_VID, findings=[])
+    if _REC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_REC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_REC_VID,
+        findings=[
+            Finding(
+                code=_REC_VID,
+                message=(
+                    "Referring expression comprehension paper detected but "
+                    "standard accuracy@IoU metrics with numeric values were "
+                    "not reported."
+                ),
+                severity="moderate",
+                validator=_REC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 520 – Image-text matching / cross-modal retrieval metrics
+# ---------------------------------------------------------------------------
+_CROSSMOD_VID = "missing-cross-modal-retrieval-metrics"
+_CROSSMOD_TRIGGER_RE = re.compile(
+    r"\b(?:image.text\s+matching|cross.modal\s+retrieval|"
+    r"image.text\s+retrieval|visual.semantic\s+embedding)\b",
+    re.IGNORECASE,
+)
+_CROSSMOD_METRIC_RE = re.compile(
+    r"\b(?:R@[1-9]\d*|Recall@[1-9]\d*|image.to.text\s+retrieval|"
+    r"text.to.image\s+retrieval|median\s+rank|mean\s+rank)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_cross_modal_retrieval_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when cross-modal retrieval papers omit R@k metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_CROSSMOD_VID, findings=[])
+    text = parsed.full_text
+    if not _CROSSMOD_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_CROSSMOD_VID, findings=[])
+    if _CROSSMOD_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_CROSSMOD_VID, findings=[])
+    return ValidationResult(
+        validator_name=_CROSSMOD_VID,
+        findings=[
+            Finding(
+                code=_CROSSMOD_VID,
+                message=(
+                    "Cross-modal retrieval paper detected but standard Recall@k "
+                    "metrics with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_CROSSMOD_VID,
             )
         ],
     )
