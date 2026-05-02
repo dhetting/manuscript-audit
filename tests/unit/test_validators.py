@@ -36828,3 +36828,258 @@ def test_spkdiar625_non_empirical_no_fire() -> None:
     )
     r = validate_speaker_diarization_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 626 – validate_speech_enhancement_metrics
+# ---------------------------------------------------------------------------
+def _spenh626_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t626", source_path="t626.md", source_format="markdown",
+            title="Speech enhancement", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_spenh626_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_speech_enhancement_metrics
+    ms, cl = _spenh626_ms("We propose a speech enhancement model on the VCTK corpus.")
+    r = validate_speech_enhancement_metrics(ms, cl)
+    assert any(f.code == "missing-speech-enhancement-metrics" for f in r.findings)
+
+
+def test_spenh626_no_fire_when_pesq_reported() -> None:
+    from manuscript_audit.validators.core import validate_speech_enhancement_metrics
+    ms, cl = _spenh626_ms("Speech enhancement: PESQ = 3.12, STOI = 0.91 on VCTK.")
+    r = validate_speech_enhancement_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_spenh626_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_speech_enhancement_metrics
+    ms, cl = _spenh626_ms("We study speaker diarization methods.")
+    r = validate_speech_enhancement_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_spenh626_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_speech_enhancement_metrics
+    ms, _ = _spenh626_ms("Noise suppression theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_speech_enhancement_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 627 – validate_voice_conversion_metrics
+# ---------------------------------------------------------------------------
+def _voiceconv627_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t627", source_path="t627.md", source_format="markdown",
+            title="Voice conversion", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_voiceconv627_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_voice_conversion_metrics
+    ms, cl = _voiceconv627_ms(
+        "We propose a voice conversion model on VCTK voice conversion."
+    )
+    r = validate_voice_conversion_metrics(ms, cl)
+    assert any(f.code == "missing-voice-conversion-metrics" for f in r.findings)
+
+
+def test_voiceconv627_no_fire_when_mos_reported() -> None:
+    from manuscript_audit.validators.core import validate_voice_conversion_metrics
+    ms, cl = _voiceconv627_ms(
+        "Voice conversion: MOS = 3.97, MCD = 4.2 on VCTK."
+    )
+    r = validate_voice_conversion_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_voiceconv627_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_voice_conversion_metrics
+    ms, cl = _voiceconv627_ms("We study lip reading approaches.")
+    r = validate_voice_conversion_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_voiceconv627_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_voice_conversion_metrics
+    ms, _ = _voiceconv627_ms("Speaker conversion theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_voice_conversion_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 628 – validate_music_source_separation_metrics
+# ---------------------------------------------------------------------------
+def _musicsep628_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t628", source_path="t628.md", source_format="markdown",
+            title="Music source separation", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_musicsep628_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_music_source_separation_metrics
+    ms, cl = _musicsep628_ms(
+        "We propose a music source separation model on MUSDB18."
+    )
+    r = validate_music_source_separation_metrics(ms, cl)
+    assert any(f.code == "missing-music-source-separation-metrics" for f in r.findings)
+
+
+def test_musicsep628_no_fire_when_sdr_reported() -> None:
+    from manuscript_audit.validators.core import validate_music_source_separation_metrics
+    ms, cl = _musicsep628_ms(
+        "Music demixing: SDR = 9.2 dB on MUSDB18-HQ vocals."
+    )
+    r = validate_music_source_separation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_musicsep628_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_music_source_separation_metrics
+    ms, cl = _musicsep628_ms("We study speech enhancement methods.")
+    r = validate_music_source_separation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_musicsep628_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_music_source_separation_metrics
+    ms, _ = _musicsep628_ms("Audio source separation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_music_source_separation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 629 – validate_music_transcription_metrics
+# ---------------------------------------------------------------------------
+def _amt629_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t629", source_path="t629.md", source_format="markdown",
+            title="Automatic music transcription", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_amt629_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_music_transcription_metrics
+    ms, cl = _amt629_ms(
+        "We propose an AMT model on the MAESTRO dataset."
+    )
+    r = validate_music_transcription_metrics(ms, cl)
+    assert any(f.code == "missing-music-transcription-metrics" for f in r.findings)
+
+
+def test_amt629_no_fire_when_fmeasure_reported() -> None:
+    from manuscript_audit.validators.core import validate_music_transcription_metrics
+    ms, cl = _amt629_ms(
+        "Piano transcription: F-measure = 86.4% on MAESTRO corpus."
+    )
+    r = validate_music_transcription_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_amt629_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_music_transcription_metrics
+    ms, cl = _amt629_ms("We study voice conversion approaches.")
+    r = validate_music_transcription_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_amt629_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_music_transcription_metrics
+    ms, _ = _amt629_ms("Music note estimation theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_music_transcription_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 630 – validate_svs_benchmark_metrics
+# ---------------------------------------------------------------------------
+def _svs630_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t630", source_path="t630.md", source_format="markdown",
+            title="Singing voice synthesis", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_svs630_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_svs_benchmark_metrics
+    ms, cl = _svs630_ms(
+        "We propose a singing voice synthesis model on NUS-48E."
+    )
+    r = validate_svs_benchmark_metrics(ms, cl)
+    assert any(f.code == "missing-svs-benchmark-metrics" for f in r.findings)
+
+
+def test_svs630_no_fire_when_mos_reported() -> None:
+    from manuscript_audit.validators.core import validate_svs_benchmark_metrics
+    ms, cl = _svs630_ms(
+        "Singing TTS: MOS = 4.03, MCD = 3.6 on OpenSinger benchmark."
+    )
+    r = validate_svs_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_svs630_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_svs_benchmark_metrics
+    ms, cl = _svs630_ms("We study automatic music transcription methods.")
+    r = validate_svs_benchmark_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_svs630_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_svs_benchmark_metrics
+    ms, _ = _svs630_ms("Neural singing synthesis theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_svs_benchmark_metrics(ms, cl)
+    assert r.findings == []

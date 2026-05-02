@@ -7133,6 +7133,11 @@ def run_deterministic_validators(
         validate_multimodal_emotion_recognition_metrics(parsed, classification),
         validate_avsr_metrics(parsed, classification),
         validate_speaker_diarization_metrics(parsed, classification),
+        validate_speech_enhancement_metrics(parsed, classification),
+        validate_voice_conversion_metrics(parsed, classification),
+        validate_music_source_separation_metrics(parsed, classification),
+        validate_music_transcription_metrics(parsed, classification),
+        validate_svs_benchmark_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -34912,6 +34917,240 @@ def validate_speaker_diarization_metrics(
                 ),
                 location="full_text",
                 validator=_SPKDIAR625_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 626 – speech enhancement evaluation
+# ---------------------------------------------------------------------------
+_SPENH626_VID = "missing-speech-enhancement-metrics"
+
+_SPENH626_TRIGGERS = re.compile(
+    r"\b(?:speech\s+enhancement|speech\s+denoising|noise\s+suppression|"
+    r"WSJ0[- ]2mix|VCTK\s+(?:corpus|dataset)|DNS\s+challenge|"
+    r"CHIME[- ]?\d+\s+(?:corpus|dataset))\b",
+    re.IGNORECASE,
+)
+_SPENH626_METRICS = re.compile(
+    r"\b(?:PESQ|STOI|SI[- ]?SNR|SDR|DNSMOS|MOS|"
+    r"signal[- ]to[- ]noise)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:PESQ|STOI|SI[- ]?SNR|MOS)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_speech_enhancement_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SPENH626_VID, findings=[])
+    text = parsed.full_text
+    if not _SPENH626_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SPENH626_VID, findings=[])
+    if _SPENH626_METRICS.search(text):
+        return ValidationResult(validator_name=_SPENH626_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SPENH626_VID,
+        findings=[
+            Finding(
+                code=_SPENH626_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses speech enhancement but does not report "
+                    "PESQ, STOI, or SI-SNR on VCTK/WSJ0/DNS."
+                ),
+                location="full_text",
+                validator=_SPENH626_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 627 – voice conversion evaluation
+# ---------------------------------------------------------------------------
+_VOICECONV627_VID = "missing-voice-conversion-metrics"
+
+_VOICECONV627_TRIGGERS = re.compile(
+    r"\b(?:voice\s+conversion|voice\s+cloning|VC\b|"
+    r"any[- ]to[- ]any\s+voice|speaker\s+conversion|"
+    r"VCTK\s+(?:voice\s+)?conversion)\b",
+    re.IGNORECASE,
+)
+_VOICECONV627_METRICS = re.compile(
+    r"\b(?:MOS|MCD|mel\s+cepstral\s+distortion|speaker\s+similarity|"
+    r"naturalness|ASV|DNSMOS)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:MOS|MCD)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_voice_conversion_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_VOICECONV627_VID, findings=[])
+    text = parsed.full_text
+    if not _VOICECONV627_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_VOICECONV627_VID, findings=[])
+    if _VOICECONV627_METRICS.search(text):
+        return ValidationResult(validator_name=_VOICECONV627_VID, findings=[])
+    return ValidationResult(
+        validator_name=_VOICECONV627_VID,
+        findings=[
+            Finding(
+                code=_VOICECONV627_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses voice conversion but does not report "
+                    "MOS or MCD on VCTK."
+                ),
+                location="full_text",
+                validator=_VOICECONV627_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 628 – music source separation evaluation
+# ---------------------------------------------------------------------------
+_MUSICSEP628_VID = "missing-music-source-separation-metrics"
+
+_MUSICSEP628_TRIGGERS = re.compile(
+    r"\b(?:music\s+source\s+separation|MSS\b|"
+    r"MUSDB(?:18)?(?:[- ]HQ)?|vocal\s+separation|"
+    r"instrument\s+separation|music\s+demixing)\b",
+    re.IGNORECASE,
+)
+_MUSICSEP628_METRICS = re.compile(
+    r"\b(?:SDR|ISR|SAR|SIR|SI[- ]SDR|signal[- ]to[- ]distortion)\b"
+    r".*?(?:=\s*\d[\d.]*|\d[\d.]*\s*dB)|"
+    r"(?:\d[\d.]*)\s*dB\s*(?:SDR|ISR|SIR)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_music_source_separation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MUSICSEP628_VID, findings=[])
+    text = parsed.full_text
+    if not _MUSICSEP628_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MUSICSEP628_VID, findings=[])
+    if _MUSICSEP628_METRICS.search(text):
+        return ValidationResult(validator_name=_MUSICSEP628_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MUSICSEP628_VID,
+        findings=[
+            Finding(
+                code=_MUSICSEP628_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses music source separation but does not report "
+                    "SDR on MUSDB18."
+                ),
+                location="full_text",
+                validator=_MUSICSEP628_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 629 – automatic music transcription evaluation
+# ---------------------------------------------------------------------------
+_AMT629_VID = "missing-music-transcription-metrics"
+
+_AMT629_TRIGGERS = re.compile(
+    r"\b(?:automatic\s+music\s+transcription|AMT\b|"
+    r"piano\s+transcription|polyphonic\s+transcription|"
+    r"MAPS\s+(?:dataset|corpus)|MAESTRO\s+(?:dataset|corpus))\b",
+    re.IGNORECASE,
+)
+_AMT629_METRICS = re.compile(
+    r"\b(?:F[- ]?measure|F1|precision|recall|note\s+accuracy|"
+    r"frame[- ]?level\s+accuracy)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*\s*%)|"
+    r"(?:\d[\d.]*)\s*%\s*(?:F[- ]?measure|F1|recall)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_music_transcription_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_AMT629_VID, findings=[])
+    text = parsed.full_text
+    if not _AMT629_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_AMT629_VID, findings=[])
+    if _AMT629_METRICS.search(text):
+        return ValidationResult(validator_name=_AMT629_VID, findings=[])
+    return ValidationResult(
+        validator_name=_AMT629_VID,
+        findings=[
+            Finding(
+                code=_AMT629_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses music transcription but does not report "
+                    "note-level F-measure on MAPS/MAESTRO."
+                ),
+                location="full_text",
+                validator=_AMT629_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 630 – singing voice synthesis evaluation (benchmark variant)
+# ---------------------------------------------------------------------------
+_SVS630_VID = "missing-svs-benchmark-metrics"
+
+_SVS630_TRIGGERS = re.compile(
+    r"\b(?:singing\s+voice\s+synthesis|SVS\b|"
+    r"neural\s+singing|singing\s+TTS|"
+    r"NUS[- ]48E|OpenSinger|M4Singer)\b",
+    re.IGNORECASE,
+)
+_SVS630_METRICS = re.compile(
+    r"\b(?:MOS|MCD|mel\s+cepstral\s+distortion|F0\s+RMSE|"
+    r"naturalness|VUV)\b.*?(?:=\s*\d[\d.]*|\d[\d.]*)|"
+    r"(?:\d[\d.]*)\s*(?:MOS|MCD)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_svs_benchmark_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SVS630_VID, findings=[])
+    text = parsed.full_text
+    if not _SVS630_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SVS630_VID, findings=[])
+    if _SVS630_METRICS.search(text):
+        return ValidationResult(validator_name=_SVS630_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SVS630_VID,
+        findings=[
+            Finding(
+                code=_SVS630_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses singing voice synthesis but does not report "
+                    "MOS or MCD on NUS-48E/OpenSinger/M4Singer."
+                ),
+                location="full_text",
+                validator=_SVS630_VID,
             )
         ],
     )
