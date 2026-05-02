@@ -6734,6 +6734,11 @@ def run_deterministic_validators(
         validate_selective_literature_citation(parsed, classification),
         validate_participant_compensation_disclosure(parsed, classification),
         validate_observational_causal_language(parsed, classification),
+        validate_acknowledgement_section(parsed, classification),
+        validate_conflict_of_interest_statement(parsed, classification),
+        validate_age_reporting_precision(parsed, classification),
+        validate_statistical_software_version(parsed, classification),
+        validate_warranted_sensitivity_analysis(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -13599,6 +13604,361 @@ def validate_observational_causal_language(
                 ),
                 validator="observational_causal_language",
                 location="Discussion / Conclusion",
+                evidence=[],
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 226 – Missing acknowledgement section
+# ---------------------------------------------------------------------------
+
+_FUNDING_MENTION_RE = re.compile(
+    r"\b(?:funded?\s+by|supported?\s+by|grant\s+(?:from|number|no\.?)|"
+    r"financially\s+supported?|financial\s+support\s+(?:from|by)|"
+    r"funding\s+(?:from|by|source)|research\s+support\s+(?:from|by)|"
+    r"NIH\b|NSF\b|Wellcome\s+Trust|European\s+Research\s+Council|"
+    r"NHMRC\b|SSHRC\b|DFG\b)\b",
+    re.IGNORECASE,
+)
+_ACKNOWLEDGEMENT_RE = re.compile(
+    r"\b(?:acknowledg(?:e|ements?|ments?)\b|we\s+(?:thank|acknowledge|are\s+grateful)|"
+    r"the\s+authors?\s+(?:thank|acknowledge|are\s+grateful)|"
+    r"(?:funding|financial\s+support)\s+(?:was\s+)?(?:provided?|received?)\s+from)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_acknowledgement_section(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies mentioning funding without an acknowledgement section.
+
+    Emits ``missing-acknowledgement-section`` (minor) when funding sources
+    are mentioned but no acknowledgement or funding statement section is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="acknowledgement_section", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="acknowledgement_section", findings=[]
+        )
+
+    if not _FUNDING_MENTION_RE.search(full):
+        return ValidationResult(
+            validator_name="acknowledgement_section", findings=[]
+        )
+
+    if _ACKNOWLEDGEMENT_RE.search(full):
+        return ValidationResult(
+            validator_name="acknowledgement_section", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="acknowledgement_section",
+        findings=[
+            Finding(
+                code="missing-acknowledgement-section",
+                severity="minor",
+                message=(
+                    "Funding source or institutional support is mentioned but no "
+                    "acknowledgement or funding statement section is present. "
+                    "Add an acknowledgements section disclosing all funding sources."
+                ),
+                validator="acknowledgement_section",
+                location="Acknowledgements / Funding",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 227 – Missing conflict of interest statement
+# ---------------------------------------------------------------------------
+
+_COI_TRIGGER_RE = re.compile(
+    r"\b(?:industry.?funded|funded?\s+by\s+(?:a\s+)?(?:pharmaceutical|biotech|"
+    r"corporate|commercial|industry)|received?\s+(?:honoraria?|consulting\s+fees?|"
+    r"speaker.s?\s+bureau|advisory\s+board\s+fees?)|"
+    r"employed?\s+by\s+(?:a\s+)?(?:company|corporation|industry|pharma)|"
+    r"stock\s+options?|equity\s+(?:in|interest)|"
+    r"patent\s+(?:holder|pending|filed)\b)\b",
+    re.IGNORECASE,
+)
+_COI_STATEMENT_RE = re.compile(
+    r"\b(?:conflict(?:s)?\s+of\s+interest|competing\s+interest(?:s)?|"
+    r"disclosure\s+statement|the\s+authors?\s+(?:declare|report|disclose)|"
+    r"no\s+(?:conflict|competing)\s+(?:of\s+interest|interest)|"
+    r"potential\s+conflict)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_conflict_of_interest_statement(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag industry-funded or potentially conflicted studies without a COI statement.
+
+    Emits ``missing-conflict-of-interest-statement`` (major) when industry
+    funding or financial relationships are mentioned but no conflict of interest
+    statement is present.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="conflict_of_interest_statement", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="conflict_of_interest_statement", findings=[]
+        )
+
+    if not _COI_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="conflict_of_interest_statement", findings=[]
+        )
+
+    if _COI_STATEMENT_RE.search(full):
+        return ValidationResult(
+            validator_name="conflict_of_interest_statement", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="conflict_of_interest_statement",
+        findings=[
+            Finding(
+                code="missing-conflict-of-interest-statement",
+                severity="major",
+                message=(
+                    "Industry funding or financial relationship detected but no "
+                    "conflict of interest or competing interests statement is present. "
+                    "Disclose all financial relationships that could bias the research."
+                ),
+                validator="conflict_of_interest_statement",
+                location="Disclosures / Ethics",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 228 – Imprecise age reporting
+# ---------------------------------------------------------------------------
+
+_AGE_REPORTED_RE = re.compile(
+    r"\b(?:mean\s+age|average\s+age|age\s+(?:range|distribution|of\s+participants?)|"
+    r"participants?\s+(?:were|ranged?)\s+(?:aged?|between)|"
+    r"age(?:d)?\s+(?:between|\d))\b",
+    re.IGNORECASE,
+)
+_AGE_PRECISION_RE = re.compile(
+    r"\b(?:M\s*(?:age)?\s*=\s*\d+\.?\d*\s*(?:years?)?\s*[\(,]\s*SD|"
+    r"mean\s+age\s*(?:was|=)\s*\d+\.?\d*\s*(?:years?)?\s*[\(,]\s*SD|"
+    r"aged?\s+\d+\s*(?:to|[-–])\s*\d+\s*years?|"
+    r"age\s+range\s*(?:was|:|=)?\s*\d+\s*[-–]\s*\d+|"
+    r"\d+\s*(?:to|[-–])\s*\d+\s*years?\s*(?:old|of\s+age))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_age_reporting_precision(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies mentioning participant age without providing M and SD or range.
+
+    Emits ``imprecise-age-reporting`` (minor) when age is mentioned but no
+    mean with SD or numeric range is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="age_reporting_precision", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="age_reporting_precision", findings=[]
+        )
+
+    if not _AGE_REPORTED_RE.search(full):
+        return ValidationResult(
+            validator_name="age_reporting_precision", findings=[]
+        )
+
+    if _AGE_PRECISION_RE.search(full):
+        return ValidationResult(
+            validator_name="age_reporting_precision", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="age_reporting_precision",
+        findings=[
+            Finding(
+                code="imprecise-age-reporting",
+                severity="minor",
+                message=(
+                    "Participant age is mentioned but no mean with SD or numeric "
+                    "age range is provided. Report age as M (SD) or a numeric range."
+                ),
+                validator="age_reporting_precision",
+                location="Participants",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 229 – Inadequate description of statistical software
+# ---------------------------------------------------------------------------
+
+_SOFTWARE_STAT_RE = re.compile(
+    r"\b(?:analyses?\s+were\s+(?:conducted?|performed?|run|carried\s+out)\s+using|"
+    r"statistical\s+analyses?\s+(?:were\s+)?(?:conducted?|performed?|run)\s+(?:in|using|with)|"
+    r"data\s+(?:were\s+)?(?:analysed?|analyzed?)\s+(?:in|using|with)|"
+    r"we\s+used?\s+(?:R\b|SPSS\b|SAS\b|Stata\b|Python\b|MATLAB\b|MPlus\b|"
+    r"HLM\b|LISREL\b|AMOS\b|jamovi\b|JASP\b|Excel\b))\b",
+    re.IGNORECASE,
+)
+_SOFTWARE_VERSION_STAT_RE = re.compile(
+    r"\b(?:R\s+(?:version\s+)?\d+\.\d+|SPSS\s+(?:version\s+)?\d+|"
+    r"SAS\s+(?:version\s+)?\d+|Stata\s+(?:version\s+)?\d+|"
+    r"Python\s+(?:version\s+|v\s*)?\d+\.\d+|MATLAB\s+R\d{4}[ab]|"
+    r"MPlus\s+(?:version\s+)?\d+|jamovi\s+(?:version\s+)?\d+|"
+    r"JASP\s+(?:version\s+)?\d+\.\d+|"
+    r"version\s+\d+[\.\d]*\s+\(.*?\)|"
+    r"v\s*\d+\.\d+)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_statistical_software_version(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag statistical analysis mentions without specific software version.
+
+    Emits ``missing-statistical-software-version`` (minor) when statistical
+    software is named but no version number is given.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="statistical_software_version", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="statistical_software_version", findings=[]
+        )
+
+    if not _SOFTWARE_STAT_RE.search(full):
+        return ValidationResult(
+            validator_name="statistical_software_version", findings=[]
+        )
+
+    if _SOFTWARE_VERSION_STAT_RE.search(full):
+        return ValidationResult(
+            validator_name="statistical_software_version", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="statistical_software_version",
+        findings=[
+            Finding(
+                code="missing-statistical-software-version",
+                severity="minor",
+                message=(
+                    "Statistical software is named but no version number is provided. "
+                    "Report the exact software version used (e.g., R version 4.3.1, SPSS 29)."
+                ),
+                validator="statistical_software_version",
+                location="Statistical Analysis",
+                evidence=[],
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 230 – Undisclosed sensitivity analysis
+# ---------------------------------------------------------------------------
+
+_SENSITIVITY_TRIGGER_RE = re.compile(
+    r"\b(?:robust(?:ness)?\s+(?:check|analysis|test)|"
+    r"sensitivity\s+analysis\s+(?:was|were|is|are)\s+(?:needed?|warranted?|recommended?|"
+    r"appropriate|advisable)|"
+    r"results?\s+(?:may|might|could|should)\s+be\s+(?:sensitive|robust(?:ly)?)\s+to|"
+    r"impact\s+of\s+(?:outliers?|influential\s+cases?|extreme\s+values?)\s+on\s+"
+    r"(?:the\s+)?(?:results?|findings?|conclusions?))\b",
+    re.IGNORECASE,
+)
+_SENSITIVITY_CONDUCTED_RE = re.compile(
+    r"\b(?:sensitivity\s+analys(?:is|es)\s+(?:was|were|showed?|confirmed?|"
+    r"revealed?|indicated?|demonstrated?)|"
+    r"we\s+(?:conducted?|performed?|ran|carried\s+out)\s+"
+    r"(?:a\s+)?sensitivity\s+analys(?:is|es)|"
+    r"results?\s+were\s+(?:robust|consistent|unchanged?|similar)\s+"
+    r"(?:across|in|when|after)\s+(?:sensitivity|robustness)|"
+    r"excluding\s+(?:outliers?|influential\s+observations?|extreme\s+values?)\s+"
+    r"(?:did\s+not|had\s+no|yielded?\s+similar))\b",
+    re.IGNORECASE,
+)
+
+
+def validate_warranted_sensitivity_analysis(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Flag studies recommending sensitivity analysis without reporting one.
+
+    Emits ``missing-warranted-sensitivity-analysis`` (moderate) when text suggests
+    sensitivity analyses are warranted or needed but none are reported.
+    """
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(
+            validator_name="warranted_sensitivity_analysis", findings=[]
+        )
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(
+            validator_name="warranted_sensitivity_analysis", findings=[]
+        )
+
+    if not _SENSITIVITY_TRIGGER_RE.search(full):
+        return ValidationResult(
+            validator_name="warranted_sensitivity_analysis", findings=[]
+        )
+
+    if _SENSITIVITY_CONDUCTED_RE.search(full):
+        return ValidationResult(
+            validator_name="warranted_sensitivity_analysis", findings=[]
+        )
+
+    return ValidationResult(
+        validator_name="warranted_sensitivity_analysis",
+        findings=[
+            Finding(
+                code="missing-warranted-sensitivity-analysis",
+                severity="moderate",
+                message=(
+                    "Text suggests sensitivity analysis is warranted but none is reported. "
+                    "Conduct and report sensitivity or robustness checks to support "
+                    "the stability of findings."
+                ),
+                validator="warranted_sensitivity_analysis",
+                location="Statistical Analysis / Discussion",
                 evidence=[],
             )
         ],

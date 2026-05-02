@@ -12183,3 +12183,339 @@ def test_observational_causal_non_empirical_no_fire() -> None:
     )
     result = validate_observational_causal_language(ms, cl)
     assert result.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 226 – validate_acknowledgement_section
+# ---------------------------------------------------------------------------
+
+def _ack_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-ack",
+            source_path="/tmp/ack.md",
+            source_format="markdown",
+            title="Acknowledgement Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_funding_without_acknowledgement_fires() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgement_section
+
+    ms, cl = _ack_ms(
+        "This study was funded by NIH grant R01 MH123456. "
+        "Data were collected between January and June 2022."
+    )
+    result = validate_acknowledgement_section(ms, cl)
+    assert any(f.code == "missing-acknowledgement-section" for f in result.findings)
+
+
+def test_funding_with_acknowledgement_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgement_section
+
+    ms, cl = _ack_ms(
+        "This work was supported by NIH grant R01 MH123456. "
+        "Acknowledgements: We thank the participants and research staff."
+    )
+    result = validate_acknowledgement_section(ms, cl)
+    assert result.findings == []
+
+
+def test_no_funding_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgement_section
+
+    ms, cl = _ack_ms(
+        "Data were collected from university students via an online platform."
+    )
+    result = validate_acknowledgement_section(ms, cl)
+    assert result.findings == []
+
+
+def test_acknowledgement_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_acknowledgement_section
+
+    ms, cl = _ack_ms("This study was funded by NIH grant R01.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_acknowledgement_section(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 227 – validate_conflict_of_interest_statement
+# ---------------------------------------------------------------------------
+
+def _coi_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-coi",
+            source_path="/tmp/coi.md",
+            source_format="markdown",
+            title="Conflict of Interest Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_industry_funding_without_coi_fires() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest_statement
+
+    ms, cl = _coi_ms(
+        "This study was industry-funded by PharmaCorp Inc. "
+        "The lead author received honoraria from the sponsor."
+    )
+    result = validate_conflict_of_interest_statement(ms, cl)
+    assert any(f.code == "missing-conflict-of-interest-statement" for f in result.findings)
+
+
+def test_industry_funding_with_coi_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest_statement
+
+    ms, cl = _coi_ms(
+        "This study was industry-funded by PharmaCorp Inc. "
+        "Conflict of interest: The authors declare that the funder had no role in "
+        "study design, data collection, or interpretation."
+    )
+    result = validate_conflict_of_interest_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_no_industry_relationship_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest_statement
+
+    ms, cl = _coi_ms(
+        "This study received no external funding. All data were collected by the "
+        "university research team."
+    )
+    result = validate_conflict_of_interest_statement(ms, cl)
+    assert result.findings == []
+
+
+def test_coi_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_conflict_of_interest_statement
+
+    ms, cl = _coi_ms("This study was industry-funded.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_conflict_of_interest_statement(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 228 – validate_age_reporting_precision
+# ---------------------------------------------------------------------------
+
+def _age_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-age",
+            source_path="/tmp/age.md",
+            source_format="markdown",
+            title="Age Reporting Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_age_without_precision_fires() -> None:
+    from manuscript_audit.validators.core import validate_age_reporting_precision
+
+    ms, cl = _age_ms(
+        "The mean age of participants was reported as approximately 35 years. "
+        "Participants ranged in age from young adults to middle-aged."
+    )
+    result = validate_age_reporting_precision(ms, cl)
+    assert any(f.code == "imprecise-age-reporting" for f in result.findings)
+
+
+def test_age_with_sd_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_age_reporting_precision
+
+    ms, cl = _age_ms(
+        "The mean age of participants was 34.7 years (SD = 8.2). "
+        "Participants were aged 18 to 65 years."
+    )
+    result = validate_age_reporting_precision(ms, cl)
+    assert result.findings == []
+
+
+def test_no_age_mention_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_age_reporting_precision
+
+    ms, cl = _age_ms(
+        "The sample consisted of 150 undergraduate students at a large university."
+    )
+    result = validate_age_reporting_precision(ms, cl)
+    assert result.findings == []
+
+
+def test_age_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_age_reporting_precision
+
+    ms, cl = _age_ms("The mean age of participants is discussed.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_age_reporting_precision(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 229 – validate_statistical_software_version
+# ---------------------------------------------------------------------------
+
+def _stat_sw_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-statsw",
+            source_path="/tmp/statsw.md",
+            source_format="markdown",
+            title="Statistical Software Version Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_stat_software_without_version_fires() -> None:
+    from manuscript_audit.validators.core import validate_statistical_software_version
+
+    ms, cl = _stat_sw_ms(
+        "Analyses were conducted using SPSS. "
+        "All tests were two-tailed with alpha set at 0.05."
+    )
+    result = validate_statistical_software_version(ms, cl)
+    assert any(f.code == "missing-statistical-software-version" for f in result.findings)
+
+
+def test_stat_software_with_version_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_statistical_software_version
+
+    ms, cl = _stat_sw_ms(
+        "All analyses were conducted using R version 4.3.1. "
+        "Mixed models were fitted using the lme4 package."
+    )
+    result = validate_statistical_software_version(ms, cl)
+    assert result.findings == []
+
+
+def test_no_stat_software_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_statistical_software_version
+
+    ms, cl = _stat_sw_ms(
+        "Data were collected through structured interviews and thematic analysis was performed."
+    )
+    result = validate_statistical_software_version(ms, cl)
+    assert result.findings == []
+
+
+def test_stat_software_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_statistical_software_version
+
+    ms, cl = _stat_sw_ms("Analyses were conducted using SPSS.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_statistical_software_version(ms, cl)
+    assert result.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 230 – validate_warranted_sensitivity_analysis
+# ---------------------------------------------------------------------------
+
+def _sensitivity230_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="md-sensitivity",
+            source_path="/tmp/sensitivity.md",
+            source_format="markdown",
+            title="Sensitivity Analysis Test",
+            full_text=body,
+            sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats",
+            paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_sensitivity_needed_but_not_done_fires() -> None:
+    from manuscript_audit.validators.core import validate_warranted_sensitivity_analysis
+
+    ms, cl = _sensitivity230_ms(
+        "Results may be sensitive to outliers in the dataset. "
+        "Future researchers should conduct robustness checks."
+    )
+    result = validate_warranted_sensitivity_analysis(ms, cl)
+    assert any(f.code == "missing-warranted-sensitivity-analysis" for f in result.findings)
+
+
+def test_sensitivity_analysis_conducted_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_warranted_sensitivity_analysis
+
+    ms, cl = _sensitivity230_ms(
+        "Results may be sensitive to outliers. We conducted a sensitivity analysis "
+        "excluding influential observations; results were robust to these exclusions."
+    )
+    result = validate_warranted_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_no_sensitivity_trigger_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_warranted_sensitivity_analysis
+
+    ms, cl = _sensitivity230_ms(
+        "We used linear regression to predict exam performance from study time."
+    )
+    result = validate_warranted_sensitivity_analysis(ms, cl)
+    assert result.findings == []
+
+
+def test_sensitivity_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_warranted_sensitivity_analysis
+
+    ms, cl = _sensitivity230_ms("Results may be sensitive to the chosen prior.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory",
+        paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    result = validate_warranted_sensitivity_analysis(ms, cl)
+    assert result.findings == []
