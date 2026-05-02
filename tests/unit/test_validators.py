@@ -30938,3 +30938,242 @@ def test_trajpred505_non_empirical_no_fire() -> None:
     )
     r = validate_trajectory_prediction_metrics(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 506 – validate_hand_pose_estimation_metrics
+# ---------------------------------------------------------------------------
+def _handpose506_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t506", source_path="t506.md", source_format="markdown",
+            title="Hand pose", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_handpose506_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_estimation_metrics
+    ms, cl = _handpose506_ms("We propose a method for hand pose estimation.")
+    r = validate_hand_pose_estimation_metrics(ms, cl)
+    assert any(f.code == "missing-hand-pose-estimation-metrics" for f in r.findings)
+
+
+def test_handpose506_no_fire_when_pck_reported() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_estimation_metrics
+    ms, cl = _handpose506_ms("Hand pose estimation: PCK = 91.2% on HO3D.")
+    r = validate_hand_pose_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_handpose506_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_estimation_metrics
+    ms, cl = _handpose506_ms("We present a language model for summarization.")
+    r = validate_hand_pose_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_handpose506_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_hand_pose_estimation_metrics
+    ms, _ = _handpose506_ms("Hand skeleton theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_hand_pose_estimation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 507 – validate_face_recognition_metrics
+# ---------------------------------------------------------------------------
+def _facerec507_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t507", source_path="t507.md", source_format="markdown",
+            title="Face recognition", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_facerec507_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_face_recognition_metrics
+    ms, cl = _facerec507_ms("We present a face recognition system on LFW.")
+    r = validate_face_recognition_metrics(ms, cl)
+    assert any(f.code == "missing-face-recognition-metrics" for f in r.findings)
+
+
+def test_facerec507_no_fire_when_tar_reported() -> None:
+    from manuscript_audit.validators.core import validate_face_recognition_metrics
+    ms, cl = _facerec507_ms("Face verification: TAR @ FAR = 99.2% on IJB-C.")
+    r = validate_face_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_facerec507_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_face_recognition_metrics
+    ms, cl = _facerec507_ms("We study survival analysis methods.")
+    r = validate_face_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_facerec507_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_face_recognition_metrics
+    ms, _ = _facerec507_ms("Facial recognition theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_face_recognition_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 508 – validate_lane_detection_metrics
+# ---------------------------------------------------------------------------
+def _lanedet508_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t508", source_path="t508.md", source_format="markdown",
+            title="Lane detection", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_lanedet508_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_lane_detection_metrics
+    ms, cl = _lanedet508_ms("We propose a real-time lane detection algorithm.")
+    r = validate_lane_detection_metrics(ms, cl)
+    assert any(f.code == "missing-lane-detection-metrics" for f in r.findings)
+
+
+def test_lanedet508_no_fire_when_f1_reported() -> None:
+    from manuscript_audit.validators.core import validate_lane_detection_metrics
+    ms, cl = _lanedet508_ms("Lane detection: F1 score = 96.1% on TuSimple.")
+    r = validate_lane_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lanedet508_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_lane_detection_metrics
+    ms, cl = _lanedet508_ms("We present a topic model for text analysis.")
+    r = validate_lane_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_lanedet508_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_lane_detection_metrics
+    ms, _ = _lanedet508_ms("Lane segmentation theoretical analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_lane_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 509 – validate_salient_object_detection_metrics
+# ---------------------------------------------------------------------------
+def _saliency509_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t509", source_path="t509.md", source_format="markdown",
+            title="Salient OD", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_saliency509_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_salient_object_detection_metrics
+    ms, cl = _saliency509_ms("We address salient object detection on DUTS.")
+    r = validate_salient_object_detection_metrics(ms, cl)
+    assert any(f.code == "missing-salient-object-detection-metrics" for f in r.findings)
+
+
+def test_saliency509_no_fire_when_smeasure_reported() -> None:
+    from manuscript_audit.validators.core import validate_salient_object_detection_metrics
+    ms, cl = _saliency509_ms("Salient object detection: S-measure = 0.921 on DUTS-TE.")
+    r = validate_salient_object_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_saliency509_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_salient_object_detection_metrics
+    ms, cl = _saliency509_ms("We introduce a Bayesian optimization framework.")
+    r = validate_salient_object_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_saliency509_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_salient_object_detection_metrics
+    ms, _ = _saliency509_ms("Visual saliency theoretical analysis.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_salient_object_detection_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 510 – validate_image_restoration_metrics
+# ---------------------------------------------------------------------------
+def _imgrest510_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t510", source_path="t510.md", source_format="markdown",
+            title="Image restoration", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_imgrest510_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_image_restoration_metrics
+    ms, cl = _imgrest510_ms("We propose a network for image super-resolution.")
+    r = validate_image_restoration_metrics(ms, cl)
+    assert any(f.code == "missing-image-restoration-metrics" for f in r.findings)
+
+
+def test_imgrest510_no_fire_when_psnr_reported() -> None:
+    from manuscript_audit.validators.core import validate_image_restoration_metrics
+    ms, cl = _imgrest510_ms("Image super-resolution: PSNR = 32.4 dB on Set5.")
+    r = validate_image_restoration_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_imgrest510_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_image_restoration_metrics
+    ms, cl = _imgrest510_ms("We study causal inference in observational data.")
+    r = validate_image_restoration_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_imgrest510_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_image_restoration_metrics
+    ms, _ = _imgrest510_ms("Image denoising theoretical bounds.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_image_restoration_metrics(ms, cl)
+    assert r.findings == []

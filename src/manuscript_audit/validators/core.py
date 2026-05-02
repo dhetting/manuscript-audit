@@ -7012,6 +7012,11 @@ def run_deterministic_validators(
         validate_visual_place_recognition_metrics(parsed, classification),
         validate_action_recognition_metrics(parsed, classification),
         validate_trajectory_prediction_metrics(parsed, classification),
+        validate_hand_pose_estimation_metrics(parsed, classification),
+        validate_face_recognition_metrics(parsed, classification),
+        validate_lane_detection_metrics(parsed, classification),
+        validate_salient_object_detection_metrics(parsed, classification),
+        validate_image_restoration_metrics(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -29237,6 +29242,234 @@ def validate_trajectory_prediction_metrics(
                 ),
                 severity="moderate",
                 validator=_TRAJPRED_VID,
+            )
+        ],
+    )
+
+# ---------------------------------------------------------------------------
+# Phase 506 – Hand pose estimation metrics
+# ---------------------------------------------------------------------------
+_HANDPOSE_VID = "missing-hand-pose-estimation-metrics"
+_HANDPOSE_TRIGGER_RE = re.compile(
+    r"\b(?:hand\s+pose\s+estimation|hand\s+keypoint\s+detection|"
+    r"finger\s+pose|hand\s+skeleton)\b",
+    re.IGNORECASE,
+)
+_HANDPOSE_METRIC_RE = re.compile(
+    r"\b(?:PCK|mean\s+per\s+joint\s+position\s+error|MPJPE|AUC|"
+    r"percentage\s+of\s+correct\s+keypoints)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_hand_pose_estimation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when hand pose estimation papers omit PCK/MPJPE metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_HANDPOSE_VID, findings=[])
+    text = parsed.full_text
+    if not _HANDPOSE_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_HANDPOSE_VID, findings=[])
+    if _HANDPOSE_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_HANDPOSE_VID, findings=[])
+    return ValidationResult(
+        validator_name=_HANDPOSE_VID,
+        findings=[
+            Finding(
+                code=_HANDPOSE_VID,
+                message=(
+                    "Hand pose estimation paper detected but standard metrics "
+                    "(PCK, MPJPE, AUC) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_HANDPOSE_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 507 – Face recognition/verification metrics
+# ---------------------------------------------------------------------------
+_FACEREC_VID = "missing-face-recognition-metrics"
+_FACEREC_TRIGGER_RE = re.compile(
+    r"\b(?:face\s+recognition|face\s+verification|face\s+identification|"
+    r"facial\s+recognition)\b",
+    re.IGNORECASE,
+)
+_FACEREC_METRIC_RE = re.compile(
+    r"\b(?:TAR\s*@\s*FAR|true\s+accept(?:ance)?\s+rate|"
+    r"false\s+accept(?:ance)?\s+rate|verification\s+accuracy|"
+    r"rank-1\s+accuracy|identification\s+rate)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_face_recognition_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when face recognition papers omit TAR@FAR or rank-1 accuracy."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_FACEREC_VID, findings=[])
+    text = parsed.full_text
+    if not _FACEREC_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_FACEREC_VID, findings=[])
+    if _FACEREC_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_FACEREC_VID, findings=[])
+    return ValidationResult(
+        validator_name=_FACEREC_VID,
+        findings=[
+            Finding(
+                code=_FACEREC_VID,
+                message=(
+                    "Face recognition/verification paper detected but standard "
+                    "metrics (TAR@FAR, rank-1 accuracy) with numeric values "
+                    "were not reported."
+                ),
+                severity="moderate",
+                validator=_FACEREC_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 508 – Lane detection metrics
+# ---------------------------------------------------------------------------
+_LANEDET_VID = "missing-lane-detection-metrics"
+_LANEDET_TRIGGER_RE = re.compile(
+    r"\b(?:lane\s+detection|lane\s+segmentation|lane\s+line\s+detection|"
+    r"lane\s+marking\s+detection)\b",
+    re.IGNORECASE,
+)
+_LANEDET_METRIC_RE = re.compile(
+    r"\b(?:F1\s+score|accuracy|IoU|intersection\s+over\s+union|"
+    r"false\s+positive\s+rate|false\s+negative\s+rate)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_lane_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when lane detection papers omit standard evaluation metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_LANEDET_VID, findings=[])
+    text = parsed.full_text
+    if not _LANEDET_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_LANEDET_VID, findings=[])
+    if _LANEDET_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_LANEDET_VID, findings=[])
+    return ValidationResult(
+        validator_name=_LANEDET_VID,
+        findings=[
+            Finding(
+                code=_LANEDET_VID,
+                message=(
+                    "Lane detection paper detected but standard metrics "
+                    "(F1, accuracy, IoU) with numeric values were not reported."
+                ),
+                severity="moderate",
+                validator=_LANEDET_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 509 – Salient object detection metrics
+# ---------------------------------------------------------------------------
+_SALIENCY_VID = "missing-salient-object-detection-metrics"
+_SALIENCY_TRIGGER_RE = re.compile(
+    r"\b(?:salient\s+object\s+detection|saliency\s+detection|"
+    r"saliency\s+map|visual\s+saliency)\b",
+    re.IGNORECASE,
+)
+_SALIENCY_METRIC_RE = re.compile(
+    r"\b(?:S-measure|E-measure|F-measure|mean\s+absolute\s+error|MAE|"
+    r"weighted\s+F-measure)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_salient_object_detection_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when salient object detection papers omit S/E/F-measure or MAE."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SALIENCY_VID, findings=[])
+    text = parsed.full_text
+    if not _SALIENCY_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_SALIENCY_VID, findings=[])
+    if _SALIENCY_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_SALIENCY_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SALIENCY_VID,
+        findings=[
+            Finding(
+                code=_SALIENCY_VID,
+                message=(
+                    "Salient object detection paper detected but standard metrics "
+                    "(S-measure, E-measure, F-measure, MAE) with numeric values "
+                    "were not reported."
+                ),
+                severity="moderate",
+                validator=_SALIENCY_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 510 – Image restoration / super-resolution metrics
+# ---------------------------------------------------------------------------
+_IMGREST_VID = "missing-image-restoration-metrics"
+_IMGREST_TRIGGER_RE = re.compile(
+    r"\b(?:image\s+(?:super.?resolution|denoising|deblurring|inpainting|"
+    r"restoration)|single\s+image\s+SR)\b",
+    re.IGNORECASE,
+)
+_IMGREST_METRIC_RE = re.compile(
+    r"\b(?:PSNR|peak\s+signal.to.noise\s+ratio|SSIM|structural\s+similarity|"
+    r"LPIPS|perceptual\s+similarity)\b"
+    r"(?:\s*[=:]\s*\d|\s+of\s+\d|\s+was\s+\d)",
+    re.IGNORECASE,
+)
+
+
+def validate_image_restoration_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    """Warn when image restoration/SR papers omit PSNR/SSIM metrics."""
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_IMGREST_VID, findings=[])
+    text = parsed.full_text
+    if not _IMGREST_TRIGGER_RE.search(text):
+        return ValidationResult(validator_name=_IMGREST_VID, findings=[])
+    if _IMGREST_METRIC_RE.search(text):
+        return ValidationResult(validator_name=_IMGREST_VID, findings=[])
+    return ValidationResult(
+        validator_name=_IMGREST_VID,
+        findings=[
+            Finding(
+                code=_IMGREST_VID,
+                message=(
+                    "Image restoration/super-resolution paper detected but "
+                    "standard metrics (PSNR, SSIM, LPIPS) with numeric values "
+                    "were not reported."
+                ),
+                severity="moderate",
+                validator=_IMGREST_VID,
             )
         ],
     )
