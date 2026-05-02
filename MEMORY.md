@@ -794,8 +794,66 @@ Current test count: **362 passing** (after phase 135)
 - Phase 199: `validate_latent_variable_model_fit` → `missing-model-fit-indices` (moderate)
 - Phase 200: `validate_pilot_study_disclosure` → `undisclosed-pilot-study` (minor)
 
-Current test count: **586 passing** (after phase 200)
-HEAD: `bdd7770`
+**Phases 201–205** (`0213199`) — Five validators (606 tests)
+- Phase 201: `validate_autocorrelation_check` → `missing-autocorrelation-check` (minor)
+- Phase 202: `validate_mixed_methods_integration` → `missing-mixed-methods-integration` (moderate)
+- Phase 203: `validate_qualitative_rigor_reporting` → `missing-qualitative-rigor` (moderate)
+- Phase 204: `validate_subgroup_analysis_labelling` → `unlabelled-subgroup-analysis` (minor)
+- Phase 205: `validate_null_result_power_caveat` → `null-result-without-power-caveat` (minor)
+
+**Phases 206–210** (`528ec39`) — Five validators (626 tests), golden minor 13→14
+- Phase 206: `validate_mean_sd_reporting` → `missing-sd-for-mean` (minor)
+- Phase 207: `validate_intervention_description` → `insufficient-intervention-description` (moderate)
+- Phase 208: `validate_baseline_equivalence` → `missing-baseline-equivalence` (moderate)
+- Phase 209: `validate_likert_distribution_check` → `missing-likert-distribution-check` (minor)
+- Phase 210: `validate_reproducibility_statement` → `missing-reproducibility-link` (minor)
+
+**Phases 211–215** (`30cbdf7`) — Five validators (646 tests)
+- Phase 211: `validate_missing_data_handling` → `missing-data-handling-not-described` (moderate)
+- Phase 212: `validate_coding_scheme_description` → `missing-coding-scheme-detail` (moderate)
+- Phase 213: `validate_logistic_regression_assumptions` → `missing-logistic-model-fit` (minor)
+- Phase 214: `validate_researcher_positionality` → `missing-researcher-positionality` (minor)
+- Phase 215: `validate_data_collection_recency` → `potentially-outdated-data` (minor)
+
+**Phases 216–220** (`832b4a9`) — Five validators (666 tests)
+- Phase 216: `validate_theoretical_framework_citation` → `missing-theory-citation` (minor)
+- Phase 217: `validate_survey_instrument_source` → `missing-instrument-source` (moderate)
+- Phase 218: `validate_sampling_frame_description` → `missing-sampling-frame` (minor)
+- Phase 219: `validate_one_tailed_test_justification` → `unjustified-one-tailed-test` (moderate)
+- Phase 220: `validate_gratuitous_significance_language` → `implausible-significance-language` (major)
+
+**Phases 221–225** (`4bde133`) — Five validators (686 tests)
+- Phase 221: `validate_unit_of_analysis_clarity` → `unclear-unit-of-analysis` (moderate)
+- Phase 222: `validate_apriori_preregistration_statement` → `missing-preregistration-statement` (moderate)
+  - renamed to `validate_apriori_preregistration_statement` (existing `validate_preregistration_statement` at phase ~154)
+- Phase 223: `validate_selective_literature_citation` → `selective-literature-citation` (minor)
+- Phase 224: `validate_participant_compensation_disclosure` → `missing-compensation-amount` (minor)
+- Phase 225: `validate_observational_causal_language` → `overclaimed-causality-observational` (major)
+
+**Phases 226–230** (`d06fbf5`) — Five validators (706 tests)
+- Phase 226: `validate_acknowledgement_section` → `missing-acknowledgement-section` (minor)
+- Phase 227: `validate_conflict_of_interest_statement` → `missing-conflict-of-interest-statement` (major)
+- Phase 228: `validate_age_reporting_precision` → `imprecise-age-reporting` (minor)
+- Phase 229: `validate_statistical_software_version` → `missing-statistical-software-version` (minor)
+- Phase 230: `validate_warranted_sensitivity_analysis` → `missing-warranted-sensitivity-analysis` (moderate)
+  - renamed to `validate_warranted_sensitivity_analysis` (existing `validate_sensitivity_analysis_reporting` at phase ~156)
+
+**Phases 231–235** (`e851978`) — Five validators (726 tests)
+- Phase 231: `validate_ai_tool_disclosure` → `missing-ai-tool-disclosure` (moderate)
+- Phase 232: `validate_between_group_effect_size` → `missing-between-group-effect-size` (moderate)
+- Phase 233: `validate_convenience_sample_generalization` → `overclaimed-generalizability-convenience` (moderate)
+- Phase 234: `validate_icc_reliability_reporting` → `missing-icc-reliability` (moderate)
+- Phase 235: `validate_anova_post_hoc_reporting` → `missing-anova-post-hoc` (moderate)
+
+**Phases 236–240** (`bcd2078`) — Five validators (746 tests)
+- Phase 236: `validate_adverse_events_reporting` → `missing-adverse-events-report` (major)
+- Phase 237: `validate_construct_operationalization` → `ambiguous-construct-operationalization` (minor)
+- Phase 238: `validate_regression_coefficient_ci` → `missing-regression-coefficient-ci` (minor)
+- Phase 239: `validate_longitudinal_followup_duration` → `missing-followup-duration` (moderate)
+- Phase 240: `validate_bayesian_reporting` → `missing-bayesian-reporting` (moderate)
+
+Current test count: **746 passing** (after phase 240)
+HEAD: `bcd2078`
 
 ## Critical technical gotchas (accumulated)
 
@@ -809,7 +867,11 @@ HEAD: `bdd7770`
 - **Function shadowing hazard**: check before adding any function (`grep -n "^def func_name"` in core.py and test file)
   - Phase 159 `validate_interrater_reliability` was already implemented — duplicate removed
 - **Duplicate test name hazard**: before adding tests, `grep -n "^def test_name"` in test file
-  - Known duplicates fixed: `test_longitudinal_with_attrition_no_fire`, `test_no_regression_no_fire`, `test_non_rct_no_fire`, `test_software_with_version_no_fire`
+  - Known duplicates fixed: `test_longitudinal_with_attrition_no_fire`, `test_no_regression_no_fire`, `test_non_rct_no_fire`, `test_software_with_version_no_fire`, `test_no_intervention_no_fire`, `test_non_rct_no_fire` (baseline equivalence), `test_coding_with_kappa_no_fire`, `test_no_observational_design_no_fire`, `test_no_group_comparison_no_fire`, `test_longitudinal_non_empirical_no_fire`
+- **Helper function shadowing hazard**: always check for existing module-level helpers before adding (e.g., `_prereg_ms`, `_sensitivity_ms`, `_sensitivity_clf`). Rename new helpers with a phase suffix if needed (e.g., `_prereg222_ms`, `_sensitivity230_ms`)
+- **`recommended_stack="core"` is invalid** — must be `"minimal"`, `"standard"`, or `"maximal"`. Always use `"minimal"` for non-empirical no-fire tests
+- **Disclosure regex over-matching**: patterns like `this study was funded` can accidentally match inside "fires" test text. Keep acknowledgement/disclosure regexes specific (require explicit disclosure verbs like `we thank`, `acknowledgements:`, not generic `was funded`)
+- **Existing validator function shadows**: confirmed existing at phases ~154: `validate_preregistration_statement`; phase ~156: `validate_sensitivity_analysis_reporting`. Rename new duplicates with distinct prefix/suffix
 - **`_EMPIRICAL_PAPER_TYPES`** = `frozenset({"empirical_paper", "applied_stats_paper", "software_workflow_paper"})`
   - `math_theory_paper` is NOT in this set (use as the "skip" type in tests)
 - **Trailing `\b` regex bug**: patterns ending in non-word characters (parens `)`, brackets `]`, `=`) cannot be followed by `\b`. Drop `\b` or rewrite with explicit word boundaries at start only
@@ -870,7 +932,7 @@ Assume:
 - treat the actual live repo as the source of truth
 - audit it first
 - do not trust prior bundle claims over the live files
-- currently at phase 200 with 586 tests passing
+- currently at phase 240 with 746 tests passing
 - continue adding batches of 5 deterministic validators per phase group
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
-- update MEMORY.md after every 40 phases (next update due after phase 240)
+- update MEMORY.md after every 40 phases (next update due after phase 280)
