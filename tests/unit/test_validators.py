@@ -33338,3 +33338,248 @@ def test_kddist555_non_empirical_no_fire() -> None:
     )
     r = validate_knowledge_distillation_evaluation(ms, cl)
     assert r.findings == []
+
+# ---------------------------------------------------------------------------
+# Phase 556 – validate_quantization_evaluation_metrics
+# ---------------------------------------------------------------------------
+def _quanteval556_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t556", source_path="t556.md", source_format="markdown",
+            title="Model quantization", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_quanteval556_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_quantization_evaluation_metrics
+    ms, cl = _quanteval556_ms("We apply INT8 quantization to compress a ResNet-50 model.")
+    r = validate_quantization_evaluation_metrics(ms, cl)
+    assert any(f.code == "missing-quantization-evaluation-metrics" for f in r.findings)
+
+
+def test_quanteval556_no_fire_when_accuracy_reported() -> None:
+    from manuscript_audit.validators.core import validate_quantization_evaluation_metrics
+    ms, cl = _quanteval556_ms(
+        "INT8 quantization: top-1 accuracy = 75.9% with 4x compression ratio."
+    )
+    r = validate_quantization_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_quanteval556_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_quantization_evaluation_metrics
+    ms, cl = _quanteval556_ms("We present a standard image segmentation model.")
+    r = validate_quantization_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_quanteval556_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_quantization_evaluation_metrics
+    ms, _ = _quanteval556_ms("Post-training quantization theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_quantization_evaluation_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 557 – validate_adversarial_robustness_metrics
+# ---------------------------------------------------------------------------
+def _advrobust557_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t557", source_path="t557.md", source_format="markdown",
+            title="Adversarial robustness", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_advrobust557_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_robustness_metrics
+    ms, cl = _advrobust557_ms("We evaluate adversarial robustness against PGD attack.")
+    r = validate_adversarial_robustness_metrics(ms, cl)
+    assert any(f.code == "missing-adversarial-robustness-metrics" for f in r.findings)
+
+
+def test_advrobust557_no_fire_when_robust_acc_reported() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_robustness_metrics
+    ms, cl = _advrobust557_ms(
+        "Adversarial training: robust accuracy = 49.2% under PGD attack."
+    )
+    r = validate_adversarial_robustness_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_advrobust557_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_robustness_metrics
+    ms, cl = _advrobust557_ms("We propose a depth estimation network.")
+    r = validate_adversarial_robustness_metrics(ms, cl)
+    assert r.findings == []
+
+
+def test_advrobust557_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_adversarial_robustness_metrics
+    ms, _ = _advrobust557_ms("Certified robustness theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_adversarial_robustness_metrics(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 558 – validate_differential_privacy_evaluation
+# ---------------------------------------------------------------------------
+def _diffpriv558_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t558", source_path="t558.md", source_format="markdown",
+            title="Differential privacy", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_diffpriv558_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_differential_privacy_evaluation
+    ms, cl = _diffpriv558_ms("We train a model using DP-SGD with differential privacy.")
+    r = validate_differential_privacy_evaluation(ms, cl)
+    assert any(f.code == "missing-differential-privacy-evaluation" for f in r.findings)
+
+
+def test_diffpriv558_no_fire_when_epsilon_reported() -> None:
+    from manuscript_audit.validators.core import validate_differential_privacy_evaluation
+    ms, cl = _diffpriv558_ms("Differential privacy: ε = 1.0 with δ = 1e-5.")
+    r = validate_differential_privacy_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_diffpriv558_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_differential_privacy_evaluation
+    ms, cl = _diffpriv558_ms("We present a standard classification model.")
+    r = validate_differential_privacy_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_diffpriv558_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_differential_privacy_evaluation
+    ms, _ = _diffpriv558_ms("Privacy budget theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_differential_privacy_evaluation(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 559 – validate_multi_task_learning_evaluation
+# ---------------------------------------------------------------------------
+def _multitask559_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t559", source_path="t559.md", source_format="markdown",
+            title="Multi-task learning", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_multitask559_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_multi_task_learning_evaluation
+    ms, cl = _multitask559_ms("We propose a multi-task learning model for NLP tasks.")
+    r = validate_multi_task_learning_evaluation(ms, cl)
+    assert any(f.code == "missing-multi-task-learning-evaluation" for f in r.findings)
+
+
+def test_multitask559_no_fire_when_avg_reported() -> None:
+    from manuscript_audit.validators.core import validate_multi_task_learning_evaluation
+    ms, cl = _multitask559_ms(
+        "Multi-task learning: average accuracy = 84.1% across 8 tasks."
+    )
+    r = validate_multi_task_learning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_multitask559_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_multi_task_learning_evaluation
+    ms, cl = _multitask559_ms("We present a single-task image classifier.")
+    r = validate_multi_task_learning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_multitask559_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_multi_task_learning_evaluation
+    ms, _ = _multitask559_ms("Joint learning theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_multi_task_learning_evaluation(ms, cl)
+    assert r.findings == []
+
+
+# ---------------------------------------------------------------------------
+# Phase 560 – validate_speech_synthesis_evaluation
+# ---------------------------------------------------------------------------
+def _speechsynth560_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
+    return (
+        ParsedManuscript(
+            manuscript_id="t560", source_path="t560.md", source_format="markdown",
+            title="Speech synthesis", full_text=body, sections=[],
+        ),
+        ManuscriptClassification(
+            pathway="applied_stats", paper_type="empirical_paper",
+            recommended_stack="standard",
+        ),
+    )
+
+
+def test_speechsynth560_fires_when_metric_missing() -> None:
+    from manuscript_audit.validators.core import validate_speech_synthesis_evaluation
+    ms, cl = _speechsynth560_ms("We propose a neural TTS system based on FastSpeech.")
+    r = validate_speech_synthesis_evaluation(ms, cl)
+    assert any(f.code == "missing-speech-synthesis-evaluation" for f in r.findings)
+
+
+def test_speechsynth560_no_fire_when_mos_reported() -> None:
+    from manuscript_audit.validators.core import validate_speech_synthesis_evaluation
+    ms, cl = _speechsynth560_ms("TTS system: MOS = 4.21 on LJSpeech.")
+    r = validate_speech_synthesis_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_speechsynth560_no_fire_when_trigger_absent() -> None:
+    from manuscript_audit.validators.core import validate_speech_synthesis_evaluation
+    ms, cl = _speechsynth560_ms("We propose a lane detection network for autonomous driving.")
+    r = validate_speech_synthesis_evaluation(ms, cl)
+    assert r.findings == []
+
+
+def test_speechsynth560_non_empirical_no_fire() -> None:
+    from manuscript_audit.validators.core import validate_speech_synthesis_evaluation
+    ms, _ = _speechsynth560_ms("Vocoder architecture theory paper.")
+    cl = ManuscriptClassification(
+        pathway="math_stats_theory", paper_type="math_theory_paper",
+        recommended_stack="minimal",
+    )
+    r = validate_speech_synthesis_evaluation(ms, cl)
+    assert r.findings == []

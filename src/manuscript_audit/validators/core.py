@@ -7062,6 +7062,11 @@ def run_deterministic_validators(
         validate_nas_evaluation_metrics(parsed, classification),
         validate_contrastive_learning_evaluation(parsed, classification),
         validate_knowledge_distillation_evaluation(parsed, classification),
+        validate_quantization_evaluation_metrics(parsed, classification),
+        validate_adversarial_robustness_metrics(parsed, classification),
+        validate_differential_privacy_evaluation(parsed, classification),
+        validate_multi_task_learning_evaluation(parsed, classification),
+        validate_speech_synthesis_evaluation(parsed, classification),
     ]
     partial = ValidationSuiteResult(validator_version=DEFAULT_VALIDATOR_VERSION, results=results)
     results.append(validate_claim_evidence_escalation(partial))
@@ -31561,6 +31566,244 @@ def validate_knowledge_distillation_evaluation(
                 ),
                 location="full_text",
                 validator=_KDDIST_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 556 – model quantization evaluation
+# ---------------------------------------------------------------------------
+_QUANTEVAL_VID = "missing-quantization-evaluation-metrics"
+
+_QUANTEVAL_TRIGGERS = re.compile(
+    r"\b(?:model\s+quantization|post[- ]training\s+quantization|quantization[- ]aware\s+training|"
+    r"INT[48]\s+quantization|weight\s+quantization|activation\s+quantization|"
+    r"mixed[- ]precision\s+quantization)\b",
+    re.IGNORECASE,
+)
+_QUANTEVAL_METRICS = re.compile(
+    r"\b(?:accuracy|top[- ][15]\s+accuracy|perplexity|F[- ]?1|"
+    r"bit[- ]width|memory\s+footprint|compression\s+ratio)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:accuracy|top[- ][15]|perplexity)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_quantization_evaluation_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_QUANTEVAL_VID, findings=[])
+    text = parsed.full_text
+    if not _QUANTEVAL_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_QUANTEVAL_VID, findings=[])
+    if _QUANTEVAL_METRICS.search(text):
+        return ValidationResult(validator_name=_QUANTEVAL_VID, findings=[])
+    return ValidationResult(
+        validator_name=_QUANTEVAL_VID,
+        findings=[
+            Finding(
+                code=_QUANTEVAL_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses model quantization but does not report "
+                    "accuracy, perplexity, bit-width, or compression ratio on a benchmark."
+                ),
+                location="full_text",
+                validator=_QUANTEVAL_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 557 – adversarial robustness evaluation
+# ---------------------------------------------------------------------------
+_ADVROBUST_VID = "missing-adversarial-robustness-metrics"
+
+_ADVROBUST_TRIGGERS = re.compile(
+    r"\b(?:adversarial\s+(?:robustness|training|examples?|attack)|"
+    r"robust\s+accuracy|certified\s+robustness|PGD\s+attack|AutoAttack|"
+    r"FGSM\s+attack|adversarial\s+perturbation)\b",
+    re.IGNORECASE,
+)
+_ADVROBUST_METRICS = re.compile(
+    r"\b(?:robust\s+accuracy|clean\s+accuracy|certified\s+accuracy|"
+    r"worst[- ]case\s+accuracy|attack\s+success\s+rate)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:robust|clean|certified)\s+accuracy\b",
+    re.IGNORECASE,
+)
+
+
+def validate_adversarial_robustness_metrics(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_ADVROBUST_VID, findings=[])
+    text = parsed.full_text
+    if not _ADVROBUST_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_ADVROBUST_VID, findings=[])
+    if _ADVROBUST_METRICS.search(text):
+        return ValidationResult(validator_name=_ADVROBUST_VID, findings=[])
+    return ValidationResult(
+        validator_name=_ADVROBUST_VID,
+        findings=[
+            Finding(
+                code=_ADVROBUST_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses adversarial robustness but does not report "
+                    "robust accuracy, clean accuracy, or certified accuracy under attack."
+                ),
+                location="full_text",
+                validator=_ADVROBUST_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 558 – differential privacy evaluation
+# ---------------------------------------------------------------------------
+_DIFFPRIV_VID = "missing-differential-privacy-evaluation"
+
+_DIFFPRIV_TRIGGERS = re.compile(
+    r"\b(?:differential\s+privacy|DP[- ]SGD|differentially\s+private|"
+    r"\(ε,\s*δ\)[- ]differential\s+privacy|privacy\s+budget|epsilon[- ]differential)\b",
+    re.IGNORECASE,
+)
+_DIFFPRIV_METRICS = re.compile(
+    r"\b(?:privacy\s+budget|epsilon|ε|delta|δ|accuracy[- ]privacy\s+trade[- ]off|"
+    r"utility[- ]privacy|membership\s+inference\s+accuracy)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*|\d+\.\d+)|"
+    r"(?:ε|epsilon)\s*=\s*\d[\d.]*",
+    re.IGNORECASE,
+)
+
+
+def validate_differential_privacy_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_DIFFPRIV_VID, findings=[])
+    text = parsed.full_text
+    if not _DIFFPRIV_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_DIFFPRIV_VID, findings=[])
+    if _DIFFPRIV_METRICS.search(text):
+        return ValidationResult(validator_name=_DIFFPRIV_VID, findings=[])
+    return ValidationResult(
+        validator_name=_DIFFPRIV_VID,
+        findings=[
+            Finding(
+                code=_DIFFPRIV_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses differential privacy but does not report "
+                    "the privacy budget (ε, δ) or utility-privacy trade-off."
+                ),
+                location="full_text",
+                validator=_DIFFPRIV_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 559 – multi-task learning evaluation
+# ---------------------------------------------------------------------------
+_MULTITASK_VID = "missing-multi-task-learning-evaluation"
+
+_MULTITASK_TRIGGERS = re.compile(
+    r"\b(?:multi[- ]task\s+(?:learning|training|model)|MTL\s+(?:model|approach)|"
+    r"joint\s+(?:training|learning)\s+(?:of\s+)?multiple\s+tasks?|"
+    r"shared\s+representation\s+for\s+multiple\s+tasks?)\b",
+    re.IGNORECASE,
+)
+_MULTITASK_METRICS = re.compile(
+    r"\b(?:average\s+(?:accuracy|F[- ]?1|score)|multi[- ]task\s+score|"
+    r"per[- ]task\s+(?:accuracy|F[- ]?1)|relative\s+improvement)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)|"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*)\s*(?:average|per[- ]task)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_multi_task_learning_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_MULTITASK_VID, findings=[])
+    text = parsed.full_text
+    if not _MULTITASK_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_MULTITASK_VID, findings=[])
+    if _MULTITASK_METRICS.search(text):
+        return ValidationResult(validator_name=_MULTITASK_VID, findings=[])
+    return ValidationResult(
+        validator_name=_MULTITASK_VID,
+        findings=[
+            Finding(
+                code=_MULTITASK_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses multi-task learning but does not report "
+                    "average accuracy, per-task scores, or relative improvement."
+                ),
+                location="full_text",
+                validator=_MULTITASK_VID,
+            )
+        ],
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 560 – speech synthesis evaluation
+# ---------------------------------------------------------------------------
+_SPEECHSYNTH_VID = "missing-speech-synthesis-evaluation"
+
+_SPEECHSYNTH_TRIGGERS = re.compile(
+    r"\b(?:speech\s+synthesis|text[- ]to[- ]speech|TTS\b|neural\s+TTS|"
+    r"vocoder|WaveNet|FastSpeech|Tacotron)\b",
+    re.IGNORECASE,
+)
+_SPEECHSYNTH_METRICS = re.compile(
+    r"\b(?:MOS|mean\s+opinion\s+score|naturalness\s+MOS|intelligibility|"
+    r"WER\s+of\s+synthesized|mel\s+cepstral\s+distortion|MCD)\b.*?"
+    r"(?:\d[\d.]*\s*%|=\s*\d[\d.]*|\d+\.\d+)|"
+    r"(?:\d+\.\d+|\d[\d.]*)\s*(?:MOS|MCD)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_speech_synthesis_evaluation(
+    parsed: ParsedManuscript,
+    classification: ManuscriptClassification,
+) -> ValidationResult:
+    if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+        return ValidationResult(validator_name=_SPEECHSYNTH_VID, findings=[])
+    text = parsed.full_text
+    if not _SPEECHSYNTH_TRIGGERS.search(text):
+        return ValidationResult(validator_name=_SPEECHSYNTH_VID, findings=[])
+    if _SPEECHSYNTH_METRICS.search(text):
+        return ValidationResult(validator_name=_SPEECHSYNTH_VID, findings=[])
+    return ValidationResult(
+        validator_name=_SPEECHSYNTH_VID,
+        findings=[
+            Finding(
+                code=_SPEECHSYNTH_VID,
+                severity="moderate",
+                message=(
+                    "Paper addresses speech synthesis but does not report "
+                    "MOS, MCD, or intelligibility score on a benchmark."
+                ),
+                location="full_text",
+                validator=_SPEECHSYNTH_VID,
             )
         ],
     )
