@@ -44,3 +44,5 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/manuscript_audit/cli.py" = ["B008"]
+"tests/unit/test_bibliography_confidence.py" = ["I001"]
+"tests/unit/test_validators.py" = ["E501"]
