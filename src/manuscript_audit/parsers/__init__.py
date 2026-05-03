@@ -25,8 +25,8 @@ from manuscript_audit.parsers.source_verification import (
 from manuscript_audit.parsers.source_verification import (
     SourceRegistryLookupError as SourceRegistryLookupError,
 )
-from manuscript_audit.parsers.source_verification import (
-    build_bibliography_confidence_summary as build_bibliography_confidence_summary,
+from manuscript_audit.bibliography_confidence.core import (
+    compute_confidence_summary as build_bibliography_confidence_summary,
 )
 from manuscript_audit.parsers.source_verification import (
     summarize_source_record_verifications as summarize_source_record_verifications,
