@@ -1537,3 +1537,8 @@ Assume:
 - Next phase: phase 13 — finalize bibliography confidence rollups integration, add missing tests and report synthesis updates; begin work now.
 - check for constant and function shadowing before each batch (grep -n "^_CONST" and "^def func" in core.py and test file)
 - update MEMORY.md after every 40 phases (next update due after phase 680)
+
+## Session update 2026-05-03T14:32:05-06:00
+- Added bibliography_confidence scaffold (src/manuscript_audit/bibliography_confidence) and unit tests.
+- Verified parsers.build_bibliography_confidence_summary is present and integrated into workflows; standard and source-verification workflows persist summary files and include them in reports.
+- Created plan.md and todos; advancing integrate-bibliography-confidence.
