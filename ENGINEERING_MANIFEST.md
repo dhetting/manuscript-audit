@@ -29,3 +29,7 @@ If any workflow fails: debug, patch, re-run until green. Do not package or relea
 
 Authored-by: Dylan Hettinger
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+## Session update 2026-05-03T14:20:42-06:00
+- Added bibliography_confidence scaffold; tests passed (1428).
+- Plan created at /Users/dhetting/.copilot/session-state/b9e2cc10-7671-4448-a65c-2b606bf9f400/plan.md
