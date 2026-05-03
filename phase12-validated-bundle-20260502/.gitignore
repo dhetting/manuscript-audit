@@ -1,0 +1,9 @@
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.pyc
+data/working/
+data/outputs/
+*.duckdb
+.DS_Store

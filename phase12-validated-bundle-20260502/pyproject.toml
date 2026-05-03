@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manuscript-audit"
+version = "0.1.0"
+description = "Local, reproducible manuscript audit framework with explicit routing and deterministic validation."
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "duckdb>=1.5.0,<2",
+  "pydantic>=2.12.0,<3",
+  "PyYAML>=6.0,<7",
+  "typer>=0.21.0,<0.22",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0.0,<10",
+  "ruff>=0.15.0,<0.16",
+]
+
+[project.scripts]
+manuscript-audit = "manuscript_audit.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/manuscript_audit/cli.py" = ["B008"]
