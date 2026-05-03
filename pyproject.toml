@@ -37,6 +37,7 @@ pythonpath = ["src"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+exclude = ["phase12-validated-bundle-20260502"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
