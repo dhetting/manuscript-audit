@@ -30,9 +30,7 @@ def _empirical_classification() -> ManuscriptClassification:
 
 
 def test_missing_model_card_fires_when_model_described() -> None:
-    parsed = _base_parsed(
-        "We present a new neural network model to predict outcomes."
-    )
+    parsed = _base_parsed("We present a new neural network model to predict outcomes.")
     cl = _empirical_classification()
     result = validate_model_card_presence(parsed, cl)
     assert any(f.code == "missing-model-card" for f in result.findings)
@@ -49,9 +47,7 @@ def test_missing_negative_control_fires_for_causal_claims() -> None:
 
 
 def test_missing_uncertainty_quantification_detects_plain_uncertainty() -> None:
-    parsed = _base_parsed(
-        "We discuss uncertainty in our estimates and the limits of the analysis."
-    )
+    parsed = _base_parsed("We discuss uncertainty in our estimates and the limits of the analysis.")
     cl = _empirical_classification()
     result = validate_uncertainty_terminology_clarity(parsed, cl)
     assert any(f.code == "missing-uncertainty-quantification" for f in result.findings)
@@ -68,8 +64,7 @@ def test_missing_data_version_detects_dataset_mentions_without_version() -> None
 
 def test_missing_code_run_example_detects_repo_without_run_instructions() -> None:
     parsed = _base_parsed(
-        "Code is available at https://github.com/example/repo but no "
-        "instructions are provided."
+        "Code is available at https://github.com/example/repo but no instructions are provided."
     )
     cl = _empirical_classification()
     result = validate_code_run_example(parsed, cl)

@@ -37,9 +37,12 @@ pythonpath = ["src"]
 [tool.ruff]
 line-length = 100
 src = ["src", "tests"]
+exclude = ["phase12-validated-bundle-20260502"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "src/manuscript_audit/cli.py" = ["B008"]
+"tests/unit/test_bibliography_confidence.py" = ["I001"]
+"tests/unit/test_validators.py" = ["E501"]

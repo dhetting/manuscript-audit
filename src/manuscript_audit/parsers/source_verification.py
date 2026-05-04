@@ -486,7 +486,7 @@ def build_bibliography_confidence_summary(
             item.status == "insufficient_metadata" for item in source_records
         )
         manual_review_required_count = ready_for_lookup_count + insufficient_metadata_count
-        score = max(0, 100 - (ready_for_lookup_count * 8) - (insufficient_metadata_count * 15))
+        score = max(0, 100 - (ready_for_lookup_count * 10) - (insufficient_metadata_count * 18))
         rationale: list[str] = []
         if ready_for_lookup_count:
             rationale.append(
@@ -502,11 +502,11 @@ def build_bibliography_confidence_summary(
                 "All bibliography entries resolve to deterministic canonical links "
                 "without external lookup planning."
             )
-        if insufficient_metadata_count >= 2 or score < 55:
+        if insufficient_metadata_count >= 2 or manual_review_required_count >= total_entries or score < 60:
             level = "critical"
-        elif ready_for_lookup_count > 0 or score < 75:
+        elif insufficient_metadata_count >= 1 or ready_for_lookup_count > 0 or score < 80:
             level = "low"
-        elif score < 90:
+        elif score < 92:
             level = "medium"
         else:
             level = "high"
@@ -587,7 +587,7 @@ def build_bibliography_confidence_summary(
             "Bibliography verification did not surface any confidence-reducing issues."
         )
 
-    if provider_error_count > 0 or mismatch_entry_count >= 2 or score < 40:
+    if provider_error_count > 0 or mismatch_entry_count >= 2 or manual_review_required_count >= total_entries or score < 40:
         level = "critical"
     elif (
         mismatch_entry_count > 0

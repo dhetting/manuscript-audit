@@ -1,0 +1,15 @@
+{
+  "doi": {
+    "10.1000/example1": {
+      "provider": "fixture",
+      "doi": "10.1000/example1",
+      "title": "Example Paper 1",
+      "authors": ["Alice"],
+      "year": "2020",
+      "venue": "Journal A",
+      "url": "https://example.org/1",
+      "source_url": "https://example.org/1"
+    }
+  },
+  "doi_errors": ["10.1000/error"]
+}

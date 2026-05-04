@@ -1,0 +1,17 @@
+{
+  "claim_types": [
+    "equivalence"
+  ],
+  "evidence_types": [
+    "simulation",
+    "empirical_data",
+    "software_artifact"
+  ],
+  "high_risk_features": [
+    "decision_relevant_equivalence_claims",
+    "simulation_design_sensitivity"
+  ],
+  "paper_type": "software_workflow_paper",
+  "pathway": "data_science",
+  "recommended_stack": "maximal"
+}

@@ -7,19 +7,19 @@ from manuscript_audit.parsers import (
 )
 
 
-def test_deterministic_single_insufficient_metadata_is_medium() -> None:
+def test_deterministic_single_insufficient_metadata_is_low() -> None:
     entries = parse_bibtex(Path("tests/fixtures/manuscripts/bibliography_metadata.bib"))
     records = build_source_records(entries)
     # ensure deterministic baseline
     for r in records:
         r.status = "resolved_canonical_link"
-    # single insufficient metadata should be a medium confidence
+    # single insufficient metadata should be a low confidence after calibration
     records[0].status = "insufficient_metadata"
     summary = build_bibliography_confidence_summary(records)
 
     assert summary.basis == "deterministic_planning"
     assert summary.insufficient_metadata_count == 1
-    assert summary.confidence_level == "medium"
+    assert summary.confidence_level == "low"
 
 
 def test_deterministic_two_insufficient_metadata_is_critical() -> None:
