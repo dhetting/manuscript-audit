@@ -74,10 +74,12 @@ def test_fatal_findings_precede_major_in_revision_priorities() -> None:
     from manuscript_audit.reports.synthesis import synthesize_report
 
     # Deliberately pass major first, then fatal — output must reorder
-    report = _make_vetting_report_with_findings([
-        ("major", "major-issue"),
-        ("fatal", "fatal-issue"),
-    ])
+    report = _make_vetting_report_with_findings(
+        [
+            ("major", "major-issue"),
+            ("fatal", "fatal-issue"),
+        ]
+    )
     result = synthesize_report(report)
     priorities = result.revision_priorities
     assert len(priorities) == 2

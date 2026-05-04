@@ -13,6 +13,9 @@ src/manuscript_audit/agents/__init__.py
 src/manuscript_audit/agents/interfaces.py
 src/manuscript_audit/agents/modules.py
 src/manuscript_audit/agents/runner.py
+src/manuscript_audit/bibliography_confidence/__init__.py
+src/manuscript_audit/bibliography_confidence/core.py
+src/manuscript_audit/bibliography_confidence/schemas.py
 src/manuscript_audit/parsers/__init__.py
 src/manuscript_audit/parsers/bibtex.py
 src/manuscript_audit/parsers/dispatch.py
