@@ -24,7 +24,7 @@ def test_mixed_provider_errors_and_direct_url():
         records.append(_copy.deepcopy(records[0]))
     records[1].status = "ready_for_lookup"
 
-    client = FixtureSourceRegistryClient(Path("tests/fixtures/registries/provider_mixed_fixture.json"))
+    client = FixtureSourceRegistryClient.from_json(Path("tests/fixtures/registries/provider_mixed_fixture.json"))
     verifications = verify_source_records(records, client)
     summary = summarize_source_record_verifications(verifications)
     bsum = build_bibliography_confidence_summary(records, verifications)
