@@ -15,14 +15,21 @@ from manuscript_audit.schemas.artifacts import SourceRecordVerification
 def test_mixed_provider_errors_and_direct_url():
     entries = parse_bibtex(Path("tests/fixtures/manuscripts/bibliography_metadata.bib"))
     records = build_source_records(entries)
-    # make first record have a direct_url verified scenario via fixture
+    # align records to fixture: first is verified via DOI, second triggers provider error DOI
+    records[0].resolution_strategy = "doi"
     records[0].status = "resolved_canonical_link"
-    # make second record need lookup
+    records[0].identifier_value = "10.1000/example1"
+    records[0].canonical_source_url = "https://doi.org/10.1000/example1"
+
     if len(records) < 2:
         import copy as _copy
 
         records.append(_copy.deepcopy(records[0]))
-    records[1].status = "ready_for_lookup"
+
+    records[1].resolution_strategy = "doi"
+    records[1].status = "resolved_canonical_link"
+    records[1].identifier_value = "10.1000/error"
+    records[1].canonical_source_url = "https://doi.org/10.1000/error"
 
     client = FixtureSourceRegistryClient.from_json(Path("tests/fixtures/registries/provider_mixed_fixture.json"))
     verifications = verify_source_records(entries, records, client)
