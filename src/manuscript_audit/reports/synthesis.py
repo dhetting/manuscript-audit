@@ -86,10 +86,12 @@ def synthesize_revision_report(report: RevisionVerificationReport) -> RevisionVe
             )
     for item in report.persistent_findings:
         if item.severity in _SEVERITY_RANK:
-            prioritized.append((
-                _SEVERITY_RANK[item.severity],
-                f"Persistent issue remains {item.code}: {item.message}",
-            ))
+            prioritized.append(
+                (
+                    _SEVERITY_RANK[item.severity],
+                    f"Persistent issue remains {item.code}: {item.message}",
+                )
+            )
     prioritized.sort(key=lambda t: t[0])
     priorities: list[str] = [msg for _, msg in prioritized]
     if report.route_changed:

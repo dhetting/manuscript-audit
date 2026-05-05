@@ -49,8 +49,8 @@ def _normalize_doi(doi: str | None) -> tuple[str | None, str | None]:
         return None, None
     cleaned = doi.strip()
     # Remove common DOI URL/label prefixes (doi.org, dx.doi.org, doi:)
-    cleaned = re.sub(r'^(https?://(dx\.)?doi\.org/)', "", cleaned, flags=re.IGNORECASE)
-    cleaned = re.sub(r'^(doi:\s*)', "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(https?://(dx\.)?doi\.org/)", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(doi:\s*)", "", cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.strip().strip("<>").strip()
     if not cleaned or DOI_RE.fullmatch(cleaned) is None:
         return None, None

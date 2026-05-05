@@ -62,9 +62,13 @@ _CLAIM_GROUNDING_CODES = frozenset(
 CLAIM_EVIDENCE_GAP_THRESHOLD = 3  # findings needed to trigger major escalation
 
 # Codes that represent structurally critical co-occurrences for fatal escalation.
+<<<<<<< HEAD
 _FATAL_TRIGGER_CODES = frozenset(
     {"systemic-claim-evidence-gap", "missing-required-section"}
 )
+=======
+_FATAL_TRIGGER_CODES = frozenset({"systemic-claim-evidence-gap", "missing-required-section"})
+>>>>>>> origin/main
 
 # Notation ordering: shared regexes used by both validators and agents.
 NOTATION_SECTION_RE = re.compile(
@@ -77,8 +81,13 @@ PROOF_CONTENT_SECTION_RE = re.compile(
 )
 
 # Length/density thresholds.
+<<<<<<< HEAD
 ABSTRACT_OVERLONG_THRESHOLD = 350   # words above which abstract is flagged
 SECTION_THIN_THRESHOLD = 30         # words below which a content section is flagged
+=======
+ABSTRACT_OVERLONG_THRESHOLD = 350  # words above which abstract is flagged
+SECTION_THIN_THRESHOLD = 30  # words below which a content section is flagged
+>>>>>>> origin/main
 _SUBSTANTIAL_SECTION_RE = re.compile(
     r"\b(methods?|results?|discussion|experiments?|analysis|evaluation|conclusions?)\b",
     re.IGNORECASE,
@@ -727,8 +736,12 @@ def validate_unlabeled_equations(
                     code="equation-missing-label",
                     severity="minor",
                     message=(
+<<<<<<< HEAD
                         f"Equation block {i} has no \\label{{}} and cannot be "
                         "cross-referenced."
+=======
+                        f"Equation block {i} has no \\label{{}} and cannot be cross-referenced."
+>>>>>>> origin/main
                     ),
                     validator="unlabeled_equations",
                     location=f"equation {i}",
@@ -822,8 +835,18 @@ def validate_citationless_comparative_claims(parsed: ParsedManuscript) -> Valida
 
 
 _SUPPORT_SECTION_KEYWORDS = {
+<<<<<<< HEAD
     "result", "discussion", "conclusion", "experiment",
     "evaluation", "analysis", "finding",
+=======
+    "result",
+    "discussion",
+    "conclusion",
+    "experiment",
+    "evaluation",
+    "analysis",
+    "finding",
+>>>>>>> origin/main
 }
 
 
@@ -848,6 +871,7 @@ def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationRes
     findings: list[Finding] = []
 
     if not parsed.abstract.strip():
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="abstract_metric_coverage", findings=findings
         )
@@ -867,6 +891,19 @@ def validate_abstract_metric_coverage(parsed: ParsedManuscript) -> ValidationRes
     support_metrics = _extract_metric_values(
         " ".join(s.body for s in support_sections)
     )
+=======
+        return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
+
+    abstract_metrics = _extract_metric_values(parsed.abstract)
+    if not abstract_metrics:
+        return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
+
+    support_sections = [s for s in parsed.sections if _is_support_section(s.title)]
+    if not support_sections:
+        return ValidationResult(validator_name="abstract_metric_coverage", findings=findings)
+
+    support_metrics = _extract_metric_values(" ".join(s.body for s in support_sections))
+>>>>>>> origin/main
 
     for value in sorted(abstract_metrics - support_metrics):
         findings.append(
@@ -916,8 +953,12 @@ def validate_abstract_length(parsed: ParsedManuscript) -> ValidationResult:
                 code="overlong-abstract",
                 severity="minor",
                 message=(
+<<<<<<< HEAD
                     f"Abstract has {n} words; many journals cap at 250–300. "
                     "Consider condensing."
+=======
+                    f"Abstract has {n} words; many journals cap at 250–300. Consider condensing."
+>>>>>>> origin/main
                 ),
                 validator="abstract_length",
                 location="Abstract",
@@ -954,9 +995,13 @@ def validate_section_body_completeness(parsed: ParsedManuscript) -> ValidationRe
                     evidence=[f"{n} words"],
                 )
             )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="section_body_completeness", findings=findings
     )
+=======
+    return ValidationResult(validator_name="section_body_completeness", findings=findings)
+>>>>>>> origin/main
 
 
 def validate_notation_section_ordering(
@@ -974,6 +1019,7 @@ def validate_notation_section_ordering(
     """
     findings: list[Finding] = []
     if classification.paper_type != "theory_paper":
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="notation_section_ordering", findings=findings
         )
@@ -982,14 +1028,24 @@ def validate_notation_section_ordering(
     notation_indices = [
         i for i, t in enumerate(section_titles) if NOTATION_SECTION_RE.search(t)
     ]
+=======
+        return ValidationResult(validator_name="notation_section_ordering", findings=findings)
+
+    section_titles = [s.title for s in parsed.sections]
+    notation_indices = [i for i, t in enumerate(section_titles) if NOTATION_SECTION_RE.search(t)]
+>>>>>>> origin/main
     content_indices = [
         i for i, t in enumerate(section_titles) if PROOF_CONTENT_SECTION_RE.search(t)
     ]
 
     if not notation_indices or not content_indices:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="notation_section_ordering", findings=findings
         )
+=======
+        return ValidationResult(validator_name="notation_section_ordering", findings=findings)
+>>>>>>> origin/main
 
     first_notation = min(notation_indices)
     first_content = min(content_indices)
@@ -1009,9 +1065,13 @@ def validate_notation_section_ordering(
                 evidence=[content_title, notation_title],
             )
         )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="notation_section_ordering", findings=findings
     )
+=======
+    return ValidationResult(validator_name="notation_section_ordering", findings=findings)
+>>>>>>> origin/main
 
 
 def validate_claim_evidence_escalation(suite: ValidationSuiteResult) -> ValidationResult:
@@ -1038,9 +1098,13 @@ def validate_claim_evidence_escalation(suite: ValidationSuiteResult) -> Validati
                 evidence=[f.message[:80] for f in matched[:3]],
             )
         )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="claim_evidence_escalation", findings=findings
     )
+=======
+    return ValidationResult(validator_name="claim_evidence_escalation", findings=findings)
+>>>>>>> origin/main
 
 
 def validate_critical_escalation(suite: ValidationSuiteResult) -> ValidationResult:
@@ -1054,12 +1118,17 @@ def validate_critical_escalation(suite: ValidationSuiteResult) -> ValidationResu
     present_codes = {f.code for f in suite.all_findings}
     findings: list[Finding] = []
     if _FATAL_TRIGGER_CODES.issubset(present_codes):
+<<<<<<< HEAD
         missing_sections = [
             f for f in suite.all_findings if f.code == "missing-required-section"
         ]
         section_names = [
             (f.location or "unknown") for f in missing_sections
         ]
+=======
+        missing_sections = [f for f in suite.all_findings if f.code == "missing-required-section"]
+        section_names = [(f.location or "unknown") for f in missing_sections]
+>>>>>>> origin/main
         findings.append(
             Finding(
                 code="critical-structural-claim-failure",
@@ -1077,9 +1146,13 @@ def validate_critical_escalation(suite: ValidationSuiteResult) -> ValidationResu
                 ],
             )
         )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="critical_escalation", findings=findings
     )
+=======
+    return ValidationResult(validator_name="critical_escalation", findings=findings)
+>>>>>>> origin/main
 
 
 # Passive voice density (methods sections).
@@ -1136,11 +1209,19 @@ def validate_passive_voice_density(parsed: ParsedManuscript) -> ValidationResult
 # suggests a performance metric, e.g. "94% accuracy", "F1 of 0.85", "p < 0.05".
 _DUP_CLAIM_RE = re.compile(
     r"(?:"
+<<<<<<< HEAD
     r"\d+(?:\.\d+)?%\s+\w+"       # "94% accuracy"
     r"|"
     r"\w+\s+of\s+\d+(?:\.\d+)?"   # "F1 of 0.85"
     r"|"
     r"p\s*[<>=]\s*0\.\d+"          # "p < 0.05"
+=======
+    r"\d+(?:\.\d+)?%\s+\w+"  # "94% accuracy"
+    r"|"
+    r"\w+\s+of\s+\d+(?:\.\d+)?"  # "F1 of 0.85"
+    r"|"
+    r"p\s*[<>=]\s*0\.\d+"  # "p < 0.05"
+>>>>>>> origin/main
     r"|"
     r"\d+(?:\.\d+)?\s+\w+\s+(?:score|rate|ratio|precision|recall|accuracy)\b"
     r")",
@@ -1176,7 +1257,11 @@ def validate_duplicate_claims(parsed: ParsedManuscript) -> ValidationResult:
                     code="duplicate-quantitative-claim",
                     severity="minor",
                     message=(
+<<<<<<< HEAD
                         f"Quantitative claim \"{claim}\" appears verbatim in "
+=======
+                        f'Quantitative claim "{claim}" appears verbatim in '
+>>>>>>> origin/main
                         f"{len(sections)} sections ({section_list}) — verify consistency."
                     ),
                     validator="duplicate_claims",
@@ -1265,9 +1350,13 @@ def validate_related_work_coverage(
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
         return ValidationResult(validator_name="related_work_coverage", findings=[])
+<<<<<<< HEAD
     has_related_work = any(
         _RELATED_WORK_RE.search(section.title) for section in parsed.sections
     )
+=======
+    has_related_work = any(_RELATED_WORK_RE.search(section.title) for section in parsed.sections)
+>>>>>>> origin/main
     if has_related_work:
         return ValidationResult(validator_name="related_work_coverage", findings=[])
     return ValidationResult(
@@ -1348,11 +1437,46 @@ _ACRONYM_DEF_RE = re.compile(
 # Matches standalone uppercase 2–6 letter tokens not surrounded by other letters.
 _ACRONYM_USE_RE = re.compile(r"(?<![A-Za-z0-9])([A-Z]{2,6})s?(?![A-Za-z0-9])")
 # Well-known acronyms that never need in-text definition.
+<<<<<<< HEAD
 _COMMON_ACRONYMS = frozenset({
     "URL", "HTML", "PDF", "API", "CPU", "GPU", "RAM", "SQL", "XML", "JSON",
     "HTTP", "HTTPS", "IDE", "SDK", "CI", "CD", "AI", "ML", "NLP", "CV",
     "US", "UK", "EU", "UN", "USA", "NA", "DOI", "ORCID",
 })
+=======
+_COMMON_ACRONYMS = frozenset(
+    {
+        "URL",
+        "HTML",
+        "PDF",
+        "API",
+        "CPU",
+        "GPU",
+        "RAM",
+        "SQL",
+        "XML",
+        "JSON",
+        "HTTP",
+        "HTTPS",
+        "IDE",
+        "SDK",
+        "CI",
+        "CD",
+        "AI",
+        "ML",
+        "NLP",
+        "CV",
+        "US",
+        "UK",
+        "EU",
+        "UN",
+        "USA",
+        "NA",
+        "DOI",
+        "ORCID",
+    }
+)
+>>>>>>> origin/main
 
 
 def _document_paragraphs(parsed: ParsedManuscript) -> list[tuple[str, str]]:
@@ -1392,7 +1516,11 @@ def validate_acronym_consistency(parsed: ParsedManuscript) -> ValidationResult:
     # Second pass: find uses and check against definition positions.
     # use_locations maps acronym → list of (para_idx, location) for uses
     # that precede the definition.
+<<<<<<< HEAD
     early_uses: dict[str, str] = {}   # acronym → first location of premature use
+=======
+    early_uses: dict[str, str] = {}  # acronym → first location of premature use
+>>>>>>> origin/main
     all_uses: set[str] = set()
 
     for idx, (location, para) in enumerate(pairs):
@@ -1418,7 +1546,11 @@ def validate_acronym_consistency(parsed: ParsedManuscript) -> ValidationResult:
                 code="acronym-used-before-definition",
                 severity="moderate",
                 message=(
+<<<<<<< HEAD
                     f'Acronym "{acronym}" is used in \'{early_uses[acronym]}\' '
+=======
+                    f"Acronym \"{acronym}\" is used in '{early_uses[acronym]}' "
+>>>>>>> origin/main
                     "before its first definition."
                 ),
                 validator="acronym_consistency",
@@ -1431,10 +1563,14 @@ def validate_acronym_consistency(parsed: ParsedManuscript) -> ValidationResult:
             Finding(
                 code="undefined-acronym",
                 severity="moderate",
+<<<<<<< HEAD
                 message=(
                     f'Acronym "{acronym}" is used but never defined '
                     "with a full expansion."
                 ),
+=======
+                message=(f'Acronym "{acronym}" is used but never defined with a full expansion.'),
+>>>>>>> origin/main
                 validator="acronym_consistency",
                 evidence=[acronym],
             )
@@ -1476,14 +1612,23 @@ def validate_methods_tense_consistency(parsed: ParsedManuscript) -> ValidationRe
             continue
         sentences = [s.strip() for s in _SENTENCE_SPLIT_RE.split(body) if s.strip()]
         tense_sentences = [
+<<<<<<< HEAD
             s for s in sentences
             if _PRESENT_TENSE_RE.search(s) or _PAST_TENSE_RE.search(s)
+=======
+            s for s in sentences if _PRESENT_TENSE_RE.search(s) or _PAST_TENSE_RE.search(s)
+>>>>>>> origin/main
         ]
         if len(tense_sentences) < 5:
             continue
         # Count sentences that contain present-tense markers but NO past-tense markers.
         present_only = sum(
+<<<<<<< HEAD
             1 for s in tense_sentences
+=======
+            1
+            for s in tense_sentences
+>>>>>>> origin/main
             if _PRESENT_TENSE_RE.search(s) and not _PAST_TENSE_RE.search(s)
         )
         ratio = present_only / len(tense_sentences)
@@ -1509,7 +1654,11 @@ def validate_methods_tense_consistency(parsed: ParsedManuscript) -> ValidationRe
 # Sentence length outliers
 # ---------------------------------------------------------------------------
 SENTENCE_LENGTH_THRESHOLD = 60  # words above which a sentence is flagged
+<<<<<<< HEAD
 _FINDINGS_PER_SECTION_CAP = 3   # max findings per section
+=======
+_FINDINGS_PER_SECTION_CAP = 3  # max findings per section
+>>>>>>> origin/main
 
 
 def validate_sentence_length_outliers(parsed: ParsedManuscript) -> ValidationResult:
@@ -1558,9 +1707,15 @@ def validate_sentence_length_outliers(parsed: ParsedManuscript) -> ValidationRes
 # ---------------------------------------------------------------------------
 
 _CITATION_RE = re.compile(
+<<<<<<< HEAD
     r"\[\d+(?:,\s*\d+)*\]"          # [1], [1, 2]
     r"|(?:[A-Z][a-z]+\s+(?:et\s+al\.?|and\s+[A-Z][a-z]+),?\s+\d{4})"  # Smith et al. 2020
     r"|\\\w+cite\{[^}]+\}",         # \cite{key}
+=======
+    r"\[\d+(?:,\s*\d+)*\]"  # [1], [1, 2]
+    r"|(?:[A-Z][a-z]+\s+(?:et\s+al\.?|and\s+[A-Z][a-z]+),?\s+\d{4})"  # Smith et al. 2020
+    r"|\\\w+cite\{[^}]+\}",  # \cite{key}
+>>>>>>> origin/main
 )
 _CITATION_GAP_SECTIONS = frozenset({"results", "discussion", "analysis", "evaluation"})
 CITATION_CLUSTER_GAP = 5  # consecutive sentences without any citation
@@ -1698,8 +1853,13 @@ def validate_power_word_overuse(parsed: ParsedManuscript) -> ValidationResult:
 # Phase 39 – Number formatting consistency
 # ---------------------------------------------------------------------------
 
+<<<<<<< HEAD
 _BARE_LARGE_NUMBER_RE = re.compile(r"(?<!\d)\d{5,}(?!\d)")   # 10000, 100000 etc.
 _COMMA_NUMBER_RE = re.compile(r"\d{1,3}(?:,\d{3})+")          # 10,000 / 100,000 etc.
+=======
+_BARE_LARGE_NUMBER_RE = re.compile(r"(?<!\d)\d{5,}(?!\d)")  # 10000, 100000 etc.
+_COMMA_NUMBER_RE = re.compile(r"\d{1,3}(?:,\d{3})+")  # 10,000 / 100,000 etc.
+>>>>>>> origin/main
 
 
 def _number_magnitude(n_str: str) -> int:
@@ -1722,12 +1882,17 @@ def validate_number_format_consistency(parsed: ParsedManuscript) -> ValidationRe
         if not body:
             continue
 
+<<<<<<< HEAD
         bare_magnitudes = {
             _number_magnitude(m) for m in _BARE_LARGE_NUMBER_RE.findall(body)
         }
         comma_magnitudes = {
             _number_magnitude(m) for m in _COMMA_NUMBER_RE.findall(body)
         }
+=======
+        bare_magnitudes = {_number_magnitude(m) for m in _BARE_LARGE_NUMBER_RE.findall(body)}
+        comma_magnitudes = {_number_magnitude(m) for m in _COMMA_NUMBER_RE.findall(body)}
+>>>>>>> origin/main
         overlap = bare_magnitudes & comma_magnitudes
         if overlap:
             example_mag = min(overlap)
@@ -1753,9 +1918,15 @@ def validate_number_format_consistency(parsed: ParsedManuscript) -> ValidationRe
 # ---------------------------------------------------------------------------
 
 _ABSTRACT_TERM_RE = re.compile(
+<<<<<<< HEAD
     r"(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"           # Capitalized multi-word: Neural Network
     r"|(?:[a-z]+-[a-z]+(?:-[a-z]+)*)"               # hyphenated compound: fine-tuning
     r"|(?:[a-z]+[A-Z][a-z]+(?:[A-Z][a-z]+)*)",      # camelCase: backPropagation
+=======
+    r"(?:[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)"  # Capitalized multi-word: Neural Network
+    r"|(?:[a-z]+-[a-z]+(?:-[a-z]+)*)"  # hyphenated compound: fine-tuning
+    r"|(?:[a-z]+[A-Z][a-z]+(?:[A-Z][a-z]+)*)",  # camelCase: backPropagation
+>>>>>>> origin/main
 )
 _ABSTRACT_KEYWORD_MIN_TERMS = 3  # minimum extracted terms to bother checking
 ABSTRACT_KEYWORD_COVERAGE_THRESHOLD = 0.30  # fraction of terms that must appear in body
@@ -1781,9 +1952,13 @@ def validate_abstract_keyword_coverage(parsed: ParsedManuscript) -> ValidationRe
         return ValidationResult(validator_name="abstract_keyword_coverage", findings=[])
 
     body_text = " ".join(
+<<<<<<< HEAD
         s.body
         for s in parsed.sections
         if s.title.lower() not in ("abstract",)
+=======
+        s.body for s in parsed.sections if s.title.lower() not in ("abstract",)
+>>>>>>> origin/main
     ).lower()
 
     matched = [t for t in terms if t in body_text]
@@ -1819,8 +1994,21 @@ _CONTRIBUTION_COUNT_RE = re.compile(
     re.IGNORECASE,
 )
 _NUMBER_WORDS = {
+<<<<<<< HEAD
     "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
     "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+=======
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+>>>>>>> origin/main
 }
 _ENUM_SIGNAL_RE = re.compile(
     r"(?:^|\n)\s*(?:\d+[\.\)]\s|\(?[ivx]+\)\s|[-*•]\s|first[,:]?\s|second[,:]?\s|third[,:]?\s)",
@@ -1862,9 +2050,13 @@ def validate_contribution_claim_count(parsed: ParsedManuscript) -> ValidationRes
     if claimed_count is None or claimed_count < 2:
         return ValidationResult(validator_name="contribution_claim_count", findings=[])
 
+<<<<<<< HEAD
     body_text = "\n".join(
         s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     )
+=======
+    body_text = "\n".join(s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS)
+>>>>>>> origin/main
     found_count = len(_ENUM_SIGNAL_RE.findall(body_text))
 
     if found_count < claimed_count:
@@ -1905,11 +2097,15 @@ def validate_first_person_consistency(parsed: ParsedManuscript) -> ValidationRes
     ``_FIRST_PERSON_MINORITY_THRESHOLD`` of total first-person uses, emits
     ``first-person-inconsistency`` (minor).
     """
+<<<<<<< HEAD
     body_text = " ".join(
         s.body
         for s in parsed.sections
         if s.title.lower() not in _SKIP_SECTIONS
     )
+=======
+    body_text = " ".join(s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS)
+>>>>>>> origin/main
     i_count = len(_FIRST_PERSON_I_RE.findall(body_text))
     we_count = len(_FIRST_PERSON_WE_RE.findall(body_text))
     total = i_count + we_count
@@ -2023,9 +2219,13 @@ def validate_reference_staleness(
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
         return ValidationResult(validator_name="reference_staleness", findings=[])
 
+<<<<<<< HEAD
     dated = [
         e for e in parsed.bibliography_entries if e.year and YEAR_RE.match(e.year)
     ]
+=======
+    dated = [e for e in parsed.bibliography_entries if e.year and YEAR_RE.match(e.year)]
+>>>>>>> origin/main
     if len(dated) < _STALE_MIN_ENTRIES:
         return ValidationResult(validator_name="reference_staleness", findings=[])
 
@@ -2058,7 +2258,11 @@ def validate_reference_staleness(
 # ---------------------------------------------------------------------------
 
 _COMPOUND_TERM_RE = re.compile(
+<<<<<<< HEAD
     r"(?:[a-z]+-[a-z]+(?:-[a-z]+)*)"    # hyphenated: fine-tune, back-propagation
+=======
+    r"(?:[a-z]+-[a-z]+(?:-[a-z]+)*)"  # hyphenated: fine-tune, back-propagation
+>>>>>>> origin/main
     r"|(?:[a-z]+\s+[a-z]+(?:\s+[a-z]+)?)",  # spaced: fine tune, random forest
     re.IGNORECASE,
 )
@@ -2109,10 +2313,19 @@ def validate_terminology_drift(parsed: ParsedManuscript) -> ValidationResult:
         # Build the spaced equivalent
         spaced_form = hyphen_form.replace("-", " ")
         # Count spaced occurrences via simple substring search (word-boundary safe)
+<<<<<<< HEAD
         spaced_count = len(re.findall(
             r"(?<![a-z])" + re.escape(spaced_form) + r"(?![a-z])",
             full_body,
         ))
+=======
+        spaced_count = len(
+            re.findall(
+                r"(?<![a-z])" + re.escape(spaced_form) + r"(?![a-z])",
+                full_body,
+            )
+        )
+>>>>>>> origin/main
         if spaced_count > 0:
             total = h_count + spaced_count
             if total >= _DRIFT_MIN_OCCURRENCES:
@@ -2267,10 +2480,14 @@ def validate_reproducibility_checklist(
                 Finding(
                     code="missing-reproducibility-element",
                     severity="minor",
+<<<<<<< HEAD
                     message=(
                         f"No evidence of {label} found — "
                         "include this for reproducibility."
                     ),
+=======
+                    message=(f"No evidence of {label} found — include this for reproducibility."),
+>>>>>>> origin/main
                     validator="reproducibility_checklist",
                     location="manuscript body",
                     evidence=[f"missing: {label}"],
@@ -2316,9 +2533,13 @@ def validate_self_citation_ratio(parsed: ParsedManuscript) -> ValidationResult:
     """
     from collections import Counter
 
+<<<<<<< HEAD
     entries_with_authors = [
         e for e in parsed.bibliography_entries if e.authors
     ]
+=======
+    entries_with_authors = [e for e in parsed.bibliography_entries if e.authors]
+>>>>>>> origin/main
     if len(entries_with_authors) < _SELF_CITE_MIN_ENTRIES:
         return ValidationResult(validator_name="self_citation_ratio", findings=[])
 
@@ -2349,9 +2570,13 @@ def validate_self_citation_ratio(parsed: ParsedManuscript) -> ValidationResult:
                     ),
                     validator="self_citation_ratio",
                     location="bibliography",
+<<<<<<< HEAD
                     evidence=[
                         f"'{top_name}' in {top_count}/{len(entries_with_authors)} entries"
                     ],
+=======
+                    evidence=[f"'{top_name}' in {top_count}/{len(entries_with_authors)} entries"],
+>>>>>>> origin/main
                 )
             ],
         )
@@ -2452,10 +2677,14 @@ def validate_equation_density(
     if classification.pathway != "math_stats_theory":
         return ValidationResult(validator_name="equation_density", findings=[])
 
+<<<<<<< HEAD
     content_sections = [
         s for s in parsed.sections
         if s.title.lower() not in _SKIP_SECTIONS
     ]
+=======
+    content_sections = [s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS]
+>>>>>>> origin/main
     if len(content_sections) < _EQUATION_DENSITY_MIN_SECTIONS:
         return ValidationResult(validator_name="equation_density", findings=[])
 
@@ -2573,9 +2802,13 @@ def validate_url_format(parsed: ParsedManuscript) -> ValidationResult:
                 Finding(
                     code="malformed-url",
                     severity="minor",
+<<<<<<< HEAD
                     message=(
                         f"URL '{url[:60]}' does not start with http:// or https://."
                     ),
+=======
+                    message=(f"URL '{url[:60]}' does not start with http:// or https://."),
+>>>>>>> origin/main
                     validator="url_format",
                     location="manuscript body",
                     evidence=[url[:80]],
@@ -2634,10 +2867,14 @@ def validate_figure_table_balance(
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
         return ValidationResult(validator_name="figure_table_balance", findings=[])
 
+<<<<<<< HEAD
     content_sections = [
         s for s in parsed.sections
         if s.title.lower() not in _SKIP_SECTIONS
     ]
+=======
+    content_sections = [s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS]
+>>>>>>> origin/main
     if len(content_sections) < _FIG_TABLE_MIN_SECTIONS:
         return ValidationResult(validator_name="figure_table_balance", findings=[])
 
@@ -2684,8 +2921,21 @@ def validate_figure_table_balance(
 
 _IMRAD_ORDER = ["introduction", "method", "result", "discussion"]
 _IMRAD_SECTION_TYPES = frozenset(
+<<<<<<< HEAD
     {"introduction", "method", "result", "discussion",
      "methodology", "methods", "results", "conclusions"}
+=======
+    {
+        "introduction",
+        "method",
+        "result",
+        "discussion",
+        "methodology",
+        "methods",
+        "results",
+        "conclusions",
+    }
+>>>>>>> origin/main
 )
 
 
@@ -2788,7 +3038,12 @@ def validate_keyword_section_coverage(parsed: ParsedManuscript) -> ValidationRes
         return ValidationResult(validator_name="keyword_section_coverage", findings=[])
 
     body_text = " ".join(
+<<<<<<< HEAD
         s.body for s in parsed.sections
+=======
+        s.body
+        for s in parsed.sections
+>>>>>>> origin/main
         if s.title.lower() not in ("abstract", "keywords", "keyword")
     ).lower()
 
@@ -2810,9 +3065,13 @@ def validate_keyword_section_coverage(parsed: ParsedManuscript) -> ValidationRes
             )
             if len(findings) >= 5:
                 break
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="keyword_section_coverage", findings=findings
     )
+=======
+    return ValidationResult(validator_name="keyword_section_coverage", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -2826,7 +3085,11 @@ _STAT_TEST_RE = re.compile(
     re.IGNORECASE,
 )
 _PVALUE_RE = re.compile(
+<<<<<<< HEAD
     r"p\s*[<>=≤≥]\s*(?:0\.\d+|\.\d+)"   # p < 0.05, p = 0.001
+=======
+    r"p\s*[<>=≤≥]\s*(?:0\.\d+|\.\d+)"  # p < 0.05, p = 0.001
+>>>>>>> origin/main
     r"|p[\s-]value",
     re.IGNORECASE,
 )
@@ -2845,9 +3108,13 @@ def validate_statistical_test_reporting(
     (moderate).
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="statistical_test_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="statistical_test_reporting", findings=[])
+>>>>>>> origin/main
 
     relevant_text = ""
     for section in parsed.sections:
@@ -2855,6 +3122,7 @@ def validate_statistical_test_reporting(
             relevant_text += " " + section.body
 
     if not relevant_text.strip():
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="statistical_test_reporting", findings=[]
         )
@@ -2869,6 +3137,16 @@ def validate_statistical_test_reporting(
         return ValidationResult(
             validator_name="statistical_test_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="statistical_test_reporting", findings=[])
+
+    found_test = _STAT_TEST_RE.search(relevant_text)
+    if not found_test:
+        return ValidationResult(validator_name="statistical_test_reporting", findings=[])
+
+    if _PVALUE_RE.search(relevant_text):
+        return ValidationResult(validator_name="statistical_test_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="statistical_test_reporting",
@@ -2914,9 +3192,13 @@ def validate_effect_size_reporting(
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
         return ValidationResult(validator_name="effect_size_reporting", findings=[])
 
+<<<<<<< HEAD
     body_text = " ".join(
         s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     )
+=======
+    body_text = " ".join(s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS)
+>>>>>>> origin/main
 
     if not _PVALUE_RE.search(body_text):
         return ValidationResult(validator_name="effect_size_reporting", findings=[])
@@ -2972,6 +3254,7 @@ def validate_acknowledgments_presence(
       the full text.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="acknowledgments_presence", findings=[]
         )
@@ -2980,20 +3263,34 @@ def validate_acknowledgments_presence(
         return ValidationResult(
             validator_name="acknowledgments_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="acknowledgments_presence", findings=[])
+
+    if len(parsed.bibliography_entries) < _ACKNOWLEDGMENT_MIN_ENTRIES:
+        return ValidationResult(validator_name="acknowledgments_presence", findings=[])
+>>>>>>> origin/main
 
     # Check for dedicated acknowledgments section
     for section in parsed.sections:
         if section.title.lower() in _ACKNOWLEDGMENT_SECTIONS:
+<<<<<<< HEAD
             return ValidationResult(
                 validator_name="acknowledgments_presence", findings=[]
             )
+=======
+            return ValidationResult(validator_name="acknowledgments_presence", findings=[])
+>>>>>>> origin/main
 
     # Check for funding keywords anywhere in the text
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if _FUNDING_RE.search(full):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="acknowledgments_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="acknowledgments_presence", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="acknowledgments_presence",
@@ -3043,9 +3340,13 @@ def validate_conflict_of_interest(
 
     for section in parsed.sections:
         if _COI_RE.search(section.title) or _COI_RE.search(section.body):
+<<<<<<< HEAD
             return ValidationResult(
                 validator_name="conflict_of_interest", findings=[]
             )
+=======
+            return ValidationResult(validator_name="conflict_of_interest", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="conflict_of_interest",
@@ -3184,14 +3485,19 @@ def validate_citation_style_consistency(parsed: ParsedManuscript) -> ValidationR
     Emits ``citation-style-inconsistency`` (minor) when both styles appear
     and the minority style exceeds ``_CITE_STYLE_MINORITY_THRESHOLD``.
     """
+<<<<<<< HEAD
     body_text = " ".join(
         s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     )
+=======
+    body_text = " ".join(s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS)
+>>>>>>> origin/main
     n_numbered = len(_NUMBERED_CITE_RE.findall(body_text))
     n_author_year = len(_AUTHOR_YEAR_CITE_RE.findall(body_text))
     total = n_numbered + n_author_year
 
     if total < _CITE_STYLE_MIN or n_numbered == 0 or n_author_year == 0:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="citation_style_consistency", findings=[]
         )
@@ -3201,6 +3507,13 @@ def validate_citation_style_consistency(parsed: ParsedManuscript) -> ValidationR
         return ValidationResult(
             validator_name="citation_style_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="citation_style_consistency", findings=[])
+
+    minority = min(n_numbered, n_author_year)
+    if minority / total <= _CITE_STYLE_MINORITY_THRESHOLD:
+        return ValidationResult(validator_name="citation_style_consistency", findings=[])
+>>>>>>> origin/main
 
     dominant = "numbered [N]" if n_numbered >= n_author_year else "author-year"
     other = "author-year" if dominant == "numbered [N]" else "numbered [N]"
@@ -3218,9 +3531,13 @@ def validate_citation_style_consistency(parsed: ParsedManuscript) -> ValidationR
                 ),
                 validator="citation_style_consistency",
                 location="manuscript body",
+<<<<<<< HEAD
                 evidence=[
                     f"numbered: {n_numbered}; author-year: {n_author_year}"
                 ],
+=======
+                evidence=[f"numbered: {n_numbered}; author-year: {n_author_year}"],
+>>>>>>> origin/main
             )
         ],
     )
@@ -3241,9 +3558,13 @@ def validate_cross_reference_integrity(parsed: ParsedManuscript) -> ValidationRe
     Emits ``cross-reference-out-of-range`` (minor).
     """
     findings: list[Finding] = []
+<<<<<<< HEAD
     body_text = " ".join(
         s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     )
+=======
+    body_text = " ".join(s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS)
+>>>>>>> origin/main
 
     n_figs = len(parsed.figure_definitions)
     if n_figs > 0:
@@ -3260,9 +3581,13 @@ def validate_cross_reference_integrity(parsed: ParsedManuscript) -> ValidationRe
                         ),
                         validator="cross_reference_integrity",
                         location="manuscript body",
+<<<<<<< HEAD
                         evidence=[
                             f"referenced Figure {ref_num}; definitions: {n_figs}"
                         ],
+=======
+                        evidence=[f"referenced Figure {ref_num}; definitions: {n_figs}"],
+>>>>>>> origin/main
                     )
                 )
                 if len(findings) >= _FINDINGS_PER_SECTION_CAP:
@@ -3283,17 +3608,25 @@ def validate_cross_reference_integrity(parsed: ParsedManuscript) -> ValidationRe
                         ),
                         validator="cross_reference_integrity",
                         location="manuscript body",
+<<<<<<< HEAD
                         evidence=[
                             f"referenced Table {ref_num}; definitions: {n_tabs}"
                         ],
+=======
+                        evidence=[f"referenced Table {ref_num}; definitions: {n_tabs}"],
+>>>>>>> origin/main
                     )
                 )
                 if len(findings) >= _FINDINGS_PER_SECTION_CAP:
                     break
 
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="cross_reference_integrity", findings=findings
     )
+=======
+    return ValidationResult(validator_name="cross_reference_integrity", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -3341,6 +3674,7 @@ def validate_decimal_precision_consistency(parsed: ParsedManuscript) -> Validati
                     ),
                     validator="decimal_precision_consistency",
                     location=f"section '{section.title}'",
+<<<<<<< HEAD
                     evidence=[
                         f"integer ~{example}% appears with and without decimals"
                     ],
@@ -3349,6 +3683,12 @@ def validate_decimal_precision_consistency(parsed: ParsedManuscript) -> Validati
     return ValidationResult(
         validator_name="decimal_precision_consistency", findings=findings
     )
+=======
+                    evidence=[f"integer ~{example}% appears with and without decimals"],
+                )
+            )
+    return ValidationResult(validator_name="decimal_precision_consistency", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -3406,9 +3746,13 @@ def validate_future_work_balance(parsed: ParsedManuscript) -> ValidationResult:
                     ),
                     validator="future_work_balance",
                     location=f"section '{section.title}'",
+<<<<<<< HEAD
                     evidence=[
                         f"future-work sentences: {fw_count}/{len(sentences)}"
                     ],
+=======
+                    evidence=[f"future-work sentences: {fw_count}/{len(sentences)}"],
+>>>>>>> origin/main
                 )
             )
     return ValidationResult(validator_name="future_work_balance", findings=findings)
@@ -3441,15 +3785,20 @@ def validate_null_result_acknowledgment(
     paragraphs but no null-result language.  Only fires for empirical papers.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="null_result_acknowledgment", findings=[]
         )
+=======
+        return ValidationResult(validator_name="null_result_acknowledgment", findings=[])
+>>>>>>> origin/main
 
     relevant_text = ""
     paragraph_count = 0
     for section in parsed.sections:
         if any(kw in section.title.lower() for kw in _NULL_RESULT_SECTIONS):
             relevant_text += " " + section.body
+<<<<<<< HEAD
             paragraph_count += len(
                 [p for p in section.body.split("\n\n") if p.strip()]
             )
@@ -3463,6 +3812,15 @@ def validate_null_result_acknowledgment(
         return ValidationResult(
             validator_name="null_result_acknowledgment", findings=[]
         )
+=======
+            paragraph_count += len([p for p in section.body.split("\n\n") if p.strip()])
+
+    if not relevant_text.strip() or paragraph_count < _NULL_RESULT_MIN_PARAGRAPHS:
+        return ValidationResult(validator_name="null_result_acknowledgment", findings=[])
+
+    if _NULL_RESULT_RE.search(relevant_text):
+        return ValidationResult(validator_name="null_result_acknowledgment", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="null_result_acknowledgment",
@@ -3496,8 +3854,19 @@ _HEDGE_DENSITY_RE = re.compile(
     re.IGNORECASE,
 )
 _HEDGE_SECTIONS = frozenset(
+<<<<<<< HEAD
     {"abstract", "introduction", "conclusion", "conclusions",
      "concluding remarks", "summary and conclusions"}
+=======
+    {
+        "abstract",
+        "introduction",
+        "conclusion",
+        "conclusions",
+        "concluding remarks",
+        "summary and conclusions",
+    }
+>>>>>>> origin/main
 )
 _HEDGE_COUNT_THRESHOLD = 4
 _HEDGE_MIN_WORDS = 50
@@ -3557,9 +3926,13 @@ _DUP_MAX_FINDINGS = 3
 def _sentence_tokens(text: str) -> list[frozenset[str]]:
     """Split text into sentences; return each as a frozenset of lowercased words."""
     return [
+<<<<<<< HEAD
         frozenset(s.lower().split())
         for s in _SENTENCE_SPLIT_RE.split(text)
         if len(s.split()) >= 5
+=======
+        frozenset(s.lower().split()) for s in _SENTENCE_SPLIT_RE.split(text) if len(s.split()) >= 5
+>>>>>>> origin/main
     ]
 
 
@@ -3613,18 +3986,26 @@ def validate_duplicate_section_content(parsed: ParsedManuscript) -> ValidationRe
                             "review for unintentional repetition."
                         ),
                         validator="duplicate_section_content",
+<<<<<<< HEAD
                         location=(
                             f"sections '{sec_a.title}' and '{sec_b.title}'"
                         ),
+=======
+                        location=(f"sections '{sec_a.title}' and '{sec_b.title}'"),
+>>>>>>> origin/main
                         evidence=[f"max sentence Jaccard: {max_sim:.2f}"],
                     )
                 )
                 if len(findings) >= _DUP_MAX_FINDINGS:
                     break
 
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="duplicate_section_content", findings=findings
     )
+=======
+    return ValidationResult(validator_name="duplicate_section_content", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -3632,8 +4013,20 @@ def validate_duplicate_section_content(parsed: ParsedManuscript) -> ValidationRe
 # ---------------------------------------------------------------------------
 
 _METHODS_SECTIONS = frozenset(
+<<<<<<< HEAD
     {"methods", "method", "methodology", "materials and methods",
      "experimental setup", "experimental design", "study design"}
+=======
+    {
+        "methods",
+        "method",
+        "methodology",
+        "materials and methods",
+        "experimental setup",
+        "experimental design",
+        "study design",
+    }
+>>>>>>> origin/main
 )
 _METHODS_MIN_WORDS = 150
 
@@ -3682,8 +4075,19 @@ def validate_methods_depth(
 
 _LIST_ITEM_RE = re.compile(r"^(?:\s*[-*\u2022]\s|\s*\d+[.)]\s)", re.MULTILINE)
 _LIST_OVERUSE_SECTIONS = frozenset(
+<<<<<<< HEAD
     {"introduction", "discussion", "conclusion", "conclusions",
      "concluding remarks", "summary and conclusions"}
+=======
+    {
+        "introduction",
+        "discussion",
+        "conclusion",
+        "conclusions",
+        "concluding remarks",
+        "summary and conclusions",
+    }
+>>>>>>> origin/main
 )
 _LIST_OVERUSE_THRESHOLD = 0.50
 _LIST_OVERUSE_MIN_ITEMS = 6
@@ -3720,9 +4124,13 @@ def validate_list_overuse(parsed: ParsedManuscript) -> ValidationResult:
                     ),
                     validator="list_overuse",
                     location=f"section '{section.title}'",
+<<<<<<< HEAD
                     evidence=[
                         f"list items: {len(list_lines)}/{len(lines)} lines"
                     ],
+=======
+                    evidence=[f"list items: {len(list_lines)}/{len(lines)} lines"],
+>>>>>>> origin/main
                 )
             )
     return ValidationResult(validator_name="list_overuse", findings=findings)
@@ -3748,9 +4156,13 @@ def validate_section_balance(
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
         return ValidationResult(validator_name="section_balance", findings=[])
 
+<<<<<<< HEAD
     major_sections = [
         s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     ]
+=======
+    major_sections = [s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS]
+>>>>>>> origin/main
     if len(major_sections) < 3:
         return ValidationResult(validator_name="section_balance", findings=[])
 
@@ -3788,8 +4200,21 @@ def validate_section_balance(
 # ---------------------------------------------------------------------------
 
 _RELATED_WORK_TITLES = frozenset(
+<<<<<<< HEAD
     {"related work", "related works", "background", "prior work",
      "literature review", "previous work", "related studies", "survey"}
+=======
+    {
+        "related work",
+        "related works",
+        "background",
+        "prior work",
+        "literature review",
+        "previous work",
+        "related studies",
+        "survey",
+    }
+>>>>>>> origin/main
 )
 _YEAR_IN_BIB_RE = re.compile(r"\b(?:19|20)\d{2}\b")
 _RELATED_WORK_MIN_CITATIONS = 5
@@ -3862,9 +4287,13 @@ def validate_introduction_length(parsed: ParsedManuscript) -> ValidationResult:
     ``_INTRO_LENGTH_THRESHOLD`` of total body word count.  Requires ≥
     ``_INTRO_MIN_SECTIONS`` non-skipped sections.
     """
+<<<<<<< HEAD
     major_sections = [
         s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     ]
+=======
+    major_sections = [s for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS]
+>>>>>>> origin/main
     if len(major_sections) < _INTRO_MIN_SECTIONS:
         return ValidationResult(validator_name="introduction_length", findings=[])
 
@@ -3927,9 +4356,13 @@ def validate_unquantified_comparisons(parsed: ParsedManuscript) -> ValidationRes
     ``_UNQUANTIFIED_MAX_FINDINGS``.
     """
     findings: list[Finding] = []
+<<<<<<< HEAD
     body_text = " ".join(
         s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS
     )
+=======
+    body_text = " ".join(s.body for s in parsed.sections if s.title.lower() not in _SKIP_SECTIONS)
+>>>>>>> origin/main
 
     for match in _UNQUANTIFIED_CLAIM_RE.finditer(body_text):
         start = max(0, match.start() - _UNQUANTIFIED_NEARBY_CHARS)
@@ -3952,9 +4385,13 @@ def validate_unquantified_comparisons(parsed: ParsedManuscript) -> ValidationRes
             if len(findings) >= _UNQUANTIFIED_MAX_FINDINGS:
                 break
 
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="unquantified_comparisons", findings=findings
     )
+=======
+    return ValidationResult(validator_name="unquantified_comparisons", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -4031,9 +4468,15 @@ def validate_abbreviation_list(parsed: ParsedManuscript) -> ValidationResult:
         return ValidationResult(validator_name="abbreviation_list", findings=[])
 
     body_text = " ".join(
+<<<<<<< HEAD
         s.body for s in parsed.sections
         if s.title.lower() not in _SKIP_SECTIONS
         and not _ABBREV_SECTION_RE.search(s.title)
+=======
+        s.body
+        for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS and not _ABBREV_SECTION_RE.search(s.title)
+>>>>>>> origin/main
     )
 
     abbrevs = _ABBREV_ENTRY_RE.findall(abbrev_section.body)
@@ -4059,9 +4502,13 @@ def validate_abbreviation_list(parsed: ParsedManuscript) -> ValidationResult:
             if len(findings) >= _ABBREV_MAX_FINDINGS:
                 break
 
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="abbreviation_list", findings=findings
     )
+=======
+    return ValidationResult(validator_name="abbreviation_list", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -4103,10 +4550,14 @@ def validate_abstract_tense(parsed: ParsedManuscript) -> ValidationResult:
     present_count = sum(1 for s in sentences if _ABSTRACT_PRESENT_RE.search(s))
     n = len(sentences)
 
+<<<<<<< HEAD
     if (
         past_count / n > _ABSTRACT_TENSE_THRESHOLD
         and present_count / n > _ABSTRACT_TENSE_THRESHOLD
     ):
+=======
+    if past_count / n > _ABSTRACT_TENSE_THRESHOLD and present_count / n > _ABSTRACT_TENSE_THRESHOLD:
+>>>>>>> origin/main
         return ValidationResult(
             validator_name="abstract_tense",
             findings=[
@@ -4121,9 +4572,13 @@ def validate_abstract_tense(parsed: ParsedManuscript) -> ValidationResult:
                     ),
                     validator="abstract_tense",
                     location="abstract",
+<<<<<<< HEAD
                     evidence=[
                         f"past: {past_count}/{n}; present: {present_count}/{n}"
                     ],
+=======
+                    evidence=[f"past: {past_count}/{n}; present: {present_count}/{n}"],
+>>>>>>> origin/main
                 )
             ],
         )
@@ -4174,9 +4629,13 @@ def validate_claim_strength_escalation(parsed: ParsedManuscript) -> ValidationRe
                     evidence=[match.group()],
                 )
             )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="claim_strength_escalation", findings=findings
     )
+=======
+    return ValidationResult(validator_name="claim_strength_escalation", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -4273,6 +4732,7 @@ def validate_limitations_section_presence(
     in Discussion/Conclusion.
     """
     if classification.paper_type not in _LIMITATIONS_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="limitations_section_presence", findings=[]
         )
@@ -4284,6 +4744,13 @@ def validate_limitations_section_presence(
         return ValidationResult(
             validator_name="limitations_section_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="limitations_section_presence", findings=[])
+
+    has_dedicated = any(s.title.lower() in _LIMITATIONS_TITLES for s in parsed.sections)
+    if has_dedicated:
+        return ValidationResult(validator_name="limitations_section_presence", findings=[])
+>>>>>>> origin/main
 
     discussion_body = " ".join(
         s.body
@@ -4291,9 +4758,13 @@ def validate_limitations_section_presence(
         if s.title.lower() in {"discussion", "conclusion", "conclusions"}
     )
     if _LIMITATIONS_INLINE_RE.search(discussion_body):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="limitations_section_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="limitations_section_presence", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="limitations_section_presence",
@@ -4338,6 +4809,7 @@ def validate_author_contribution_statement(
     """
     combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if _CONTRIB_SECTION_RE.search(combined) and _CONTRIB_KEYWORD_RE.search(combined):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="author_contribution_statement", findings=[]
         )
@@ -4347,6 +4819,13 @@ def validate_author_contribution_statement(
             return ValidationResult(
                 validator_name="author_contribution_statement", findings=[]
             )
+=======
+        return ValidationResult(validator_name="author_contribution_statement", findings=[])
+
+    for section in parsed.sections:
+        if _CONTRIB_SECTION_RE.search(section.title):
+            return ValidationResult(validator_name="author_contribution_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="author_contribution_statement",
@@ -4400,6 +4879,7 @@ def validate_preregistration_mention(
     registered report lacks any preregistration or registry reference.
     """
     if classification.paper_type not in _PREREG_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="preregistration_mention", findings=[]
         )
@@ -4417,6 +4897,17 @@ def validate_preregistration_mention(
         return ValidationResult(
             validator_name="preregistration_mention", findings=[]
         )
+=======
+        return ValidationResult(validator_name="preregistration_mention", findings=[])
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    is_rct = classification.paper_type == "clinical_trial_report" or bool(_RCT_RE.search(combined))
+    if not is_rct:
+        return ValidationResult(validator_name="preregistration_mention", findings=[])
+
+    if _PREREG_RE.search(combined):
+        return ValidationResult(validator_name="preregistration_mention", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="preregistration_mention",
@@ -4468,6 +4959,7 @@ def validate_reviewer_response_completeness(
     title_is_revision = _REVISION_TITLE_RE.search(parsed.title or "")
     abstract_is_revision = _REVISION_TITLE_RE.search(parsed.abstract or "")
     if not (title_is_revision or abstract_is_revision):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="reviewer_response_completeness", findings=[]
         )
@@ -4477,6 +4969,13 @@ def validate_reviewer_response_completeness(
         return ValidationResult(
             validator_name="reviewer_response_completeness", findings=[]
         )
+=======
+        return ValidationResult(validator_name="reviewer_response_completeness", findings=[])
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _REVIEWER_RESPONSE_RE.search(combined):
+        return ValidationResult(validator_name="reviewer_response_completeness", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="reviewer_response_completeness",
@@ -4576,6 +5075,7 @@ def validate_figure_table_minimum(
     no figures or tables anywhere in the body.
     """
     if classification.paper_type not in _FIG_TABLE_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="figure_table_minimum", findings=[]
         )
@@ -4585,6 +5085,13 @@ def validate_figure_table_minimum(
         return ValidationResult(
             validator_name="figure_table_minimum", findings=[]
         )
+=======
+        return ValidationResult(validator_name="figure_table_minimum", findings=[])
+
+    combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _FIG_TABLE_RE.search(combined):
+        return ValidationResult(validator_name="figure_table_minimum", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="figure_table_minimum",
@@ -4641,9 +5148,13 @@ def validate_multiple_comparisons_correction(
     multiple-comparison correction language.
     """
     if classification.paper_type not in _MULTI_TEST_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="multiple_comparisons_correction", findings=[]
         )
+=======
+        return ValidationResult(validator_name="multiple_comparisons_correction", findings=[])
+>>>>>>> origin/main
 
     combined = " ".join(
         s.body
@@ -4651,6 +5162,7 @@ def validate_multiple_comparisons_correction(
         if s.title.lower() in {"methods", "methodology", "results", "statistics"}
     )
     if not combined:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="multiple_comparisons_correction", findings=[]
         )
@@ -4664,6 +5176,15 @@ def validate_multiple_comparisons_correction(
         return ValidationResult(
             validator_name="multiple_comparisons_correction", findings=[]
         )
+=======
+        return ValidationResult(validator_name="multiple_comparisons_correction", findings=[])
+
+    if not _MULTIPLE_TEST_RE.search(combined):
+        return ValidationResult(validator_name="multiple_comparisons_correction", findings=[])
+
+    if _CORRECTION_RE.search(combined):
+        return ValidationResult(validator_name="multiple_comparisons_correction", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="multiple_comparisons_correction",
@@ -4710,6 +5231,7 @@ def validate_supplementary_material_indication(
     """
     combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not _SUPPL_REF_RE.search(combined):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="supplementary_material_indication", findings=[]
         )
@@ -4717,6 +5239,11 @@ def validate_supplementary_material_indication(
         return ValidationResult(
             validator_name="supplementary_material_indication", findings=[]
         )
+=======
+        return ValidationResult(validator_name="supplementary_material_indication", findings=[])
+    if _SUPPL_AVAIL_RE.search(combined):
+        return ValidationResult(validator_name="supplementary_material_indication", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="supplementary_material_indication",
@@ -4758,11 +5285,15 @@ def validate_conclusion_scope_creep(parsed: ParsedManuscript) -> ValidationResul
     introduced (rather than summarizing established findings).
     Requires ≥ ``_CONCLUSION_MIN_WORDS`` words in the conclusion body.
     """
+<<<<<<< HEAD
     conclusions = [
         s
         for s in parsed.sections
         if s.title.lower() in _CONCLUSION_TITLES
     ]
+=======
+    conclusions = [s for s in parsed.sections if s.title.lower() in _CONCLUSION_TITLES]
+>>>>>>> origin/main
     findings: list[Finding] = []
     for section in conclusions:
         body = section.body
@@ -4784,9 +5315,13 @@ def validate_conclusion_scope_creep(parsed: ParsedManuscript) -> ValidationResul
                     evidence=[match.group() if match else ""],
                 )
             )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="conclusion_scope_creep", findings=findings
     )
+=======
+    return ValidationResult(validator_name="conclusion_scope_creep", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -4808,9 +5343,13 @@ def validate_discussion_results_alignment(parsed: ParsedManuscript) -> Validatio
     section is present but contains no interpretive references to results.
     Requires ≥50 words in the Discussion.
     """
+<<<<<<< HEAD
     discussion_sections = [
         s for s in parsed.sections if s.title.lower() == "discussion"
     ]
+=======
+    discussion_sections = [s for s in parsed.sections if s.title.lower() == "discussion"]
+>>>>>>> origin/main
     findings: list[Finding] = []
     for section in discussion_sections:
         body = section.body
@@ -4829,9 +5368,13 @@ def validate_discussion_results_alignment(parsed: ParsedManuscript) -> Validatio
                     location=section.title,
                 )
             )
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="discussion_results_alignment", findings=findings
     )
+=======
+    return ValidationResult(validator_name="discussion_results_alignment", findings=findings)
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -4974,6 +5517,7 @@ def validate_abstract_quantitative_results(
     numerical results.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="abstract_quantitative_results", findings=[]
         )
@@ -4988,6 +5532,16 @@ def validate_abstract_quantitative_results(
         return ValidationResult(
             validator_name="abstract_quantitative_results", findings=[]
         )
+=======
+        return ValidationResult(validator_name="abstract_quantitative_results", findings=[])
+
+    abstract = parsed.abstract or ""
+    if len(abstract.split()) < _ABSTRACT_MIN_WORDS_QUANT:
+        return ValidationResult(validator_name="abstract_quantitative_results", findings=[])
+
+    if _ABSTRACT_QUANT_RE.search(abstract):
+        return ValidationResult(validator_name="abstract_quantitative_results", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="abstract_quantitative_results",
@@ -5043,6 +5597,7 @@ def validate_confidence_interval_reporting(
     contain effect size language but no confidence interval notation.
     """
     if classification.paper_type not in _CI_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="confidence_interval_reporting", findings=[]
         )
@@ -5066,6 +5621,21 @@ def validate_confidence_interval_reporting(
         return ValidationResult(
             validator_name="confidence_interval_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="confidence_interval_reporting", findings=[])
+
+    results_body = " ".join(
+        s.body for s in parsed.sections if s.title.lower() in {"results", "analysis", "findings"}
+    )
+    if not results_body:
+        return ValidationResult(validator_name="confidence_interval_reporting", findings=[])
+
+    if not _EFFECT_SIZE_RESULT_RE.search(results_body):
+        return ValidationResult(validator_name="confidence_interval_reporting", findings=[])
+
+    if _CI_PRESENT_RE.search(results_body):
+        return ValidationResult(validator_name="confidence_interval_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="confidence_interval_reporting",
@@ -5115,9 +5685,13 @@ def validate_bayesian_prior_justification(
     is provided.  Only fires for empirical paper types.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="bayesian_prior_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="bayesian_prior_justification", findings=[])
+>>>>>>> origin/main
 
     combined = " ".join(
         s.body
@@ -5125,6 +5699,7 @@ def validate_bayesian_prior_justification(
         if s.title.lower() in {"methods", "methodology", "statistical analysis", "analysis"}
     )
     if not combined:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="bayesian_prior_justification", findings=[]
         )
@@ -5138,6 +5713,15 @@ def validate_bayesian_prior_justification(
         return ValidationResult(
             validator_name="bayesian_prior_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="bayesian_prior_justification", findings=[])
+
+    if not _BAYESIAN_RE.search(combined):
+        return ValidationResult(validator_name="bayesian_prior_justification", findings=[])
+
+    if _PRIOR_JUSTIFY_RE.search(combined):
+        return ValidationResult(validator_name="bayesian_prior_justification", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="bayesian_prior_justification",
@@ -5191,9 +5775,13 @@ def validate_software_version_pinning(
     software tools/packages without pinned version numbers.
     """
     if classification.paper_type not in _VERSION_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="software_version_pinning", findings=[]
         )
+=======
+        return ValidationResult(validator_name="software_version_pinning", findings=[])
+>>>>>>> origin/main
 
     methods_body = " ".join(
         s.body
@@ -5201,6 +5789,7 @@ def validate_software_version_pinning(
         if s.title.lower() in {"methods", "methodology", "implementation", "software"}
     )
     if not methods_body:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="software_version_pinning", findings=[]
         )
@@ -5214,6 +5803,15 @@ def validate_software_version_pinning(
         return ValidationResult(
             validator_name="software_version_pinning", findings=[]
         )
+=======
+        return ValidationResult(validator_name="software_version_pinning", findings=[])
+
+    if not _SOFTWARE_CITATION_RE.search(methods_body):
+        return ValidationResult(validator_name="software_version_pinning", findings=[])
+
+    if _VERSION_PINNED_RE.search(methods_body):
+        return ValidationResult(validator_name="software_version_pinning", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="software_version_pinning",
@@ -5269,14 +5867,23 @@ def validate_measurement_scale_reporting(
     statistics (Cronbach's alpha, omega, etc.).
     """
     if classification.paper_type not in _SCALE_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="measurement_scale_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="measurement_scale_reporting", findings=[])
+>>>>>>> origin/main
 
     methods_body = " ".join(
         s.body
         for s in parsed.sections
+<<<<<<< HEAD
         if s.title.lower() in {
+=======
+        if s.title.lower()
+        in {
+>>>>>>> origin/main
             "methods",
             "methodology",
             "measures",
@@ -5285,6 +5892,7 @@ def validate_measurement_scale_reporting(
         }
     )
     if not methods_body:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="measurement_scale_reporting", findings=[]
         )
@@ -5298,6 +5906,15 @@ def validate_measurement_scale_reporting(
         return ValidationResult(
             validator_name="measurement_scale_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="measurement_scale_reporting", findings=[])
+
+    if not _SCALE_MENTION_RE.search(methods_body):
+        return ValidationResult(validator_name="measurement_scale_reporting", findings=[])
+
+    if _RELIABILITY_RE.search(methods_body):
+        return ValidationResult(validator_name="measurement_scale_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="measurement_scale_reporting",
@@ -5352,6 +5969,7 @@ def validate_sem_fit_indices(
     SEM or CFA language without reporting standard fit indices (CFI, RMSEA, etc.).
     """
     if classification.paper_type not in _SEM_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="sem_fit_indices", findings=[]
         )
@@ -5375,6 +5993,21 @@ def validate_sem_fit_indices(
         return ValidationResult(
             validator_name="sem_fit_indices", findings=[]
         )
+=======
+        return ValidationResult(validator_name="sem_fit_indices", findings=[])
+
+    results_body = " ".join(
+        s.body for s in parsed.sections if s.title.lower() in {"results", "analysis", "findings"}
+    )
+    if not results_body:
+        return ValidationResult(validator_name="sem_fit_indices", findings=[])
+
+    if not _SEM_RE.search(results_body):
+        return ValidationResult(validator_name="sem_fit_indices", findings=[])
+
+    if _FIT_INDEX_RE.search(results_body):
+        return ValidationResult(validator_name="sem_fit_indices", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="sem_fit_indices",
@@ -5428,9 +6061,13 @@ def validate_regression_variance_explanation(
     describe regression models without reporting variance explained (R²).
     """
     if classification.paper_type not in _REGRESSION_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="regression_variance_explanation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="regression_variance_explanation", findings=[])
+>>>>>>> origin/main
 
     results_body = " ".join(
         s.body
@@ -5438,6 +6075,7 @@ def validate_regression_variance_explanation(
         if s.title.lower() in {"results", "analysis", "findings", "statistical analysis"}
     )
     if not results_body:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="regression_variance_explanation", findings=[]
         )
@@ -5451,6 +6089,15 @@ def validate_regression_variance_explanation(
         return ValidationResult(
             validator_name="regression_variance_explanation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="regression_variance_explanation", findings=[])
+
+    if not _REGRESSION_RE.search(results_body):
+        return ValidationResult(validator_name="regression_variance_explanation", findings=[])
+
+    if _R_SQUARED_RE.search(results_body):
+        return ValidationResult(validator_name="regression_variance_explanation", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="regression_variance_explanation",
@@ -5507,9 +6154,13 @@ def validate_normality_assumption(
     report parametric tests (t-test, ANOVA) without any normality assessment.
     """
     if classification.paper_type not in _NORMALITY_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="normality_assumption", findings=[]
         )
+=======
+        return ValidationResult(validator_name="normality_assumption", findings=[])
+>>>>>>> origin/main
 
     combined = " ".join(
         s.body
@@ -5587,7 +6238,12 @@ def validate_attrition_reporting(
     combined = " ".join(
         s.body
         for s in parsed.sections
+<<<<<<< HEAD
         if s.title.lower() in {
+=======
+        if s.title.lower()
+        in {
+>>>>>>> origin/main
             "methods",
             "methodology",
             "participants",
@@ -5650,6 +6306,7 @@ def validate_generalizability_overclaim(parsed: ParsedManuscript) -> ValidationR
     """
     combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not _GENERALIZE_CLAIM_RE.search(combined):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="generalizability_overclaim", findings=[]
         )
@@ -5657,6 +6314,11 @@ def validate_generalizability_overclaim(parsed: ParsedManuscript) -> ValidationR
         return ValidationResult(
             validator_name="generalizability_overclaim", findings=[]
         )
+=======
+        return ValidationResult(validator_name="generalizability_overclaim", findings=[])
+    if _GENERALIZE_HEDGE_RE.search(combined):
+        return ValidationResult(validator_name="generalizability_overclaim", findings=[])
+>>>>>>> origin/main
 
     match = _GENERALIZE_CLAIM_RE.search(combined)
     return ValidationResult(
@@ -5716,9 +6378,13 @@ def validate_interrater_reliability(
     human coding or rating without reporting interrater reliability statistics.
     """
     if classification.paper_type not in _IRR_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="interrater_reliability", findings=[]
         )
+=======
+        return ValidationResult(validator_name="interrater_reliability", findings=[])
+>>>>>>> origin/main
 
     methods_body = " ".join(
         s.body
@@ -5726,6 +6392,7 @@ def validate_interrater_reliability(
         if s.title.lower() in {"methods", "methodology", "coding", "procedure"}
     )
     if not methods_body:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="interrater_reliability", findings=[]
         )
@@ -5739,6 +6406,15 @@ def validate_interrater_reliability(
         return ValidationResult(
             validator_name="interrater_reliability", findings=[]
         )
+=======
+        return ValidationResult(validator_name="interrater_reliability", findings=[])
+
+    if not _CODING_RE.search(methods_body):
+        return ValidationResult(validator_name="interrater_reliability", findings=[])
+
+    if _IRR_RE.search(methods_body):
+        return ValidationResult(validator_name="interrater_reliability", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="interrater_reliability",
@@ -5762,12 +6438,17 @@ def validate_interrater_reliability(
 # Phase 112 – Spurious numerical precision
 # ---------------------------------------------------------------------------
 
+<<<<<<< HEAD
 _SPURIOUS_PRECISION_RE = re.compile(
     r"\b\d+\.\d{5,}\b"
 )
 _SPURIOUS_SECTION_TITLES = frozenset(
     {"results", "analysis", "findings", "statistical analysis"}
 )
+=======
+_SPURIOUS_PRECISION_RE = re.compile(r"\b\d+\.\d{5,}\b")
+_SPURIOUS_SECTION_TITLES = frozenset({"results", "analysis", "findings", "statistical analysis"})
+>>>>>>> origin/main
 
 
 def validate_spurious_precision(parsed: ParsedManuscript) -> ValidationResult:
@@ -5828,6 +6509,7 @@ def validate_vague_temporal_claims(parsed: ParsedManuscript) -> ValidationResult
     combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
     vague_matches = _VAGUE_TEMPORAL_RE.findall(combined)
     if len(vague_matches) < _VAGUE_TEMPORAL_THRESHOLD:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="vague_temporal_claims", findings=[]
         )
@@ -5835,6 +6517,11 @@ def validate_vague_temporal_claims(parsed: ParsedManuscript) -> ValidationResult
         return ValidationResult(
             validator_name="vague_temporal_claims", findings=[]
         )
+=======
+        return ValidationResult(validator_name="vague_temporal_claims", findings=[])
+    if _TEMPORAL_ANCHOR_RE.search(combined):
+        return ValidationResult(validator_name="vague_temporal_claims", findings=[])
+>>>>>>> origin/main
 
     unique = list({m.lower() for m in vague_matches})[:3]
     return ValidationResult(
@@ -5890,16 +6577,24 @@ def validate_exclusion_criteria(
     inclusion criteria for participants without corresponding exclusion criteria.
     """
     if classification.paper_type not in _EXCLUSION_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="exclusion_criteria", findings=[]
         )
+=======
+        return ValidationResult(validator_name="exclusion_criteria", findings=[])
+>>>>>>> origin/main
 
     methods_body = " ".join(
         s.body
         for s in parsed.sections
+<<<<<<< HEAD
         if s.title.lower() in {
             "methods", "methodology", "participants", "sample", "procedure"
         }
+=======
+        if s.title.lower() in {"methods", "methodology", "participants", "sample", "procedure"}
+>>>>>>> origin/main
     )
     if not methods_body:
         return ValidationResult(validator_name="exclusion_criteria", findings=[])
@@ -6013,16 +6708,25 @@ def validate_statistical_power(
     justification.
     """
     if classification.paper_type not in _POWER_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="statistical_power", findings=[]
         )
+=======
+        return ValidationResult(validator_name="statistical_power", findings=[])
+>>>>>>> origin/main
 
     methods_body = " ".join(
         s.body
         for s in parsed.sections
+<<<<<<< HEAD
         if s.title.lower() in {
             "methods", "methodology", "participants", "sample", "statistical analysis"
         }
+=======
+        if s.title.lower()
+        in {"methods", "methodology", "participants", "sample", "statistical analysis"}
+>>>>>>> origin/main
     )
     if not methods_body:
         return ValidationResult(validator_name="statistical_power", findings=[])
@@ -6052,9 +6756,13 @@ def validate_statistical_power(
 # Phase 117 – Missing keywords section
 # ---------------------------------------------------------------------------
 
+<<<<<<< HEAD
 _KEYWORD_SECTION_TITLES = frozenset(
     {"keywords", "key words", "index terms", "subject terms"}
 )
+=======
+_KEYWORD_SECTION_TITLES = frozenset({"keywords", "key words", "index terms", "subject terms"})
+>>>>>>> origin/main
 _KEYWORD_INLINE_RE = re.compile(
     r"\b(keywords?|key words?|index terms?)\s*:\s*\S",
     re.IGNORECASE,
@@ -6067,16 +6775,24 @@ def validate_keywords_present(parsed: ParsedManuscript) -> ValidationResult:
     Emits ``missing-keywords`` (minor) when no keywords section or
     inline keyword declaration is detected in the manuscript.
     """
+<<<<<<< HEAD
     has_section = any(
         s.title.lower() in _KEYWORD_SECTION_TITLES for s in parsed.sections
     )
+=======
+    has_section = any(s.title.lower() in _KEYWORD_SECTION_TITLES for s in parsed.sections)
+>>>>>>> origin/main
     if has_section:
         return ValidationResult(validator_name="keywords_present", findings=[])
 
     combined = parsed.full_text or " ".join(s.body for s in parsed.sections)
+<<<<<<< HEAD
     if _KEYWORD_INLINE_RE.search(combined) or _KEYWORD_INLINE_RE.search(
         parsed.abstract or ""
     ):
+=======
+    if _KEYWORD_INLINE_RE.search(combined) or _KEYWORD_INLINE_RE.search(parsed.abstract or ""):
+>>>>>>> origin/main
         return ValidationResult(validator_name="keywords_present", findings=[])
 
     return ValidationResult(
@@ -6140,6 +6856,10 @@ def validate_overlong_sentences(parsed: ParsedManuscript) -> ValidationResult:
 # Phase 119 – Mixed heading capitalization
 # ---------------------------------------------------------------------------
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 def _is_title_case(text: str) -> bool:
     """Return True if most content words are Title Cased."""
     words = [w for w in text.split() if len(w) > 3]
@@ -6171,6 +6891,7 @@ def validate_heading_capitalization_consistency(
     (requires ≥ ``_HEADING_MIN_SECTIONS`` sections).
     """
     major_sections = [
+<<<<<<< HEAD
         s for s in parsed.sections
         if s.title.lower() not in _SKIP_SECTIONS and len(s.title.split()) >= 2
     ]
@@ -6178,6 +6899,14 @@ def validate_heading_capitalization_consistency(
         return ValidationResult(
             validator_name="heading_capitalization_consistency", findings=[]
         )
+=======
+        s
+        for s in parsed.sections
+        if s.title.lower() not in _SKIP_SECTIONS and len(s.title.split()) >= 2
+    ]
+    if len(major_sections) < _HEADING_MIN_SECTIONS:
+        return ValidationResult(validator_name="heading_capitalization_consistency", findings=[])
+>>>>>>> origin/main
 
     title_case_count = sum(1 for s in major_sections if _is_title_case(s.title))
     sentence_case_count = sum(1 for s in major_sections if _is_sentence_case(s.title))
@@ -6208,9 +6937,13 @@ def validate_heading_capitalization_consistency(
             ],
         )
 
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="heading_capitalization_consistency", findings=[]
     )
+=======
+    return ValidationResult(validator_name="heading_capitalization_consistency", findings=[])
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -6247,9 +6980,13 @@ def validate_research_question_addressed(
         if s.title.lower() in {"introduction", "intro", "background"}
     )
     if not intro_body or not _RESEARCH_QUESTION_RE.search(intro_body):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="research_question_addressed", findings=[]
         )
+=======
+        return ValidationResult(validator_name="research_question_addressed", findings=[])
+>>>>>>> origin/main
 
     results_body = " ".join(
         s.body
@@ -6257,6 +6994,7 @@ def validate_research_question_addressed(
         if s.title.lower() in {"results", "discussion", "findings", "analysis"}
     )
     if not results_body:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="research_question_addressed", findings=[]
         )
@@ -6265,6 +7003,12 @@ def validate_research_question_addressed(
         return ValidationResult(
             validator_name="research_question_addressed", findings=[]
         )
+=======
+        return ValidationResult(validator_name="research_question_addressed", findings=[])
+
+    if _RESULTS_PRESENT_RE.search(results_body):
+        return ValidationResult(validator_name="research_question_addressed", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="research_question_addressed",
@@ -6284,7 +7028,10 @@ def validate_research_question_addressed(
     )
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 122 – Citations in abstract
 # ---------------------------------------------------------------------------
@@ -6304,6 +7051,7 @@ def validate_citations_in_abstract(parsed: ParsedManuscript) -> ValidationResult
     """
     abstract = parsed.abstract or ""
     if not abstract:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="citations_in_abstract", findings=[]
         )
@@ -6313,6 +7061,13 @@ def validate_citations_in_abstract(parsed: ParsedManuscript) -> ValidationResult
         return ValidationResult(
             validator_name="citations_in_abstract", findings=[]
         )
+=======
+        return ValidationResult(validator_name="citations_in_abstract", findings=[])
+
+    matches = _ABSTRACT_CITATION_RE.findall(abstract)
+    if not matches:
+        return ValidationResult(validator_name="citations_in_abstract", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="citations_in_abstract",
@@ -6365,6 +7120,7 @@ def validate_funding_statement(
     acknowledgment section/statement is found.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="funding_statement", findings=[]
         )
@@ -6372,6 +7128,11 @@ def validate_funding_statement(
     has_section = any(
         s.title.lower() in _FUNDING_SECTION_TITLES for s in parsed.sections
     )
+=======
+        return ValidationResult(validator_name="funding_statement", findings=[])
+
+    has_section = any(s.title.lower() in _FUNDING_SECTION_TITLES for s in parsed.sections)
+>>>>>>> origin/main
     if has_section:
         return ValidationResult(validator_name="funding_statement", findings=[])
 
@@ -6401,8 +7162,17 @@ def validate_funding_statement(
 # ---------------------------------------------------------------------------
 
 _DISCUSSION_TITLES = frozenset(
+<<<<<<< HEAD
     {"discussion", "discussion and conclusions", "discussion and conclusion",
      "discussion and implications"}
+=======
+    {
+        "discussion",
+        "discussion and conclusions",
+        "discussion and conclusion",
+        "discussion and implications",
+    }
+>>>>>>> origin/main
 )
 
 
@@ -6416,14 +7186,19 @@ def validate_discussion_section_presence(
     has Results but no Discussion section.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="discussion_section_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="discussion_section_presence", findings=[])
+>>>>>>> origin/main
 
     has_results = any(
         s.title.lower() in {"results", "findings", "analysis"} for s in parsed.sections
     )
     if not has_results:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="discussion_section_presence", findings=[]
         )
@@ -6435,6 +7210,13 @@ def validate_discussion_section_presence(
         return ValidationResult(
             validator_name="discussion_section_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="discussion_section_presence", findings=[])
+
+    has_discussion = any(s.title.lower() in _DISCUSSION_TITLES for s in parsed.sections)
+    if has_discussion:
+        return ValidationResult(validator_name="discussion_section_presence", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="discussion_section_presence",
@@ -6458,10 +7240,17 @@ def validate_discussion_section_presence(
 # ---------------------------------------------------------------------------
 
 _PVAL_FORMATS_RE = [
+<<<<<<< HEAD
     re.compile(r"\bp\s*<\s*0\.\d+"),           # p < 0.05
     re.compile(r"\bp\s*=\s*0\.\d+"),            # p = 0.05
     re.compile(r"\bp\s*>\s*0\.\d+"),            # p > 0.05
     re.compile(r"\bP\s*[<>=]\s*0\.\d+"),        # P-value capitalized
+=======
+    re.compile(r"\bp\s*<\s*0\.\d+"),  # p < 0.05
+    re.compile(r"\bp\s*=\s*0\.\d+"),  # p = 0.05
+    re.compile(r"\bp\s*>\s*0\.\d+"),  # p > 0.05
+    re.compile(r"\bP\s*[<>=]\s*0\.\d+"),  # P-value capitalized
+>>>>>>> origin/main
     re.compile(r"\bp-value\s*[<>=]\s*0\.\d+"),  # p-value < 0.05
 ]
 _PVAL_MIN_TOTAL = 3
@@ -6478,9 +7267,13 @@ def validate_pvalue_notation_consistency(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="pvalue_notation_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="pvalue_notation_consistency", findings=[])
+>>>>>>> origin/main
 
     found_styles: list[str] = []
     for pat in _PVAL_FORMATS_RE:
@@ -6488,6 +7281,7 @@ def validate_pvalue_notation_consistency(
             found_styles.append(pat.pattern)
 
     if len(found_styles) < 2:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="pvalue_notation_consistency", findings=[]
         )
@@ -6497,6 +7291,13 @@ def validate_pvalue_notation_consistency(
         return ValidationResult(
             validator_name="pvalue_notation_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="pvalue_notation_consistency", findings=[])
+
+    total = sum(len(pat.findall(full)) for pat in _PVAL_FORMATS_RE)
+    if total < _PVAL_MIN_TOTAL:
+        return ValidationResult(validator_name="pvalue_notation_consistency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="pvalue_notation_consistency",
@@ -6952,6 +7753,7 @@ def validate_methods_section_presence(
     has no Methods or Methodology section.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="methods_section_presence", findings=[]
         )
@@ -6968,6 +7770,16 @@ def validate_methods_section_presence(
         return ValidationResult(
             validator_name="methods_section_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="methods_section_presence", findings=[])
+
+    if len(parsed.sections) < 2:
+        return ValidationResult(validator_name="methods_section_presence", findings=[])
+
+    has_methods = any(s.title.lower() in _METHODS_TITLES for s in parsed.sections)
+    if has_methods:
+        return ValidationResult(validator_name="methods_section_presence", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="methods_section_presence",
@@ -7014,6 +7826,7 @@ def validate_conclusion_section_presence(
     summary section is found (requires ≥ 3 sections total).
     """
     if len(parsed.sections) < 3:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="conclusion_section_presence", findings=[]
         )
@@ -7025,6 +7838,13 @@ def validate_conclusion_section_presence(
         return ValidationResult(
             validator_name="conclusion_section_presence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="conclusion_section_presence", findings=[])
+
+    has_conclusion = any(s.title.lower() in _CONCLUSION_TITLES for s in parsed.sections)
+    if has_conclusion:
+        return ValidationResult(validator_name="conclusion_section_presence", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="conclusion_section_presence",
@@ -7078,6 +7898,7 @@ def validate_participant_demographics(
     mentions participants but provides no demographic information.
     """
     if classification.paper_type not in _DEMOGRAPHICS_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="participant_demographics", findings=[]
         )
@@ -7101,6 +7922,19 @@ def validate_participant_demographics(
         return ValidationResult(
             validator_name="participant_demographics", findings=[]
         )
+=======
+        return ValidationResult(validator_name="participant_demographics", findings=[])
+
+    methods_body = " ".join(s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES)
+    if not methods_body:
+        return ValidationResult(validator_name="participant_demographics", findings=[])
+
+    if not _DEMOGRAPHICS_PARTICIPANT_RE.search(methods_body):
+        return ValidationResult(validator_name="participant_demographics", findings=[])
+
+    if _DEMOGRAPHICS_RE.search(methods_body):
+        return ValidationResult(validator_name="participant_demographics", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="participant_demographics",
@@ -7127,7 +7961,11 @@ def validate_participant_demographics(
 # Regex for conflicting acronym detection (separate from _ACRONYM_DEF_RE above)
 _CONFLICT_ACRONYM_RE = re.compile(
     r"([A-Z]{2,6})\s*\(([^)]{5,60})\)|"  # ACRONYM (expansion)
+<<<<<<< HEAD
     r"([^(]{5,60})\s*\(([A-Z]{2,6})\)",   # expansion (ACRONYM)
+=======
+    r"([^(]{5,60})\s*\(([A-Z]{2,6})\)",  # expansion (ACRONYM)
+>>>>>>> origin/main
     re.MULTILINE,
 )
 
@@ -7142,9 +7980,13 @@ def validate_conflicting_acronym_definitions(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="conflicting_acronym_definitions", findings=[]
         )
+=======
+        return ValidationResult(validator_name="conflicting_acronym_definitions", findings=[])
+>>>>>>> origin/main
 
     # Collect all (acronym, expansion) pairs
     acronym_expansions: dict[str, set[str]] = {}
@@ -7161,6 +8003,7 @@ def validate_conflicting_acronym_definitions(
             acronym_expansions[acr] = set()
         acronym_expansions[acr].add(exp)
 
+<<<<<<< HEAD
     conflicts = {
         acr: exps
         for acr, exps in acronym_expansions.items()
@@ -7175,6 +8018,13 @@ def validate_conflicting_acronym_definitions(
         f"{acr}: {' | '.join(sorted(exps))}"
         for acr, exps in list(conflicts.items())[:3]
     ]
+=======
+    conflicts = {acr: exps for acr, exps in acronym_expansions.items() if len(exps) > 1}
+    if not conflicts:
+        return ValidationResult(validator_name="conflicting_acronym_definitions", findings=[])
+
+    evidence = [f"{acr}: {' | '.join(sorted(exps))}" for acr, exps in list(conflicts.items())[:3]]
+>>>>>>> origin/main
     return ValidationResult(
         validator_name="conflicting_acronym_definitions",
         findings=[
@@ -7213,6 +8063,7 @@ def validate_percentage_notation_consistency(
     mixes '50%', '50 percent', and '50 per cent' in Results or Methods.
     """
     target_sections = [
+<<<<<<< HEAD
         s for s in parsed.sections
         if s.title.lower() in {"results", "methods", "methodology", "analysis"}
     ]
@@ -7220,13 +8071,25 @@ def validate_percentage_notation_consistency(
         return ValidationResult(
             validator_name="percentage_notation_consistency", findings=[]
         )
+=======
+        s
+        for s in parsed.sections
+        if s.title.lower() in {"results", "methods", "methodology", "analysis"}
+    ]
+    if not target_sections:
+        return ValidationResult(validator_name="percentage_notation_consistency", findings=[])
+>>>>>>> origin/main
 
     combined = " ".join(s.body for s in target_sections)
     matches = _PERCENT_FORMATS_RE.findall(combined)
     if len(matches) < _PERCENT_MIN_OCCURRENCES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="percentage_notation_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="percentage_notation_consistency", findings=[])
+>>>>>>> origin/main
 
     # Classify: symbol (%), 'percent', 'per cent', 'pct'
     has_symbol = bool(re.search(r"\d+\s*%", combined))
@@ -7235,9 +8098,13 @@ def validate_percentage_notation_consistency(
 
     styles = sum([has_symbol, has_word, has_per_cent])
     if styles < 2:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="percentage_notation_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="percentage_notation_consistency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="percentage_notation_consistency",
@@ -7384,6 +8251,7 @@ def validate_study_period_reporting(
     study period (e.g., 'data collected from 2019 to 2021').
     """
     if classification.paper_type not in _DEMOGRAPHICS_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="study_period_reporting", findings=[]
         )
@@ -7405,6 +8273,19 @@ def validate_study_period_reporting(
         return ValidationResult(
             validator_name="study_period_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="study_period_reporting", findings=[])
+
+    methods_body = " ".join(s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES)
+    if not methods_body:
+        return ValidationResult(validator_name="study_period_reporting", findings=[])
+
+    if not _DEMOGRAPHICS_PARTICIPANT_RE.search(methods_body):
+        return ValidationResult(validator_name="study_period_reporting", findings=[])
+
+    if _STUDY_PERIOD_RE.search(methods_body):
+        return ValidationResult(validator_name="study_period_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="study_period_reporting",
@@ -7452,6 +8333,7 @@ def validate_scale_anchor_reporting(
     rating scale but provides no endpoint/anchor labels.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="scale_anchor_reporting", findings=[]
         )
@@ -7473,6 +8355,19 @@ def validate_scale_anchor_reporting(
         return ValidationResult(
             validator_name="scale_anchor_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="scale_anchor_reporting", findings=[])
+
+    methods_body = " ".join(s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES)
+    if not methods_body:
+        return ValidationResult(validator_name="scale_anchor_reporting", findings=[])
+
+    if not _SCALE_ANCHOR_RE.search(methods_body):
+        return ValidationResult(validator_name="scale_anchor_reporting", findings=[])
+
+    if _SCALE_ENDPOINT_RE.search(methods_body):
+        return ValidationResult(validator_name="scale_anchor_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="scale_anchor_reporting",
@@ -7524,6 +8419,7 @@ def validate_model_specification(
     predictors, outcome variables).
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="model_specification", findings=[]
         )
@@ -7545,6 +8441,19 @@ def validate_model_specification(
         return ValidationResult(
             validator_name="model_specification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="model_specification", findings=[])
+
+    methods_body = " ".join(s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES)
+    if not methods_body:
+        return ValidationResult(validator_name="model_specification", findings=[])
+
+    if not _MODEL_SPEC_TRIGGER_RE.search(methods_body):
+        return ValidationResult(validator_name="model_specification", findings=[])
+
+    if _MODEL_SPEC_DETAIL_RE.search(methods_body):
+        return ValidationResult(validator_name="model_specification", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="model_specification",
@@ -7594,6 +8503,7 @@ def validate_effect_direction_reporting(
     the direction of the effect.
     """
     results_body = " ".join(
+<<<<<<< HEAD
         s.body
         for s in parsed.sections
         if s.title.lower() in {"results", "findings", "analysis"}
@@ -7613,6 +8523,19 @@ def validate_effect_direction_reporting(
         return ValidationResult(
             validator_name="effect_direction_reporting", findings=[]
         )
+=======
+        s.body for s in parsed.sections if s.title.lower() in {"results", "findings", "analysis"}
+    )
+    if not results_body:
+        return ValidationResult(validator_name="effect_direction_reporting", findings=[])
+
+    sig_matches = _SIGNIFICANT_RESULT_RE.findall(results_body)
+    if len(sig_matches) < _MIN_SIGNIFICANT_MENTIONS:
+        return ValidationResult(validator_name="effect_direction_reporting", findings=[])
+
+    if _EFFECT_DIRECTION_RE.search(results_body):
+        return ValidationResult(validator_name="effect_direction_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="effect_direction_reporting",
@@ -7655,18 +8578,26 @@ def validate_citation_format_consistency(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="citation_format_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="citation_format_consistency", findings=[])
+>>>>>>> origin/main
 
     numeric_count = len(_FORMAT_NUMERIC_CITE_RE.findall(full))
     author_year_count = len(_FORMAT_AUTHOR_YEAR_CITE_RE.findall(full))
     total = numeric_count + author_year_count
 
     if total < _FORMAT_CITE_MIN_REFS:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="citation_format_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="citation_format_consistency", findings=[])
+>>>>>>> origin/main
 
     if numeric_count > 0 and author_year_count > 0:
         return ValidationResult(
@@ -7690,9 +8621,13 @@ def validate_citation_format_consistency(
             ],
         )
 
+<<<<<<< HEAD
     return ValidationResult(
         validator_name="citation_format_consistency", findings=[]
     )
+=======
+    return ValidationResult(validator_name="citation_format_consistency", findings=[])
+>>>>>>> origin/main
 
 
 # ---------------------------------------------------------------------------
@@ -7723,9 +8658,13 @@ def validate_imputation_sensitivity(
     multiple imputation but provides no sensitivity analysis or robustness check.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="imputation_sensitivity", findings=[]
         )
+=======
+        return ValidationResult(validator_name="imputation_sensitivity", findings=[])
+>>>>>>> origin/main
 
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
@@ -7785,6 +8724,7 @@ def validate_computational_environment(
     language/version/hardware details.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="computational_environment", findings=[]
         )
@@ -7806,6 +8746,19 @@ def validate_computational_environment(
         return ValidationResult(
             validator_name="computational_environment", findings=[]
         )
+=======
+        return ValidationResult(validator_name="computational_environment", findings=[])
+
+    methods_body = " ".join(s.body for s in parsed.sections if s.title.lower() in _METHODS_TITLES)
+    if not methods_body:
+        return ValidationResult(validator_name="computational_environment", findings=[])
+
+    if not _COMPUTATION_RE.search(methods_body):
+        return ValidationResult(validator_name="computational_environment", findings=[])
+
+    if _COMPUTATION_ENV_RE.search(methods_body):
+        return ValidationResult(validator_name="computational_environment", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="computational_environment",
@@ -7876,6 +8829,10 @@ def validate_table_captions(parsed: ParsedManuscript) -> ValidationResult:
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 141 – Raw data description completeness
 # ---------------------------------------------------------------------------
@@ -7905,13 +8862,18 @@ def validate_raw_data_description(
     repository/source details.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="raw_data_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="raw_data_description", findings=[])
+>>>>>>> origin/main
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="raw_data_description", findings=[]
         )
@@ -7926,6 +8888,16 @@ def validate_raw_data_description(
         return ValidationResult(
             validator_name="raw_data_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="raw_data_description", findings=[])
+
+    data_mentions = _DATA_MENTION_RE.findall(methods_text)
+    if len(data_mentions) < _DATA_MIN_MENTIONS:
+        return ValidationResult(validator_name="raw_data_description", findings=[])
+
+    if _DATA_FORMAT_RE.search(methods_text):
+        return ValidationResult(validator_name="raw_data_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="raw_data_description",
@@ -7975,13 +8947,18 @@ def validate_multiple_outcomes_correction(
     multiple-comparisons correction is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="multiple_outcomes_correction", findings=[]
         )
+=======
+        return ValidationResult(validator_name="multiple_outcomes_correction", findings=[])
+>>>>>>> origin/main
     relevant_text = " ".join(
         s.body
         for s in parsed.sections
         if s.title
+<<<<<<< HEAD
         and any(
             k in s.title.lower() for k in ("method", "result", "statistic", "analys")
         )
@@ -8002,6 +8979,20 @@ def validate_multiple_outcomes_correction(
         return ValidationResult(
             validator_name="multiple_outcomes_correction", findings=[]
         )
+=======
+        and any(k in s.title.lower() for k in ("method", "result", "statistic", "analys"))
+    )
+    if not relevant_text:
+        return ValidationResult(validator_name="multiple_outcomes_correction", findings=[])
+
+    outcome_mentions = _OUTCOME_VAR_RE.findall(relevant_text)
+    if len(outcome_mentions) < _OUTCOME_MIN_MENTIONS:
+        return ValidationResult(validator_name="multiple_outcomes_correction", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _CORRECTION_RE.search(full):
+        return ValidationResult(validator_name="multiple_outcomes_correction", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="multiple_outcomes_correction",
@@ -8046,6 +9037,7 @@ def validate_replication_dataset(
     dataset/cohort.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="replication_dataset", findings=[]
         )
@@ -8060,6 +9052,16 @@ def validate_replication_dataset(
         return ValidationResult(
             validator_name="replication_dataset", findings=[]
         )
+=======
+        return ValidationResult(validator_name="replication_dataset", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="replication_dataset", findings=[])
+
+    if _REPLICATION_RE.search(full):
+        return ValidationResult(validator_name="replication_dataset", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="replication_dataset",
@@ -8106,6 +9108,7 @@ def validate_appendix_reference_consistency(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="appendix_reference_consistency", findings=[]
         )
@@ -8115,6 +9118,13 @@ def validate_appendix_reference_consistency(
         return ValidationResult(
             validator_name="appendix_reference_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="appendix_reference_consistency", findings=[])
+
+    ref_matches = _APPENDIX_REF_RE.findall(full)
+    if not ref_matches:
+        return ValidationResult(validator_name="appendix_reference_consistency", findings=[])
+>>>>>>> origin/main
 
     section_headings = [s.title or "" for s in parsed.sections]
     has_appendix_section = any(
@@ -8122,6 +9132,7 @@ def validate_appendix_reference_consistency(
         for h in section_headings
     )
     if has_appendix_section:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="appendix_reference_consistency", findings=[]
         )
@@ -8130,6 +9141,12 @@ def validate_appendix_reference_consistency(
         return ValidationResult(
             validator_name="appendix_reference_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="appendix_reference_consistency", findings=[])
+
+    if _APPENDIX_SECTION_RE.search(full):
+        return ValidationResult(validator_name="appendix_reference_consistency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="appendix_reference_consistency",
@@ -8174,6 +9191,7 @@ def validate_open_science_statement(
     or code-availability language is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="open_science_statement", findings=[]
         )
@@ -8188,6 +9206,16 @@ def validate_open_science_statement(
         return ValidationResult(
             validator_name="open_science_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="open_science_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="open_science_statement", findings=[])
+
+    if _OPEN_SCIENCE_RE.search(full):
+        return ValidationResult(validator_name="open_science_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="open_science_statement",
@@ -8207,6 +9235,10 @@ def validate_open_science_statement(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 146 – Cohort attrition / dropout reporting
 # ---------------------------------------------------------------------------
@@ -8294,6 +9326,7 @@ def validate_blinding_procedure(
     intervention design is detected but no blinding procedure is described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="blinding_procedure", findings=[]
         )
@@ -8313,6 +9346,19 @@ def validate_blinding_procedure(
         return ValidationResult(
             validator_name="blinding_procedure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="blinding_procedure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="blinding_procedure", findings=[])
+
+    if not _INTERVENTION_RE.search(full):
+        return ValidationResult(validator_name="blinding_procedure", findings=[])
+
+    if _BLINDING_RE.search(full):
+        return ValidationResult(validator_name="blinding_procedure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="blinding_procedure",
@@ -8360,6 +9406,7 @@ def validate_floor_ceiling_effects(
     measures are used but floor/ceiling effects are not addressed.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="floor_ceiling_effects", findings=[]
         )
@@ -8380,6 +9427,20 @@ def validate_floor_ceiling_effects(
         return ValidationResult(
             validator_name="floor_ceiling_effects", findings=[]
         )
+=======
+        return ValidationResult(validator_name="floor_ceiling_effects", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="floor_ceiling_effects", findings=[])
+
+    scale_matches = _SCALE_MEASURE_RE.findall(full)
+    if len(scale_matches) < 3:
+        return ValidationResult(validator_name="floor_ceiling_effects", findings=[])
+
+    if _FLOOR_CEILING_RE.search(full):
+        return ValidationResult(validator_name="floor_ceiling_effects", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="floor_ceiling_effects",
@@ -8429,6 +9490,7 @@ def validate_negative_result_framing(
     result framing.
     """
     results_text = " ".join(
+<<<<<<< HEAD
         s.body
         for s in parsed.sections
         if s.title and "result" in s.title.lower()
@@ -8453,6 +9515,22 @@ def validate_negative_result_framing(
         return ValidationResult(
             validator_name="negative_result_framing", findings=[]
         )
+=======
+        s.body for s in parsed.sections if s.title and "result" in s.title.lower()
+    )
+    discussion_text = " ".join(
+        s.body for s in parsed.sections if s.title and "discussion" in s.title.lower()
+    )
+    if not results_text or not discussion_text:
+        return ValidationResult(validator_name="negative_result_framing", findings=[])
+
+    non_sig_count = len(_NON_SIG_RE.findall(results_text))
+    if non_sig_count < 2:
+        return ValidationResult(validator_name="negative_result_framing", findings=[])
+
+    if _NEGATIVE_DISCUSSION_RE.search(discussion_text):
+        return ValidationResult(validator_name="negative_result_framing", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="negative_result_framing",
@@ -8503,6 +9581,7 @@ def validate_abstract_results_consistency(
     """
     abstract = parsed.abstract or ""
     if not abstract:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="abstract_results_consistency", findings=[]
         )
@@ -8516,11 +9595,21 @@ def validate_abstract_results_consistency(
         return ValidationResult(
             validator_name="abstract_results_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="abstract_results_consistency", findings=[])
+
+    results_text = " ".join(
+        s.body for s in parsed.sections if s.title and "result" in s.title.lower()
+    )
+    if not results_text:
+        return ValidationResult(validator_name="abstract_results_consistency", findings=[])
+>>>>>>> origin/main
 
     abstract_claims = _ABSTRACT_CLAIM_RE.findall(abstract)
     results_claims = _RESULTS_CLAIM_RE.findall(results_text)
 
     if len(abstract_claims) < 2:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="abstract_results_consistency", findings=[]
         )
@@ -8529,6 +9618,12 @@ def validate_abstract_results_consistency(
         return ValidationResult(
             validator_name="abstract_results_consistency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="abstract_results_consistency", findings=[])
+
+    if len(results_claims) >= len(abstract_claims):
+        return ValidationResult(validator_name="abstract_results_consistency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="abstract_results_consistency",
@@ -8552,6 +9647,10 @@ def validate_abstract_results_consistency(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 151 – Measurement invariance testing
 # ---------------------------------------------------------------------------
@@ -8584,6 +9683,7 @@ def validate_measurement_invariance(
     is not tested or mentioned.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="measurement_invariance", findings=[]
         )
@@ -8593,10 +9693,18 @@ def validate_measurement_invariance(
         return ValidationResult(
             validator_name="measurement_invariance", findings=[]
         )
+=======
+        return ValidationResult(validator_name="measurement_invariance", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="measurement_invariance", findings=[])
+>>>>>>> origin/main
 
     has_comparison = bool(_COMPARATIVE_GROUP_RE.search(full))
     has_scale = bool(_SCALE_MEASURE_RE.search(full))
     if not (has_comparison and has_scale):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="measurement_invariance", findings=[]
         )
@@ -8605,6 +9713,12 @@ def validate_measurement_invariance(
         return ValidationResult(
             validator_name="measurement_invariance", findings=[]
         )
+=======
+        return ValidationResult(validator_name="measurement_invariance", findings=[])
+
+    if _INVARIANCE_RE.search(full):
+        return ValidationResult(validator_name="measurement_invariance", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="measurement_invariance",
@@ -8654,6 +9768,7 @@ def validate_effect_size_confidence_intervals(
     reported but no confidence intervals are present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="effect_size_confidence_intervals", findings=[]
         )
@@ -8674,6 +9789,20 @@ def validate_effect_size_confidence_intervals(
         return ValidationResult(
             validator_name="effect_size_confidence_intervals", findings=[]
         )
+=======
+        return ValidationResult(validator_name="effect_size_confidence_intervals", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="effect_size_confidence_intervals", findings=[])
+
+    effect_matches = _EFFECT_SIZE_RE.findall(full)
+    if len(effect_matches) < 2:
+        return ValidationResult(validator_name="effect_size_confidence_intervals", findings=[])
+
+    if _EFFECT_CI_RE.search(full):
+        return ValidationResult(validator_name="effect_size_confidence_intervals", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="effect_size_confidence_intervals",
@@ -8722,6 +9851,7 @@ def validate_preregistration_statement(
     hypothesis-driven study is detected but no preregistration is mentioned.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="preregistration_statement", findings=[]
         )
@@ -8731,10 +9861,18 @@ def validate_preregistration_statement(
         return ValidationResult(
             validator_name="preregistration_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="preregistration_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="preregistration_statement", findings=[])
+>>>>>>> origin/main
 
     is_rct = bool(_INTERVENTION_RE.search(full))
     is_confirmatory = bool(_CONFIRMATORY_RE.search(full))
     if not (is_rct or is_confirmatory):
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="preregistration_statement", findings=[]
         )
@@ -8743,6 +9881,12 @@ def validate_preregistration_statement(
         return ValidationResult(
             validator_name="preregistration_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="preregistration_statement", findings=[])
+
+    if _PREREGISTERED_RE.search(full):
+        return ValidationResult(validator_name="preregistration_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="preregistration_statement",
@@ -8793,6 +9937,7 @@ def validate_cross_validation_reporting(
     predictive models are described but cross-validation is not mentioned.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="cross_validation_reporting", findings=[]
         )
@@ -8812,6 +9957,19 @@ def validate_cross_validation_reporting(
         return ValidationResult(
             validator_name="cross_validation_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="cross_validation_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="cross_validation_reporting", findings=[])
+
+    if not _ML_MODEL_RE.search(full):
+        return ValidationResult(validator_name="cross_validation_reporting", findings=[])
+
+    if _CROSS_VALIDATION_RE.search(full):
+        return ValidationResult(validator_name="cross_validation_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="cross_validation_reporting",
@@ -8861,6 +10019,7 @@ def validate_sensitivity_analysis_reporting(
     is described but no sensitivity or robustness check is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="sensitivity_analysis_reporting", findings=[]
         )
@@ -8880,6 +10039,19 @@ def validate_sensitivity_analysis_reporting(
         return ValidationResult(
             validator_name="sensitivity_analysis_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="sensitivity_analysis_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="sensitivity_analysis_reporting", findings=[])
+
+    if not _PRIMARY_ANALYSIS_RE.search(full):
+        return ValidationResult(validator_name="sensitivity_analysis_reporting", findings=[])
+
+    if _SENSITIVITY_RE.search(full):
+        return ValidationResult(validator_name="sensitivity_analysis_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="sensitivity_analysis_reporting",
@@ -8899,6 +10071,10 @@ def validate_sensitivity_analysis_reporting(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 156 – Regression diagnostics / assumption checks
 # ---------------------------------------------------------------------------
@@ -8931,6 +10107,7 @@ def validate_regression_diagnostics(
     tests, homoscedasticity) are mentioned.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="regression_diagnostics", findings=[]
         )
@@ -8950,6 +10127,19 @@ def validate_regression_diagnostics(
         return ValidationResult(
             validator_name="regression_diagnostics", findings=[]
         )
+=======
+        return ValidationResult(validator_name="regression_diagnostics", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="regression_diagnostics", findings=[])
+
+    if not _REGRESSION_RE.search(full):
+        return ValidationResult(validator_name="regression_diagnostics", findings=[])
+
+    if _DIAGNOSTICS_RE.search(full):
+        return ValidationResult(validator_name="regression_diagnostics", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="regression_diagnostics",
@@ -9006,6 +10196,7 @@ def validate_sample_representativeness(
     limitation caveat is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="sample_representativeness", findings=[]
         )
@@ -9030,6 +10221,22 @@ def validate_sample_representativeness(
         return ValidationResult(
             validator_name="sample_representativeness", findings=[]
         )
+=======
+        return ValidationResult(validator_name="sample_representativeness", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="sample_representativeness", findings=[])
+
+    if not _SINGLE_SITE_RE.search(full):
+        return ValidationResult(validator_name="sample_representativeness", findings=[])
+
+    if not _SINGLE_SITE_CLAIM_RE.search(full):
+        return ValidationResult(validator_name="sample_representativeness", findings=[])
+
+    if _LIMITATION_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="sample_representativeness", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="sample_representativeness",
@@ -9079,14 +10286,19 @@ def validate_variable_operationalization(
     mentions appear but no operationalization/definition language is found.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="variable_operationalization", findings=[]
         )
+=======
+        return ValidationResult(validator_name="variable_operationalization", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="variable_operationalization", findings=[]
         )
@@ -9101,6 +10313,16 @@ def validate_variable_operationalization(
         return ValidationResult(
             validator_name="variable_operationalization", findings=[]
         )
+=======
+        return ValidationResult(validator_name="variable_operationalization", findings=[])
+
+    var_matches = _VARIABLE_MENTION_RE.findall(methods_text)
+    if len(var_matches) < _VARIABLE_MIN:
+        return ValidationResult(validator_name="variable_operationalization", findings=[])
+
+    if _OPERATIONALIZATION_RE.search(methods_text):
+        return ValidationResult(validator_name="variable_operationalization", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="variable_operationalization",
@@ -9153,14 +10375,19 @@ def validate_control_variable_justification(
     is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="control_variable_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="control_variable_justification", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="control_variable_justification", findings=[]
         )
@@ -9176,6 +10403,17 @@ def validate_control_variable_justification(
         return ValidationResult(
             validator_name="control_variable_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="control_variable_justification", findings=[])
+
+    control_matches = _CONTROL_VAR_RE.findall(methods_text)
+    if len(control_matches) < _CONTROL_MIN_MENTIONS:
+        return ValidationResult(validator_name="control_variable_justification", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if _CONTROL_JUSTIFICATION_RE.search(full):
+        return ValidationResult(validator_name="control_variable_justification", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="control_variable_justification",
@@ -9196,6 +10434,10 @@ def validate_control_variable_justification(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 161 – Prospective vs. retrospective design consistency
 # ---------------------------------------------------------------------------
@@ -9225,6 +10467,7 @@ def validate_prospective_vs_retrospective(
     prospective design but uses language indicating retrospective data extraction.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="prospective_vs_retrospective", findings=[]
         )
@@ -9244,6 +10487,19 @@ def validate_prospective_vs_retrospective(
         return ValidationResult(
             validator_name="prospective_vs_retrospective", findings=[]
         )
+=======
+        return ValidationResult(validator_name="prospective_vs_retrospective", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="prospective_vs_retrospective", findings=[])
+
+    if not _PROSPECTIVE_CLAIM_RE.search(full):
+        return ValidationResult(validator_name="prospective_vs_retrospective", findings=[])
+
+    if not _RETROSPECTIVE_SIGNAL_RE.search(full):
+        return ValidationResult(validator_name="prospective_vs_retrospective", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="prospective_vs_retrospective",
@@ -9297,6 +10553,7 @@ def validate_clinical_trial_consort(
     are not present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="clinical_trial_consort", findings=[]
         )
@@ -9311,13 +10568,27 @@ def validate_clinical_trial_consort(
         return ValidationResult(
             validator_name="clinical_trial_consort", findings=[]
         )
+=======
+        return ValidationResult(validator_name="clinical_trial_consort", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="clinical_trial_consort", findings=[])
+
+    if not _INTERVENTION_RE.search(full):
+        return ValidationResult(validator_name="clinical_trial_consort", findings=[])
+>>>>>>> origin/main
 
     has_allocation = bool(_CONSORT_ALLOCATION_RE.search(full))
     has_flow = bool(_CONSORT_FLOW_RE.search(full))
     if has_allocation and has_flow:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="clinical_trial_consort", findings=[]
         )
+=======
+        return ValidationResult(validator_name="clinical_trial_consort", findings=[])
+>>>>>>> origin/main
 
     missing = []
     if not has_allocation:
@@ -9380,6 +10651,7 @@ def validate_ecological_validity(
     real-world relevance but does not discuss ecological validity limitations.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="ecological_validity", findings=[]
         )
@@ -9404,6 +10676,22 @@ def validate_ecological_validity(
         return ValidationResult(
             validator_name="ecological_validity", findings=[]
         )
+=======
+        return ValidationResult(validator_name="ecological_validity", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="ecological_validity", findings=[])
+
+    if not _LAB_STUDY_RE.search(full):
+        return ValidationResult(validator_name="ecological_validity", findings=[])
+
+    if not _REAL_WORLD_CLAIM_RE.search(full):
+        return ValidationResult(validator_name="ecological_validity", findings=[])
+
+    if _ECOLOGICAL_VALIDITY_RE.search(full):
+        return ValidationResult(validator_name="ecological_validity", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="ecological_validity",
@@ -9450,6 +10738,7 @@ def validate_media_source_citations(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="media_source_citations", findings=[]
         )
@@ -9459,6 +10748,13 @@ def validate_media_source_citations(
         return ValidationResult(
             validator_name="media_source_citations", findings=[]
         )
+=======
+        return ValidationResult(validator_name="media_source_citations", findings=[])
+
+    matches = _GREY_CITATION_RE.findall(full)
+    if not matches:
+        return ValidationResult(validator_name="media_source_citations", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="media_source_citations",
@@ -9512,6 +10808,7 @@ def validate_competing_model_comparison(
     or method is proposed but no comparison against existing baselines is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="competing_model_comparison", findings=[]
         )
@@ -9531,6 +10828,19 @@ def validate_competing_model_comparison(
         return ValidationResult(
             validator_name="competing_model_comparison", findings=[]
         )
+=======
+        return ValidationResult(validator_name="competing_model_comparison", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="competing_model_comparison", findings=[])
+
+    if not _MODEL_PROPOSAL_RE.search(full):
+        return ValidationResult(validator_name="competing_model_comparison", findings=[])
+
+    if _MODEL_COMPARISON_RE.search(full):
+        return ValidationResult(validator_name="competing_model_comparison", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="competing_model_comparison",
@@ -9550,6 +10860,10 @@ def validate_competing_model_comparison(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 166 – Causal language in observational studies
 # ---------------------------------------------------------------------------
@@ -9593,6 +10907,7 @@ def validate_causal_language(
     explicit caveat is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="causal_language", findings=[]
         )
@@ -9617,6 +10932,22 @@ def validate_causal_language(
         return ValidationResult(
             validator_name="causal_language", findings=[]
         )
+=======
+        return ValidationResult(validator_name="causal_language", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="causal_language", findings=[])
+
+    if not _OBSERVATIONAL_RE.search(full):
+        return ValidationResult(validator_name="causal_language", findings=[])
+
+    if not _CAUSAL_LANGUAGE_RE.search(full):
+        return ValidationResult(validator_name="causal_language", findings=[])
+
+    if _CAUSAL_FRAMEWORK_RE.search(full):
+        return ValidationResult(validator_name="causal_language", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="causal_language",
@@ -9668,6 +10999,7 @@ def validate_missing_standard_errors(
     but no standard errors (SE) or CIs are included.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="missing_standard_errors", findings=[]
         )
@@ -9687,6 +11019,19 @@ def validate_missing_standard_errors(
         return ValidationResult(
             validator_name="missing_standard_errors", findings=[]
         )
+=======
+        return ValidationResult(validator_name="missing_standard_errors", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="missing_standard_errors", findings=[])
+
+    if not _REGRESSION_TABLE_RE.search(full):
+        return ValidationResult(validator_name="missing_standard_errors", findings=[])
+
+    if _STANDARD_ERROR_RE.search(full):
+        return ValidationResult(validator_name="missing_standard_errors", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="missing_standard_errors",
@@ -9741,6 +11086,7 @@ def validate_subjective_claim_hedging(
     disc_text = " ".join(
         s.body
         for s in parsed.sections
+<<<<<<< HEAD
         if s.title and any(
             k in s.title.lower() for k in ("discussion", "conclusion", "implication")
         )
@@ -9760,6 +11106,20 @@ def validate_subjective_claim_hedging(
         return ValidationResult(
             validator_name="subjective_claim_hedging", findings=[]
         )
+=======
+        if s.title
+        and any(k in s.title.lower() for k in ("discussion", "conclusion", "implication"))
+    )
+    if not disc_text:
+        return ValidationResult(validator_name="subjective_claim_hedging", findings=[])
+
+    normative_matches = _NORMATIVE_CLAIM_RE.findall(disc_text)
+    if len(normative_matches) < _NORMATIVE_MIN:
+        return ValidationResult(validator_name="subjective_claim_hedging", findings=[])
+
+    if _HEDGE_RE.search(disc_text):
+        return ValidationResult(validator_name="subjective_claim_hedging", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="subjective_claim_hedging",
@@ -9805,14 +11165,19 @@ def validate_population_definition(
     empirical but lacks inclusion/exclusion criteria or a population description.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="population_definition", findings=[]
         )
+=======
+        return ValidationResult(validator_name="population_definition", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="population_definition", findings=[]
         )
@@ -9821,6 +11186,12 @@ def validate_population_definition(
         return ValidationResult(
             validator_name="population_definition", findings=[]
         )
+=======
+        return ValidationResult(validator_name="population_definition", findings=[])
+
+    if _POPULATION_DEFINITION_RE.search(methods_text):
+        return ValidationResult(validator_name="population_definition", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="population_definition",
@@ -9879,6 +11250,7 @@ def validate_pilot_study_claims(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="pilot_study_claims", findings=[]
         )
@@ -9897,6 +11269,18 @@ def validate_pilot_study_claims(
         return ValidationResult(
             validator_name="pilot_study_claims", findings=[]
         )
+=======
+        return ValidationResult(validator_name="pilot_study_claims", findings=[])
+
+    if not _PILOT_STUDY_RE.search(full):
+        return ValidationResult(validator_name="pilot_study_claims", findings=[])
+
+    if not _PILOT_OVERCLAIM_RE.search(full):
+        return ValidationResult(validator_name="pilot_study_claims", findings=[])
+
+    if _PILOT_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="pilot_study_claims", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="pilot_study_claims",
@@ -9917,6 +11301,10 @@ def validate_pilot_study_claims(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 171 – Exclusion criteria rationale
 # ---------------------------------------------------------------------------
@@ -9945,14 +11333,19 @@ def validate_exclusion_criteria_reporting(
     criteria are mentioned but no justification for their selection is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="exclusion_criteria_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="exclusion_criteria_reporting", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="exclusion_criteria_reporting", findings=[]
         )
@@ -9966,6 +11359,15 @@ def validate_exclusion_criteria_reporting(
         return ValidationResult(
             validator_name="exclusion_criteria_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="exclusion_criteria_reporting", findings=[])
+
+    if not _EXCLUSION_RE.search(methods_text):
+        return ValidationResult(validator_name="exclusion_criteria_reporting", findings=[])
+
+    if _EXCLUSION_RATIONALE_RE.search(methods_text):
+        return ValidationResult(validator_name="exclusion_criteria_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="exclusion_criteria_reporting",
@@ -10016,6 +11418,7 @@ def validate_normal_distribution_assumption(
     used but normality is neither tested nor explicitly assumed and justified.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="normal_distribution_assumption", findings=[]
         )
@@ -10035,6 +11438,19 @@ def validate_normal_distribution_assumption(
         return ValidationResult(
             validator_name="normal_distribution_assumption", findings=[]
         )
+=======
+        return ValidationResult(validator_name="normal_distribution_assumption", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="normal_distribution_assumption", findings=[])
+
+    if not _PARAMETRIC_TEST_RE.search(full):
+        return ValidationResult(validator_name="normal_distribution_assumption", findings=[])
+
+    if _NORMALITY_TEST_RE.search(full):
+        return ValidationResult(validator_name="normal_distribution_assumption", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="normal_distribution_assumption",
@@ -10083,6 +11499,7 @@ def validate_figure_axes_labeling(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="figure_axes_labeling", findings=[]
         )
@@ -10097,6 +11514,16 @@ def validate_figure_axes_labeling(
         return ValidationResult(
             validator_name="figure_axes_labeling", findings=[]
         )
+=======
+        return ValidationResult(validator_name="figure_axes_labeling", findings=[])
+
+    fig_numbers = set(_FIGURE_MENTION_RE.findall(full))
+    if len(fig_numbers) < _FIGURE_MIN_DISTINCT:
+        return ValidationResult(validator_name="figure_axes_labeling", findings=[])
+
+    if _AXIS_LABEL_RE.search(full):
+        return ValidationResult(validator_name="figure_axes_labeling", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="figure_axes_labeling",
@@ -10145,6 +11572,7 @@ def validate_duplicate_reporting(
     """
     full = parsed.full_text or " ".join(s.body for s in parsed.sections)
     if not full:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="duplicate_reporting", findings=[]
         )
@@ -10159,6 +11587,16 @@ def validate_duplicate_reporting(
         return ValidationResult(
             validator_name="duplicate_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="duplicate_reporting", findings=[])
+
+    if not _TABLE_VALUE_RE.search(full):
+        return ValidationResult(validator_name="duplicate_reporting", findings=[])
+
+    matches = _TEXT_DUPLICATE_RE.findall(full)
+    if not matches:
+        return ValidationResult(validator_name="duplicate_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="duplicate_reporting",
@@ -10210,6 +11648,7 @@ def validate_response_rate_reporting(
     design is detected but no response rate or participation rate is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="response_rate_reporting", findings=[]
         )
@@ -10229,6 +11668,19 @@ def validate_response_rate_reporting(
         return ValidationResult(
             validator_name="response_rate_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="response_rate_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="response_rate_reporting", findings=[])
+
+    if not _SURVEY_DESIGN_RE.search(full):
+        return ValidationResult(validator_name="response_rate_reporting", findings=[])
+
+    if _RESPONSE_RATE_RE.search(full):
+        return ValidationResult(validator_name="response_rate_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="response_rate_reporting",
@@ -10248,6 +11700,10 @@ def validate_response_rate_reporting(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 176 – Longitudinal attrition bias
 # ---------------------------------------------------------------------------
@@ -10281,6 +11737,7 @@ def validate_longitudinal_attrition_bias(
     reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="longitudinal_attrition_bias", findings=[]
         )
@@ -10300,6 +11757,19 @@ def validate_longitudinal_attrition_bias(
         return ValidationResult(
             validator_name="longitudinal_attrition_bias", findings=[]
         )
+=======
+        return ValidationResult(validator_name="longitudinal_attrition_bias", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="longitudinal_attrition_bias", findings=[])
+
+    if not _LONGITUDINAL_DESIGN_RE.search(full):
+        return ValidationResult(validator_name="longitudinal_attrition_bias", findings=[])
+
+    if _ATTRITION_BIAS_RE.search(full):
+        return ValidationResult(validator_name="longitudinal_attrition_bias", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="longitudinal_attrition_bias",
@@ -10350,6 +11820,7 @@ def validate_continuous_variable_dichotomization(
     arbitrary cutoffs are applied without clinical or validated justification.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="continuous_variable_dichotomization", findings=[]
         )
@@ -10369,6 +11840,19 @@ def validate_continuous_variable_dichotomization(
         return ValidationResult(
             validator_name="continuous_variable_dichotomization", findings=[]
         )
+=======
+        return ValidationResult(validator_name="continuous_variable_dichotomization", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="continuous_variable_dichotomization", findings=[])
+
+    if not _CONTINUOUS_DICHOTOMIZE_RE.search(full):
+        return ValidationResult(validator_name="continuous_variable_dichotomization", findings=[])
+
+    if _DICHOTOMIZE_JUSTIFY_RE.search(full):
+        return ValidationResult(validator_name="continuous_variable_dichotomization", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="continuous_variable_dichotomization",
@@ -10418,14 +11902,19 @@ def validate_outcome_measure_validation(
     described but no psychometric validity or reliability evidence is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="outcome_measure_validation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="outcome_measure_validation", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="outcome_measure_validation", findings=[]
         )
@@ -10439,6 +11928,15 @@ def validate_outcome_measure_validation(
         return ValidationResult(
             validator_name="outcome_measure_validation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="outcome_measure_validation", findings=[])
+
+    if not _OUTCOME_MEASURE_RE.search(methods_text):
+        return ValidationResult(validator_name="outcome_measure_validation", findings=[])
+
+    if _MEASURE_VALIDITY_RE.search(methods_text):
+        return ValidationResult(validator_name="outcome_measure_validation", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="outcome_measure_validation",
@@ -10490,6 +11988,7 @@ def validate_outlier_handling_disclosure(
     but no explicit handling decision (removal, retention, winsorization) is stated.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="outlier_handling_disclosure", findings=[]
         )
@@ -10509,6 +12008,19 @@ def validate_outlier_handling_disclosure(
         return ValidationResult(
             validator_name="outlier_handling_disclosure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="outlier_handling_disclosure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="outlier_handling_disclosure", findings=[])
+
+    if not _OUTLIER_MENTION_RE.search(full):
+        return ValidationResult(validator_name="outlier_handling_disclosure", findings=[])
+
+    if _OUTLIER_HANDLING_RE.search(full):
+        return ValidationResult(validator_name="outlier_handling_disclosure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="outlier_handling_disclosure",
@@ -10557,6 +12069,7 @@ def validate_main_effect_confidence_interval(
     mentioned but no confidence interval is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="main_effect_confidence_interval", findings=[]
         )
@@ -10576,6 +12089,19 @@ def validate_main_effect_confidence_interval(
         return ValidationResult(
             validator_name="main_effect_confidence_interval", findings=[]
         )
+=======
+        return ValidationResult(validator_name="main_effect_confidence_interval", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="main_effect_confidence_interval", findings=[])
+
+    if not _MAIN_EFFECT_RE.search(full):
+        return ValidationResult(validator_name="main_effect_confidence_interval", findings=[])
+
+    if _CI_PRESENT_RE.search(full):
+        return ValidationResult(validator_name="main_effect_confidence_interval", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="main_effect_confidence_interval",
@@ -10594,6 +12120,10 @@ def validate_main_effect_confidence_interval(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 181 – Missing covariates justification
 # ---------------------------------------------------------------------------
@@ -10626,14 +12156,19 @@ def validate_covariate_justification(
     are used but no theoretical or empirical rationale is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="covariate_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="covariate_justification", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="covariate_justification", findings=[]
         )
@@ -10647,6 +12182,15 @@ def validate_covariate_justification(
         return ValidationResult(
             validator_name="covariate_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="covariate_justification", findings=[])
+
+    if not _COVARIATE_RE.search(methods_text):
+        return ValidationResult(validator_name="covariate_justification", findings=[])
+
+    if _COVARIATE_JUSTIFY_RE.search(methods_text):
+        return ValidationResult(validator_name="covariate_justification", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="covariate_justification",
@@ -10699,6 +12243,7 @@ def validate_gender_sex_conflation(
     interchangeably without acknowledging the conceptual distinction.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="gender_sex_conflation", findings=[]
         )
@@ -10723,6 +12268,22 @@ def validate_gender_sex_conflation(
         return ValidationResult(
             validator_name="gender_sex_conflation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="gender_sex_conflation", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="gender_sex_conflation", findings=[])
+
+    if not _GENDER_SEX_RE.search(full):
+        return ValidationResult(validator_name="gender_sex_conflation", findings=[])
+
+    if _GENDER_SEX_DISTINCT_RE.search(full):
+        return ValidationResult(validator_name="gender_sex_conflation", findings=[])
+
+    if not _GENDER_SEX_CONFLATE_RE.search(full):
+        return ValidationResult(validator_name="gender_sex_conflation", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="gender_sex_conflation",
@@ -10774,6 +12335,7 @@ def validate_multicollinearity_reporting(
     multiple predictors is used but no multicollinearity assessment is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="multicollinearity_reporting", findings=[]
         )
@@ -10793,6 +12355,19 @@ def validate_multicollinearity_reporting(
         return ValidationResult(
             validator_name="multicollinearity_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="multicollinearity_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="multicollinearity_reporting", findings=[])
+
+    if not _REGRESSION_MODEL_RE.search(full):
+        return ValidationResult(validator_name="multicollinearity_reporting", findings=[])
+
+    if _MULTICOLLINEARITY_RE.search(full):
+        return ValidationResult(validator_name="multicollinearity_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="multicollinearity_reporting",
@@ -10844,6 +12419,7 @@ def validate_control_group_description(
     not specified.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="control_group_description", findings=[]
         )
@@ -10863,6 +12439,19 @@ def validate_control_group_description(
         return ValidationResult(
             validator_name="control_group_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="control_group_description", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="control_group_description", findings=[])
+
+    if not _RCT_RE.search(full):
+        return ValidationResult(validator_name="control_group_description", findings=[])
+
+    if _CONTROL_TYPE_RE.search(full):
+        return ValidationResult(validator_name="control_group_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="control_group_description",
@@ -10913,6 +12502,7 @@ def validate_heteroscedasticity_testing(
     is used but residual variance / heteroscedasticity is not assessed.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="heteroscedasticity_testing", findings=[]
         )
@@ -10932,6 +12522,19 @@ def validate_heteroscedasticity_testing(
         return ValidationResult(
             validator_name="heteroscedasticity_testing", findings=[]
         )
+=======
+        return ValidationResult(validator_name="heteroscedasticity_testing", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="heteroscedasticity_testing", findings=[])
+
+    if not _HETEROSCEDASTICITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="heteroscedasticity_testing", findings=[])
+
+    if _HETEROSCEDASTICITY_CHECK_RE.search(full):
+        return ValidationResult(validator_name="heteroscedasticity_testing", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="heteroscedasticity_testing",
@@ -10951,6 +12554,10 @@ def validate_heteroscedasticity_testing(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 186 – Missing interaction effect interpretation
 # ---------------------------------------------------------------------------
@@ -10986,6 +12593,7 @@ def validate_interaction_effect_interpretation(
     significance analysis is presented.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="interaction_effect_interpretation", findings=[]
         )
@@ -11005,6 +12613,19 @@ def validate_interaction_effect_interpretation(
         return ValidationResult(
             validator_name="interaction_effect_interpretation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="interaction_effect_interpretation", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="interaction_effect_interpretation", findings=[])
+
+    if not _INTERACTION_TERM_RE.search(full):
+        return ValidationResult(validator_name="interaction_effect_interpretation", findings=[])
+
+    if _INTERACTION_INTERPRET_RE.search(full):
+        return ValidationResult(validator_name="interaction_effect_interpretation", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="interaction_effect_interpretation",
@@ -11058,6 +12679,7 @@ def validate_post_hoc_framing(
     analyses are conducted but not explicitly disclosed as such.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="post_hoc_framing", findings=[]
         )
@@ -11077,6 +12699,19 @@ def validate_post_hoc_framing(
         return ValidationResult(
             validator_name="post_hoc_framing", findings=[]
         )
+=======
+        return ValidationResult(validator_name="post_hoc_framing", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="post_hoc_framing", findings=[])
+
+    if not _POST_HOC_EXPLORE_RE.search(full):
+        return ValidationResult(validator_name="post_hoc_framing", findings=[])
+
+    if _POST_HOC_LABEL_RE.search(full):
+        return ValidationResult(validator_name="post_hoc_framing", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="post_hoc_framing",
@@ -11126,6 +12761,7 @@ def validate_multiple_comparison_correction(
     tests are mentioned but no correction procedure is applied or justified.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="multiple_comparison_correction", findings=[]
         )
@@ -11145,6 +12781,19 @@ def validate_multiple_comparison_correction(
         return ValidationResult(
             validator_name="multiple_comparison_correction", findings=[]
         )
+=======
+        return ValidationResult(validator_name="multiple_comparison_correction", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="multiple_comparison_correction", findings=[])
+
+    if not _MULTIPLE_TESTS_RE.search(full):
+        return ValidationResult(validator_name="multiple_comparison_correction", findings=[])
+
+    if _CORRECTION_RE.search(full):
+        return ValidationResult(validator_name="multiple_comparison_correction", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="multiple_comparison_correction",
@@ -11195,6 +12844,7 @@ def validate_publication_bias_statement(
     methods are detected but no publication bias assessment is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="publication_bias_statement", findings=[]
         )
@@ -11214,6 +12864,19 @@ def validate_publication_bias_statement(
         return ValidationResult(
             validator_name="publication_bias_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="publication_bias_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="publication_bias_statement", findings=[])
+
+    if not _META_ANALYSIS_RE.search(full):
+        return ValidationResult(validator_name="publication_bias_statement", findings=[])
+
+    if _PUBLICATION_BIAS_RE.search(full):
+        return ValidationResult(validator_name="publication_bias_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="publication_bias_statement",
@@ -11261,6 +12924,7 @@ def validate_degrees_of_freedom_reporting(
     statistics are referenced but no degrees of freedom are shown.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="degrees_of_freedom_reporting", findings=[]
         )
@@ -11280,6 +12944,19 @@ def validate_degrees_of_freedom_reporting(
         return ValidationResult(
             validator_name="degrees_of_freedom_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="degrees_of_freedom_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="degrees_of_freedom_reporting", findings=[])
+
+    if not _INFERENTIAL_STAT_RE.search(full):
+        return ValidationResult(validator_name="degrees_of_freedom_reporting", findings=[])
+
+    if _DF_PRESENT_RE.search(full):
+        return ValidationResult(validator_name="degrees_of_freedom_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="degrees_of_freedom_reporting",
@@ -11300,6 +12977,10 @@ def validate_degrees_of_freedom_reporting(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 191 – Missing power analysis or justification
 # ---------------------------------------------------------------------------
@@ -11333,6 +13014,7 @@ def validate_power_analysis_reporting(
     but no a priori or post-hoc power analysis justification is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="power_analysis_reporting", findings=[]
         )
@@ -11352,6 +13034,19 @@ def validate_power_analysis_reporting(
         return ValidationResult(
             validator_name="power_analysis_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="power_analysis_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="power_analysis_reporting", findings=[])
+
+    if not _POWER_SAMPLE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="power_analysis_reporting", findings=[])
+
+    if _POWER_ANALYSIS_JUSTIFY_RE.search(full):
+        return ValidationResult(validator_name="power_analysis_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="power_analysis_reporting",
@@ -11404,14 +13099,19 @@ def validate_demographic_description(
     mentioned but no demographic details (age, gender, education, race) appear.
     """
     if classification.paper_type not in _DEMOGRAPHIC_TRIGGERS:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="demographic_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="demographic_description", findings=[])
+>>>>>>> origin/main
 
     methods_text = " ".join(
         s.body for s in parsed.sections if s.title and "method" in s.title.lower()
     )
     if not methods_text:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="demographic_description", findings=[]
         )
@@ -11425,6 +13125,15 @@ def validate_demographic_description(
         return ValidationResult(
             validator_name="demographic_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="demographic_description", findings=[])
+
+    if not _DEMOGRAPHIC_RE.search(methods_text):
+        return ValidationResult(validator_name="demographic_description", findings=[])
+
+    if _DEMOGRAPHIC_DETAIL_RE.search(methods_text):
+        return ValidationResult(validator_name="demographic_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="demographic_description",
@@ -11475,6 +13184,7 @@ def validate_randomization_procedure(
     is mentioned but the randomization method is not described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="randomization_procedure", findings=[]
         )
@@ -11494,6 +13204,19 @@ def validate_randomization_procedure(
         return ValidationResult(
             validator_name="randomization_procedure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="randomization_procedure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="randomization_procedure", findings=[])
+
+    if not _RANDOM_ASSIGN_RE.search(full):
+        return ValidationResult(validator_name="randomization_procedure", findings=[])
+
+    if _RANDOMIZATION_METHOD_RE.search(full):
+        return ValidationResult(validator_name="randomization_procedure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="randomization_procedure",
@@ -11548,6 +13271,7 @@ def validate_generalizability_caveat(
     described as broadly/universally applicable without any caveat.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="generalizability_caveat", findings=[]
         )
@@ -11567,6 +13291,19 @@ def validate_generalizability_caveat(
         return ValidationResult(
             validator_name="generalizability_caveat", findings=[]
         )
+=======
+        return ValidationResult(validator_name="generalizability_caveat", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="generalizability_caveat", findings=[])
+
+    if not _STRONG_GENERALIZE_RE.search(full):
+        return ValidationResult(validator_name="generalizability_caveat", findings=[])
+
+    if _GENERALIZABILITY_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="generalizability_caveat", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="generalizability_caveat",
@@ -11621,6 +13358,7 @@ def validate_software_version_reporting(
     named as the analysis tool but no version number is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="software_version_reporting", findings=[]
         )
@@ -11640,6 +13378,19 @@ def validate_software_version_reporting(
         return ValidationResult(
             validator_name="software_version_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="software_version_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="software_version_reporting", findings=[])
+
+    if not _SOFTWARE_USE_RE.search(full):
+        return ValidationResult(validator_name="software_version_reporting", findings=[])
+
+    if _SOFTWARE_CITE_RE.search(full):
+        return ValidationResult(validator_name="software_version_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="software_version_reporting",
@@ -11659,6 +13410,10 @@ def validate_software_version_reporting(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 196 – IRB / ethics approval statement
 # ---------------------------------------------------------------------------
@@ -11687,6 +13442,7 @@ def validate_ethics_approval_statement(
     mentioned but no IRB, ethics approval, or informed consent statement appears.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="ethics_approval_statement", findings=[]
         )
@@ -11706,6 +13462,19 @@ def validate_ethics_approval_statement(
         return ValidationResult(
             validator_name="ethics_approval_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="ethics_approval_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="ethics_approval_statement", findings=[])
+
+    if not _HUMAN_SUBJECTS_RE.search(full):
+        return ValidationResult(validator_name="ethics_approval_statement", findings=[])
+
+    if _ETHICS_APPROVAL_RE.search(full):
+        return ValidationResult(validator_name="ethics_approval_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="ethics_approval_statement",
@@ -11760,6 +13529,7 @@ def validate_prisma_reporting(
     inter-rater reliability) are absent.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="prisma_reporting", findings=[]
         )
@@ -11779,6 +13549,19 @@ def validate_prisma_reporting(
         return ValidationResult(
             validator_name="prisma_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="prisma_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="prisma_reporting", findings=[])
+
+    if not _SYSTEMATIC_REVIEW_RE.search(full):
+        return ValidationResult(validator_name="prisma_reporting", findings=[])
+
+    if _PRISMA_ELEMENTS_RE.search(full):
+        return ValidationResult(validator_name="prisma_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="prisma_reporting",
@@ -11830,6 +13613,7 @@ def validate_mediation_analysis_transparency(
     is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="mediation_analysis_transparency", findings=[]
         )
@@ -11849,6 +13633,19 @@ def validate_mediation_analysis_transparency(
         return ValidationResult(
             validator_name="mediation_analysis_transparency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="mediation_analysis_transparency", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="mediation_analysis_transparency", findings=[])
+
+    if not _MEDIATION_RE.search(full):
+        return ValidationResult(validator_name="mediation_analysis_transparency", findings=[])
+
+    if _MEDIATION_METHOD_RE.search(full):
+        return ValidationResult(validator_name="mediation_analysis_transparency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="mediation_analysis_transparency",
@@ -11901,6 +13698,7 @@ def validate_latent_variable_model_fit(
     but no model fit indices (CFI, RMSEA, TLI, SRMR) are reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="latent_variable_model_fit", findings=[]
         )
@@ -11920,6 +13718,19 @@ def validate_latent_variable_model_fit(
         return ValidationResult(
             validator_name="latent_variable_model_fit", findings=[]
         )
+=======
+        return ValidationResult(validator_name="latent_variable_model_fit", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="latent_variable_model_fit", findings=[])
+
+    if not _LATENT_VARIABLE_RE.search(full):
+        return ValidationResult(validator_name="latent_variable_model_fit", findings=[])
+
+    if _MODEL_FIT_RE.search(full):
+        return ValidationResult(validator_name="latent_variable_model_fit", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="latent_variable_model_fit",
@@ -11970,6 +13781,7 @@ def validate_pilot_study_disclosure(
     inform sample size but the pilot data or reference is not disclosed.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="pilot_study_disclosure", findings=[]
         )
@@ -11989,6 +13801,19 @@ def validate_pilot_study_disclosure(
         return ValidationResult(
             validator_name="pilot_study_disclosure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="pilot_study_disclosure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="pilot_study_disclosure", findings=[])
+
+    if not _PILOT_SIZE_RE.search(full):
+        return ValidationResult(validator_name="pilot_study_disclosure", findings=[])
+
+    if _PILOT_DISCLOSURE_RE.search(full):
+        return ValidationResult(validator_name="pilot_study_disclosure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="pilot_study_disclosure",
@@ -12008,6 +13833,10 @@ def validate_pilot_study_disclosure(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 201 – Missing autocorrelation check (time-series)
 # ---------------------------------------------------------------------------
@@ -12037,6 +13866,7 @@ def validate_autocorrelation_check(
     time-series methods are used but no autocorrelation test is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="autocorrelation_check", findings=[]
         )
@@ -12056,6 +13886,19 @@ def validate_autocorrelation_check(
         return ValidationResult(
             validator_name="autocorrelation_check", findings=[]
         )
+=======
+        return ValidationResult(validator_name="autocorrelation_check", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="autocorrelation_check", findings=[])
+
+    if not _TIME_SERIES_RE.search(full):
+        return ValidationResult(validator_name="autocorrelation_check", findings=[])
+
+    if _AUTOCORRELATION_CHECK_RE.search(full):
+        return ValidationResult(validator_name="autocorrelation_check", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="autocorrelation_check",
@@ -12108,6 +13951,7 @@ def validate_mixed_methods_integration(
     qualitative and quantitative findings is described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="mixed_methods_integration", findings=[]
         )
@@ -12127,6 +13971,19 @@ def validate_mixed_methods_integration(
         return ValidationResult(
             validator_name="mixed_methods_integration", findings=[]
         )
+=======
+        return ValidationResult(validator_name="mixed_methods_integration", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="mixed_methods_integration", findings=[])
+
+    if not _MIXED_METHODS_RE.search(full):
+        return ValidationResult(validator_name="mixed_methods_integration", findings=[])
+
+    if _MIXED_METHODS_INTEGRATION_RE.search(full):
+        return ValidationResult(validator_name="mixed_methods_integration", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="mixed_methods_integration",
@@ -12179,6 +14036,7 @@ def validate_qualitative_rigor_reporting(
     reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="qualitative_rigor_reporting", findings=[]
         )
@@ -12198,6 +14056,19 @@ def validate_qualitative_rigor_reporting(
         return ValidationResult(
             validator_name="qualitative_rigor_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="qualitative_rigor_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="qualitative_rigor_reporting", findings=[])
+
+    if not _QUALITATIVE_RE.search(full):
+        return ValidationResult(validator_name="qualitative_rigor_reporting", findings=[])
+
+    if _QUALITATIVE_RIGOR_RE.search(full):
+        return ValidationResult(validator_name="qualitative_rigor_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="qualitative_rigor_reporting",
@@ -12251,6 +14122,7 @@ def validate_subgroup_analysis_labelling(
     analyses are conducted without pre-specification or cautionary labelling.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="subgroup_analysis_labelling", findings=[]
         )
@@ -12270,6 +14142,19 @@ def validate_subgroup_analysis_labelling(
         return ValidationResult(
             validator_name="subgroup_analysis_labelling", findings=[]
         )
+=======
+        return ValidationResult(validator_name="subgroup_analysis_labelling", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="subgroup_analysis_labelling", findings=[])
+
+    if not _SUBGROUP_ANALYSIS_RE.search(full):
+        return ValidationResult(validator_name="subgroup_analysis_labelling", findings=[])
+
+    if _SUBGROUP_CAUTION_RE.search(full):
+        return ValidationResult(validator_name="subgroup_analysis_labelling", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="subgroup_analysis_labelling",
@@ -12324,6 +14209,7 @@ def validate_null_result_power_caveat(
     or insufficient power.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="null_result_power_caveat", findings=[]
         )
@@ -12343,6 +14229,19 @@ def validate_null_result_power_caveat(
         return ValidationResult(
             validator_name="null_result_power_caveat", findings=[]
         )
+=======
+        return ValidationResult(validator_name="null_result_power_caveat", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="null_result_power_caveat", findings=[])
+
+    if not _NON_SIG_CONCLUDE_RE.search(full):
+        return ValidationResult(validator_name="null_result_power_caveat", findings=[])
+
+    if _POWER_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="null_result_power_caveat", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="null_result_power_caveat",
@@ -12362,6 +14261,10 @@ def validate_null_result_power_caveat(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 206 – Missing standard deviation for means
 # ---------------------------------------------------------------------------
@@ -12392,6 +14295,7 @@ def validate_mean_sd_reporting(
     standard deviation (or SE/SEM) accompanies them.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="mean_sd_reporting", findings=[]
         )
@@ -12411,6 +14315,19 @@ def validate_mean_sd_reporting(
         return ValidationResult(
             validator_name="mean_sd_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="mean_sd_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="mean_sd_reporting", findings=[])
+
+    if not _MEAN_REPORTED_RE.search(full):
+        return ValidationResult(validator_name="mean_sd_reporting", findings=[])
+
+    if _SD_REPORTED_RE.search(full):
+        return ValidationResult(validator_name="mean_sd_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="mean_sd_reporting",
@@ -12464,6 +14381,7 @@ def validate_intervention_description(
     content, or fidelity are not described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="intervention_description", findings=[]
         )
@@ -12483,6 +14401,19 @@ def validate_intervention_description(
         return ValidationResult(
             validator_name="intervention_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="intervention_description", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="intervention_description", findings=[])
+
+    if not _INTERVENTION_RE.search(full):
+        return ValidationResult(validator_name="intervention_description", findings=[])
+
+    if _INTERVENTION_DETAIL_RE.search(full):
+        return ValidationResult(validator_name="intervention_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="intervention_description",
@@ -12534,6 +14465,7 @@ def validate_baseline_equivalence(
     is detected but no baseline comparison or equivalence check is described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="baseline_equivalence", findings=[]
         )
@@ -12553,6 +14485,19 @@ def validate_baseline_equivalence(
         return ValidationResult(
             validator_name="baseline_equivalence", findings=[]
         )
+=======
+        return ValidationResult(validator_name="baseline_equivalence", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="baseline_equivalence", findings=[])
+
+    if not _BASELINE_RCT_RE.search(full):
+        return ValidationResult(validator_name="baseline_equivalence", findings=[])
+
+    if _BASELINE_CHECK_RE.search(full):
+        return ValidationResult(validator_name="baseline_equivalence", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="baseline_equivalence",
@@ -12605,6 +14550,7 @@ def validate_likert_distribution_check(
     check is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="likert_distribution_check", findings=[]
         )
@@ -12624,6 +14570,19 @@ def validate_likert_distribution_check(
         return ValidationResult(
             validator_name="likert_distribution_check", findings=[]
         )
+=======
+        return ValidationResult(validator_name="likert_distribution_check", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="likert_distribution_check", findings=[])
+
+    if not _LIKERT_OUTCOME_RE.search(full):
+        return ValidationResult(validator_name="likert_distribution_check", findings=[])
+
+    if _LIKERT_DISTRIBUTION_RE.search(full):
+        return ValidationResult(validator_name="likert_distribution_check", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="likert_distribution_check",
@@ -12675,6 +14634,7 @@ def validate_reproducibility_statement(
     is claimed but no URL, DOI, or accession number is provided.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="reproducibility_statement", findings=[]
         )
@@ -12694,6 +14654,19 @@ def validate_reproducibility_statement(
         return ValidationResult(
             validator_name="reproducibility_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="reproducibility_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="reproducibility_statement", findings=[])
+
+    if not _REPRO_CLAIM_RE.search(full):
+        return ValidationResult(validator_name="reproducibility_statement", findings=[])
+
+    if _REPRO_DETAIL_RE.search(full):
+        return ValidationResult(validator_name="reproducibility_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="reproducibility_statement",
@@ -12713,6 +14686,10 @@ def validate_reproducibility_statement(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 211 – Missing missing-data handling
 # ---------------------------------------------------------------------------
@@ -12745,6 +14722,7 @@ def validate_missing_data_handling(
     are noted but the handling strategy is not disclosed.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="missing_data_handling", findings=[]
         )
@@ -12764,6 +14742,19 @@ def validate_missing_data_handling(
         return ValidationResult(
             validator_name="missing_data_handling", findings=[]
         )
+=======
+        return ValidationResult(validator_name="missing_data_handling", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="missing_data_handling", findings=[])
+
+    if not _MISSING_DATA_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="missing_data_handling", findings=[])
+
+    if _MISSING_DATA_METHOD_RE.search(full):
+        return ValidationResult(validator_name="missing_data_handling", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="missing_data_handling",
@@ -12815,6 +14806,7 @@ def validate_coding_scheme_description(
     rules are described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="coding_scheme_description", findings=[]
         )
@@ -12834,6 +14826,19 @@ def validate_coding_scheme_description(
         return ValidationResult(
             validator_name="coding_scheme_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="coding_scheme_description", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="coding_scheme_description", findings=[])
+
+    if not _CODING_SCHEME_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="coding_scheme_description", findings=[])
+
+    if _CODING_SCHEME_DETAIL_RE.search(full):
+        return ValidationResult(validator_name="coding_scheme_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="coding_scheme_description",
@@ -12886,6 +14891,7 @@ def validate_logistic_regression_assumptions(
     reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="logistic_regression_assumptions", findings=[]
         )
@@ -12905,6 +14911,19 @@ def validate_logistic_regression_assumptions(
         return ValidationResult(
             validator_name="logistic_regression_assumptions", findings=[]
         )
+=======
+        return ValidationResult(validator_name="logistic_regression_assumptions", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="logistic_regression_assumptions", findings=[])
+
+    if not _LOGISTIC_RE.search(full):
+        return ValidationResult(validator_name="logistic_regression_assumptions", findings=[])
+
+    if _LOGISTIC_ASSUMPTION_RE.search(full):
+        return ValidationResult(validator_name="logistic_regression_assumptions", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="logistic_regression_assumptions",
@@ -12956,6 +14975,7 @@ def validate_researcher_positionality(
     methods are used but no reflexivity or positionality statement is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="researcher_positionality", findings=[]
         )
@@ -12975,6 +14995,19 @@ def validate_researcher_positionality(
         return ValidationResult(
             validator_name="researcher_positionality", findings=[]
         )
+=======
+        return ValidationResult(validator_name="researcher_positionality", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="researcher_positionality", findings=[])
+
+    if not _QUALITATIVE_POSITIONALITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="researcher_positionality", findings=[])
+
+    if _POSITIONALITY_RE.search(full):
+        return ValidationResult(validator_name="researcher_positionality", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="researcher_positionality",
@@ -13025,6 +15058,7 @@ def validate_data_collection_recency(
     data are claimed but the data collection year is ≤2015.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="data_collection_recency", findings=[]
         )
@@ -13044,6 +15078,19 @@ def validate_data_collection_recency(
         return ValidationResult(
             validator_name="data_collection_recency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="data_collection_recency", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="data_collection_recency", findings=[])
+
+    if not _RECENT_CLAIM_RE.search(full):
+        return ValidationResult(validator_name="data_collection_recency", findings=[])
+
+    if not _OLD_DATA_RE.search(full):
+        return ValidationResult(validator_name="data_collection_recency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="data_collection_recency",
@@ -13063,6 +15110,10 @@ def validate_data_collection_recency(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 216 – Missing theoretical framework citation
 # ---------------------------------------------------------------------------
@@ -13098,6 +15149,7 @@ def validate_theoretical_framework_citation(
     framework is mentioned but no year/author citation accompanies it.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="theoretical_framework_citation", findings=[]
         )
@@ -13117,6 +15169,19 @@ def validate_theoretical_framework_citation(
         return ValidationResult(
             validator_name="theoretical_framework_citation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="theoretical_framework_citation", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="theoretical_framework_citation", findings=[])
+
+    if not _THEORY_NAMED_RE.search(full):
+        return ValidationResult(validator_name="theoretical_framework_citation", findings=[])
+
+    if _THEORY_CITATION_RE.search(full):
+        return ValidationResult(validator_name="theoretical_framework_citation", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="theoretical_framework_citation",
@@ -13170,6 +15235,7 @@ def validate_survey_instrument_source(
     are reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="survey_instrument_source", findings=[]
         )
@@ -13189,6 +15255,19 @@ def validate_survey_instrument_source(
         return ValidationResult(
             validator_name="survey_instrument_source", findings=[]
         )
+=======
+        return ValidationResult(validator_name="survey_instrument_source", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="survey_instrument_source", findings=[])
+
+    if not _SURVEY_INSTRUMENT_RE.search(full):
+        return ValidationResult(validator_name="survey_instrument_source", findings=[])
+
+    if _INSTRUMENT_SOURCE_RE.search(full):
+        return ValidationResult(validator_name="survey_instrument_source", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="survey_instrument_source",
@@ -13241,6 +15320,7 @@ def validate_sampling_frame_description(
     sampled but no sampling frame, strategy, or method is described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="sampling_frame_description", findings=[]
         )
@@ -13260,6 +15340,19 @@ def validate_sampling_frame_description(
         return ValidationResult(
             validator_name="sampling_frame_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="sampling_frame_description", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="sampling_frame_description", findings=[])
+
+    if not _SAMPLING_FRAME_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="sampling_frame_description", findings=[])
+
+    if _SAMPLING_FRAME_DESC_RE.search(full):
+        return ValidationResult(validator_name="sampling_frame_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="sampling_frame_description",
@@ -13311,6 +15404,7 @@ def validate_one_tailed_test_justification(
     is used but no theoretical justification for the directional hypothesis is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="one_tailed_test_justification", findings=[]
         )
@@ -13330,6 +15424,19 @@ def validate_one_tailed_test_justification(
         return ValidationResult(
             validator_name="one_tailed_test_justification", findings=[]
         )
+=======
+        return ValidationResult(validator_name="one_tailed_test_justification", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="one_tailed_test_justification", findings=[])
+
+    if not _ONE_TAILED_RE.search(full):
+        return ValidationResult(validator_name="one_tailed_test_justification", findings=[])
+
+    if _ONE_TAILED_JUSTIFICATION_RE.search(full):
+        return ValidationResult(validator_name="one_tailed_test_justification", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="one_tailed_test_justification",
@@ -13379,6 +15486,7 @@ def validate_gratuitous_significance_language(
     that may signal p-hacking or reporting bias.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="gratuitous_significance_language", findings=[]
         )
@@ -13393,6 +15501,16 @@ def validate_gratuitous_significance_language(
         return ValidationResult(
             validator_name="gratuitous_significance_language", findings=[]
         )
+=======
+        return ValidationResult(validator_name="gratuitous_significance_language", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="gratuitous_significance_language", findings=[])
+
+    if not _GRATUITOUS_SIGNIFICANCE_RE.search(full):
+        return ValidationResult(validator_name="gratuitous_significance_language", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="gratuitous_significance_language",
@@ -13413,6 +15531,10 @@ def validate_gratuitous_significance_language(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 221 – Unclear unit of analysis
 # ---------------------------------------------------------------------------
@@ -13449,6 +15571,7 @@ def validate_unit_of_analysis_clarity(
     data are described but the unit of analysis is not explicitly addressed.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="unit_of_analysis_clarity", findings=[]
         )
@@ -13468,6 +15591,19 @@ def validate_unit_of_analysis_clarity(
         return ValidationResult(
             validator_name="unit_of_analysis_clarity", findings=[]
         )
+=======
+        return ValidationResult(validator_name="unit_of_analysis_clarity", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="unit_of_analysis_clarity", findings=[])
+
+    if not _UNIT_MISMATCH_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="unit_of_analysis_clarity", findings=[])
+
+    if _UNIT_OF_ANALYSIS_RE.search(full):
+        return ValidationResult(validator_name="unit_of_analysis_clarity", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="unit_of_analysis_clarity",
@@ -13519,6 +15655,7 @@ def validate_apriori_preregistration_statement(
     hypotheses are claimed but no pre-registration URL or registry is cited.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="apriori_preregistration_statement", findings=[]
         )
@@ -13538,6 +15675,19 @@ def validate_apriori_preregistration_statement(
         return ValidationResult(
             validator_name="apriori_preregistration_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="apriori_preregistration_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="apriori_preregistration_statement", findings=[])
+
+    if not _PREREG_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="apriori_preregistration_statement", findings=[])
+
+    if _PREREG_STATEMENT_RE.search(full):
+        return ValidationResult(validator_name="apriori_preregistration_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="apriori_preregistration_statement",
@@ -13592,6 +15742,7 @@ def validate_selective_literature_citation(
     all literature agrees but no caveats about mixed or contrary findings appear.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="selective_literature_citation", findings=[]
         )
@@ -13611,6 +15762,19 @@ def validate_selective_literature_citation(
         return ValidationResult(
             validator_name="selective_literature_citation", findings=[]
         )
+=======
+        return ValidationResult(validator_name="selective_literature_citation", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="selective_literature_citation", findings=[])
+
+    if not _CONSISTENT_CITE_RE.search(full):
+        return ValidationResult(validator_name="selective_literature_citation", findings=[])
+
+    if _SELECTIVE_CITE_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="selective_literature_citation", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="selective_literature_citation",
@@ -13664,6 +15828,7 @@ def validate_participant_compensation_disclosure(
     is mentioned but no specific amount or type is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="participant_compensation_disclosure", findings=[]
         )
@@ -13683,6 +15848,19 @@ def validate_participant_compensation_disclosure(
         return ValidationResult(
             validator_name="participant_compensation_disclosure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="participant_compensation_disclosure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="participant_compensation_disclosure", findings=[])
+
+    if not _COMPENSATION_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="participant_compensation_disclosure", findings=[])
+
+    if _COMPENSATION_AMOUNT_RE.search(full):
+        return ValidationResult(validator_name="participant_compensation_disclosure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="participant_compensation_disclosure",
@@ -13741,6 +15919,7 @@ def validate_observational_causal_language(
     is used in an observational or cross-sectional study without caveats.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="observational_causal_language", findings=[]
         )
@@ -13765,6 +15944,22 @@ def validate_observational_causal_language(
         return ValidationResult(
             validator_name="observational_causal_language", findings=[]
         )
+=======
+        return ValidationResult(validator_name="observational_causal_language", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="observational_causal_language", findings=[])
+
+    if not _OBSERVATIONAL_DESIGN_RE.search(full):
+        return ValidationResult(validator_name="observational_causal_language", findings=[])
+
+    if not _CAUSAL_CLAIM_RE.search(full):
+        return ValidationResult(validator_name="observational_causal_language", findings=[])
+
+    if _CAUSAL_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="observational_causal_language", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="observational_causal_language",
@@ -13784,6 +15979,10 @@ def validate_observational_causal_language(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 226 – Missing acknowledgement section
 # ---------------------------------------------------------------------------
@@ -13814,6 +16013,7 @@ def validate_acknowledgement_section(
     are mentioned but no acknowledgement or funding statement section is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="acknowledgement_section", findings=[]
         )
@@ -13833,6 +16033,19 @@ def validate_acknowledgement_section(
         return ValidationResult(
             validator_name="acknowledgement_section", findings=[]
         )
+=======
+        return ValidationResult(validator_name="acknowledgement_section", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="acknowledgement_section", findings=[])
+
+    if not _FUNDING_MENTION_RE.search(full):
+        return ValidationResult(validator_name="acknowledgement_section", findings=[])
+
+    if _ACKNOWLEDGEMENT_RE.search(full):
+        return ValidationResult(validator_name="acknowledgement_section", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="acknowledgement_section",
@@ -13886,6 +16099,7 @@ def validate_conflict_of_interest_statement(
     statement is present.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="conflict_of_interest_statement", findings=[]
         )
@@ -13905,6 +16119,19 @@ def validate_conflict_of_interest_statement(
         return ValidationResult(
             validator_name="conflict_of_interest_statement", findings=[]
         )
+=======
+        return ValidationResult(validator_name="conflict_of_interest_statement", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="conflict_of_interest_statement", findings=[])
+
+    if not _COI_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="conflict_of_interest_statement", findings=[])
+
+    if _COI_STATEMENT_RE.search(full):
+        return ValidationResult(validator_name="conflict_of_interest_statement", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="conflict_of_interest_statement",
@@ -13955,6 +16182,7 @@ def validate_age_reporting_precision(
     mean with SD or numeric range is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="age_reporting_precision", findings=[]
         )
@@ -13974,6 +16202,19 @@ def validate_age_reporting_precision(
         return ValidationResult(
             validator_name="age_reporting_precision", findings=[]
         )
+=======
+        return ValidationResult(validator_name="age_reporting_precision", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="age_reporting_precision", findings=[])
+
+    if not _AGE_REPORTED_RE.search(full):
+        return ValidationResult(validator_name="age_reporting_precision", findings=[])
+
+    if _AGE_PRECISION_RE.search(full):
+        return ValidationResult(validator_name="age_reporting_precision", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="age_reporting_precision",
@@ -14027,6 +16268,7 @@ def validate_statistical_software_version(
     software is named but no version number is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="statistical_software_version", findings=[]
         )
@@ -14046,6 +16288,19 @@ def validate_statistical_software_version(
         return ValidationResult(
             validator_name="statistical_software_version", findings=[]
         )
+=======
+        return ValidationResult(validator_name="statistical_software_version", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="statistical_software_version", findings=[])
+
+    if not _SOFTWARE_STAT_RE.search(full):
+        return ValidationResult(validator_name="statistical_software_version", findings=[])
+
+    if _SOFTWARE_VERSION_STAT_RE.search(full):
+        return ValidationResult(validator_name="statistical_software_version", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="statistical_software_version",
@@ -14101,6 +16356,7 @@ def validate_warranted_sensitivity_analysis(
     sensitivity analyses are warranted or needed but none are reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="warranted_sensitivity_analysis", findings=[]
         )
@@ -14120,6 +16376,19 @@ def validate_warranted_sensitivity_analysis(
         return ValidationResult(
             validator_name="warranted_sensitivity_analysis", findings=[]
         )
+=======
+        return ValidationResult(validator_name="warranted_sensitivity_analysis", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="warranted_sensitivity_analysis", findings=[])
+
+    if not _SENSITIVITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="warranted_sensitivity_analysis", findings=[])
+
+    if _SENSITIVITY_CONDUCTED_RE.search(full):
+        return ValidationResult(validator_name="warranted_sensitivity_analysis", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="warranted_sensitivity_analysis",
@@ -14139,6 +16408,10 @@ def validate_warranted_sensitivity_analysis(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 231 – Undisclosed use of AI/LLM tools
 # ---------------------------------------------------------------------------
@@ -14174,6 +16447,7 @@ def validate_ai_tool_disclosure(
     similar AI tools are mentioned but no disclosure of how they were used is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="ai_tool_disclosure", findings=[]
         )
@@ -14193,6 +16467,19 @@ def validate_ai_tool_disclosure(
         return ValidationResult(
             validator_name="ai_tool_disclosure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="ai_tool_disclosure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="ai_tool_disclosure", findings=[])
+
+    if not _AI_TOOL_RE.search(full):
+        return ValidationResult(validator_name="ai_tool_disclosure", findings=[])
+
+    if _AI_DISCLOSURE_RE.search(full):
+        return ValidationResult(validator_name="ai_tool_disclosure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="ai_tool_disclosure",
@@ -14245,6 +16532,7 @@ def validate_between_group_effect_size(
     between-group differences are reported but no standardised effect size is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="between_group_effect_size", findings=[]
         )
@@ -14264,6 +16552,19 @@ def validate_between_group_effect_size(
         return ValidationResult(
             validator_name="between_group_effect_size", findings=[]
         )
+=======
+        return ValidationResult(validator_name="between_group_effect_size", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="between_group_effect_size", findings=[])
+
+    if not _BETWEEN_GROUP_DIFF_RE.search(full):
+        return ValidationResult(validator_name="between_group_effect_size", findings=[])
+
+    if _BETWEEN_GROUP_ES_RE.search(full):
+        return ValidationResult(validator_name="between_group_effect_size", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="between_group_effect_size",
@@ -14325,6 +16626,7 @@ def validate_convenience_sample_generalization(
     noting sample limitations.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="convenience_sample_generalization", findings=[]
         )
@@ -14349,6 +16651,22 @@ def validate_convenience_sample_generalization(
         return ValidationResult(
             validator_name="convenience_sample_generalization", findings=[]
         )
+=======
+        return ValidationResult(validator_name="convenience_sample_generalization", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="convenience_sample_generalization", findings=[])
+
+    if not _CONVENIENCE_SAMPLE_RE.search(full):
+        return ValidationResult(validator_name="convenience_sample_generalization", findings=[])
+
+    if not _GENERALIZE_FROM_CONVENIENCE_RE.search(full):
+        return ValidationResult(validator_name="convenience_sample_generalization", findings=[])
+
+    if _CONVENIENCE_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="convenience_sample_generalization", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="convenience_sample_generalization",
@@ -14402,6 +16720,7 @@ def validate_icc_reliability_reporting(
     is assessed but no ICC, kappa, or Krippendorff alpha is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="icc_reliability_reporting", findings=[]
         )
@@ -14421,6 +16740,19 @@ def validate_icc_reliability_reporting(
         return ValidationResult(
             validator_name="icc_reliability_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="icc_reliability_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="icc_reliability_reporting", findings=[])
+
+    if not _ICC_NEEDED_RE.search(full):
+        return ValidationResult(validator_name="icc_reliability_reporting", findings=[])
+
+    if _ICC_REPORTED_RE.search(full):
+        return ValidationResult(validator_name="icc_reliability_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="icc_reliability_reporting",
@@ -14470,6 +16802,7 @@ def validate_anova_post_hoc_reporting(
     is reported for a factor with multiple levels but no follow-up tests are described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="anova_post_hoc_reporting", findings=[]
         )
@@ -14489,6 +16822,19 @@ def validate_anova_post_hoc_reporting(
         return ValidationResult(
             validator_name="anova_post_hoc_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="anova_post_hoc_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="anova_post_hoc_reporting", findings=[])
+
+    if not _ANOVA_SIGNIFICANT_RE.search(full):
+        return ValidationResult(validator_name="anova_post_hoc_reporting", findings=[])
+
+    if _POST_HOC_RE.search(full):
+        return ValidationResult(validator_name="anova_post_hoc_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="anova_post_hoc_reporting",
@@ -14508,6 +16854,10 @@ def validate_anova_post_hoc_reporting(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 236 – Missing adverse events reporting (clinical trials)
 # ---------------------------------------------------------------------------
@@ -14539,6 +16889,7 @@ def validate_adverse_events_reporting(
     study is detected but no adverse events or safety outcomes are reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="adverse_events_reporting", findings=[]
         )
@@ -14558,6 +16909,19 @@ def validate_adverse_events_reporting(
         return ValidationResult(
             validator_name="adverse_events_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="adverse_events_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="adverse_events_reporting", findings=[])
+
+    if not _CLINICAL_TRIAL_RE.search(full):
+        return ValidationResult(validator_name="adverse_events_reporting", findings=[])
+
+    if _ADVERSE_EVENT_RE.search(full):
+        return ValidationResult(validator_name="adverse_events_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="adverse_events_reporting",
@@ -14610,6 +16974,7 @@ def validate_construct_operationalization(
     explicit operationalisation statements.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="construct_operationalization", findings=[]
         )
@@ -14629,6 +16994,19 @@ def validate_construct_operationalization(
         return ValidationResult(
             validator_name="construct_operationalization", findings=[]
         )
+=======
+        return ValidationResult(validator_name="construct_operationalization", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="construct_operationalization", findings=[])
+
+    if not _PRONOUN_CONSTRUCT_RE.search(full):
+        return ValidationResult(validator_name="construct_operationalization", findings=[])
+
+    if _CONSTRUCT_DEFINITION_RE.search(full):
+        return ValidationResult(validator_name="construct_operationalization", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="construct_operationalization",
@@ -14679,6 +17057,7 @@ def validate_regression_coefficient_ci(
     coefficients are reported but no confidence intervals are given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="regression_coefficient_ci", findings=[]
         )
@@ -14698,6 +17077,19 @@ def validate_regression_coefficient_ci(
         return ValidationResult(
             validator_name="regression_coefficient_ci", findings=[]
         )
+=======
+        return ValidationResult(validator_name="regression_coefficient_ci", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="regression_coefficient_ci", findings=[])
+
+    if not _REGRESSION_COEFF_RE.search(full):
+        return ValidationResult(validator_name="regression_coefficient_ci", findings=[])
+
+    if _COEFF_CI_RE.search(full):
+        return ValidationResult(validator_name="regression_coefficient_ci", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="regression_coefficient_ci",
@@ -14749,6 +17141,7 @@ def validate_longitudinal_followup_duration(
     prospective study is described but no follow-up duration is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="longitudinal_followup_duration", findings=[]
         )
@@ -14768,6 +17161,19 @@ def validate_longitudinal_followup_duration(
         return ValidationResult(
             validator_name="longitudinal_followup_duration", findings=[]
         )
+=======
+        return ValidationResult(validator_name="longitudinal_followup_duration", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="longitudinal_followup_duration", findings=[])
+
+    if not _LONGITUDINAL_FOLLOWUP_RE.search(full):
+        return ValidationResult(validator_name="longitudinal_followup_duration", findings=[])
+
+    if _FOLLOWUP_DURATION_RE.search(full):
+        return ValidationResult(validator_name="longitudinal_followup_duration", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="longitudinal_followup_duration",
@@ -14823,6 +17229,7 @@ def validate_bayesian_reporting(
     used but no Bayes factor, credible interval, or HDI is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="bayesian_reporting", findings=[]
         )
@@ -14842,6 +17249,19 @@ def validate_bayesian_reporting(
         return ValidationResult(
             validator_name="bayesian_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="bayesian_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="bayesian_reporting", findings=[])
+
+    if not _BAYESIAN_RE.search(full):
+        return ValidationResult(validator_name="bayesian_reporting", findings=[])
+
+    if _BAYESIAN_REPORT_RE.search(full):
+        return ValidationResult(validator_name="bayesian_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="bayesian_reporting",
@@ -14861,6 +17281,10 @@ def validate_bayesian_reporting(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 241 – Missing floor/ceiling effect check for parametric analysis
 # ---------------------------------------------------------------------------
@@ -14896,6 +17320,7 @@ def validate_floor_ceiling_effect_check(
     data are used but no ceiling or floor effect check is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="floor_ceiling_effect_check", findings=[]
         )
@@ -14915,6 +17340,19 @@ def validate_floor_ceiling_effect_check(
         return ValidationResult(
             validator_name="floor_ceiling_effect_check", findings=[]
         )
+=======
+        return ValidationResult(validator_name="floor_ceiling_effect_check", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="floor_ceiling_effect_check", findings=[])
+
+    if not _FLOOR_CEILING_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="floor_ceiling_effect_check", findings=[])
+
+    if _FLOOR_CEILING_CHECK_RE.search(full):
+        return ValidationResult(validator_name="floor_ceiling_effect_check", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="floor_ceiling_effect_check",
@@ -14966,6 +17404,7 @@ def validate_hazard_ratio_ci(
     survival analysis is used but no CI for the HR is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="hazard_ratio_ci", findings=[]
         )
@@ -14985,6 +17424,19 @@ def validate_hazard_ratio_ci(
         return ValidationResult(
             validator_name="hazard_ratio_ci", findings=[]
         )
+=======
+        return ValidationResult(validator_name="hazard_ratio_ci", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="hazard_ratio_ci", findings=[])
+
+    if not _HAZARD_RATIO_RE.search(full):
+        return ValidationResult(validator_name="hazard_ratio_ci", findings=[])
+
+    if _HAZARD_RATIO_CI_RE.search(full):
+        return ValidationResult(validator_name="hazard_ratio_ci", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="hazard_ratio_ci",
@@ -15041,6 +17493,7 @@ def validate_outlier_removal_impact(
     but no sensitivity check on whether removal changes the conclusions is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="outlier_removal_impact", findings=[]
         )
@@ -15060,6 +17513,19 @@ def validate_outlier_removal_impact(
         return ValidationResult(
             validator_name="outlier_removal_impact", findings=[]
         )
+=======
+        return ValidationResult(validator_name="outlier_removal_impact", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="outlier_removal_impact", findings=[])
+
+    if not _OUTLIER_REMOVAL_RE.search(full):
+        return ValidationResult(validator_name="outlier_removal_impact", findings=[])
+
+    if _OUTLIER_SENSITIVITY_RE.search(full):
+        return ValidationResult(validator_name="outlier_removal_impact", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="outlier_removal_impact",
@@ -15114,6 +17580,7 @@ def validate_multilevel_icc_reporting(
     data or models are used but no ICC or between-cluster variance is reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="multilevel_icc_reporting", findings=[]
         )
@@ -15133,6 +17600,19 @@ def validate_multilevel_icc_reporting(
         return ValidationResult(
             validator_name="multilevel_icc_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="multilevel_icc_reporting", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="multilevel_icc_reporting", findings=[])
+
+    if not _MULTILEVEL_DATA_RE.search(full):
+        return ValidationResult(validator_name="multilevel_icc_reporting", findings=[])
+
+    if _ICC_MULTILEVEL_RE.search(full):
+        return ValidationResult(validator_name="multilevel_icc_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="multilevel_icc_reporting",
@@ -15183,6 +17663,7 @@ def validate_citation_currency(
     it as a foundational reference.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="citation_currency", findings=[]
         )
@@ -15202,6 +17683,19 @@ def validate_citation_currency(
         return ValidationResult(
             validator_name="citation_currency", findings=[]
         )
+=======
+        return ValidationResult(validator_name="citation_currency", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="citation_currency", findings=[])
+
+    if not _OLD_CITATION_CONTEXT_RE.search(full):
+        return ValidationResult(validator_name="citation_currency", findings=[])
+
+    if _FOUNDATIONAL_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="citation_currency", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="citation_currency",
@@ -15221,6 +17715,10 @@ def validate_citation_currency(
         ],
     )
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 246 – Missing confidence interval for proportion/percentage
 # ---------------------------------------------------------------------------
@@ -15249,6 +17747,7 @@ def validate_proportion_confidence_interval(
     proportion is reported but no confidence interval is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="proportion_confidence_interval", findings=[]
         )
@@ -15268,6 +17767,19 @@ def validate_proportion_confidence_interval(
         return ValidationResult(
             validator_name="proportion_confidence_interval", findings=[]
         )
+=======
+        return ValidationResult(validator_name="proportion_confidence_interval", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="proportion_confidence_interval", findings=[])
+
+    if not _PROPORTION_RE.search(full):
+        return ValidationResult(validator_name="proportion_confidence_interval", findings=[])
+
+    if _PROPORTION_CI_RE.search(full):
+        return ValidationResult(validator_name="proportion_confidence_interval", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="proportion_confidence_interval",
@@ -15319,6 +17831,7 @@ def validate_blinding_procedure_description(
     methodology is claimed but no blinding procedure is described.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="blinding_procedure_description", findings=[]
         )
@@ -15338,6 +17851,19 @@ def validate_blinding_procedure_description(
         return ValidationResult(
             validator_name="blinding_procedure_description", findings=[]
         )
+=======
+        return ValidationResult(validator_name="blinding_procedure_description", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="blinding_procedure_description", findings=[])
+
+    if not _BLINDING_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="blinding_procedure_description", findings=[])
+
+    if _BLINDING_PROCEDURE_RE.search(full):
+        return ValidationResult(validator_name="blinding_procedure_description", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="blinding_procedure_description",
@@ -15394,6 +17920,7 @@ def validate_primary_outcome_change_disclosure(
     mentioned as changed but no protocol amendment or pre-specification is cited.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="primary_outcome_change_disclosure", findings=[]
         )
@@ -15413,6 +17940,19 @@ def validate_primary_outcome_change_disclosure(
         return ValidationResult(
             validator_name="primary_outcome_change_disclosure", findings=[]
         )
+=======
+        return ValidationResult(validator_name="primary_outcome_change_disclosure", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="primary_outcome_change_disclosure", findings=[])
+
+    if not _OUTCOME_CHANGE_RE.search(full):
+        return ValidationResult(validator_name="primary_outcome_change_disclosure", findings=[])
+
+    if _OUTCOME_CHANGE_DISCLOSURE_RE.search(full):
+        return ValidationResult(validator_name="primary_outcome_change_disclosure", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="primary_outcome_change_disclosure",
@@ -15467,6 +18007,7 @@ def validate_null_result_discussion(
     results are reported but no interpretation or explanation is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="null_result_discussion", findings=[]
         )
@@ -15486,6 +18027,19 @@ def validate_null_result_discussion(
         return ValidationResult(
             validator_name="null_result_discussion", findings=[]
         )
+=======
+        return ValidationResult(validator_name="null_result_discussion", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="null_result_discussion", findings=[])
+
+    if not _NULL_RESULT_RE.search(full):
+        return ValidationResult(validator_name="null_result_discussion", findings=[])
+
+    if _NULL_RESULT_DISCUSSION_RE.search(full):
+        return ValidationResult(validator_name="null_result_discussion", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="null_result_discussion",
@@ -15542,6 +18096,7 @@ def validate_racial_ethnic_composition(
     groups are mentioned but no demographic breakdown of the sample is given.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="racial_ethnic_composition", findings=[]
         )
@@ -15561,6 +18116,19 @@ def validate_racial_ethnic_composition(
         return ValidationResult(
             validator_name="racial_ethnic_composition", findings=[]
         )
+=======
+        return ValidationResult(validator_name="racial_ethnic_composition", findings=[])
+
+    full = parsed.full_text or " ".join(s.body for s in parsed.sections)
+    if not full:
+        return ValidationResult(validator_name="racial_ethnic_composition", findings=[])
+
+    if not _RACE_ETHNICITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="racial_ethnic_composition", findings=[])
+
+    if _RACE_ETHNICITY_REPORTED_RE.search(full):
+        return ValidationResult(validator_name="racial_ethnic_composition", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="racial_ethnic_composition",
@@ -15897,6 +18465,7 @@ def validate_non_normal_distribution_test(
     without any normality testing or reporting.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_non_normal_distribution_test", findings=[]
         )
@@ -15911,6 +18480,16 @@ def validate_non_normal_distribution_test(
         return ValidationResult(
             validator_name="validate_non_normal_distribution_test", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_non_normal_distribution_test", findings=[])
+
+    full = parsed.full_text
+    if not _PARAMETRIC_TEST_RE.search(full):
+        return ValidationResult(validator_name="validate_non_normal_distribution_test", findings=[])
+
+    if _NORMALITY_CHECK_RE.search(full):
+        return ValidationResult(validator_name="validate_non_normal_distribution_test", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_non_normal_distribution_test",
@@ -16078,6 +18657,7 @@ def validate_attrition_rate_reporting(
     mentioned but not quantified.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_attrition_rate_reporting", findings=[]
         )
@@ -16092,6 +18672,16 @@ def validate_attrition_rate_reporting(
         return ValidationResult(
             validator_name="validate_attrition_rate_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_attrition_rate_reporting", findings=[])
+
+    full = parsed.full_text
+    if not _ATTRITION_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_attrition_rate_reporting", findings=[])
+
+    if _ATTRITION_RATE_RE.search(full):
+        return ValidationResult(validator_name="validate_attrition_rate_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_attrition_rate_reporting",
@@ -16205,6 +18795,7 @@ def validate_ecological_fallacy_warning(
     aggregate-level data are used without a caveat against individual-level inference.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_ecological_fallacy_warning", findings=[]
         )
@@ -16219,6 +18810,16 @@ def validate_ecological_fallacy_warning(
         return ValidationResult(
             validator_name="validate_ecological_fallacy_warning", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_ecological_fallacy_warning", findings=[])
+
+    full = parsed.full_text
+    if not _ECOLOGICAL_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_ecological_fallacy_warning", findings=[])
+
+    if _ECOLOGICAL_CAVEAT_RE.search(full):
+        return ValidationResult(validator_name="validate_ecological_fallacy_warning", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_ecological_fallacy_warning",
@@ -16392,6 +18993,7 @@ def validate_treatment_fidelity_reporting(
     is described but treatment fidelity or protocol adherence is not reported.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_treatment_fidelity_reporting", findings=[]
         )
@@ -16406,6 +19008,16 @@ def validate_treatment_fidelity_reporting(
         return ValidationResult(
             validator_name="validate_treatment_fidelity_reporting", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_treatment_fidelity_reporting", findings=[])
+
+    full = parsed.full_text
+    if not _FIDELITY_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_treatment_fidelity_reporting", findings=[])
+
+    if _FIDELITY_REPORTED_RE.search(full):
+        return ValidationResult(validator_name="validate_treatment_fidelity_reporting", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_treatment_fidelity_reporting",
@@ -16571,6 +19183,7 @@ def validate_intention_to_treat_analysis(
     mention of ITT or per-protocol analysis strategy is made.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_intention_to_treat_analysis", findings=[]
         )
@@ -16585,6 +19198,16 @@ def validate_intention_to_treat_analysis(
         return ValidationResult(
             validator_name="validate_intention_to_treat_analysis", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_intention_to_treat_analysis", findings=[])
+
+    full = parsed.full_text
+    if not _ITT_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_intention_to_treat_analysis", findings=[])
+
+    if _ITT_ANALYSIS_RE.search(full):
+        return ValidationResult(validator_name="validate_intention_to_treat_analysis", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_intention_to_treat_analysis",
@@ -16759,6 +19382,7 @@ def validate_cluster_sampling_correction(
     modelling.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_cluster_sampling_correction", findings=[]
         )
@@ -16773,6 +19397,16 @@ def validate_cluster_sampling_correction(
         return ValidationResult(
             validator_name="validate_cluster_sampling_correction", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_cluster_sampling_correction", findings=[])
+
+    full = parsed.full_text
+    if not _CLUSTER_SAMPLE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_cluster_sampling_correction", findings=[])
+
+    if _CLUSTER_CORRECTION_RE.search(full):
+        return ValidationResult(validator_name="validate_cluster_sampling_correction", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_cluster_sampling_correction",
@@ -16885,6 +19519,7 @@ def validate_complete_case_analysis_bias(
     assumption or comparing completers to non-completers.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_complete_case_analysis_bias", findings=[]
         )
@@ -16899,6 +19534,16 @@ def validate_complete_case_analysis_bias(
         return ValidationResult(
             validator_name="validate_complete_case_analysis_bias", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_complete_case_analysis_bias", findings=[])
+
+    full = parsed.full_text
+    if not _COMPLETE_CASE_TRIGGER_RE.search(full):
+        return ValidationResult(validator_name="validate_complete_case_analysis_bias", findings=[])
+
+    if _MCAR_CHECK_RE.search(full):
+        return ValidationResult(validator_name="validate_complete_case_analysis_bias", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_complete_case_analysis_bias",
@@ -17074,6 +19719,7 @@ def validate_p_value_reporting_precision(
     as thresholds only (e.g., p < .05) rather than exact values.
     """
     if classification.paper_type not in _EMPIRICAL_PAPER_TYPES:
+<<<<<<< HEAD
         return ValidationResult(
             validator_name="validate_p_value_reporting_precision", findings=[]
         )
@@ -17093,6 +19739,19 @@ def validate_p_value_reporting_precision(
         return ValidationResult(
             validator_name="validate_p_value_reporting_precision", findings=[]
         )
+=======
+        return ValidationResult(validator_name="validate_p_value_reporting_precision", findings=[])
+
+    full = parsed.full_text
+    if not _P_VALUE_RE.search(full):
+        return ValidationResult(validator_name="validate_p_value_reporting_precision", findings=[])
+
+    if _P_EXACT_RE.search(full):
+        return ValidationResult(validator_name="validate_p_value_reporting_precision", findings=[])
+
+    if not _P_THRESHOLD_ONLY_RE.search(full):
+        return ValidationResult(validator_name="validate_p_value_reporting_precision", findings=[])
+>>>>>>> origin/main
 
     return ValidationResult(
         validator_name="validate_p_value_reporting_precision",
@@ -17310,8 +19969,11 @@ def validate_statistical_conclusion_validity(
     )
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> origin/main
 # ---------------------------------------------------------------------------
 # Phase 281 – validate_scale_reliability_reporting
 # ---------------------------------------------------------------------------
@@ -17575,7 +20237,11 @@ def validate_replication_citation(
 
     # Check if any replication claim is followed by a citation within 120 chars
     for m in _REPLICATION_CLAIM_RE.finditer(full):
+<<<<<<< HEAD
         window = full[m.start(): m.end() + 120]
+=======
+        window = full[m.start() : m.end() + 120]
+>>>>>>> origin/main
         if _REPLICATION_CITE_RE.search(window):
             return ValidationResult(validator_name=_vid, findings=[])
 
@@ -22187,8 +24853,12 @@ def validate_learning_curve_reporting(
             Finding(
                 code="missing-learning-curve",
                 message=(
+<<<<<<< HEAD
                     "Training set size effects are discussed but no learning "
                     "curve is reported."
+=======
+                    "Training set size effects are discussed but no learning curve is reported."
+>>>>>>> origin/main
                 ),
                 severity="minor",
                 validator=_vid,
@@ -24242,4 +26912,8 @@ def validate_active_learning_strategy(
                 validator=_vid,
             )
         ],
+<<<<<<< HEAD
     )
+=======
+    )
+>>>>>>> origin/main

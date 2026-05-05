@@ -1,0 +1,14 @@
+{
+  "doi": {
+    "10.1000/direct1": {
+      "provider": "fixture",
+      "doi": "10.1000/direct1",
+      "title": "Direct URL Paper",
+      "authors": ["Zeta"],
+      "year": "2020",
+      "venue": "Journal X",
+      "url": "https://example.org/direct1",
+      "source_url": "https://example.org/direct1"
+    }
+  }
+}

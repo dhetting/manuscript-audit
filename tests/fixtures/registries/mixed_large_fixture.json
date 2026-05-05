@@ -1,0 +1,59 @@
+{
+  "doi": {
+    "10.1000/mixed1": {
+      "provider": "fixture",
+      "doi": "10.1000/mixed1",
+      "title": "Mixed Example One",
+      "authors": ["Alice"],
+      "year": "2018",
+      "venue": "Journal Mix",
+      "url": "https://example.org/mixed1",
+      "source_url": "https://example.org/mixed1"
+    },
+    "10.1000/mixed2": {
+      "provider": "fixture",
+      "doi": "10.1000/mixed2",
+      "title": "Mixed Example Two",
+      "authors": ["Bob"],
+      "year": "2019",
+      "venue": "Journal Mix",
+      "url": "https://example.org/mixed2",
+      "source_url": "https://example.org/mixed2"
+    },
+    "10.1000/error1": {
+      "provider": "fixture",
+      "doi": "10.1000/error1",
+      "title": null,
+      "authors": [],
+      "year": null,
+      "venue": null,
+      "url": null,
+      "source_url": null
+    },
+    "10.1000/missingmeta": {
+      "provider": "fixture",
+      "doi": "10.1000/missingmeta",
+      "title": null,
+      "authors": [],
+      "year": null,
+      "venue": null,
+      "url": null,
+      "source_url": null
+    }
+  },
+  "doi_errors": ["10.1000/error1"],
+  "query": {
+    "mixed lookup query one": [
+      {
+        "provider": "fixture",
+        "doi": "10.1000/mixed1",
+        "title": "Mixed Example One",
+        "authors": ["Alice"],
+        "year": "2018",
+        "venue": "Journal Mix",
+        "url": "https://example.org/mixed1",
+        "source_url": "https://example.org/mixed1"
+      }
+    ]
+  }
+}

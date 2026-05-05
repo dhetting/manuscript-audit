@@ -297,7 +297,6 @@ def test_unlabeled_equation_skipped_for_non_theory() -> None:
     assert result.findings == []
 
 
-
 # ---------------------------------------------------------------------------
 # Phase 16: claim evidence escalation
 # ---------------------------------------------------------------------------
@@ -395,8 +394,8 @@ def test_notation_section_out_of_order_detected() -> None:
         full_text="",
         sections=[
             Section(title="Introduction", level=1, body=""),
-            Section(title="Proof", level=1, body=""),       # content first
-            Section(title="Notation", level=1, body=""),   # notation after
+            Section(title="Proof", level=1, body=""),  # content first
+            Section(title="Notation", level=1, body=""),  # notation after
             Section(title="Conclusion", level=1, body=""),
         ],
     )
@@ -427,7 +426,7 @@ def test_notation_section_in_correct_order_not_flagged() -> None:
         sections=[
             Section(title="Introduction", level=1, body=""),
             Section(title="Preliminaries", level=1, body=""),  # notation first
-            Section(title="Proof", level=1, body=""),          # content after
+            Section(title="Proof", level=1, body=""),  # content after
             Section(title="Conclusion", level=1, body=""),
         ],
     )
@@ -541,12 +540,16 @@ def test_underdeveloped_section_detected() -> None:
         sections=[
             Section(title="Methods", level=2, body="We used gradient descent."),
             Section(title="Results", level=2, body="See Table 1."),
-            Section(title="Discussion", level=2, body=(
-                "These results suggest a meaningful improvement over the baseline "
-                "approach. The method generalizes well across multiple conditions "
-                "and demonstrates robustness to parameter variations in repeated "
-                "experiments, confirming the reliability of our approach."
-            )),
+            Section(
+                title="Discussion",
+                level=2,
+                body=(
+                    "These results suggest a meaningful improvement over the baseline "
+                    "approach. The method generalizes well across multiple conditions "
+                    "and demonstrates robustness to parameter variations in repeated "
+                    "experiments, confirming the reliability of our approach."
+                ),
+            ),
         ],
     )
     result = validate_section_body_completeness(parsed)
@@ -604,9 +607,7 @@ def _make_suite_with_codes(*codes: str):
 def test_fatal_escalation_fires_when_both_conditions_met() -> None:
     from manuscript_audit.validators.core import validate_critical_escalation
 
-    suite = _make_suite_with_codes(
-        "systemic-claim-evidence-gap", "missing-required-section"
-    )
+    suite = _make_suite_with_codes("systemic-claim-evidence-gap", "missing-required-section")
     result = validate_critical_escalation(suite)
     codes = [f.code for f in result.findings]
     assert "critical-structural-claim-failure" in codes
@@ -791,10 +792,12 @@ def _dup_claim_manuscript(sections: list[tuple[str, str]]):
 def test_duplicate_claim_detected_across_sections() -> None:
     from manuscript_audit.validators.core import validate_duplicate_claims
 
-    parsed = _dup_claim_manuscript([
-        ("Results", "Our model achieves 94% accuracy on the test set."),
-        ("Discussion", "The 94% accuracy result confirms our hypothesis."),
-    ])
+    parsed = _dup_claim_manuscript(
+        [
+            ("Results", "Our model achieves 94% accuracy on the test set."),
+            ("Discussion", "The 94% accuracy result confirms our hypothesis."),
+        ]
+    )
     result = validate_duplicate_claims(parsed)
     codes = [f.code for f in result.findings]
     assert "duplicate-quantitative-claim" in codes
@@ -803,10 +806,12 @@ def test_duplicate_claim_detected_across_sections() -> None:
 def test_unique_claims_not_flagged() -> None:
     from manuscript_audit.validators.core import validate_duplicate_claims
 
-    parsed = _dup_claim_manuscript([
-        ("Results", "Model A achieves 94% accuracy on the test set."),
-        ("Discussion", "Model B achieves 87% accuracy in cross-validation."),
-    ])
+    parsed = _dup_claim_manuscript(
+        [
+            ("Results", "Model A achieves 94% accuracy on the test set."),
+            ("Discussion", "Model B achieves 87% accuracy in cross-validation."),
+        ]
+    )
     result = validate_duplicate_claims(parsed)
     assert result.findings == []
 
@@ -814,10 +819,12 @@ def test_unique_claims_not_flagged() -> None:
 def test_duplicate_claim_skips_abstract_section() -> None:
     from manuscript_audit.validators.core import validate_duplicate_claims
 
-    parsed = _dup_claim_manuscript([
-        ("Abstract", "Our approach achieves 94% accuracy."),
-        ("Results", "We report 94% accuracy on the held-out test set."),
-    ])
+    parsed = _dup_claim_manuscript(
+        [
+            ("Abstract", "Our approach achieves 94% accuracy."),
+            ("Results", "We report 94% accuracy on the held-out test set."),
+        ]
+    )
     # Abstract is in _SKIP_SECTIONS; only Results matches, so no duplicate
     result = validate_duplicate_claims(parsed)
     assert result.findings == []
@@ -1054,8 +1061,10 @@ def test_acronym_used_before_definition_flagged() -> None:
     parsed = _acronym_manuscript(
         abstract="We fine-tune BERT on our dataset.",
         sections=[
-            ("Introduction",
-             "Bidirectional Encoder Representations from Transformers (BERT) has become standard."),
+            (
+                "Introduction",
+                "Bidirectional Encoder Representations from Transformers (BERT) has become standard.",
+            ),
         ],
     )
     result = validate_acronym_consistency(parsed)
@@ -1067,11 +1076,15 @@ def test_acronym_used_before_definition_flagged() -> None:
 def test_acronym_defined_before_use_not_flagged() -> None:
     from manuscript_audit.validators.core import validate_acronym_consistency
 
-    parsed = _acronym_manuscript(sections=[
-        ("Introduction",
-         "Bidirectional Encoder Representations from Transformers (BERT) has become standard."),
-        ("Methods", "We apply BERT techniques to the corpus."),
-    ])
+    parsed = _acronym_manuscript(
+        sections=[
+            (
+                "Introduction",
+                "Bidirectional Encoder Representations from Transformers (BERT) has become standard.",
+            ),
+            ("Methods", "We apply BERT techniques to the corpus."),
+        ]
+    )
     result = validate_acronym_consistency(parsed)
     early = [f for f in result.findings if f.code == "acronym-used-before-definition"]
     assert not early
@@ -1081,10 +1094,12 @@ def test_undefined_acronym_flagged() -> None:
     from manuscript_audit.validators.core import validate_acronym_consistency
 
     # BERT used throughout but never defined
-    parsed = _acronym_manuscript(sections=[
-        ("Methods", "We fine-tune BERT on our dataset."),
-        ("Results", "BERT achieves the best performance."),
-    ])
+    parsed = _acronym_manuscript(
+        sections=[
+            ("Methods", "We fine-tune BERT on our dataset."),
+            ("Results", "BERT achieves the best performance."),
+        ]
+    )
     result = validate_acronym_consistency(parsed)
     codes = [f.code for f in result.findings]
     assert "undefined-acronym" in codes
@@ -1094,9 +1109,11 @@ def test_undefined_acronym_flagged() -> None:
 def test_common_acronyms_exempted() -> None:
     from manuscript_audit.validators.core import validate_acronym_consistency
 
-    parsed = _acronym_manuscript(sections=[
-        ("Methods", "We use the API to fetch data via HTTP and store as JSON."),
-    ])
+    parsed = _acronym_manuscript(
+        sections=[
+            ("Methods", "We use the API to fetch data via HTTP and store as JSON."),
+        ]
+    )
     result = validate_acronym_consistency(parsed)
     # API, HTTP, JSON should not be flagged as undefined
     flagged = {f.evidence[0] for f in result.findings if f.evidence}
@@ -1223,6 +1240,7 @@ def test_sentence_length_capped_per_section() -> None:
 # Phase 37 – citation cluster gap
 # ---------------------------------------------------------------------------
 
+
 def _citation_gap_manuscript(
     sections: list[tuple[str, str]],
     paper_type: str = "empirical_paper",
@@ -1294,13 +1312,12 @@ def test_citation_cluster_gap_no_fire_when_citations_interspersed() -> None:
 # Phase 38 – power-word overuse
 # ---------------------------------------------------------------------------
 
+
 def test_power_word_overuse_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section  # noqa: F401
     from manuscript_audit.validators.core import validate_power_word_overuse
 
-    abstract = (
-        "We present a novel novel novel novel approach to this novel novel problem."
-    )
+    abstract = "We present a novel novel novel novel approach to this novel novel problem."
     parsed = ParsedManuscript(
         manuscript_id="pw-test",
         source_path="synthetic",
@@ -1337,6 +1354,7 @@ def test_power_word_overuse_no_fire_below_threshold() -> None:
 # ---------------------------------------------------------------------------
 # Phase 39 – number format consistency
 # ---------------------------------------------------------------------------
+
 
 def test_number_format_inconsistency_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -1377,6 +1395,7 @@ def test_number_format_consistent_no_fire() -> None:
 # Phase 40 – abstract keyword coverage
 # ---------------------------------------------------------------------------
 
+
 def test_abstract_keyword_coverage_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.validators.core import validate_abstract_keyword_coverage
@@ -1406,10 +1425,7 @@ def test_abstract_keyword_coverage_passes_when_terms_present() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.validators.core import validate_abstract_keyword_coverage
 
-    abstract = (
-        "We introduce fine-tuning for Neural Networks using "
-        "Stochastic Gradient Descent."
-    )
+    abstract = "We introduce fine-tuning for Neural Networks using Stochastic Gradient Descent."
     body = (
         "We apply fine-tuning to Neural Networks. "
         "Stochastic Gradient Descent is used throughout our experiments. "
@@ -1449,6 +1465,7 @@ def test_abstract_keyword_coverage_sparse_abstract_skipped() -> None:
 # ---------------------------------------------------------------------------
 # Phase 42 – contribution claim count
 # ---------------------------------------------------------------------------
+
 
 def test_contribution_claim_fires_when_fewer_items_in_body() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -1511,6 +1528,7 @@ def test_contribution_claim_skipped_when_no_claim() -> None:
 # Phase 43 – first-person consistency
 # ---------------------------------------------------------------------------
 
+
 def test_first_person_inconsistency_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.validators.core import validate_first_person_consistency
@@ -1553,6 +1571,7 @@ def test_first_person_consistent_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 44 – caption quality
 # ---------------------------------------------------------------------------
+
 
 def test_short_caption_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript
@@ -1615,6 +1634,7 @@ def test_good_caption_no_fire() -> None:
 # Phase 45 – reference staleness
 # ---------------------------------------------------------------------------
 
+
 def _staleness_manuscript(years: list[str], paper_type: str = "empirical_paper"):
     from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
     from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -1660,6 +1680,7 @@ def test_stale_references_no_fire_recent() -> None:
     import datetime
 
     from manuscript_audit.validators.core import validate_reference_staleness
+
     current = datetime.date.today().year
     # 12 entries all from last 5 years
     years = [str(current - i % 5) for i in range(12)]
@@ -1689,6 +1710,7 @@ def test_stale_references_skipped_too_few_entries() -> None:
 # ---------------------------------------------------------------------------
 # Phase 47 – terminology drift
 # ---------------------------------------------------------------------------
+
 
 def test_terminology_drift_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -1732,6 +1754,7 @@ def test_terminology_drift_consistent_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 48 – introduction structure
 # ---------------------------------------------------------------------------
+
 
 def test_intro_structure_fires_missing_arcs() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -1789,6 +1812,7 @@ def test_intro_structure_passes_with_all_arcs() -> None:
 # ---------------------------------------------------------------------------
 # Phase 49 – reproducibility checklist
 # ---------------------------------------------------------------------------
+
 
 def _repro_manuscript(body: str, paper_type: str = "empirical_paper"):
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -1850,6 +1874,7 @@ def test_reproducibility_no_fire_when_present() -> None:
 # Phase 50 – self-citation ratio
 # ---------------------------------------------------------------------------
 
+
 def test_self_citation_fires() -> None:
     from manuscript_audit.schemas.artifacts import BibliographyEntry, ParsedManuscript
     from manuscript_audit.validators.core import validate_self_citation_ratio
@@ -1859,8 +1884,11 @@ def test_self_citation_fires() -> None:
         authors = ["Smith, John", "Jones, Alice"] if i < 7 else ["Brown, Bob"]
         entries.append(
             BibliographyEntry(
-                key=f"ref{i}", raw_text=f"Ref {i}", year="2020",
-                authors=authors, source="bibtex",
+                key=f"ref{i}",
+                raw_text=f"Ref {i}",
+                year="2020",
+                authors=authors,
+                source="bibtex",
             )
         )
     parsed = ParsedManuscript(
@@ -1884,8 +1912,11 @@ def test_self_citation_no_fire_diverse_authors() -> None:
     names = ["Smith", "Jones", "Brown", "Davis", "Wilson", "Taylor", "Anderson", "Thomas"]
     entries = [
         BibliographyEntry(
-            key=f"ref{i}", raw_text=f"Ref {i}", year="2020",
-            authors=[f"{n}, A."], source="bibtex",
+            key=f"ref{i}",
+            raw_text=f"Ref {i}",
+            year="2020",
+            authors=[f"{n}, A."],
+            source="bibtex",
         )
         for i, n in enumerate(names)
     ]
@@ -1905,6 +1936,7 @@ def test_self_citation_no_fire_diverse_authors() -> None:
 # ---------------------------------------------------------------------------
 # Phase 51 – conclusion scope
 # ---------------------------------------------------------------------------
+
 
 def test_conclusion_scope_fires_on_novel_metrics() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -1959,6 +1991,7 @@ def test_conclusion_scope_no_fire_when_metrics_established() -> None:
 # ---------------------------------------------------------------------------
 # Phase 53 – equation density
 # ---------------------------------------------------------------------------
+
 
 def _eq_density_manuscript(eq_count: int, section_count: int, pathway: str = "math_stats_theory"):
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -2017,6 +2050,7 @@ def test_equation_density_skipped_non_theory() -> None:
 # Phase 54 – abstract structure
 # ---------------------------------------------------------------------------
 
+
 def test_abstract_structure_fires_missing_result() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript
     from manuscript_audit.validators.core import validate_abstract_structure
@@ -2073,6 +2107,7 @@ def test_abstract_structure_passes_complete() -> None:
 # Phase 55 – URL format
 # ---------------------------------------------------------------------------
 
+
 def test_url_format_malformed_fires() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.validators.core import validate_url_format
@@ -2112,6 +2147,7 @@ def test_url_format_valid_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 56 – figure/table balance
 # ---------------------------------------------------------------------------
+
 
 def _fig_balance_manuscript(n_figs: int, n_tabs: int, paper_type: str = "empirical_paper"):
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -2168,6 +2204,7 @@ def test_figure_balance_no_fire() -> None:
 # Phase 57 – section ordering
 # ---------------------------------------------------------------------------
 
+
 def _ordering_manuscript(titles: list[str], paper_type: str = "empirical_paper"):
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
     from manuscript_audit.schemas.routing import ManuscriptClassification
@@ -2192,9 +2229,7 @@ def test_section_ordering_violation_fires() -> None:
     from manuscript_audit.validators.core import validate_section_ordering
 
     # Results before Methods — violation
-    parsed, clf = _ordering_manuscript(
-        ["Introduction", "Results", "Methods", "Discussion"]
-    )
+    parsed, clf = _ordering_manuscript(["Introduction", "Results", "Methods", "Discussion"])
     result = validate_section_ordering(parsed, clf)
     codes = [f.code for f in result.findings]
     assert "section-order-violation" in codes
@@ -2203,9 +2238,7 @@ def test_section_ordering_violation_fires() -> None:
 def test_section_ordering_correct_no_fire() -> None:
     from manuscript_audit.validators.core import validate_section_ordering
 
-    parsed, clf = _ordering_manuscript(
-        ["Introduction", "Methods", "Results", "Discussion"]
-    )
+    parsed, clf = _ordering_manuscript(["Introduction", "Methods", "Results", "Discussion"])
     result = validate_section_ordering(parsed, clf)
     assert result.findings == []
 
@@ -2224,6 +2257,7 @@ def test_section_ordering_skipped_theory() -> None:
 # ---------------------------------------------------------------------------
 # Phase 59 – author keyword coverage
 # ---------------------------------------------------------------------------
+
 
 def test_keyword_coverage_fires_for_absent_keyword() -> None:
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -2266,6 +2300,7 @@ def test_keyword_coverage_no_fire_when_all_present() -> None:
 # ---------------------------------------------------------------------------
 # Phase 60 – statistical test reporting
 # ---------------------------------------------------------------------------
+
 
 def _stat_manuscript(body: str, paper_type: str = "empirical_paper"):
     from manuscript_audit.schemas.artifacts import ParsedManuscript, Section
@@ -2319,6 +2354,7 @@ def test_stat_reporting_skipped_theory() -> None:
 # Phase 61 – effect size reporting
 # ---------------------------------------------------------------------------
 
+
 def test_effect_size_fires_pvalue_no_effect() -> None:
     from manuscript_audit.validators.core import validate_effect_size_reporting
 
@@ -2354,6 +2390,7 @@ def test_effect_size_no_fire_no_pvalue() -> None:
 # Phase 62 – acknowledgments presence
 # ---------------------------------------------------------------------------
 
+
 def _ack_manuscript(
     sections: list[tuple[str, str]],
     full_text: str = "",
@@ -2387,8 +2424,9 @@ def _ack_manuscript(
 def test_missing_acknowledgments_fires() -> None:
     from manuscript_audit.validators.core import validate_acknowledgments_presence
 
-    parsed, clf = _ack_manuscript([("Methods", "We ran experiments."),
-                                    ("Results", "We found results.")])
+    parsed, clf = _ack_manuscript(
+        [("Methods", "We ran experiments."), ("Results", "We found results.")]
+    )
     result = validate_acknowledgments_presence(parsed, clf)
     codes = [f.code for f in result.findings]
     assert "missing-acknowledgments" in codes
@@ -2397,10 +2435,12 @@ def test_missing_acknowledgments_fires() -> None:
 def test_acknowledgments_present_no_fire() -> None:
     from manuscript_audit.validators.core import validate_acknowledgments_presence
 
-    parsed, clf = _ack_manuscript([
-        ("Methods", "We ran experiments."),
-        ("Acknowledgments", "This work was supported by NSF grant 12345."),
-    ])
+    parsed, clf = _ack_manuscript(
+        [
+            ("Methods", "We ran experiments."),
+            ("Acknowledgments", "This work was supported by NSF grant 12345."),
+        ]
+    )
     result = validate_acknowledgments_presence(parsed, clf)
     assert result.findings == []
 
@@ -2443,9 +2483,7 @@ def _coi_manuscript(
     from manuscript_audit.schemas.routing import ManuscriptClassification
 
     bib = [
-        BibliographyEntry(
-            key=f"r{i}", raw_text=f"Ref {i}.", year="2020", source="bibtex"
-        )
+        BibliographyEntry(key=f"r{i}", raw_text=f"Ref {i}.", year="2020", source="bibtex")
         for i in range(n_bib)
     ]
     ms = ParsedManuscript(
@@ -2470,8 +2508,10 @@ def test_missing_coi_fires() -> None:
     from manuscript_audit.validators.core import validate_conflict_of_interest
 
     parsed, clf = _coi_manuscript(
-        [("Methods", "We recruited participants from local clinics."),
-         ("Results", "We found a significant effect.")]
+        [
+            ("Methods", "We recruited participants from local clinics."),
+            ("Results", "We found a significant effect."),
+        ]
     )
     result = validate_conflict_of_interest(parsed, clf)
     codes = [f.code for f in result.findings]
@@ -2482,8 +2522,10 @@ def test_coi_present_in_section_no_fire() -> None:
     from manuscript_audit.validators.core import validate_conflict_of_interest
 
     parsed, clf = _coi_manuscript(
-        [("Methods", "We ran experiments."),
-         ("Conflict of Interest", "The authors declare no competing interests.")]
+        [
+            ("Methods", "We ran experiments."),
+            ("Conflict of Interest", "The authors declare no competing interests."),
+        ]
     )
     result = validate_conflict_of_interest(parsed, clf)
     assert result.findings == []
@@ -2556,8 +2598,10 @@ def test_missing_data_availability_fires() -> None:
     from manuscript_audit.validators.core import validate_data_availability
 
     parsed, clf = _data_avail_manuscript(
-        [("Methods", "We collected data from hospitals."),
-         ("Results", "The analysis showed improvements.")]
+        [
+            ("Methods", "We collected data from hospitals."),
+            ("Results", "The analysis showed improvements."),
+        ]
     )
     result = validate_data_availability(parsed, clf)
     codes = [f.code for f in result.findings]
@@ -2619,8 +2663,10 @@ def test_missing_ethics_human_study_fires() -> None:
     from manuscript_audit.validators.core import validate_ethics_statement
 
     parsed = _ethics_manuscript(
-        [("Methods", "Participants completed questionnaires about their health."),
-         ("Results", "Survey responses showed significant trends.")]
+        [
+            ("Methods", "Participants completed questionnaires about their health."),
+            ("Results", "Survey responses showed significant trends."),
+        ]
     )
     result = validate_ethics_statement(parsed)
     codes = [f.code for f in result.findings]
@@ -2631,9 +2677,13 @@ def test_ethics_irb_present_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ethics_statement
 
     parsed = _ethics_manuscript(
-        [("Methods",
-          "Participants completed questionnaires. "
-          "The study was approved by the Institutional Review Board.")]
+        [
+            (
+                "Methods",
+                "Participants completed questionnaires. "
+                "The study was approved by the Institutional Review Board.",
+            )
+        ]
     )
     result = validate_ethics_statement(parsed)
     assert result.findings == []
@@ -2642,9 +2692,7 @@ def test_ethics_irb_present_no_fire() -> None:
 def test_ethics_animal_study_fires() -> None:
     from manuscript_audit.validators.core import validate_ethics_statement
 
-    parsed = _ethics_manuscript(
-        [("Methods", "Mice were administered the drug at 10 mg/kg.")]
-    )
+    parsed = _ethics_manuscript([("Methods", "Mice were administered the drug at 10 mg/kg.")])
     result = validate_ethics_statement(parsed)
     codes = [f.code for f in result.findings]
     assert "missing-ethics-statement" in codes
@@ -2653,9 +2701,7 @@ def test_ethics_animal_study_fires() -> None:
 def test_ethics_no_human_animal_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ethics_statement
 
-    parsed = _ethics_manuscript(
-        [("Methods", "We trained a neural network on benchmark datasets.")]
-    )
+    parsed = _ethics_manuscript([("Methods", "We trained a neural network on benchmark datasets.")])
     result = validate_ethics_statement(parsed)
     assert result.findings == []
 
@@ -2664,8 +2710,7 @@ def test_ethics_iacuc_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ethics_statement
 
     parsed = _ethics_manuscript(
-        [("Methods",
-          "Mice were used. All procedures were approved by the IACUC committee.")]
+        [("Methods", "Mice were used. All procedures were approved by the IACUC committee.")]
     )
     result = validate_ethics_statement(parsed)
     assert result.findings == []
@@ -2802,10 +2847,7 @@ def test_decimal_inconsistency_fires() -> None:
         validate_decimal_precision_consistency,
     )
 
-    body = (
-        "Accuracy was 85%, recall was 90%, precision was 85.23%, "
-        "and F1 was 87.50%."
-    )
+    body = "Accuracy was 85%, recall was 90%, precision was 85.23%, and F1 was 87.50%."
     parsed = _decimal_manuscript(body)
     result = validate_decimal_precision_consistency(parsed)
     codes = [f.code for f in result.findings]
@@ -2940,11 +2982,16 @@ def test_missing_null_result_fires() -> None:
         "The method outperformed all baselines."
     )
     parsed, clf = _null_result_manuscript(
-        [("Results", results_body),
-         ("Discussion", "The results confirm our hypothesis.\n\n"
-          "These findings suggest strong generalization.\n\n"
-          "The approach is effective across domains.\n\n"
-          "The performance gains are robust.")]
+        [
+            ("Results", results_body),
+            (
+                "Discussion",
+                "The results confirm our hypothesis.\n\n"
+                "These findings suggest strong generalization.\n\n"
+                "The approach is effective across domains.\n\n"
+                "The performance gains are robust.",
+            ),
+        ]
     )
     result = validate_null_result_acknowledgment(parsed, clf)
     codes = [f.code for f in result.findings]
@@ -2968,9 +3015,7 @@ def test_null_result_present_no_fire() -> None:
 def test_null_result_skipped_theory() -> None:
     from manuscript_audit.validators.core import validate_null_result_acknowledgment
 
-    results_body = (
-        "Theorem 1 holds.\n\nProof follows.\n\nCorollary applies.\n\nQED."
-    )
+    results_body = "Theorem 1 holds.\n\nProof follows.\n\nCorollary applies.\n\nQED."
     parsed, clf = _null_result_manuscript(
         [("Results", results_body)],
         paper_type="math_stats_theory",
@@ -3080,18 +3125,28 @@ def test_duplicate_sections_fires() -> None:
         "Early stopping was used to prevent overfitting. "
         "The learning rate was set to 0.001 with cosine annealing schedule. "
     )
-    parsed = _dup_manuscript([
-        ("Introduction",
-         "We present a deep learning approach. " + shared +
-         "This paper makes three contributions."),
-        ("Methods",
-         "Standard methodology was used. We split data 80/20. "
-         "All hyperparameters were tuned via cross-validation. "
-         "Statistical significance was assessed using t-tests."),
-        ("Discussion",
-         "The results confirm our hypothesis. " + shared +
-         "Future work will extend this to other domains."),
-    ])
+    parsed = _dup_manuscript(
+        [
+            (
+                "Introduction",
+                "We present a deep learning approach. "
+                + shared
+                + "This paper makes three contributions.",
+            ),
+            (
+                "Methods",
+                "Standard methodology was used. We split data 80/20. "
+                "All hyperparameters were tuned via cross-validation. "
+                "Statistical significance was assessed using t-tests.",
+            ),
+            (
+                "Discussion",
+                "The results confirm our hypothesis. "
+                + shared
+                + "Future work will extend this to other domains.",
+            ),
+        ]
+    )
     result = validate_duplicate_section_content(parsed)
     codes = [f.code for f in result.findings]
     assert "duplicate-section-content" in codes
@@ -3100,21 +3155,29 @@ def test_duplicate_sections_fires() -> None:
 def test_no_duplication_no_fire() -> None:
     from manuscript_audit.validators.core import validate_duplicate_section_content
 
-    parsed = _dup_manuscript([
-        ("Introduction",
-         "Neural networks have achieved remarkable results in vision. "
-         "We propose a novel architecture for sequence modeling. "
-         "This work addresses the problem of long-range dependencies. "
-         "Our contributions include a new attention mechanism."),
-        ("Methods",
-         "We train on 50000 samples using Adam optimizer. "
-         "The model uses 12 transformer layers with 768 hidden units. "
-         "Training takes 24 hours on 8 V100 GPUs."),
-        ("Discussion",
-         "Results show consistent improvements across all benchmarks. "
-         "Ablation studies reveal the importance of positional encoding. "
-         "The approach generalises to low-resource settings."),
-    ])
+    parsed = _dup_manuscript(
+        [
+            (
+                "Introduction",
+                "Neural networks have achieved remarkable results in vision. "
+                "We propose a novel architecture for sequence modeling. "
+                "This work addresses the problem of long-range dependencies. "
+                "Our contributions include a new attention mechanism.",
+            ),
+            (
+                "Methods",
+                "We train on 50000 samples using Adam optimizer. "
+                "The model uses 12 transformer layers with 768 hidden units. "
+                "Training takes 24 hours on 8 V100 GPUs.",
+            ),
+            (
+                "Discussion",
+                "Results show consistent improvements across all benchmarks. "
+                "Ablation studies reveal the importance of positional encoding. "
+                "The approach generalises to low-resource settings.",
+            ),
+        ]
+    )
     result = validate_duplicate_section_content(parsed)
     assert result.findings == []
 
@@ -3391,12 +3454,14 @@ def test_section_imbalance_fires() -> None:
     from manuscript_audit.validators.core import validate_section_balance
 
     big_body = "The results showed significant improvement. " * 50
-    parsed, clf = _balance_manuscript([
-        ("Introduction", "Brief intro. We propose a method."),
-        ("Methods", "We used linear regression."),
-        ("Results", big_body),
-        ("Discussion", "The findings are important."),
-    ])
+    parsed, clf = _balance_manuscript(
+        [
+            ("Introduction", "Brief intro. We propose a method."),
+            ("Methods", "We used linear regression."),
+            ("Results", big_body),
+            ("Discussion", "The findings are important."),
+        ]
+    )
     result = validate_section_balance(parsed, clf)
     codes = [f.code for f in result.findings]
     assert "section-length-imbalance" in codes
@@ -3406,12 +3471,14 @@ def test_balanced_sections_no_fire() -> None:
     from manuscript_audit.validators.core import validate_section_balance
 
     balanced_body = "The results showed improvement. " * 8
-    parsed, clf = _balance_manuscript([
-        ("Introduction", balanced_body),
-        ("Methods", balanced_body),
-        ("Results", balanced_body),
-        ("Discussion", balanced_body),
-    ])
+    parsed, clf = _balance_manuscript(
+        [
+            ("Introduction", balanced_body),
+            ("Methods", balanced_body),
+            ("Results", balanced_body),
+            ("Discussion", balanced_body),
+        ]
+    )
     result = validate_section_balance(parsed, clf)
     assert result.findings == []
 
@@ -3421,9 +3488,7 @@ def test_section_balance_skipped_theory() -> None:
 
     big_body = "We prove the theorem. " * 50
     parsed, clf = _balance_manuscript(
-        [("Introduction", "Short intro."),
-         ("Proof", big_body),
-         ("Discussion", "Brief.")],
+        [("Introduction", "Short intro."), ("Proof", big_body), ("Discussion", "Brief.")],
         paper_type="math_stats_theory",
     )
     result = validate_section_balance(parsed, clf)
@@ -3524,12 +3589,14 @@ def test_introduction_too_long_fires() -> None:
 
     long_intro = "This paper introduces a new framework for analysis. " * 20
     short_sec = "Brief section content about the methodology used. " * 10
-    parsed = _intro_length_manuscript([
-        ("Introduction", long_intro),
-        ("Methods", short_sec),
-        ("Results", short_sec),
-        ("Discussion", short_sec),
-    ])
+    parsed = _intro_length_manuscript(
+        [
+            ("Introduction", long_intro),
+            ("Methods", short_sec),
+            ("Results", short_sec),
+            ("Discussion", short_sec),
+        ]
+    )
     result = validate_introduction_length(parsed)
     codes = [f.code for f in result.findings]
     assert "introduction-too-long" in codes
@@ -3539,12 +3606,14 @@ def test_introduction_balanced_no_fire() -> None:
     from manuscript_audit.validators.core import validate_introduction_length
 
     balanced = "This section contains a balanced amount of content. " * 5
-    parsed = _intro_length_manuscript([
-        ("Introduction", balanced),
-        ("Methods", balanced),
-        ("Results", balanced),
-        ("Discussion", balanced),
-    ])
+    parsed = _intro_length_manuscript(
+        [
+            ("Introduction", balanced),
+            ("Methods", balanced),
+            ("Results", balanced),
+            ("Discussion", balanced),
+        ]
+    )
     result = validate_introduction_length(parsed)
     assert result.findings == []
 
@@ -3665,8 +3734,7 @@ def test_unused_abbreviation_fires() -> None:
         "CNN: Convolutional Neural Network\nRNN: Recurrent Neural Network\nXYZ: Unused term\n"
     )
     parsed = _abbrev_manuscript(
-        abbrev_body,
-        [("Methods", "We used CNN and RNN for the experiments.")]
+        abbrev_body, [("Methods", "We used CNN and RNN for the experiments.")]
     )
     result = validate_abbreviation_list(parsed)
     codes = [f.code for f in result.findings]
@@ -3681,8 +3749,7 @@ def test_all_abbreviations_used_no_fire() -> None:
 
     abbrev_body = "CNN: Convolutional Neural Network\nRNN: Recurrent Neural Network\n"
     parsed = _abbrev_manuscript(
-        abbrev_body,
-        [("Methods", "We used CNN and RNN throughout the experiments.")]
+        abbrev_body, [("Methods", "We used CNN and RNN throughout the experiments.")]
     )
     result = validate_abbreviation_list(parsed)
     assert result.findings == []
@@ -3758,10 +3825,7 @@ def test_abstract_past_tense_only_no_fire() -> None:
 def test_abstract_too_short_for_tense_no_fire() -> None:
     from manuscript_audit.validators.core import validate_abstract_tense
 
-    abstract = (
-        "We present a framework. Results were collected. "
-        "The approach is effective."
-    )
+    abstract = "We present a framework. Results were collected. The approach is effective."
     parsed = _tense_manuscript(abstract)
     result = validate_abstract_tense(parsed)
     assert result.findings == []
@@ -3911,11 +3975,13 @@ def _limitations_presence_manuscript(
 def test_missing_limitations_section_fires() -> None:
     from manuscript_audit.validators.core import validate_limitations_section_presence
 
-    ms, clf = _limitations_presence_manuscript([
-        ("Methods", "We conducted an experiment with 50 subjects."),
-        ("Results", "The results showed significant improvement."),
-        ("Discussion", "The method is effective and generalizes well."),
-    ])
+    ms, clf = _limitations_presence_manuscript(
+        [
+            ("Methods", "We conducted an experiment with 50 subjects."),
+            ("Results", "The results showed significant improvement."),
+            ("Discussion", "The method is effective and generalizes well."),
+        ]
+    )
     result = validate_limitations_section_presence(ms, clf)
     codes = [f.code for f in result.findings]
     assert "missing-limitations-section" in codes
@@ -3924,12 +3990,14 @@ def test_missing_limitations_section_fires() -> None:
 def test_dedicated_limitations_section_no_fire() -> None:
     from manuscript_audit.validators.core import validate_limitations_section_presence
 
-    ms, clf = _limitations_presence_manuscript([
-        ("Methods", "We conducted an experiment with 50 subjects."),
-        ("Results", "The results showed significant improvement."),
-        ("Discussion", "The method is effective."),
-        ("Limitations", "The study is limited to English-language texts."),
-    ])
+    ms, clf = _limitations_presence_manuscript(
+        [
+            ("Methods", "We conducted an experiment with 50 subjects."),
+            ("Results", "The results showed significant improvement."),
+            ("Discussion", "The method is effective."),
+            ("Limitations", "The study is limited to English-language texts."),
+        ]
+    )
     result = validate_limitations_section_presence(ms, clf)
     assert result.findings == []
 
@@ -3937,14 +4005,16 @@ def test_dedicated_limitations_section_no_fire() -> None:
 def test_inline_limitations_discussion_no_fire() -> None:
     from manuscript_audit.validators.core import validate_limitations_section_presence
 
-    ms, clf = _limitations_presence_manuscript([
-        ("Methods", "We conducted an experiment."),
-        ("Results", "Significant improvement was observed."),
-        (
-            "Discussion",
-            "The study has several limitations including sample size constraints.",
-        ),
-    ])
+    ms, clf = _limitations_presence_manuscript(
+        [
+            ("Methods", "We conducted an experiment."),
+            ("Results", "Significant improvement was observed."),
+            (
+                "Discussion",
+                "The study has several limitations including sample size constraints.",
+            ),
+        ]
+    )
     result = validate_limitations_section_presence(ms, clf)
     assert result.findings == []
 
@@ -4642,9 +4712,7 @@ def test_non_empirical_abstract_no_fire() -> None:
         "vetting. The tool provides deterministic validators and structured "
         "artifact outputs for academic manuscripts."
     )
-    ms, clf = _abstract_quant_manuscript(
-        abstract, paper_type="software_workflow_paper"
-    )
+    ms, clf = _abstract_quant_manuscript(abstract, paper_type="software_workflow_paper")
     result = validate_abstract_quantitative_results(ms, clf)
     assert result.findings == []
 
@@ -5346,10 +5414,7 @@ def test_anchored_temporal_no_fire() -> None:
 def test_few_temporal_references_no_fire() -> None:
     from manuscript_audit.validators.core import validate_vague_temporal_claims
 
-    text = (
-        "Recently, the field has advanced. "
-        "The approach is now state-of-the-art."
-    )
+    text = "Recently, the field has advanced. The approach is now state-of-the-art."
     ms = _temporal_manuscript(text)
     result = validate_vague_temporal_claims(ms)
     assert result.findings == []
@@ -5463,12 +5528,9 @@ def test_title_too_short_fires() -> None:
 def test_normal_title_no_fire() -> None:
     from manuscript_audit.validators.core import validate_title_length
 
-    ms = _title_manuscript(
-        "Deterministic validators for adversarial manuscript vetting"
-    )
+    ms = _title_manuscript("Deterministic validators for adversarial manuscript vetting")
     result = validate_title_length(ms)
     assert result.findings == []
-
 
 
 # ---------------------------------------------------------------------------
@@ -5638,9 +5700,7 @@ def test_overlong_sentence_no_fire_in_introduction() -> None:
 def test_short_sentences_no_fire() -> None:
     from manuscript_audit.validators.core import validate_overlong_sentences
 
-    ms = _overlong_manuscript(
-        "Results", "We found significant effects. The p-value was 0.01."
-    )
+    ms = _overlong_manuscript("Results", "We found significant effects. The p-value was 0.01.")
     result = validate_overlong_sentences(ms)
     assert result.findings == []
 
@@ -5670,12 +5730,14 @@ def test_mixed_heading_case_fires() -> None:
     )
 
     # Two title-case headings + two sentence-case headings
-    ms = _heading_manuscript([
-        "Introduction Background Context",
-        "Methods And Participants Study",
-        "Results from findings analysis here",
-        "Discussion implications limitations here",
-    ])
+    ms = _heading_manuscript(
+        [
+            "Introduction Background Context",
+            "Methods And Participants Study",
+            "Results from findings analysis here",
+            "Discussion implications limitations here",
+        ]
+    )
     result = validate_heading_capitalization_consistency(ms)
     codes = [f.code for f in result.findings]
     assert "inconsistent-heading-capitalization" in codes
@@ -5686,12 +5748,14 @@ def test_consistent_title_case_no_fire() -> None:
         validate_heading_capitalization_consistency,
     )
 
-    ms = _heading_manuscript([
-        "Introduction Background Study",
-        "Methods And Participants Study",
-        "Results And Analysis Study",
-        "Discussion And Conclusions Study",
-    ])
+    ms = _heading_manuscript(
+        [
+            "Introduction Background Study",
+            "Methods And Participants Study",
+            "Results And Analysis Study",
+            "Discussion And Conclusions Study",
+        ]
+    )
     result = validate_heading_capitalization_consistency(ms)
     assert result.findings == []
 
@@ -5737,9 +5801,7 @@ def test_answered_rq_no_fire() -> None:
     from manuscript_audit.validators.core import validate_research_question_addressed
 
     ms = _rq_manuscript(
-        intro_body=(
-            "The central question is whether treatment A improves outcomes."
-        ),
+        intro_body=("The central question is whether treatment A improves outcomes."),
         results_body=(
             "We found that participants in the treatment group showed "
             "significantly better outcomes (p < 0.05). "
@@ -5813,9 +5875,7 @@ def test_coi_fires_when_absent() -> None:
 def test_coi_passes_with_declaration() -> None:
     from manuscript_audit.validators.core import validate_conflict_of_interest
 
-    ms, clf = _coi_manuscript_simple(
-        "Methods text. The authors declare no competing interests."
-    )
+    ms, clf = _coi_manuscript_simple("Methods text. The authors declare no competing interests.")
     result = validate_conflict_of_interest(ms, clf)
     assert result.findings == []
 
@@ -5913,9 +5973,7 @@ def test_funding_fires_when_absent() -> None:
 def test_funding_passes_with_statement() -> None:
     from manuscript_audit.validators.core import validate_funding_statement
 
-    ms, clf = _funding_manuscript(
-        "This work was supported by NSF grant number 123456."
-    )
+    ms, clf = _funding_manuscript("This work was supported by NSF grant number 123456.")
     result = validate_funding_statement(ms, clf)
     assert result.findings == []
 
@@ -5950,9 +6008,7 @@ def _discussion_presence_manuscript(
         title="Test",
         abstract="Abstract.",
         full_text="",
-        sections=[
-            Section(title=t, level=1, body=b) for t, b in sections
-        ],
+        sections=[Section(title=t, level=1, body=b) for t, b in sections],
     )
     clf = ManuscriptClassification(
         paper_type=paper_type,
@@ -5965,10 +6021,12 @@ def _discussion_presence_manuscript(
 def test_missing_discussion_fires() -> None:
     from manuscript_audit.validators.core import validate_discussion_section_presence
 
-    ms, clf = _discussion_presence_manuscript([
-        ("Methods", "We used regression."),
-        ("Results", "We found a significant effect (p < 0.05)."),
-    ])
+    ms, clf = _discussion_presence_manuscript(
+        [
+            ("Methods", "We used regression."),
+            ("Results", "We found a significant effect (p < 0.05)."),
+        ]
+    )
     result = validate_discussion_section_presence(ms, clf)
     codes = [f.code for f in result.findings]
     assert "missing-discussion-section" in codes
@@ -5977,11 +6035,13 @@ def test_missing_discussion_fires() -> None:
 def test_discussion_present_no_fire() -> None:
     from manuscript_audit.validators.core import validate_discussion_section_presence
 
-    ms, clf = _discussion_presence_manuscript([
-        ("Methods", "We used regression."),
-        ("Results", "We found a significant effect."),
-        ("Discussion", "Our results suggest that X causes Y."),
-    ])
+    ms, clf = _discussion_presence_manuscript(
+        [
+            ("Methods", "We used regression."),
+            ("Results", "We found a significant effect."),
+            ("Discussion", "Our results suggest that X causes Y."),
+        ]
+    )
     result = validate_discussion_section_presence(ms, clf)
     assert result.findings == []
 
@@ -6066,9 +6126,7 @@ def _methods_presence_manuscript(
         title="Test Study",
         abstract="Abstract.",
         full_text="",
-        sections=[
-            Section(title=t, level=1, body="body text.") for t in section_titles
-        ],
+        sections=[Section(title=t, level=1, body="body text.") for t in section_titles],
     )
     clf = ManuscriptClassification(
         paper_type=paper_type,
@@ -6081,9 +6139,7 @@ def _methods_presence_manuscript(
 def test_missing_methods_fires() -> None:
     from manuscript_audit.validators.core import validate_methods_section_presence
 
-    ms, clf = _methods_presence_manuscript(
-        ["Introduction", "Results", "Discussion"]
-    )
+    ms, clf = _methods_presence_manuscript(["Introduction", "Results", "Discussion"])
     result = validate_methods_section_presence(ms, clf)
     codes = [f.code for f in result.findings]
     assert "missing-methods-section" in codes
@@ -6092,9 +6148,7 @@ def test_missing_methods_fires() -> None:
 def test_methods_present_no_fire() -> None:
     from manuscript_audit.validators.core import validate_methods_section_presence
 
-    ms, clf = _methods_presence_manuscript(
-        ["Introduction", "Methods", "Results", "Discussion"]
-    )
+    ms, clf = _methods_presence_manuscript(["Introduction", "Methods", "Results", "Discussion"])
     result = validate_methods_section_presence(ms, clf)
     assert result.findings == []
 
@@ -6125,18 +6179,14 @@ def _conclusion_presence_manuscript(section_titles: list) -> object:
         title="Test",
         abstract="Abstract.",
         full_text="",
-        sections=[
-            Section(title=t, level=1, body="body text.") for t in section_titles
-        ],
+        sections=[Section(title=t, level=1, body="body text.") for t in section_titles],
     )
 
 
 def test_missing_conclusion_fires() -> None:
     from manuscript_audit.validators.core import validate_conclusion_section_presence
 
-    ms = _conclusion_presence_manuscript(
-        ["Introduction", "Methods", "Results", "Discussion"]
-    )
+    ms = _conclusion_presence_manuscript(["Introduction", "Methods", "Results", "Discussion"])
     result = validate_conclusion_section_presence(ms)
     codes = [f.code for f in result.findings]
     assert "missing-conclusion-section" in codes
@@ -6276,8 +6326,7 @@ def test_inconsistent_percentage_fires() -> None:
     from manuscript_audit.validators.core import validate_percentage_notation_consistency
 
     ms = _percentage_manuscript(
-        "Accuracy was 85%. Recall was 90 percent. "
-        "Precision was 88 per cent. F1 was 87%."
+        "Accuracy was 85%. Recall was 90 percent. Precision was 88 per cent. F1 was 87%."
     )
     result = validate_percentage_notation_consistency(ms)
     codes = [f.code for f in result.findings]
@@ -6287,9 +6336,7 @@ def test_inconsistent_percentage_fires() -> None:
 def test_consistent_percentage_no_fire() -> None:
     from manuscript_audit.validators.core import validate_percentage_notation_consistency
 
-    ms = _percentage_manuscript(
-        "Accuracy was 85%. Recall was 90%. Precision was 88%. F1 was 87%."
-    )
+    ms = _percentage_manuscript("Accuracy was 85%. Recall was 90%. Precision was 88%. F1 was 87%.")
     result = validate_percentage_notation_consistency(ms)
     assert result.findings == []
 
@@ -6395,9 +6442,7 @@ def test_placeholder_title_fires() -> None:
 def test_clean_title_no_fire() -> None:
     from manuscript_audit.validators.core import validate_draft_title_markers
 
-    ms = _draft_title_manuscript(
-        "Deterministic Validation of Academic Manuscripts"
-    )
+    ms = _draft_title_manuscript("Deterministic Validation of Academic Manuscripts")
     result = validate_draft_title_markers(ms)
     assert result.findings == []
 
@@ -6481,8 +6526,7 @@ def test_scale_anchor_fires_when_absent() -> None:
     from manuscript_audit.validators.core import validate_scale_anchor_reporting
 
     ms, clf = _scale_anchor_manuscript(
-        "Items were rated on a 5-point Likert scale. "
-        "Higher scores indicate greater agreement."
+        "Items were rated on a 5-point Likert scale. Higher scores indicate greater agreement."
     )
     result = validate_scale_anchor_reporting(ms, clf)
     codes = [f.code for f in result.findings]
@@ -6530,8 +6574,7 @@ def test_model_spec_fires_when_absent() -> None:
     from manuscript_audit.validators.core import validate_model_specification
 
     ms, clf = _model_spec_manuscript(
-        "We used logistic regression to predict outcomes. "
-        "All analyses were performed in R 4.3."
+        "We used logistic regression to predict outcomes. All analyses were performed in R 4.3."
     )
     result = validate_model_specification(ms, clf)
     codes = [f.code for f in result.findings]
@@ -6607,9 +6650,7 @@ def test_effect_direction_present_no_fire() -> None:
 def test_few_sig_results_no_fire() -> None:
     from manuscript_audit.validators.core import validate_effect_direction_reporting
 
-    ms = _effect_direction_manuscript(
-        "Descriptive statistics are shown in Table 1."
-    )
+    ms = _effect_direction_manuscript("Descriptive statistics are shown in Table 1.")
     result = validate_effect_direction_reporting(ms)
     # No significance mentions at all — should not fire
     assert result.findings == []
@@ -6651,8 +6692,7 @@ def test_consistent_numeric_cites_no_fire() -> None:
     from manuscript_audit.validators.core import validate_citation_format_consistency
 
     ms = _citation_format_manuscript(
-        "Previous work [1] established this. Extended [2]. "
-        "See [3] and [4] for details."
+        "Previous work [1] established this. Extended [2]. See [3] and [4] for details."
     )
     result = validate_citation_format_consistency(ms)
     assert result.findings == []
@@ -6661,9 +6701,7 @@ def test_consistent_numeric_cites_no_fire() -> None:
 def test_citation_format_few_refs_no_fire() -> None:
     from manuscript_audit.validators.core import validate_citation_format_consistency
 
-    ms = _citation_format_manuscript(
-        "See [1] and Smith (2020) for details."
-    )
+    ms = _citation_format_manuscript("See [1] and Smith (2020) for details.")
     result = validate_citation_format_consistency(ms)
     # Only 2 total < threshold of 4
     assert result.findings == []
@@ -6997,9 +7035,7 @@ def test_replication_present_no_fire() -> None:
 def test_replication_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_replication_dataset
 
-    ms = _replication_ms(
-        "We present a mathematical proof. No empirical data were collected."
-    )
+    ms = _replication_ms("We present a mathematical proof. No empirical data were collected.")
     result = validate_replication_dataset(ms, _replication_clf("math_theory_paper"))
     assert result.findings == []
 
@@ -7103,9 +7139,7 @@ def test_data_availability_present_no_fire() -> None:
 def test_github_link_no_fire() -> None:
     from manuscript_audit.validators.core import validate_open_science_statement
 
-    ms = _open_science_ms(
-        "Code is available at github.com/user/repo."
-    )
+    ms = _open_science_ms("Code is available at github.com/user/repo.")
     result = validate_open_science_statement(ms, _open_science_clf())
     assert result.findings == []
 
@@ -7113,9 +7147,7 @@ def test_github_link_no_fire() -> None:
 def test_open_science_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_open_science_statement
 
-    ms = _open_science_ms(
-        "We present a theoretical framework without empirical data."
-    )
+    ms = _open_science_ms("We present a theoretical framework without empirical data.")
     result = validate_open_science_statement(ms, _open_science_clf("math_theory_paper"))
     assert result.findings == []
 
@@ -7289,9 +7321,7 @@ def test_floor_ceiling_discussed_no_fire() -> None:
 def test_few_scale_refs_no_fire() -> None:
     from manuscript_audit.validators.core import validate_floor_ceiling_effects
 
-    ms = _floor_ceiling_ms(
-        "We used a brief Likert scale to measure satisfaction."
-    )
+    ms = _floor_ceiling_ms("We used a brief Likert scale to measure satisfaction.")
     result = validate_floor_ceiling_effects(ms, _floor_ceiling_clf())
     assert result.findings == []
 
@@ -7520,8 +7550,7 @@ def test_missing_effect_size_ci_fires() -> None:
     from manuscript_audit.validators.core import validate_effect_size_confidence_intervals
 
     ms = _es_ci_ms(
-        "The effect size was Cohen's d = 0.45. "
-        "For the secondary outcome, Cohen's d = 0.32."
+        "The effect size was Cohen's d = 0.45. For the secondary outcome, Cohen's d = 0.32."
     )
     result = validate_effect_size_confidence_intervals(ms, _es_ci_clf())
     codes = [f.code for f in result.findings]
@@ -7542,9 +7571,7 @@ def test_effect_size_ci_present_no_fire() -> None:
 def test_no_effect_size_no_fire() -> None:
     from manuscript_audit.validators.core import validate_effect_size_confidence_intervals
 
-    ms = _es_ci_ms(
-        "The mean score in the treatment group was 4.2 (SD = 0.8)."
-    )
+    ms = _es_ci_ms("The mean score in the treatment group was 4.2 (SD = 0.8).")
     result = validate_effect_size_confidence_intervals(ms, _es_ci_clf())
     assert result.findings == []
 
@@ -7658,9 +7685,7 @@ def test_cross_validation_reported_no_fire() -> None:
 def test_no_ml_model_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cross_validation_reporting
 
-    ms = _cv_ms(
-        "We compared group means using ANOVA and post-hoc tests."
-    )
+    ms = _cv_ms("We compared group means using ANOVA and post-hoc tests.")
     result = validate_cross_validation_reporting(ms, _cv_clf())
     assert result.findings == []
 
@@ -7715,9 +7740,7 @@ def test_sensitivity_analysis_present_no_fire() -> None:
 def test_no_primary_analysis_no_fire() -> None:
     from manuscript_audit.validators.core import validate_sensitivity_analysis_reporting
 
-    ms = _sensitivity_ms(
-        "We described the frequency distributions and basic statistics."
-    )
+    ms = _sensitivity_ms("We described the frequency distributions and basic statistics.")
     result = validate_sensitivity_analysis_reporting(ms, _sensitivity_clf())
     assert result.findings == []
 
@@ -7772,9 +7795,7 @@ def test_regression_diagnostics_present_no_fire() -> None:
 def test_no_regression_no_fire() -> None:
     from manuscript_audit.validators.core import validate_regression_diagnostics
 
-    ms = _regression_ms(
-        "We compared group means using an independent-samples t-test."
-    )
+    ms = _regression_ms("We compared group means using an independent-samples t-test.")
     result = validate_regression_diagnostics(ms, _regression_clf())
     assert result.findings == []
 
@@ -7891,9 +7912,7 @@ def test_variable_operationalization_present_no_fire() -> None:
 def test_few_variable_mentions_no_fire() -> None:
     from manuscript_audit.validators.core import validate_variable_operationalization
 
-    ms = _var_ops_ms(
-        "The dependent variable was BMI. The independent variable was diet quality."
-    )
+    ms = _var_ops_ms("The dependent variable was BMI. The independent variable was diet quality.")
     result = validate_variable_operationalization(ms, _var_ops_clf())
     assert result.findings == []
 
@@ -7948,9 +7967,7 @@ def test_irr_reported_no_fire() -> None:
 def test_no_independent_coding_no_fire() -> None:
     from manuscript_audit.validators.core import validate_interrater_reliability
 
-    ms = _irr_ms(
-        "Survey responses were analyzed using descriptive statistics."
-    )
+    ms = _irr_ms("Survey responses were analyzed using descriptive statistics.")
     result = validate_interrater_reliability(ms, _irr_clf())
     assert result.findings == []
 
@@ -8006,9 +8023,7 @@ def test_control_justification_present_no_fire() -> None:
 def test_few_control_mentions_no_fire() -> None:
     from manuscript_audit.validators.core import validate_control_variable_justification
 
-    ms = _control_ms(
-        "We controlled for age in the regression model."
-    )
+    ms = _control_ms("We controlled for age in the regression model.")
     result = validate_control_variable_justification(ms, _control_clf())
     assert result.findings == []
 
@@ -8064,8 +8079,7 @@ def test_no_prospective_claim_no_fire() -> None:
     from manuscript_audit.validators.core import validate_prospective_vs_retrospective
 
     ms = _prospective_ms(
-        "We conducted a retrospective analysis of administrative records "
-        "covering a 5-year period."
+        "We conducted a retrospective analysis of administrative records covering a 5-year period."
     )
     result = validate_prospective_vs_retrospective(ms, _prospective_clf())
     assert result.findings == []
@@ -8123,9 +8137,7 @@ def test_consort_complete_no_fire() -> None:
 def test_no_rct_design_no_fire() -> None:
     from manuscript_audit.validators.core import validate_clinical_trial_consort
 
-    ms = _consort_ms(
-        "We recruited 300 participants for a cross-sectional survey study."
-    )
+    ms = _consort_ms("We recruited 300 participants for a cross-sectional survey study.")
     result = validate_clinical_trial_consort(ms, _consort_clf())
     assert result.findings == []
 
@@ -8182,9 +8194,7 @@ def test_ecological_validity_discussed_no_fire() -> None:
 def test_no_lab_study_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ecological_validity
 
-    ms = _ecological_ms(
-        "We surveyed participants in their homes about their daily habits."
-    )
+    ms = _ecological_ms("We surveyed participants in their homes about their daily habits.")
     result = validate_ecological_validity(ms, _ecological_clf())
     assert result.findings == []
 
@@ -8336,9 +8346,7 @@ def test_causal_claim_with_framework_no_fire() -> None:
 def test_no_observational_design_no_fire() -> None:
     from manuscript_audit.validators.core import validate_causal_language
 
-    ms = _causal_ms(
-        "We conducted an RCT and found that the treatment leads to better outcomes."
-    )
+    ms = _causal_ms("We conducted an RCT and found that the treatment leads to better outcomes.")
     result = validate_causal_language(ms, _causal_clf())
     assert result.findings == []
 
@@ -8394,9 +8402,7 @@ def test_standard_errors_present_no_fire() -> None:
 def test_no_regression_table_no_fire() -> None:
     from manuscript_audit.validators.core import validate_missing_standard_errors
 
-    ms = _std_errors_ms(
-        "We compared group means using t-tests. Mean scores were 4.2 and 3.8."
-    )
+    ms = _std_errors_ms("We compared group means using t-tests. Mean scores were 4.2 and 3.8.")
     result = validate_missing_standard_errors(ms, _std_errors_clf())
     assert result.findings == []
 
@@ -8508,9 +8514,7 @@ def test_population_defined_no_fire() -> None:
 def test_population_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_population_definition
 
-    ms = _population_ms(
-        "We present a theoretical framework for analyzing survey data."
-    )
+    ms = _population_ms("We present a theoretical framework for analyzing survey data.")
     result = validate_population_definition(ms, _population_clf("math_theory_paper"))
     assert result.findings == []
 
@@ -8565,6 +8569,7 @@ def test_non_pilot_no_fire() -> None:
     result = validate_pilot_study_claims(ms)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 171 – validate_exclusion_criteria_reporting
 # ---------------------------------------------------------------------------
@@ -8591,8 +8596,7 @@ def test_exclusion_criteria_no_rationale_fires() -> None:
     from manuscript_audit.validators.core import validate_exclusion_criteria_reporting
 
     ms, cl = _excl_ms(
-        "We excluded participants who had prior diagnoses. "
-        "The sample consisted of 200 adults."
+        "We excluded participants who had prior diagnoses. The sample consisted of 200 adults."
     )
     result = validate_exclusion_criteria_reporting(ms, cl)
     assert any(f.code == "missing-exclusion-criteria-rationale" for f in result.findings)
@@ -8717,10 +8721,7 @@ def _fig_ms(text: str) -> ParsedManuscript:
 def test_figures_no_axes_fires() -> None:
     from manuscript_audit.validators.core import validate_figure_axes_labeling
 
-    ms = _fig_ms(
-        "As shown in Figure 1, the results are clear. "
-        "Figure 2 shows the distribution."
-    )
+    ms = _fig_ms("As shown in Figure 1, the results are clear. Figure 2 shows the distribution.")
     result = validate_figure_axes_labeling(ms)
     assert any(f.code == "unlabeled-figure-axes" for f in result.findings)
 
@@ -8740,8 +8741,7 @@ def test_single_figure_no_fire() -> None:
     from manuscript_audit.validators.core import validate_figure_axes_labeling
 
     ms = _fig_ms(
-        "As shown in Figure 1, the results are clear. "
-        "Figure 1 shows the pipeline diagram."
+        "As shown in Figure 1, the results are clear. Figure 1 shows the pipeline diagram."
     )
     result = validate_figure_axes_labeling(ms)
     assert result.findings == []
@@ -8848,9 +8848,7 @@ def test_survey_with_response_rate_no_fire() -> None:
 def test_non_survey_no_fire() -> None:
     from manuscript_audit.validators.core import validate_response_rate_reporting
 
-    ms, cl = _survey_ms(
-        "We recruited participants from local clinics for an in-person experiment."
-    )
+    ms, cl = _survey_ms("We recruited participants from local clinics for an in-person experiment.")
     result = validate_response_rate_reporting(ms, cl)
     assert result.findings == []
 
@@ -8864,6 +8862,7 @@ def test_survey_non_empirical_no_fire() -> None:
     )
     result = validate_response_rate_reporting(ms, cl)
     assert result.findings == []
+
 
 # ---------------------------------------------------------------------------
 # Phase 176 – validate_longitudinal_attrition_bias
@@ -8913,9 +8912,7 @@ def test_longitudinal_with_attrition_analysis_no_fire() -> None:
 def test_non_longitudinal_no_fire() -> None:
     from manuscript_audit.validators.core import validate_longitudinal_attrition_bias
 
-    ms, cl = _long_ms(
-        "This cross-sectional study measured all variables at one time point."
-    )
+    ms, cl = _long_ms("This cross-sectional study measured all variables at one time point.")
     result = validate_longitudinal_attrition_bias(ms, cl)
     assert result.findings == []
 
@@ -8923,9 +8920,7 @@ def test_non_longitudinal_no_fire() -> None:
 def test_longitudinal_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_longitudinal_attrition_bias
 
-    ms, cl = _long_ms(
-        "The longitudinal growth model was analyzed.", "math_theory_paper"
-    )
+    ms, cl = _long_ms("The longitudinal growth model was analyzed.", "math_theory_paper")
     result = validate_longitudinal_attrition_bias(ms, cl)
     assert result.findings == []
 
@@ -9050,9 +9045,7 @@ def test_outcome_with_validity_no_fire() -> None:
 def test_no_measure_no_fire() -> None:
     from manuscript_audit.validators.core import validate_outcome_measure_validation
 
-    ms, cl = _measure_ms(
-        "Participants completed a 30-minute behavioral task. No scales were used."
-    )
+    ms, cl = _measure_ms("Participants completed a 30-minute behavioral task. No scales were used.")
     result = validate_outcome_measure_validation(ms, cl)
     assert result.findings == []
 
@@ -9186,9 +9179,7 @@ def test_no_main_effect_no_fire() -> None:
         validate_main_effect_confidence_interval,
     )
 
-    ms, cl = _main_effect_ms(
-        "Exploratory analyses revealed associations between variables."
-    )
+    ms, cl = _main_effect_ms("Exploratory analyses revealed associations between variables.")
     result = validate_main_effect_confidence_interval(ms, cl)
     assert result.findings == []
 
@@ -9204,6 +9195,7 @@ def test_main_effect_non_empirical_no_fire() -> None:
     )
     result = validate_main_effect_confidence_interval(ms, cl)
     assert result.findings == []
+
 
 # ---------------------------------------------------------------------------
 # Phase 181 – validate_covariate_justification
@@ -9319,9 +9311,7 @@ def test_gender_sex_distinct_no_fire() -> None:
 def test_gender_only_mention_no_fire() -> None:
     from manuscript_audit.validators.core import validate_gender_sex_conflation
 
-    ms, cl = _gs_ms(
-        "Participants were diverse in gender, age, and educational background."
-    )
+    ms, cl = _gs_ms("Participants were diverse in gender, age, and educational background.")
     result = validate_gender_sex_conflation(ms, cl)
     assert result.findings == []
 
@@ -9384,9 +9374,7 @@ def test_regression_with_vif_no_fire() -> None:
 def test_no_regression_multicollinearity_no_fire() -> None:
     from manuscript_audit.validators.core import validate_multicollinearity_reporting
 
-    ms, cl = _multi_ms(
-        "Chi-square tests and Wilcoxon signed-rank tests were used throughout."
-    )
+    ms, cl = _multi_ms("Chi-square tests and Wilcoxon signed-rank tests were used throughout.")
     result = validate_multicollinearity_reporting(ms, cl)
     assert result.findings == []
 
@@ -9449,9 +9437,7 @@ def test_rct_with_placebo_no_fire() -> None:
 def test_non_rct_observational_no_fire() -> None:
     from manuscript_audit.validators.core import validate_control_group_description
 
-    ms, cl = _rct_ms(
-        "This observational cohort study followed participants for 2 years."
-    )
+    ms, cl = _rct_ms("This observational cohort study followed participants for 2 years.")
     result = validate_control_group_description(ms, cl)
     assert result.findings == []
 
@@ -9514,9 +9500,7 @@ def test_ols_with_breusch_pagan_no_fire() -> None:
 def test_no_ols_no_fire() -> None:
     from manuscript_audit.validators.core import validate_heteroscedasticity_testing
 
-    ms, cl = _hetero_ms(
-        "A Bayesian hierarchical model was used with MCMC estimation."
-    )
+    ms, cl = _hetero_ms("A Bayesian hierarchical model was used with MCMC estimation.")
     result = validate_heteroscedasticity_testing(ms, cl)
     assert result.findings == []
 
@@ -9530,6 +9514,7 @@ def test_hetero_non_empirical_no_fire() -> None:
     )
     result = validate_heteroscedasticity_testing(ms, cl)
     assert result.findings == []
+
 
 # ---------------------------------------------------------------------------
 # Phase 186 – validate_interaction_effect_interpretation
@@ -9720,9 +9705,7 @@ def test_multiple_comparisons_with_bonferroni_no_fire() -> None:
 def test_single_comparison_no_fire() -> None:
     from manuscript_audit.validators.core import validate_multiple_comparison_correction
 
-    ms, cl = _mcc_ms(
-        "We tested a single primary hypothesis using an independent t-test."
-    )
+    ms, cl = _mcc_ms("We tested a single primary hypothesis using an independent t-test.")
     result = validate_multiple_comparison_correction(ms, cl)
     assert result.findings == []
 
@@ -9730,9 +9713,7 @@ def test_single_comparison_no_fire() -> None:
 def test_mcc_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_multiple_comparison_correction
 
-    ms, cl = _mcc_ms(
-        "Multiple comparisons are analyzed theoretically.", "math_theory_paper"
-    )
+    ms, cl = _mcc_ms("Multiple comparisons are analyzed theoretically.", "math_theory_paper")
     result = validate_multiple_comparison_correction(ms, cl)
     assert result.findings == []
 
@@ -9767,9 +9748,7 @@ def test_meta_analysis_no_pub_bias_fires() -> None:
         "random-effects model. The forest plot showed consistent effects."
     )
     result = validate_publication_bias_statement(ms, cl)
-    assert any(
-        f.code == "missing-publication-bias-statement" for f in result.findings
-    )
+    assert any(f.code == "missing-publication-bias-statement" for f in result.findings)
 
 
 def test_meta_analysis_with_funnel_plot_no_fire() -> None:
@@ -9787,9 +9766,7 @@ def test_meta_analysis_with_funnel_plot_no_fire() -> None:
 def test_non_meta_no_fire() -> None:
     from manuscript_audit.validators.core import validate_publication_bias_statement
 
-    ms, cl = _meta_ms(
-        "This experimental study used a between-subjects design."
-    )
+    ms, cl = _meta_ms("This experimental study used a between-subjects design.")
     result = validate_publication_bias_statement(ms, cl)
     assert result.findings == []
 
@@ -9870,6 +9847,7 @@ def test_df_non_empirical_no_fire() -> None:
     result = validate_degrees_of_freedom_reporting(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 191 – validate_power_analysis_reporting
 # ---------------------------------------------------------------------------
@@ -9918,9 +9896,7 @@ def test_sample_size_with_power_no_fire() -> None:
 def test_no_sample_size_no_fire() -> None:
     from manuscript_audit.validators.core import validate_power_analysis_reporting
 
-    ms, cl = _power_ms(
-        "Data were collected from the national registry over a 5-year period."
-    )
+    ms, cl = _power_ms("Data were collected from the national registry over a 5-year period.")
     result = validate_power_analysis_reporting(ms, cl)
     assert result.findings == []
 
@@ -9983,9 +9959,7 @@ def test_participants_with_demographics_no_fire() -> None:
 def test_no_participants_no_fire() -> None:
     from manuscript_audit.validators.core import validate_demographic_description
 
-    ms, cl = _demog_ms(
-        "Data were extracted from the national census database for analysis."
-    )
+    ms, cl = _demog_ms("Data were extracted from the national census database for analysis.")
     result = validate_demographic_description(ms, cl)
     assert result.findings == []
 
@@ -10027,8 +10001,7 @@ def test_random_assign_no_method_fires() -> None:
     from manuscript_audit.validators.core import validate_randomization_procedure
 
     ms, cl = _rand_ms(
-        "Participants were randomly assigned to one of two conditions. "
-        "Group assignment was random."
+        "Participants were randomly assigned to one of two conditions. Group assignment was random."
     )
     result = validate_randomization_procedure(ms, cl)
     assert any(f.code == "missing-randomization-procedure" for f in result.findings)
@@ -10048,9 +10021,7 @@ def test_random_assign_with_method_no_fire() -> None:
 def test_no_randomization_no_fire() -> None:
     from manuscript_audit.validators.core import validate_randomization_procedure
 
-    ms, cl = _rand_ms(
-        "This observational study followed participants without any assignment."
-    )
+    ms, cl = _rand_ms("This observational study followed participants without any assignment.")
     result = validate_randomization_procedure(ms, cl)
     assert result.findings == []
 
@@ -10113,9 +10084,7 @@ def test_generalize_with_caveat_no_fire() -> None:
 def test_no_strong_generalize_no_fire() -> None:
     from manuscript_audit.validators.core import validate_generalizability_caveat
 
-    ms, cl = _gen_ms(
-        "Results should be interpreted cautiously given the sample characteristics."
-    )
+    ms, cl = _gen_ms("Results should be interpreted cautiously given the sample characteristics.")
     result = validate_generalizability_caveat(ms, cl)
     assert result.findings == []
 
@@ -10156,10 +10125,7 @@ def _sw_ms(text: str, paper_type: str = "empirical_paper") -> tuple:
 def test_software_no_version_fires() -> None:
     from manuscript_audit.validators.core import validate_software_version_reporting
 
-    ms, cl = _sw_ms(
-        "All analyses were conducted in R. "
-        "Python was used for data preprocessing."
-    )
+    ms, cl = _sw_ms("All analyses were conducted in R. Python was used for data preprocessing.")
     result = validate_software_version_reporting(ms, cl)
     assert any(f.code == "missing-software-version" for f in result.findings)
 
@@ -10178,9 +10144,7 @@ def test_software_version_present_no_fire() -> None:
 def test_no_software_use_no_fire() -> None:
     from manuscript_audit.validators.core import validate_software_version_reporting
 
-    ms, cl = _sw_ms(
-        "Descriptive statistics are presented in Table 1."
-    )
+    ms, cl = _sw_ms("Descriptive statistics are presented in Table 1.")
     result = validate_software_version_reporting(ms, cl)
     assert result.findings == []
 
@@ -10194,6 +10158,7 @@ def test_software_non_empirical_no_fire() -> None:
     )
     result = validate_software_version_reporting(ms, cl)
     assert result.findings == []
+
 
 # ---------------------------------------------------------------------------
 # Phase 196 – validate_ethics_approval_statement
@@ -10243,9 +10208,7 @@ def test_human_subjects_with_irb_no_fire() -> None:
 def test_no_human_subjects_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ethics_approval_statement
 
-    ms, cl = _ethics_ms(
-        "Data were extracted from publicly available administrative records."
-    )
+    ms, cl = _ethics_ms("Data were extracted from publicly available administrative records.")
     result = validate_ethics_approval_statement(ms, cl)
     assert result.findings == []
 
@@ -10309,9 +10272,7 @@ def test_systematic_review_with_prisma_no_fire() -> None:
 def test_non_systematic_review_no_fire() -> None:
     from manuscript_audit.validators.core import validate_prisma_reporting
 
-    ms, cl = _sys_ms(
-        "This cross-sectional study used survey data from 300 adults."
-    )
+    ms, cl = _sys_ms("This cross-sectional study used survey data from 300 adults.")
     result = validate_prisma_reporting(ms, cl)
     assert result.findings == []
 
@@ -10374,9 +10335,7 @@ def test_mediation_with_bootstrap_no_fire() -> None:
 def test_no_mediation_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mediation_analysis_transparency
 
-    ms, cl = _med_ms(
-        "Main effects of stress and social support were both significant."
-    )
+    ms, cl = _med_ms("Main effects of stress and social support were both significant.")
     result = validate_mediation_analysis_transparency(ms, cl)
     assert result.findings == []
 
@@ -10439,9 +10398,7 @@ def test_cfa_with_fit_indices_no_fire() -> None:
 def test_no_cfa_no_fire() -> None:
     from manuscript_audit.validators.core import validate_latent_variable_model_fit
 
-    ms, cl = _cfa_ms(
-        "Multiple regression analysis was used to predict the outcome."
-    )
+    ms, cl = _cfa_ms("Multiple regression analysis was used to predict the outcome.")
     result = validate_latent_variable_model_fit(ms, cl)
     assert result.findings == []
 
@@ -10522,6 +10479,7 @@ def test_pilot_disclosure_non_empirical_no_fire() -> None:
     result = validate_pilot_study_disclosure(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 201 – validate_autocorrelation_check
 # ---------------------------------------------------------------------------
@@ -10569,9 +10527,7 @@ def test_time_series_with_durbinwatson_no_fire() -> None:
 def test_no_time_series_no_fire() -> None:
     from manuscript_audit.validators.core import validate_autocorrelation_check
 
-    ms, cl = _ts_ms(
-        "A cross-sectional survey was conducted at one time point."
-    )
+    ms, cl = _ts_ms("A cross-sectional survey was conducted at one time point.")
     result = validate_autocorrelation_check(ms, cl)
     assert result.findings == []
 
@@ -10635,9 +10591,7 @@ def test_mixed_methods_with_integration_no_fire() -> None:
 def test_no_mixed_methods_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mixed_methods_integration
 
-    ms, cl = _mm_ms(
-        "This quantitative survey study used regression analysis."
-    )
+    ms, cl = _mm_ms("This quantitative survey study used regression analysis.")
     result = validate_mixed_methods_integration(ms, cl)
     assert result.findings == []
 
@@ -10701,9 +10655,7 @@ def test_qualitative_with_member_check_no_fire() -> None:
 def test_no_qualitative_no_fire() -> None:
     from manuscript_audit.validators.core import validate_qualitative_rigor_reporting
 
-    ms, cl = _qual_ms(
-        "A randomized controlled trial with quantitative outcomes was conducted."
-    )
+    ms, cl = _qual_ms("A randomized controlled trial with quantitative outcomes was conducted.")
     result = validate_qualitative_rigor_reporting(ms, cl)
     assert result.findings == []
 
@@ -10766,9 +10718,7 @@ def test_subgroup_prespecified_no_fire() -> None:
 def test_no_subgroup_no_fire() -> None:
     from manuscript_audit.validators.core import validate_subgroup_analysis_labelling
 
-    ms, cl = _sg_ms(
-        "The primary analysis compared treatment vs. control groups."
-    )
+    ms, cl = _sg_ms("The primary analysis compared treatment vs. control groups.")
     result = validate_subgroup_analysis_labelling(ms, cl)
     assert result.findings == []
 
@@ -10776,9 +10726,7 @@ def test_no_subgroup_no_fire() -> None:
 def test_subgroup_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_subgroup_analysis_labelling
 
-    ms, cl = _sg_ms(
-        "Subgroup analysis is analyzed theoretically.", "math_theory_paper"
-    )
+    ms, cl = _sg_ms("Subgroup analysis is analyzed theoretically.", "math_theory_paper")
     result = validate_subgroup_analysis_labelling(ms, cl)
     assert result.findings == []
 
@@ -10813,9 +10761,7 @@ def test_null_result_no_caveat_fires() -> None:
         "There was no association between stress and depression."
     )
     result = validate_null_result_power_caveat(ms, cl)
-    assert any(
-        f.code == "null-result-without-power-caveat" for f in result.findings
-    )
+    assert any(f.code == "null-result-without-power-caveat" for f in result.findings)
 
 
 def test_null_result_with_power_caveat_no_fire() -> None:
@@ -10833,9 +10779,7 @@ def test_null_result_with_power_caveat_no_fire() -> None:
 def test_no_null_result_no_fire() -> None:
     from manuscript_audit.validators.core import validate_null_result_power_caveat
 
-    ms, cl = _null_ms(
-        "The treatment significantly improved outcomes (p < .001, d = 0.6)."
-    )
+    ms, cl = _null_ms("The treatment significantly improved outcomes (p < .001, d = 0.6).")
     result = validate_null_result_power_caveat(ms, cl)
     assert result.findings == []
 
@@ -10849,6 +10793,7 @@ def test_null_result_non_empirical_no_fire() -> None:
     )
     result = validate_null_result_power_caveat(ms, cl)
     assert result.findings == []
+
 
 # ---------------------------------------------------------------------------
 # Phase 206 – validate_mean_sd_reporting
@@ -10887,8 +10832,7 @@ def test_mean_with_sd_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mean_sd_reporting
 
     ms, cl = _mean_ms(
-        "The mean age was 34.2 years (SD = 8.1). "
-        "Scores averaged M = 72.1 (SD = 12.3)."
+        "The mean age was 34.2 years (SD = 8.1). Scores averaged M = 72.1 (SD = 12.3)."
     )
     result = validate_mean_sd_reporting(ms, cl)
     assert result.findings == []
@@ -10897,9 +10841,7 @@ def test_mean_with_sd_no_fire() -> None:
 def test_no_mean_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mean_sd_reporting
 
-    ms, cl = _mean_ms(
-        "Frequencies and proportions are reported for all categorical variables."
-    )
+    ms, cl = _mean_ms("Frequencies and proportions are reported for all categorical variables.")
     result = validate_mean_sd_reporting(ms, cl)
     assert result.findings == []
 
@@ -10907,9 +10849,7 @@ def test_no_mean_no_fire() -> None:
 def test_mean_sd_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mean_sd_reporting
 
-    ms, cl = _mean_ms(
-        "The mean value is 3.5 in this theoretical example.", "math_theory_paper"
-    )
+    ms, cl = _mean_ms("The mean value is 3.5 in this theoretical example.", "math_theory_paper")
     result = validate_mean_sd_reporting(ms, cl)
     assert result.findings == []
 
@@ -10944,9 +10884,7 @@ def test_intervention_no_detail_fires() -> None:
         "The treatment condition included group sessions."
     )
     result = validate_intervention_description(ms, cl)
-    assert any(
-        f.code == "insufficient-intervention-description" for f in result.findings
-    )
+    assert any(f.code == "insufficient-intervention-description" for f in result.findings)
 
 
 def test_intervention_with_detail_no_fire() -> None:
@@ -10964,9 +10902,7 @@ def test_intervention_with_detail_no_fire() -> None:
 def test_no_intervention_observational_no_fire() -> None:
     from manuscript_audit.validators.core import validate_intervention_description
 
-    ms, cl = _intv_ms(
-        "This observational study collected data from existing health records."
-    )
+    ms, cl = _intv_ms("This observational study collected data from existing health records.")
     result = validate_intervention_description(ms, cl)
     assert result.findings == []
 
@@ -10974,9 +10910,7 @@ def test_no_intervention_observational_no_fire() -> None:
 def test_intervention_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_intervention_description
 
-    ms, cl = _intv_ms(
-        "The intervention group is analyzed theoretically.", "math_theory_paper"
-    )
+    ms, cl = _intv_ms("The intervention group is analyzed theoretically.", "math_theory_paper")
     result = validate_intervention_description(ms, cl)
     assert result.findings == []
 
@@ -11029,9 +10963,7 @@ def test_rct_with_baseline_check_no_fire() -> None:
 def test_non_rct_cross_sectional_no_fire() -> None:
     from manuscript_audit.validators.core import validate_baseline_equivalence
 
-    ms, cl = _base_ms(
-        "This cross-sectional survey measured all variables at one time point."
-    )
+    ms, cl = _base_ms("This cross-sectional survey measured all variables at one time point.")
     result = validate_baseline_equivalence(ms, cl)
     assert result.findings == []
 
@@ -11077,9 +11009,7 @@ def test_likert_no_distribution_fires() -> None:
         "strongly disagree to strongly agree. Parametric tests were used."
     )
     result = validate_likert_distribution_check(ms, cl)
-    assert any(
-        f.code == "missing-likert-distribution-check" for f in result.findings
-    )
+    assert any(f.code == "missing-likert-distribution-check" for f in result.findings)
 
 
 def test_likert_with_distribution_no_fire() -> None:
@@ -11097,9 +11027,7 @@ def test_likert_with_distribution_no_fire() -> None:
 def test_no_likert_no_fire() -> None:
     from manuscript_audit.validators.core import validate_likert_distribution_check
 
-    ms, cl = _likert_ms(
-        "Outcomes were measured using objective performance tests."
-    )
+    ms, cl = _likert_ms("Outcomes were measured using objective performance tests.")
     result = validate_likert_distribution_check(ms, cl)
     assert result.findings == []
 
@@ -11107,9 +11035,7 @@ def test_no_likert_no_fire() -> None:
 def test_likert_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_likert_distribution_check
 
-    ms, cl = _likert_ms(
-        "The 5-point Likert scale is analyzed theoretically.", "math_theory_paper"
-    )
+    ms, cl = _likert_ms("The 5-point Likert scale is analyzed theoretically.", "math_theory_paper")
     result = validate_likert_distribution_check(ms, cl)
     assert result.findings == []
 
@@ -11162,8 +11088,7 @@ def test_no_repro_claim_no_fire() -> None:
     from manuscript_audit.validators.core import validate_reproducibility_statement
 
     ms, cl = _repro_ms(
-        "The study followed standard analysis protocols. "
-        "No additional materials are provided."
+        "The study followed standard analysis protocols. No additional materials are provided."
     )
     result = validate_reproducibility_statement(ms, cl)
     assert result.findings == []
@@ -11179,9 +11104,11 @@ def test_repro_non_empirical_no_fire() -> None:
     result = validate_reproducibility_statement(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 211 – validate_missing_data_handling
 # ---------------------------------------------------------------------------
+
 
 def _missing_data_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -11250,6 +11177,7 @@ def test_missing_data_non_empirical_no_fire() -> None:
 # Phase 212 – validate_coding_scheme_description
 # ---------------------------------------------------------------------------
 
+
 def _coding_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -11317,6 +11245,7 @@ def test_coding_non_empirical_no_fire() -> None:
 # Phase 213 – validate_logistic_regression_assumptions
 # ---------------------------------------------------------------------------
 
+
 def _logit_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -11360,9 +11289,7 @@ def test_logistic_with_auc_no_fire() -> None:
 def test_no_logistic_no_fire() -> None:
     from manuscript_audit.validators.core import validate_logistic_regression_assumptions
 
-    ms, cl = _logit_ms(
-        "We ran an independent samples t-test to compare means between groups."
-    )
+    ms, cl = _logit_ms("We ran an independent samples t-test to compare means between groups.")
     result = validate_logistic_regression_assumptions(ms, cl)
     assert result.findings == []
 
@@ -11383,6 +11310,7 @@ def test_logistic_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 214 – validate_researcher_positionality
 # ---------------------------------------------------------------------------
+
 
 def _positionality_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -11452,6 +11380,7 @@ def test_positionality_non_empirical_no_fire() -> None:
 # Phase 215 – validate_data_collection_recency
 # ---------------------------------------------------------------------------
 
+
 def _recency_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -11485,8 +11414,7 @@ def test_recent_claim_new_data_no_fire() -> None:
     from manuscript_audit.validators.core import validate_data_collection_recency
 
     ms, cl = _recency_ms(
-        "We use recent data from the 2021 national census. "
-        "Data were collected in 2021."
+        "We use recent data from the 2021 national census. Data were collected in 2021."
     )
     result = validate_data_collection_recency(ms, cl)
     assert result.findings == []
@@ -11495,9 +11423,7 @@ def test_recent_claim_new_data_no_fire() -> None:
 def test_no_recent_claim_no_fire() -> None:
     from manuscript_audit.validators.core import validate_data_collection_recency
 
-    ms, cl = _recency_ms(
-        "We analysed archival records from 1990 to examine historical trends."
-    )
+    ms, cl = _recency_ms("We analysed archival records from 1990 to examine historical trends.")
     result = validate_data_collection_recency(ms, cl)
     assert result.findings == []
 
@@ -11514,9 +11440,11 @@ def test_recency_non_empirical_no_fire() -> None:
     result = validate_data_collection_recency(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 216 – validate_theoretical_framework_citation
 # ---------------------------------------------------------------------------
+
 
 def _theory_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -11561,9 +11489,7 @@ def test_named_theory_with_citation_no_fire() -> None:
 def test_no_named_theory_no_fire() -> None:
     from manuscript_audit.validators.core import validate_theoretical_framework_citation
 
-    ms, cl = _theory_ms(
-        "We ran a regression analysis to predict academic performance from GPA."
-    )
+    ms, cl = _theory_ms("We ran a regression analysis to predict academic performance from GPA.")
     result = validate_theoretical_framework_citation(ms, cl)
     assert result.findings == []
 
@@ -11584,6 +11510,7 @@ def test_theory_citation_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 217 – validate_survey_instrument_source
 # ---------------------------------------------------------------------------
+
 
 def _instrument_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -11652,6 +11579,7 @@ def test_instrument_non_empirical_no_fire() -> None:
 # Phase 218 – validate_sampling_frame_description
 # ---------------------------------------------------------------------------
 
+
 def _sampling_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -11719,6 +11647,7 @@ def test_sampling_non_empirical_no_fire() -> None:
 # Phase 219 – validate_one_tailed_test_justification
 # ---------------------------------------------------------------------------
 
+
 def _one_tailed_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -11762,9 +11691,7 @@ def test_one_tailed_with_justification_no_fire() -> None:
 def test_two_tailed_only_no_fire() -> None:
     from manuscript_audit.validators.core import validate_one_tailed_test_justification
 
-    ms, cl = _one_tailed_ms(
-        "All tests were two-tailed with alpha = 0.05."
-    )
+    ms, cl = _one_tailed_ms("All tests were two-tailed with alpha = 0.05.")
     result = validate_one_tailed_test_justification(ms, cl)
     assert result.findings == []
 
@@ -11785,6 +11712,7 @@ def test_one_tailed_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 220 – validate_gratuitous_significance_language
 # ---------------------------------------------------------------------------
+
 
 def _gratuitous_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -11847,9 +11775,11 @@ def test_gratuitous_non_empirical_no_fire() -> None:
     result = validate_gratuitous_significance_language(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 221 – validate_unit_of_analysis_clarity
 # ---------------------------------------------------------------------------
+
 
 def _unit_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -11919,6 +11849,7 @@ def test_unit_non_empirical_no_fire() -> None:
 # Phase 222 – validate_apriori_preregistration_statement
 # ---------------------------------------------------------------------------
 
+
 def _prereg222_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -11985,6 +11916,7 @@ def test_prereg_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 223 – validate_selective_literature_citation
 # ---------------------------------------------------------------------------
+
 
 def _selective_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12053,6 +11985,7 @@ def test_selective_non_empirical_no_fire() -> None:
 # Phase 224 – validate_participant_compensation_disclosure
 # ---------------------------------------------------------------------------
 
+
 def _compensation_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -12118,6 +12051,7 @@ def test_compensation_non_empirical_no_fire() -> None:
 # Phase 225 – validate_observational_causal_language
 # ---------------------------------------------------------------------------
 
+
 def _obs_causal_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -12173,9 +12107,7 @@ def test_rct_no_observational_design_no_fire() -> None:
 def test_observational_causal_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_observational_causal_language
 
-    ms, cl = _obs_causal_ms(
-        "Cross-sectional studies demonstrate that X causes Y."
-    )
+    ms, cl = _obs_causal_ms("Cross-sectional studies demonstrate that X causes Y.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -12184,9 +12116,11 @@ def test_observational_causal_non_empirical_no_fire() -> None:
     result = validate_observational_causal_language(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 226 – validate_acknowledgement_section
 # ---------------------------------------------------------------------------
+
 
 def _ack_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12231,9 +12165,7 @@ def test_funding_with_acknowledgement_no_fire() -> None:
 def test_no_funding_mention_no_fire() -> None:
     from manuscript_audit.validators.core import validate_acknowledgement_section
 
-    ms, cl = _ack_ms(
-        "Data were collected from university students via an online platform."
-    )
+    ms, cl = _ack_ms("Data were collected from university students via an online platform.")
     result = validate_acknowledgement_section(ms, cl)
     assert result.findings == []
 
@@ -12254,6 +12186,7 @@ def test_acknowledgement_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 227 – validate_conflict_of_interest_statement
 # ---------------------------------------------------------------------------
+
 
 def _coi_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12324,6 +12257,7 @@ def test_coi_non_empirical_no_fire() -> None:
 # Phase 228 – validate_age_reporting_precision
 # ---------------------------------------------------------------------------
 
+
 def _age_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -12367,9 +12301,7 @@ def test_age_with_sd_no_fire() -> None:
 def test_no_age_mention_no_fire() -> None:
     from manuscript_audit.validators.core import validate_age_reporting_precision
 
-    ms, cl = _age_ms(
-        "The sample consisted of 150 undergraduate students at a large university."
-    )
+    ms, cl = _age_ms("The sample consisted of 150 undergraduate students at a large university.")
     result = validate_age_reporting_precision(ms, cl)
     assert result.findings == []
 
@@ -12390,6 +12322,7 @@ def test_age_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 229 – validate_statistical_software_version
 # ---------------------------------------------------------------------------
+
 
 def _stat_sw_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12413,8 +12346,7 @@ def test_stat_software_without_version_fires() -> None:
     from manuscript_audit.validators.core import validate_statistical_software_version
 
     ms, cl = _stat_sw_ms(
-        "Analyses were conducted using SPSS. "
-        "All tests were two-tailed with alpha set at 0.05."
+        "Analyses were conducted using SPSS. All tests were two-tailed with alpha set at 0.05."
     )
     result = validate_statistical_software_version(ms, cl)
     assert any(f.code == "missing-statistical-software-version" for f in result.findings)
@@ -12457,6 +12389,7 @@ def test_stat_software_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 230 – validate_warranted_sensitivity_analysis
 # ---------------------------------------------------------------------------
+
 
 def _sensitivity230_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12520,9 +12453,11 @@ def test_sensitivity_non_empirical_no_fire() -> None:
     result = validate_warranted_sensitivity_analysis(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 231 – validate_ai_tool_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _ai_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12545,9 +12480,7 @@ def _ai_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ai_tool_without_disclosure_fires() -> None:
     from manuscript_audit.validators.core import validate_ai_tool_disclosure
 
-    ms, cl = _ai_ms(
-        "We used ChatGPT to assist with drafting the literature review section."
-    )
+    ms, cl = _ai_ms("We used ChatGPT to assist with drafting the literature review section.")
     result = validate_ai_tool_disclosure(ms, cl)
     assert any(f.code == "missing-ai-tool-disclosure" for f in result.findings)
 
@@ -12590,6 +12523,7 @@ def test_ai_tool_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 232 – validate_between_group_effect_size
 # ---------------------------------------------------------------------------
+
 
 def _between_group_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12656,6 +12590,7 @@ def test_between_group_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 233 – validate_convenience_sample_generalization
 # ---------------------------------------------------------------------------
+
 
 def _convenience_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12728,6 +12663,7 @@ def test_convenience_non_empirical_no_fire() -> None:
 # Phase 234 – validate_icc_reliability_reporting
 # ---------------------------------------------------------------------------
 
+
 def _icc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -12771,9 +12707,7 @@ def test_rater_agreement_with_icc_no_fire() -> None:
 def test_single_rater_no_fire() -> None:
     from manuscript_audit.validators.core import validate_icc_reliability_reporting
 
-    ms, cl = _icc_ms(
-        "One trained researcher coded all interview data using the coding manual."
-    )
+    ms, cl = _icc_ms("One trained researcher coded all interview data using the coding manual.")
     result = validate_icc_reliability_reporting(ms, cl)
     assert result.findings == []
 
@@ -12794,6 +12728,7 @@ def test_icc_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 235 – validate_anova_post_hoc_reporting
 # ---------------------------------------------------------------------------
+
 
 def _anova_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12840,8 +12775,7 @@ def test_non_significant_anova_no_fire() -> None:
     from manuscript_audit.validators.core import validate_anova_post_hoc_reporting
 
     ms, cl = _anova_ms(
-        "ANOVA indicated no significant differences between conditions, "
-        "F(2, 147) = 1.23, p = 0.29."
+        "ANOVA indicated no significant differences between conditions, F(2, 147) = 1.23, p = 0.29."
     )
     result = validate_anova_post_hoc_reporting(ms, cl)
     assert result.findings == []
@@ -12859,9 +12793,11 @@ def test_anova_non_empirical_no_fire() -> None:
     result = validate_anova_post_hoc_reporting(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 236 – validate_adverse_events_reporting
 # ---------------------------------------------------------------------------
+
 
 def _ae_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12907,9 +12843,7 @@ def test_rct_with_adverse_events_no_fire() -> None:
 def test_observational_no_adverse_events_no_fire() -> None:
     from manuscript_audit.validators.core import validate_adverse_events_reporting
 
-    ms, cl = _ae_ms(
-        "This cross-sectional survey examined sleep quality among university students."
-    )
+    ms, cl = _ae_ms("This cross-sectional survey examined sleep quality among university students.")
     result = validate_adverse_events_reporting(ms, cl)
     assert result.findings == []
 
@@ -12917,9 +12851,7 @@ def test_observational_no_adverse_events_no_fire() -> None:
 def test_adverse_events_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_adverse_events_reporting
 
-    ms, cl = _ae_ms(
-        "This RCT compared two interventions."
-    )
+    ms, cl = _ae_ms("This RCT compared two interventions.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -12932,6 +12864,7 @@ def test_adverse_events_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 237 – validate_construct_operationalization
 # ---------------------------------------------------------------------------
+
 
 def _construct_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -12977,8 +12910,7 @@ def test_no_pronoun_construct_no_fire() -> None:
     from manuscript_audit.validators.core import validate_construct_operationalization
 
     ms, cl = _construct_ms(
-        "Depressive symptoms were assessed using the PHQ-9. "
-        "Anxiety was assessed using the GAD-7."
+        "Depressive symptoms were assessed using the PHQ-9. Anxiety was assessed using the GAD-7."
     )
     result = validate_construct_operationalization(ms, cl)
     assert result.findings == []
@@ -13001,6 +12933,7 @@ def test_construct_non_empirical_no_fire() -> None:
 # Phase 238 – validate_regression_coefficient_ci
 # ---------------------------------------------------------------------------
 
+
 def _coeff_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -13022,9 +12955,7 @@ def _coeff_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_coefficient_without_ci_fires() -> None:
     from manuscript_audit.validators.core import validate_regression_coefficient_ci
 
-    ms, cl = _coeff_ms(
-        "The regression coefficient for hours of study was B = 0.43 (p = 0.01)."
-    )
+    ms, cl = _coeff_ms("The regression coefficient for hours of study was B = 0.43 (p = 0.01).")
     result = validate_regression_coefficient_ci(ms, cl)
     assert any(f.code == "missing-regression-coefficient-ci" for f in result.findings)
 
@@ -13066,6 +12997,7 @@ def test_coefficient_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 239 – validate_longitudinal_followup_duration
 # ---------------------------------------------------------------------------
+
 
 def _followup_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13134,6 +13066,7 @@ def test_longitudinal_followup_non_empirical_no_fire() -> None:
 # Phase 240 – validate_bayesian_reporting
 # ---------------------------------------------------------------------------
 
+
 def _bayesian_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -13177,9 +13110,7 @@ def test_bayesian_with_bf_no_fire() -> None:
 def test_frequentist_no_bayesian_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bayesian_reporting
 
-    ms, cl = _bayesian_ms(
-        "We used linear regression with NHST to test group differences."
-    )
+    ms, cl = _bayesian_ms("We used linear regression with NHST to test group differences.")
     result = validate_bayesian_reporting(ms, cl)
     assert result.findings == []
 
@@ -13196,9 +13127,11 @@ def test_bayesian_non_empirical_no_fire() -> None:
     result = validate_bayesian_reporting(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 241 – validate_floor_ceiling_effect_check
 # ---------------------------------------------------------------------------
+
 
 def _fc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13243,9 +13176,7 @@ def test_likert_with_ceiling_check_no_fire() -> None:
 def test_no_likert_scale_fc_no_fire() -> None:
     from manuscript_audit.validators.core import validate_floor_ceiling_effect_check
 
-    ms, cl = _fc_ms(
-        "Biomarker concentrations were measured using serum assays."
-    )
+    ms, cl = _fc_ms("Biomarker concentrations were measured using serum assays.")
     result = validate_floor_ceiling_effect_check(ms, cl)
     assert result.findings == []
 
@@ -13266,6 +13197,7 @@ def test_floor_ceiling_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 242 – validate_hazard_ratio_ci
 # ---------------------------------------------------------------------------
+
 
 def _hr_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13300,8 +13232,7 @@ def test_hr_with_ci_no_fire() -> None:
     from manuscript_audit.validators.core import validate_hazard_ratio_ci
 
     ms, cl = _hr_ms(
-        "Cox proportional hazards regression indicated HR = 0.62 "
-        "(95% CI [0.45, 0.86], p = 0.003)."
+        "Cox proportional hazards regression indicated HR = 0.62 (95% CI [0.45, 0.86], p = 0.003)."
     )
     result = validate_hazard_ratio_ci(ms, cl)
     assert result.findings == []
@@ -13310,9 +13241,7 @@ def test_hr_with_ci_no_fire() -> None:
 def test_no_survival_analysis_no_fire() -> None:
     from manuscript_audit.validators.core import validate_hazard_ratio_ci
 
-    ms, cl = _hr_ms(
-        "Linear regression was used to predict quality of life from treatment group."
-    )
+    ms, cl = _hr_ms("Linear regression was used to predict quality of life from treatment group.")
     result = validate_hazard_ratio_ci(ms, cl)
     assert result.findings == []
 
@@ -13333,6 +13262,7 @@ def test_hr_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 243 – validate_outlier_removal_impact
 # ---------------------------------------------------------------------------
+
 
 def _outlier_impact_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13400,6 +13330,7 @@ def test_outlier_impact_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 244 – validate_multilevel_icc_reporting
 # ---------------------------------------------------------------------------
+
 
 def _mlm_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13470,6 +13401,7 @@ def test_multilevel_non_empirical_no_fire() -> None:
 # Phase 245 – validate_citation_currency
 # ---------------------------------------------------------------------------
 
+
 def _cite_currency_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -13533,9 +13465,11 @@ def test_citation_currency_non_empirical_no_fire() -> None:
     result = validate_citation_currency(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 246 – validate_proportion_confidence_interval
 # ---------------------------------------------------------------------------
+
 
 def _prop_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13558,9 +13492,7 @@ def _prop_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_proportion_without_ci_fires() -> None:
     from manuscript_audit.validators.core import validate_proportion_confidence_interval
 
-    ms, cl = _prop_ms(
-        "Depression was present in 34% of participants at baseline."
-    )
+    ms, cl = _prop_ms("Depression was present in 34% of participants at baseline.")
     result = validate_proportion_confidence_interval(ms, cl)
     assert any(f.code == "missing-proportion-ci" for f in result.findings)
 
@@ -13569,8 +13501,7 @@ def test_proportion_with_ci_no_fire() -> None:
     from manuscript_audit.validators.core import validate_proportion_confidence_interval
 
     ms, cl = _prop_ms(
-        "Depression was present in 34% of participants (95% CI [28.1, 40.3]) "
-        "at baseline."
+        "Depression was present in 34% of participants (95% CI [28.1, 40.3]) at baseline."
     )
     result = validate_proportion_confidence_interval(ms, cl)
     assert result.findings == []
@@ -13602,6 +13533,7 @@ def test_proportion_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 247 – validate_blinding_procedure_description
 # ---------------------------------------------------------------------------
+
 
 def _blind_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13646,9 +13578,7 @@ def test_blinding_with_procedure_no_fire() -> None:
 def test_no_blinding_claim_no_fire() -> None:
     from manuscript_audit.validators.core import validate_blinding_procedure_description
 
-    ms, cl = _blind_ms(
-        "This open-label trial compared CBT to treatment as usual."
-    )
+    ms, cl = _blind_ms("This open-label trial compared CBT to treatment as usual.")
     result = validate_blinding_procedure_description(ms, cl)
     assert result.findings == []
 
@@ -13669,6 +13599,7 @@ def test_blinding_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 248 – validate_primary_outcome_change_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _outcome_change_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13739,6 +13670,7 @@ def test_outcome_change_non_empirical_no_fire() -> None:
 # Phase 249 – validate_null_result_discussion
 # ---------------------------------------------------------------------------
 
+
 def _null_disc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -13794,9 +13726,7 @@ def test_all_significant_no_fire() -> None:
 def test_null_disc_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_null_result_discussion
 
-    ms, cl = _null_disc_ms(
-        "Results were not statistically significant."
-    )
+    ms, cl = _null_disc_ms("Results were not statistically significant.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -13809,6 +13739,7 @@ def test_null_disc_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 250 – validate_racial_ethnic_composition
 # ---------------------------------------------------------------------------
+
 
 def _race_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13831,9 +13762,7 @@ def _race_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_race_mention_without_breakdown_fires() -> None:
     from manuscript_audit.validators.core import validate_racial_ethnic_composition
 
-    ms, cl = _race_ms(
-        "The sample was racially diverse, recruited from urban community centres."
-    )
+    ms, cl = _race_ms("The sample was racially diverse, recruited from urban community centres.")
     result = validate_racial_ethnic_composition(ms, cl)
     assert any(f.code == "missing-racial-ethnic-composition" for f in result.findings)
 
@@ -13852,9 +13781,7 @@ def test_race_with_breakdown_no_fire() -> None:
 def test_no_race_mention_no_fire() -> None:
     from manuscript_audit.validators.core import validate_racial_ethnic_composition
 
-    ms, cl = _race_ms(
-        "The sample consisted of 200 adults recruited from a university community."
-    )
+    ms, cl = _race_ms("The sample consisted of 200 adults recruited from a university community.")
     result = validate_racial_ethnic_composition(ms, cl)
     assert result.findings == []
 
@@ -13871,9 +13798,11 @@ def test_race_non_empirical_no_fire() -> None:
     result = validate_racial_ethnic_composition(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 251 – validate_single_item_measure_reliability
 # ---------------------------------------------------------------------------
+
 
 def _single_item_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13897,8 +13826,7 @@ def test_single_item_without_caveat_fires() -> None:
     from manuscript_audit.validators.core import validate_single_item_measure_reliability
 
     ms, cl = _single_item_ms(
-        "Happiness was measured with a single-item scale: "
-        "'Overall, how happy are you?' (1–10)."
+        "Happiness was measured with a single-item scale: 'Overall, how happy are you?' (1–10)."
     )
     result = validate_single_item_measure_reliability(ms, cl)
     assert any(f.code == "missing-single-item-reliability-caveat" for f in result.findings)
@@ -13918,9 +13846,7 @@ def test_single_item_with_caveat_no_fire() -> None:
 def test_no_single_item_use_no_fire() -> None:
     from manuscript_audit.validators.core import validate_single_item_measure_reliability
 
-    ms, cl = _single_item_ms(
-        "Depression was assessed with the PHQ-9, a validated nine-item scale."
-    )
+    ms, cl = _single_item_ms("Depression was assessed with the PHQ-9, a validated nine-item scale.")
     result = validate_single_item_measure_reliability(ms, cl)
     assert result.findings == []
 
@@ -13941,6 +13867,7 @@ def test_single_item_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 252 – validate_mediator_temporality
 # ---------------------------------------------------------------------------
+
 
 def _mediator_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -13986,9 +13913,7 @@ def test_mediation_with_temporal_evidence_no_fire() -> None:
 def test_no_mediation_claimed_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mediator_temporality
 
-    ms, cl = _mediator_ms(
-        "Stress was positively correlated with burnout (r = 0.45, p < 0.001)."
-    )
+    ms, cl = _mediator_ms("Stress was positively correlated with burnout (r = 0.45, p < 0.001).")
     result = validate_mediator_temporality(ms, cl)
     assert result.findings == []
 
@@ -14009,6 +13934,7 @@ def test_mediator_temporality_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 253 – validate_effect_size_interpretation
 # ---------------------------------------------------------------------------
+
 
 def _es_interp_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14031,9 +13957,7 @@ def _es_interp_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification
 def test_effect_size_without_interpretation_fires() -> None:
     from manuscript_audit.validators.core import validate_effect_size_interpretation
 
-    ms, cl = _es_interp_ms(
-        "The intervention improved outcomes (Cohen's d = 0.45)."
-    )
+    ms, cl = _es_interp_ms("The intervention improved outcomes (Cohen's d = 0.45).")
     result = validate_effect_size_interpretation(ms, cl)
     assert any(f.code == "missing-effect-size-interpretation" for f in result.findings)
 
@@ -14052,9 +13976,7 @@ def test_effect_size_with_interpretation_no_fire() -> None:
 def test_no_effect_size_reported_no_fire() -> None:
     from manuscript_audit.validators.core import validate_effect_size_interpretation
 
-    ms, cl = _es_interp_ms(
-        "The intervention improved outcomes significantly (p = 0.002)."
-    )
+    ms, cl = _es_interp_ms("The intervention improved outcomes significantly (p = 0.002).")
     result = validate_effect_size_interpretation(ms, cl)
     assert result.findings == []
 
@@ -14075,6 +13997,7 @@ def test_effect_size_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 254 – validate_comparison_group_equivalence
 # ---------------------------------------------------------------------------
+
 
 def _group_equiv_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14144,6 +14067,7 @@ def test_group_equivalence_non_empirical_no_fire() -> None:
 # Phase 255 – validate_implicit_theory_test
 # ---------------------------------------------------------------------------
 
+
 def _impl_theory_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -14206,9 +14130,11 @@ def test_implicit_theory_non_empirical_no_fire() -> None:
     result = validate_implicit_theory_test(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 256 – validate_multiple_comparison_correction
 # ---------------------------------------------------------------------------
+
 
 def _mcc256_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14232,8 +14158,7 @@ def test_multiple_comparisons_without_correction_fires() -> None:
     from manuscript_audit.validators.core import validate_multiple_comparison_correction
 
     ms, cl = _mcc256_ms(
-        "We conducted multiple comparisons across six outcomes "
-        "using independent t-tests for each."
+        "We conducted multiple comparisons across six outcomes using independent t-tests for each."
     )
     result = validate_multiple_comparison_correction(ms, cl)
     assert any(f.code == "missing-multiple-comparison-correction" for f in result.findings)
@@ -14253,9 +14178,7 @@ def test_multiple_comparisons_bonferroni_phase256_no_fire() -> None:
 def test_single_test_no_multiple_comparisons_no_fire() -> None:
     from manuscript_audit.validators.core import validate_multiple_comparison_correction
 
-    ms, cl = _mcc256_ms(
-        "We tested the primary hypothesis using a paired t-test."
-    )
+    ms, cl = _mcc256_ms("We tested the primary hypothesis using a paired t-test.")
     result = validate_multiple_comparison_correction(ms, cl)
     assert result.findings == []
 
@@ -14276,6 +14199,7 @@ def test_mcc_phase256_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 257 – validate_non_normal_distribution_test
 # ---------------------------------------------------------------------------
+
 
 def _normality_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14298,9 +14222,7 @@ def _normality_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification
 def test_parametric_without_normality_check_fires() -> None:
     from manuscript_audit.validators.core import validate_non_normal_distribution_test
 
-    ms, cl = _normality_ms(
-        "We compared group means using an independent-samples t-test."
-    )
+    ms, cl = _normality_ms("We compared group means using an independent-samples t-test.")
     result = validate_non_normal_distribution_test(ms, cl)
     assert any(f.code == "missing-normality-check" for f in result.findings)
 
@@ -14319,9 +14241,7 @@ def test_parametric_with_normality_check_no_fire() -> None:
 def test_no_parametric_test_no_normality_fire() -> None:
     from manuscript_audit.validators.core import validate_non_normal_distribution_test
 
-    ms, cl = _normality_ms(
-        "We used thematic analysis to identify recurring patterns."
-    )
+    ms, cl = _normality_ms("We used thematic analysis to identify recurring patterns.")
     result = validate_non_normal_distribution_test(ms, cl)
     assert result.findings == []
 
@@ -14342,6 +14262,7 @@ def test_normality_phase257_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 258 – validate_regression_sample_size_adequacy
 # ---------------------------------------------------------------------------
+
 
 def _reg_sample_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14386,9 +14307,7 @@ def test_regression_with_sample_adequacy_no_fire() -> None:
 def test_no_regression_no_sample_adequacy_fire() -> None:
     from manuscript_audit.validators.core import validate_regression_sample_size_adequacy
 
-    ms, cl = _reg_sample_ms(
-        "Descriptive statistics were computed for all variables."
-    )
+    ms, cl = _reg_sample_ms("Descriptive statistics were computed for all variables.")
     result = validate_regression_sample_size_adequacy(ms, cl)
     assert result.findings == []
 
@@ -14409,6 +14328,7 @@ def test_regression_sample_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 259 – validate_scale_directionality_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _scale_dir_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14431,9 +14351,7 @@ def _scale_dir_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification
 def test_scale_without_directionality_fires() -> None:
     from manuscript_audit.validators.core import validate_scale_directionality_disclosure
 
-    ms, cl = _scale_dir_ms(
-        "Anxiety was assessed using a 7-point Likert scale."
-    )
+    ms, cl = _scale_dir_ms("Anxiety was assessed using a 7-point Likert scale.")
     result = validate_scale_directionality_disclosure(ms, cl)
     assert any(f.code == "missing-scale-directionality" for f in result.findings)
 
@@ -14452,9 +14370,7 @@ def test_scale_with_directionality_no_fire() -> None:
 def test_no_scale_used_no_directionality_fire() -> None:
     from manuscript_audit.validators.core import validate_scale_directionality_disclosure
 
-    ms, cl = _scale_dir_ms(
-        "Structured clinical interviews were used to assess diagnosis."
-    )
+    ms, cl = _scale_dir_ms("Structured clinical interviews were used to assess diagnosis.")
     result = validate_scale_directionality_disclosure(ms, cl)
     assert result.findings == []
 
@@ -14475,6 +14391,7 @@ def test_scale_directionality_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 260 – validate_attrition_rate_reporting
 # ---------------------------------------------------------------------------
+
 
 def _attrition260_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14497,9 +14414,7 @@ def _attrition260_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassificat
 def test_attrition_without_rate_fires() -> None:
     from manuscript_audit.validators.core import validate_attrition_rate_reporting
 
-    ms, cl = _attrition260_ms(
-        "Several participants dropped out before the final assessment."
-    )
+    ms, cl = _attrition260_ms("Several participants dropped out before the final assessment.")
     result = validate_attrition_rate_reporting(ms, cl)
     assert any(f.code == "missing-attrition-rate" for f in result.findings)
 
@@ -14518,9 +14433,7 @@ def test_attrition_with_rate_no_fire() -> None:
 def test_no_attrition_mention_no_fire() -> None:
     from manuscript_audit.validators.core import validate_attrition_rate_reporting
 
-    ms, cl = _attrition260_ms(
-        "All 120 enrolled participants completed the 8-week intervention."
-    )
+    ms, cl = _attrition260_ms("All 120 enrolled participants completed the 8-week intervention.")
     result = validate_attrition_rate_reporting(ms, cl)
     assert result.findings == []
 
@@ -14537,9 +14450,11 @@ def test_attrition_non_empirical_no_fire() -> None:
     result = validate_attrition_rate_reporting(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 261 – validate_dichotomization_of_continuous_variable
 # ---------------------------------------------------------------------------
+
 
 def _dichot261_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14565,8 +14480,7 @@ def test_median_split_without_justification_fires() -> None:
     )
 
     ms, cl = _dichot261_ms(
-        "Depression scores were dichotomised using a median split "
-        "into low and high groups."
+        "Depression scores were dichotomised using a median split into low and high groups."
     )
     result = validate_dichotomization_of_continuous_variable(ms, cl)
     assert any(f.code == "unjustified-dichotomization" for f in result.findings)
@@ -14590,9 +14504,7 @@ def test_no_dichotomization_continuous_no_fire() -> None:
         validate_dichotomization_of_continuous_variable,
     )
 
-    ms, cl = _dichot261_ms(
-        "Depression scores were analysed as a continuous outcome in all models."
-    )
+    ms, cl = _dichot261_ms("Depression scores were analysed as a continuous outcome in all models.")
     result = validate_dichotomization_of_continuous_variable(ms, cl)
     assert result.findings == []
 
@@ -14615,6 +14527,7 @@ def test_dichotomization_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 262 – validate_ecological_fallacy_warning
 # ---------------------------------------------------------------------------
+
 
 def _eco_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14659,9 +14572,7 @@ def test_aggregate_data_with_fallacy_warning_no_fire() -> None:
 def test_no_aggregate_data_no_fallacy_fire() -> None:
     from manuscript_audit.validators.core import validate_ecological_fallacy_warning
 
-    ms, cl = _eco_ms(
-        "Individual-level survey data were collected from 500 participants."
-    )
+    ms, cl = _eco_ms("Individual-level survey data were collected from 500 participants.")
     result = validate_ecological_fallacy_warning(ms, cl)
     assert result.findings == []
 
@@ -14682,6 +14593,7 @@ def test_eco_fallacy_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 263 – validate_standardised_mean_difference_units
 # ---------------------------------------------------------------------------
+
 
 def _smd_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14706,9 +14618,7 @@ def test_smd_without_original_units_fires() -> None:
         validate_standardised_mean_difference_units,
     )
 
-    ms, cl = _smd_ms(
-        "The intervention effect was SMD = 0.42 (95% CI [0.21, 0.63])."
-    )
+    ms, cl = _smd_ms("The intervention effect was SMD = 0.42 (95% CI [0.21, 0.63]).")
     result = validate_standardised_mean_difference_units(ms, cl)
     assert any(f.code == "missing-smd-original-unit-context" for f in result.findings)
 
@@ -14731,9 +14641,7 @@ def test_no_smd_reported_no_fire() -> None:
         validate_standardised_mean_difference_units,
     )
 
-    ms, cl = _smd_ms(
-        "The intervention improved outcomes (Cohen's d = 0.45, medium effect)."
-    )
+    ms, cl = _smd_ms("The intervention improved outcomes (Cohen's d = 0.45, medium effect).")
     result = validate_standardised_mean_difference_units(ms, cl)
     assert result.findings == []
 
@@ -14756,6 +14664,7 @@ def test_smd_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 264 – validate_retrospective_data_collection_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _retro_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14785,9 +14694,7 @@ def test_retrospective_without_disclosure_fires() -> None:
         "admitted between 2018 and 2022."
     )
     result = validate_retrospective_data_collection_disclosure(ms, cl)
-    assert any(
-        f.code == "missing-retrospective-design-disclosure" for f in result.findings
-    )
+    assert any(f.code == "missing-retrospective-design-disclosure" for f in result.findings)
 
 
 def test_retrospective_with_disclosure_no_fire() -> None:
@@ -14808,9 +14715,7 @@ def test_prospective_data_no_retro_fire() -> None:
         validate_retrospective_data_collection_disclosure,
     )
 
-    ms, cl = _retro_ms(
-        "Data were prospectively collected from participants at three time points."
-    )
+    ms, cl = _retro_ms("Data were prospectively collected from participants at three time points.")
     result = validate_retrospective_data_collection_disclosure(ms, cl)
     assert result.findings == []
 
@@ -14833,6 +14738,7 @@ def test_retrospective_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 265 – validate_treatment_fidelity_reporting
 # ---------------------------------------------------------------------------
+
 
 def _fidelity_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14898,9 +14804,11 @@ def test_fidelity_non_empirical_no_fire() -> None:
     result = validate_treatment_fidelity_reporting(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 266 – validate_factorial_design_interaction_test
 # ---------------------------------------------------------------------------
+
 
 def _factorial_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -14953,9 +14861,7 @@ def test_no_factorial_design_no_fire() -> None:
         validate_factorial_design_interaction_test,
     )
 
-    ms, cl = _factorial_ms(
-        "A one-way ANOVA compared anxiety scores across three conditions."
-    )
+    ms, cl = _factorial_ms("A one-way ANOVA compared anxiety scores across three conditions.")
     result = validate_factorial_design_interaction_test(ms, cl)
     assert result.findings == []
 
@@ -14978,6 +14884,7 @@ def test_factorial_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 267 – validate_regression_multicollinearity_check
 # ---------------------------------------------------------------------------
+
 
 def _multicol_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15029,9 +14936,7 @@ def test_no_regression_no_multicol_fire() -> None:
         validate_regression_multicollinearity_check,
     )
 
-    ms, cl = _multicol_ms(
-        "Descriptive statistics are reported in Table 1."
-    )
+    ms, cl = _multicol_ms("Descriptive statistics are reported in Table 1.")
     result = validate_regression_multicollinearity_check(ms, cl)
     assert result.findings == []
 
@@ -15054,6 +14959,7 @@ def test_multicol_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 268 – validate_intention_to_treat_analysis
 # ---------------------------------------------------------------------------
+
 
 def _itt_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15099,9 +15005,7 @@ def test_rct_with_itt_no_fire() -> None:
 def test_non_rct_no_itt_fire() -> None:
     from manuscript_audit.validators.core import validate_intention_to_treat_analysis
 
-    ms, cl = _itt_ms(
-        "This cross-sectional survey examined predictors of depression."
-    )
+    ms, cl = _itt_ms("This cross-sectional survey examined predictors of depression.")
     result = validate_intention_to_treat_analysis(ms, cl)
     assert result.findings == []
 
@@ -15122,6 +15026,7 @@ def test_itt_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 269 – validate_confidence_interval_direction_interpretation
 # ---------------------------------------------------------------------------
+
 
 def _ci_dir_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15146,9 +15051,7 @@ def test_ci_without_direction_fires() -> None:
         validate_confidence_interval_direction_interpretation,
     )
 
-    ms, cl = _ci_dir_ms(
-        "The treatment effect was d = 0.42 (95% CI [0.21, 0.63])."
-    )
+    ms, cl = _ci_dir_ms("The treatment effect was d = 0.42 (95% CI [0.21, 0.63]).")
     result = validate_confidence_interval_direction_interpretation(ms, cl)
     assert any(f.code == "missing-ci-direction-interpretation" for f in result.findings)
 
@@ -15197,6 +15100,7 @@ def test_ci_direction_non_empirical_no_fire() -> None:
 # Phase 270 – validate_longitudinal_missing_data_method
 # ---------------------------------------------------------------------------
 
+
 def _long_missing_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -15225,9 +15129,7 @@ def test_longitudinal_without_missing_method_fires() -> None:
         "6 months, and 12 months. Some participants did not complete all time points."
     )
     result = validate_longitudinal_missing_data_method(ms, cl)
-    assert any(
-        f.code == "missing-longitudinal-missing-data-method" for f in result.findings
-    )
+    assert any(f.code == "missing-longitudinal-missing-data-method" for f in result.findings)
 
 
 def test_longitudinal_with_missing_method_no_fire() -> None:
@@ -15249,9 +15151,7 @@ def test_cross_sectional_no_long_missing_fire() -> None:
         validate_longitudinal_missing_data_method,
     )
 
-    ms, cl = _long_missing_ms(
-        "A cross-sectional survey was administered once to 300 adults."
-    )
+    ms, cl = _long_missing_ms("A cross-sectional survey was administered once to 300 adults.")
     result = validate_longitudinal_missing_data_method(ms, cl)
     assert result.findings == []
 
@@ -15261,9 +15161,7 @@ def test_long_missing_non_empirical_no_fire() -> None:
         validate_longitudinal_missing_data_method,
     )
 
-    ms, cl = _long_missing_ms(
-        "Longitudinal studies require careful handling of missing data."
-    )
+    ms, cl = _long_missing_ms("Longitudinal studies require careful handling of missing data.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -15272,9 +15170,11 @@ def test_long_missing_non_empirical_no_fire() -> None:
     result = validate_longitudinal_missing_data_method(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 271 – validate_cluster_sampling_correction
 # ---------------------------------------------------------------------------
+
 
 def _cluster_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15342,6 +15242,7 @@ def test_cluster_sampling_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 272 – validate_non_experimental_confound_discussion
 # ---------------------------------------------------------------------------
+
 
 def _confound_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15419,6 +15320,7 @@ def test_confound_non_empirical_no_fire() -> None:
 # Phase 273 – validate_complete_case_analysis_bias
 # ---------------------------------------------------------------------------
 
+
 def _complete_case_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -15485,6 +15387,7 @@ def test_complete_case_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 274 – validate_analytic_strategy_prespecification
 # ---------------------------------------------------------------------------
+
 
 def _exploratory_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15562,6 +15465,7 @@ def test_exploratory_non_empirical_no_fire() -> None:
 # Phase 275 – validate_self_report_bias_acknowledgement
 # ---------------------------------------------------------------------------
 
+
 def _self_report_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -15590,9 +15494,7 @@ def test_self_report_without_bias_acknowledgement_fires() -> None:
         "completed online by participants."
     )
     result = validate_self_report_bias_acknowledgement(ms, cl)
-    assert any(
-        f.code == "missing-self-report-bias-acknowledgement" for f in result.findings
-    )
+    assert any(f.code == "missing-self-report-bias-acknowledgement" for f in result.findings)
 
 
 def test_self_report_with_bias_caveat_no_fire() -> None:
@@ -15634,9 +15536,11 @@ def test_self_report_non_empirical_no_fire() -> None:
     result = validate_self_report_bias_acknowledgement(ms, cl)
     assert result.findings == []
 
+
 # ---------------------------------------------------------------------------
 # Phase 276 – validate_p_value_reporting_precision
 # ---------------------------------------------------------------------------
+
 
 def _pval_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15681,9 +15585,7 @@ def test_exact_p_value_no_fire() -> None:
 def test_no_p_value_reported_no_fire() -> None:
     from manuscript_audit.validators.core import validate_p_value_reporting_precision
 
-    ms, cl = _pval_ms(
-        "Means and standard deviations are reported in Table 1."
-    )
+    ms, cl = _pval_ms("Means and standard deviations are reported in Table 1.")
     result = validate_p_value_reporting_precision(ms, cl)
     assert result.findings == []
 
@@ -15704,6 +15606,7 @@ def test_pval_precision_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 277 – validate_moderator_analysis_interpretation
 # ---------------------------------------------------------------------------
+
 
 def _moderator_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15755,9 +15658,7 @@ def test_no_moderation_claimed_no_moderator_fire() -> None:
         validate_moderator_analysis_interpretation,
     )
 
-    ms, cl = _moderator_ms(
-        "Stress was positively associated with burnout (r = 0.45, p < .001)."
-    )
+    ms, cl = _moderator_ms("Stress was positively associated with burnout (r = 0.45, p < .001).")
     result = validate_moderator_analysis_interpretation(ms, cl)
     assert result.findings == []
 
@@ -15780,6 +15681,7 @@ def test_moderator_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 278 – validate_measurement_occasion_labelling
 # ---------------------------------------------------------------------------
+
 
 def _occasion_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15824,9 +15726,7 @@ def test_time_labels_with_definition_no_fire() -> None:
 def test_no_time_labels_no_occasion_fire() -> None:
     from manuscript_audit.validators.core import validate_measurement_occasion_labelling
 
-    ms, cl = _occasion_ms(
-        "Participants completed a single survey at recruitment."
-    )
+    ms, cl = _occasion_ms("Participants completed a single survey at recruitment.")
     result = validate_measurement_occasion_labelling(ms, cl)
     assert result.findings == []
 
@@ -15847,6 +15747,7 @@ def test_occasion_labelling_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 279 – validate_statistical_conclusion_validity
 # ---------------------------------------------------------------------------
+
 
 def _stat_conc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15876,9 +15777,7 @@ def test_null_result_with_low_power_no_type2_fires() -> None:
         "The study was underpowered due to the smaller than expected sample."
     )
     result = validate_statistical_conclusion_validity(ms, cl)
-    assert any(
-        f.code == "missing-null-result-power-discussion" for f in result.findings
-    )
+    assert any(f.code == "missing-null-result-power-discussion" for f in result.findings)
 
 
 def test_null_result_with_power_discussion_no_fire() -> None:
@@ -15900,9 +15799,7 @@ def test_significant_result_no_power_fire() -> None:
         validate_statistical_conclusion_validity,
     )
 
-    ms, cl = _stat_conc_ms(
-        "The intervention was highly effective (p = .001)."
-    )
+    ms, cl = _stat_conc_ms("The intervention was highly effective (p = .001).")
     result = validate_statistical_conclusion_validity(ms, cl)
     assert result.findings == []
 
@@ -15925,6 +15822,7 @@ def test_stat_conc_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 280 – validate_author_contribution_statement
 # ---------------------------------------------------------------------------
+
 
 def _author_contrib_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -15952,9 +15850,7 @@ def test_multiple_authors_without_contribution_statement_fires() -> None:
         "Co-authors reviewed the manuscript before submission."
     )
     result = validate_author_contribution_statement(ms)
-    assert any(
-        f.code == "missing-author-contributions" for f in result.findings
-    )
+    assert any(f.code == "missing-author-contributions" for f in result.findings)
 
 
 def test_authors_with_contribution_statement_no_fire() -> None:
@@ -15990,6 +15886,7 @@ def test_author_contrib_no_credit_fires() -> None:
 # ---------------------------------------------------------------------------
 # Phase 281 – validate_scale_reliability_reporting
 # ---------------------------------------------------------------------------
+
 
 def _scale_rel_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16044,9 +15941,7 @@ def test_no_scale_no_fire() -> None:
 def test_scale_rel_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_scale_reliability_reporting
 
-    ms, cl = _scale_rel_ms(
-        "A scale of 10 items was administered without reliability reporting."
-    )
+    ms, cl = _scale_rel_ms("A scale of 10 items was administered without reliability reporting.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -16059,6 +15954,7 @@ def test_scale_rel_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 282 – validate_pilot_study_scope_limitation
 # ---------------------------------------------------------------------------
+
 
 def _pilot_scope_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16103,9 +15999,7 @@ def test_pilot_with_caveat_no_fire() -> None:
 def test_no_pilot_mention_no_fire() -> None:
     from manuscript_audit.validators.core import validate_pilot_study_scope_limitation
 
-    ms, cl = _pilot_scope_ms(
-        "A randomised controlled trial was conducted with 200 participants."
-    )
+    ms, cl = _pilot_scope_ms("A randomised controlled trial was conducted with 200 participants.")
     result = validate_pilot_study_scope_limitation(ms, cl)
     assert result.findings == []
 
@@ -16126,6 +16020,7 @@ def test_pilot_scope_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 283 – validate_literature_search_recency
 # ---------------------------------------------------------------------------
+
 
 def _lit_search_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16170,9 +16065,7 @@ def test_lit_review_with_search_date_no_fire() -> None:
 def test_no_lit_review_no_fire() -> None:
     from manuscript_audit.validators.core import validate_literature_search_recency
 
-    ms, cl = _lit_search_ms(
-        "This study examined treatment outcomes in a prospective cohort."
-    )
+    ms, cl = _lit_search_ms("This study examined treatment outcomes in a prospective cohort.")
     result = validate_literature_search_recency(ms, cl)
     assert result.findings == []
 
@@ -16180,9 +16073,7 @@ def test_no_lit_review_no_fire() -> None:
 def test_lit_search_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_literature_search_recency
 
-    ms, cl = _lit_search_ms(
-        "A systematic review was described as an example search strategy."
-    )
+    ms, cl = _lit_search_ms("A systematic review was described as an example search strategy.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -16195,6 +16086,7 @@ def test_lit_search_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 284 – validate_publication_bias_acknowledgement
 # ---------------------------------------------------------------------------
+
 
 def _pub_bias_ack_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16222,9 +16114,7 @@ def test_lit_review_without_pub_bias_fires() -> None:
         "therapy. Thirty-two studies met inclusion criteria."
     )
     result = validate_publication_bias_acknowledgement(ms, cl)
-    assert any(
-        f.code == "missing-publication-bias-acknowledgement" for f in result.findings
-    )
+    assert any(f.code == "missing-publication-bias-acknowledgement" for f in result.findings)
 
 
 def test_lit_review_with_pub_bias_mention_no_fire() -> None:
@@ -16241,9 +16131,7 @@ def test_lit_review_with_pub_bias_mention_no_fire() -> None:
 def test_no_review_no_pub_bias_fire() -> None:
     from manuscript_audit.validators.core import validate_publication_bias_acknowledgement
 
-    ms, cl = _pub_bias_ack_ms(
-        "We conducted an RCT comparing two treatment conditions."
-    )
+    ms, cl = _pub_bias_ack_ms("We conducted an RCT comparing two treatment conditions.")
     result = validate_publication_bias_acknowledgement(ms, cl)
     assert result.findings == []
 
@@ -16251,9 +16139,7 @@ def test_no_review_no_pub_bias_fire() -> None:
 def test_pub_bias_ack_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_publication_bias_acknowledgement
 
-    ms, cl = _pub_bias_ack_ms(
-        "Systematic review methodology was discussed in the introduction."
-    )
+    ms, cl = _pub_bias_ack_ms("Systematic review methodology was discussed in the introduction.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -16266,6 +16152,7 @@ def test_pub_bias_ack_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 285 – validate_replication_citation
 # ---------------------------------------------------------------------------
+
 
 def _replication285_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16320,9 +16207,7 @@ def test_no_replication_claim_no_fire() -> None:
 def test_replication285_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_replication_citation
 
-    ms, cl = _replication285_ms(
-        "The study replicates a well-known mathematical finding."
-    )
+    ms, cl = _replication285_ms("The study replicates a well-known mathematical finding.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -16335,6 +16220,7 @@ def test_replication285_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 286 – validate_negative_binomial_overdispersion
 # ---------------------------------------------------------------------------
+
 
 def _overdispersion_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16386,9 +16272,7 @@ def test_no_count_outcome_no_overdispersion_fire() -> None:
         validate_negative_binomial_overdispersion,
     )
 
-    ms, cl = _overdispersion_ms(
-        "We used linear regression to model continuous outcomes."
-    )
+    ms, cl = _overdispersion_ms("We used linear regression to model continuous outcomes.")
     result = validate_negative_binomial_overdispersion(ms, cl)
     assert result.findings == []
 
@@ -16411,6 +16295,7 @@ def test_overdispersion_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 287 – validate_zero_inflated_data_handling
 # ---------------------------------------------------------------------------
+
 
 def _zero_inflate_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16455,9 +16340,7 @@ def test_zero_inflated_model_used_no_fire() -> None:
 def test_no_count_data_no_zero_inflate_fire() -> None:
     from manuscript_audit.validators.core import validate_zero_inflated_data_handling
 
-    ms, cl = _zero_inflate_ms(
-        "Participants completed a survey measuring attitudes and beliefs."
-    )
+    ms, cl = _zero_inflate_ms("Participants completed a survey measuring attitudes and beliefs.")
     result = validate_zero_inflated_data_handling(ms, cl)
     assert result.findings == []
 
@@ -16478,6 +16361,7 @@ def test_zero_inflate_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 288 – validate_variance_homogeneity_check
 # ---------------------------------------------------------------------------
+
 
 def _homogeneity_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16522,9 +16406,7 @@ def test_ttest_with_levene_no_fire() -> None:
 def test_no_between_group_test_no_fire() -> None:
     from manuscript_audit.validators.core import validate_variance_homogeneity_check
 
-    ms, cl = _homogeneity_ms(
-        "We used structural equation modelling to test the mediation model."
-    )
+    ms, cl = _homogeneity_ms("We used structural equation modelling to test the mediation model.")
     result = validate_variance_homogeneity_check(ms, cl)
     assert result.findings == []
 
@@ -16532,9 +16414,7 @@ def test_no_between_group_test_no_fire() -> None:
 def test_homogeneity_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_variance_homogeneity_check
 
-    ms, cl = _homogeneity_ms(
-        "The t-test assumptions include homogeneity of variance."
-    )
+    ms, cl = _homogeneity_ms("The t-test assumptions include homogeneity of variance.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -16547,6 +16427,7 @@ def test_homogeneity_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 289 – validate_path_model_fit_indices
 # ---------------------------------------------------------------------------
+
 
 def _path_model_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16591,9 +16472,7 @@ def test_sem289_with_fit_indices_no_fire() -> None:
 def test_no_sem_no_fit_fire() -> None:
     from manuscript_audit.validators.core import validate_path_model_fit_indices
 
-    ms, cl = _path_model_ms(
-        "We used linear regression to predict the outcome variable."
-    )
+    ms, cl = _path_model_ms("We used linear regression to predict the outcome variable.")
     result = validate_path_model_fit_indices(ms, cl)
     assert result.findings == []
 
@@ -16616,6 +16495,7 @@ def test_path_model_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 290 – validate_post_hoc_power_caution
 # ---------------------------------------------------------------------------
+
 
 def _posthoc_power_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16660,9 +16540,7 @@ def test_post_hoc_power_with_caveat_no_fire() -> None:
 def test_no_post_hoc_power_no_fire() -> None:
     from manuscript_audit.validators.core import validate_post_hoc_power_caution
 
-    ms, cl = _posthoc_power_ms(
-        "A priori power analysis indicated a required sample of N = 120."
-    )
+    ms, cl = _posthoc_power_ms("A priori power analysis indicated a required sample of N = 120.")
     result = validate_post_hoc_power_caution(ms, cl)
     assert result.findings == []
 
@@ -16670,9 +16548,7 @@ def test_no_post_hoc_power_no_fire() -> None:
 def test_post_hoc_power_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_post_hoc_power_caution
 
-    ms, cl = _posthoc_power_ms(
-        "Post-hoc power analysis is discussed as a methodological issue."
-    )
+    ms, cl = _posthoc_power_ms("Post-hoc power analysis is discussed as a methodological issue.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -16685,6 +16561,7 @@ def test_post_hoc_power_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 291 – validate_ancova_covariate_balance
 # ---------------------------------------------------------------------------
+
 
 def _ancova_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16730,9 +16607,7 @@ def test_ancova_with_covariate_balance_no_fire() -> None:
 def test_no_ancova_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ancova_covariate_balance
 
-    ms, cl = _ancova_ms(
-        "We used a paired samples t-test to compare pre- and post-scores."
-    )
+    ms, cl = _ancova_ms("We used a paired samples t-test to compare pre- and post-scores.")
     result = validate_ancova_covariate_balance(ms, cl)
     assert result.findings == []
 
@@ -16753,6 +16628,7 @@ def test_ancova_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 292 – validate_partial_eta_squared_reporting
 # ---------------------------------------------------------------------------
+
 
 def _anova_eta_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16776,8 +16652,7 @@ def test_anova_without_eta_squared_fires() -> None:
     from manuscript_audit.validators.core import validate_partial_eta_squared_reporting
 
     ms, cl = _anova_eta_ms(
-        "A one-way ANOVA revealed a significant group effect, F(2, 147) = 8.43, "
-        "p = .0003."
+        "A one-way ANOVA revealed a significant group effect, F(2, 147) = 8.43, p = .0003."
     )
     result = validate_partial_eta_squared_reporting(ms, cl)
     assert any(f.code == "missing-partial-eta-squared" for f in result.findings)
@@ -16797,9 +16672,7 @@ def test_anova_with_eta_squared_no_fire() -> None:
 def test_no_anova_no_eta_fire() -> None:
     from manuscript_audit.validators.core import validate_partial_eta_squared_reporting
 
-    ms, cl = _anova_eta_ms(
-        "A Spearman correlation was computed between the two variables."
-    )
+    ms, cl = _anova_eta_ms("A Spearman correlation was computed between the two variables.")
     result = validate_partial_eta_squared_reporting(ms, cl)
     assert result.findings == []
 
@@ -16822,6 +16695,7 @@ def test_anova_eta_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 293 – validate_cohens_d_reporting
 # ---------------------------------------------------------------------------
+
 
 def _cohens_d_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16866,9 +16740,7 @@ def test_ttest_with_cohens_d_no_fire() -> None:
 def test_no_ttest_no_cohens_d_fire() -> None:
     from manuscript_audit.validators.core import validate_cohens_d_reporting
 
-    ms, cl = _cohens_d_ms(
-        "A logistic regression was used to predict binary outcomes."
-    )
+    ms, cl = _cohens_d_ms("A logistic regression was used to predict binary outcomes.")
     result = validate_cohens_d_reporting(ms, cl)
     assert result.findings == []
 
@@ -16891,6 +16763,7 @@ def test_cohens_d_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 294 – validate_sequential_testing_correction
 # ---------------------------------------------------------------------------
+
 
 def _sequential_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16918,9 +16791,7 @@ def test_interim_analysis_without_alpha_spending_fires() -> None:
         "monitoring committee reviewed results at each stage."
     )
     result = validate_sequential_testing_correction(ms, cl)
-    assert any(
-        f.code == "missing-sequential-testing-correction" for f in result.findings
-    )
+    assert any(f.code == "missing-sequential-testing-correction" for f in result.findings)
 
 
 def test_interim_analysis_with_alpha_spending_no_fire() -> None:
@@ -16937,9 +16808,7 @@ def test_interim_analysis_with_alpha_spending_no_fire() -> None:
 def test_no_interim_analysis_no_fire() -> None:
     from manuscript_audit.validators.core import validate_sequential_testing_correction
 
-    ms, cl = _sequential_ms(
-        "A single analysis was conducted after all data were collected."
-    )
+    ms, cl = _sequential_ms("A single analysis was conducted after all data were collected.")
     result = validate_sequential_testing_correction(ms, cl)
     assert result.findings == []
 
@@ -16962,6 +16831,7 @@ def test_sequential_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 295 – validate_adaptive_design_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _adaptive_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -16989,9 +16859,7 @@ def test_adaptive_trial_without_disclosure_fires() -> None:
         "midpoint of the trial based on observed effect sizes."
     )
     result = validate_adaptive_design_disclosure(ms, cl)
-    assert any(
-        f.code == "missing-adaptive-design-disclosure" for f in result.findings
-    )
+    assert any(f.code == "missing-adaptive-design-disclosure" for f in result.findings)
 
 
 def test_adaptive_trial_with_disclosure_no_fire() -> None:
@@ -17034,6 +16902,7 @@ def test_adaptive_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 296 – validate_kaplan_meier_censoring_note
 # ---------------------------------------------------------------------------
+
 
 def _km_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17079,9 +16948,7 @@ def test_km_with_censoring_note_no_fire() -> None:
 def test_km296_no_survival_analysis_no_fire() -> None:
     from manuscript_audit.validators.core import validate_kaplan_meier_censoring_note
 
-    ms, cl = _km_ms(
-        "We used logistic regression to predict treatment response at 12 weeks."
-    )
+    ms, cl = _km_ms("We used logistic regression to predict treatment response at 12 weeks.")
     result = validate_kaplan_meier_censoring_note(ms, cl)
     assert result.findings == []
 
@@ -17102,6 +16969,7 @@ def test_km_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 297 – validate_cox_proportional_hazards_assumption
 # ---------------------------------------------------------------------------
+
 
 def _cox_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17152,9 +17020,7 @@ def test_no_cox_model_no_fire() -> None:
         validate_cox_proportional_hazards_assumption,
     )
 
-    ms, cl = _cox_ms(
-        "A linear regression model was fitted to the continuous outcome."
-    )
+    ms, cl = _cox_ms("A linear regression model was fitted to the continuous outcome.")
     result = validate_cox_proportional_hazards_assumption(ms, cl)
     assert result.findings == []
 
@@ -17177,6 +17043,7 @@ def test_cox_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 298 – validate_competing_risks_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _competing_risk_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17221,9 +17088,7 @@ def test_tte_with_competing_risks_handled_no_fire() -> None:
 def test_no_tte_no_competing_fire() -> None:
     from manuscript_audit.validators.core import validate_competing_risks_disclosure
 
-    ms, cl = _competing_risk_ms(
-        "Binary outcomes were analysed with logistic regression."
-    )
+    ms, cl = _competing_risk_ms("Binary outcomes were analysed with logistic regression.")
     result = validate_competing_risks_disclosure(ms, cl)
     assert result.findings == []
 
@@ -17246,6 +17111,7 @@ def test_competing_risks_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 299 – validate_propensity_score_balance
 # ---------------------------------------------------------------------------
+
 
 def _propensity_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17291,9 +17157,7 @@ def test_propensity_with_balance_check_no_fire() -> None:
 def test_no_propensity_no_fire() -> None:
     from manuscript_audit.validators.core import validate_propensity_score_balance
 
-    ms, cl = _propensity_ms(
-        "Randomisation ensured group equivalence. No matching was required."
-    )
+    ms, cl = _propensity_ms("Randomisation ensured group equivalence. No matching was required.")
     result = validate_propensity_score_balance(ms, cl)
     assert result.findings == []
 
@@ -17316,6 +17180,7 @@ def test_propensity_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 300 – validate_instrumental_variable_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _iv_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17367,9 +17232,7 @@ def test_no_iv_method_no_fire() -> None:
         validate_instrumental_variable_disclosure,
     )
 
-    ms, cl = _iv_ms(
-        "We used ordinary least squares regression to estimate treatment effects."
-    )
+    ms, cl = _iv_ms("We used ordinary least squares regression to estimate treatment effects.")
     result = validate_instrumental_variable_disclosure(ms, cl)
     assert result.findings == []
 
@@ -17394,6 +17257,7 @@ def test_iv_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 301 – validate_multilevel_random_effects_justification
 # ---------------------------------------------------------------------------
+
 
 def _multilevel_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17423,9 +17287,7 @@ def test_multilevel_without_re_justification_fires() -> None:
         "of students within schools. Fixed effects were estimated."
     )
     result = validate_multilevel_random_effects_justification(ms, cl)
-    assert any(
-        f.code == "missing-random-effects-justification" for f in result.findings
-    )
+    assert any(f.code == "missing-random-effects-justification" for f in result.findings)
 
 
 def test_multilevel301_with_icc_no_fire() -> None:
@@ -17474,6 +17336,7 @@ def test_multilevel_re_non_empirical_no_fire() -> None:
 # Phase 302 – validate_cross_level_interaction_interpretation
 # ---------------------------------------------------------------------------
 
+
 def _cross_level_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -17502,10 +17365,7 @@ def test_cross_level_without_interpretation_fires() -> None:
         "autonomy (Level 1) and leadership style (Level 2)."
     )
     result = validate_cross_level_interaction_interpretation(ms, cl)
-    assert any(
-        f.code == "missing-cross-level-interaction-interpretation"
-        for f in result.findings
-    )
+    assert any(f.code == "missing-cross-level-interaction-interpretation" for f in result.findings)
 
 
 def test_cross_level_with_interpretation_no_fire() -> None:
@@ -17527,9 +17387,7 @@ def test_no_cross_level_interaction_no_fire() -> None:
         validate_cross_level_interaction_interpretation,
     )
 
-    ms, cl = _cross_level_ms(
-        "Main effects were examined with no interaction terms included."
-    )
+    ms, cl = _cross_level_ms("Main effects were examined with no interaction terms included.")
     result = validate_cross_level_interaction_interpretation(ms, cl)
     assert result.findings == []
 
@@ -17539,9 +17397,7 @@ def test_cross_level_non_empirical_no_fire() -> None:
         validate_cross_level_interaction_interpretation,
     )
 
-    ms, cl = _cross_level_ms(
-        "Cross-level interactions require random slopes to be estimated."
-    )
+    ms, cl = _cross_level_ms("Cross-level interactions require random slopes to be estimated.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -17554,6 +17410,7 @@ def test_cross_level_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 303 – validate_repeated_measures_sphericity
 # ---------------------------------------------------------------------------
+
 
 def _rm_anova_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17600,9 +17457,7 @@ def test_rm_anova_with_sphericity_check_no_fire() -> None:
 def test_no_rm_anova_no_sphericity_fire() -> None:
     from manuscript_audit.validators.core import validate_repeated_measures_sphericity
 
-    ms, cl = _rm_anova_ms(
-        "A between-subjects ANOVA was used to compare three conditions."
-    )
+    ms, cl = _rm_anova_ms("A between-subjects ANOVA was used to compare three conditions.")
     result = validate_repeated_measures_sphericity(ms, cl)
     assert result.findings == []
 
@@ -17610,9 +17465,7 @@ def test_no_rm_anova_no_sphericity_fire() -> None:
 def test_rm_sphericity_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_repeated_measures_sphericity
 
-    ms, cl = _rm_anova_ms(
-        "Sphericity is an assumption of repeated-measures ANOVA."
-    )
+    ms, cl = _rm_anova_ms("Sphericity is an assumption of repeated-measures ANOVA.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -17625,6 +17478,7 @@ def test_rm_sphericity_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 304 – validate_survey_sampling_weight
 # ---------------------------------------------------------------------------
+
 
 def _survey_weight_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17670,9 +17524,7 @@ def test_complex_survey_with_weights_no_fire() -> None:
 def test_no_complex_survey_no_fire() -> None:
     from manuscript_audit.validators.core import validate_survey_sampling_weight
 
-    ms, cl = _survey_weight_ms(
-        "Participants were recruited from two university campuses."
-    )
+    ms, cl = _survey_weight_ms("Participants were recruited from two university campuses.")
     result = validate_survey_sampling_weight(ms, cl)
     assert result.findings == []
 
@@ -17695,6 +17547,7 @@ def test_survey_weight_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 305 – validate_finite_population_correction
 # ---------------------------------------------------------------------------
+
 
 def _finite_pop_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17766,6 +17619,7 @@ def test_fpc_non_empirical_no_fire() -> None:
 # Phase 306 – validate_mcmc_convergence_reporting
 # ---------------------------------------------------------------------------
 
+
 def _mcmc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -17809,9 +17663,7 @@ def test_mcmc_with_rhat_no_fire() -> None:
 def test_no_mcmc_no_fire() -> None:
     from manuscript_audit.validators.core import validate_mcmc_convergence_reporting
 
-    ms, cl = _mcmc_ms(
-        "Frequentist regression with maximum likelihood estimation was used."
-    )
+    ms, cl = _mcmc_ms("Frequentist regression with maximum likelihood estimation was used.")
     result = validate_mcmc_convergence_reporting(ms, cl)
     assert result.findings == []
 
@@ -17832,6 +17684,7 @@ def test_mcmc_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 307 – validate_bayes_factor_interpretation
 # ---------------------------------------------------------------------------
+
 
 def _bf_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17876,9 +17729,7 @@ def test_bf_with_interpretation_no_fire() -> None:
 def test_no_bf_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bayes_factor_interpretation
 
-    ms, cl = _bf_ms(
-        "A frequentist t-test was conducted with a significance threshold of .05."
-    )
+    ms, cl = _bf_ms("A frequentist t-test was conducted with a significance threshold of .05.")
     result = validate_bayes_factor_interpretation(ms, cl)
     assert result.findings == []
 
@@ -17886,9 +17737,7 @@ def test_no_bf_no_fire() -> None:
 def test_bf_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bayes_factor_interpretation
 
-    ms, cl = _bf_ms(
-        "Bayes factors quantify the relative evidence for competing hypotheses."
-    )
+    ms, cl = _bf_ms("Bayes factors quantify the relative evidence for competing hypotheses.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -17901,6 +17750,7 @@ def test_bf_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 308 – validate_waic_looic_reporting
 # ---------------------------------------------------------------------------
+
 
 def _waic_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17945,9 +17795,7 @@ def test_loo_with_values_no_fire() -> None:
 def test_no_loo_no_fire() -> None:
     from manuscript_audit.validators.core import validate_waic_looic_reporting
 
-    ms, cl = _waic_ms(
-        "We used AIC and BIC for model comparison in a frequentist framework."
-    )
+    ms, cl = _waic_ms("We used AIC and BIC for model comparison in a frequentist framework.")
     result = validate_waic_looic_reporting(ms, cl)
     assert result.findings == []
 
@@ -17968,6 +17816,7 @@ def test_waic_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 309 – validate_informative_prior_justification
 # ---------------------------------------------------------------------------
+
 
 def _inf_prior_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -17997,9 +17846,7 @@ def test_informative_prior_without_justification_fires() -> None:
         "parameter based on our theoretical expectations."
     )
     result = validate_informative_prior_justification(ms, cl)
-    assert any(
-        f.code == "missing-informative-prior-justification" for f in result.findings
-    )
+    assert any(f.code == "missing-informative-prior-justification" for f in result.findings)
 
 
 def test_informative_prior_with_justification_no_fire() -> None:
@@ -18021,9 +17868,7 @@ def test_no_informative_prior_no_fire() -> None:
         validate_informative_prior_justification,
     )
 
-    ms, cl = _inf_prior_ms(
-        "We used standard weakly informative priors throughout the analysis."
-    )
+    ms, cl = _inf_prior_ms("We used standard weakly informative priors throughout the analysis.")
     result = validate_informative_prior_justification(ms, cl)
     assert result.findings == []
 
@@ -18033,9 +17878,7 @@ def test_inf_prior_non_empirical_no_fire() -> None:
         validate_informative_prior_justification,
     )
 
-    ms, cl = _inf_prior_ms(
-        "Informative priors encode prior beliefs about parameter distributions."
-    )
+    ms, cl = _inf_prior_ms("Informative priors encode prior beliefs about parameter distributions.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18048,6 +17891,7 @@ def test_inf_prior_non_empirical_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 310 – validate_posterior_predictive_check
 # ---------------------------------------------------------------------------
+
 
 def _ppc_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18092,9 +17936,7 @@ def test_bayesian_model_with_ppc_no_fire() -> None:
 def test_no_bayesian_model_no_ppc_fire() -> None:
     from manuscript_audit.validators.core import validate_posterior_predictive_check
 
-    ms, cl = _ppc_ms(
-        "We used frequentist logistic regression with bootstrap confidence intervals."
-    )
+    ms, cl = _ppc_ms("We used frequentist logistic regression with bootstrap confidence intervals.")
     result = validate_posterior_predictive_check(ms, cl)
     assert result.findings == []
 
@@ -18102,9 +17944,7 @@ def test_no_bayesian_model_no_ppc_fire() -> None:
 def test_ppc_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_posterior_predictive_check
 
-    ms, cl = _ppc_ms(
-        "Posterior predictive checks assess model fit using replicated datasets."
-    )
+    ms, cl = _ppc_ms("Posterior predictive checks assess model fit using replicated datasets.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18114,11 +17954,10 @@ def test_ppc_non_empirical_no_fire() -> None:
     assert result.findings == []
 
 
-
-
 # ---------------------------------------------------------------------------
 # Phase 311 – validate_train_test_split_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _ml311_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18141,9 +17980,7 @@ def _ml311_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ml_model_without_split_fires() -> None:
     from manuscript_audit.validators.core import validate_train_test_split_disclosure
 
-    ms, cl = _ml311_ms(
-        "We trained a random forest classifier on the dataset."
-    )
+    ms, cl = _ml311_ms("We trained a random forest classifier on the dataset.")
     result = validate_train_test_split_disclosure(ms, cl)
     assert any(f.code == "missing-train-test-split" for f in result.findings)
 
@@ -18162,9 +17999,7 @@ def test_ml_model_with_split_no_fire() -> None:
 def test_train_test_split_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_train_test_split_disclosure
 
-    ms, cl = _ml311_ms(
-        "We trained a random forest classifier on the dataset."
-    )
+    ms, cl = _ml311_ms("We trained a random forest classifier on the dataset.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
     )
@@ -18175,9 +18010,7 @@ def test_train_test_split_non_empirical_no_fire() -> None:
 def test_no_ml_model_train_test_no_fire() -> None:
     from manuscript_audit.validators.core import validate_train_test_split_disclosure
 
-    ms, cl = _ml311_ms(
-        "We conducted a survey of 200 participants using a Likert scale."
-    )
+    ms, cl = _ml311_ms("We conducted a survey of 200 participants using a Likert scale.")
     result = validate_train_test_split_disclosure(ms, cl)
     assert result.findings == []
 
@@ -18185,6 +18018,7 @@ def test_no_ml_model_train_test_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 312 – validate_hyperparameter_tuning_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _hp312_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18207,13 +18041,9 @@ def _hp312_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_hyperparameter_without_tuning_fires() -> None:
     from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
 
-    ms, cl = _hp312_ms(
-        "The learning rate was set to 0.01 and the number of trees was 500."
-    )
+    ms, cl = _hp312_ms("The learning rate was set to 0.01 and the number of trees was 500.")
     result = validate_hyperparameter_tuning_disclosure(ms, cl)
-    assert any(
-        f.code == "missing-hyperparameter-tuning-disclosure" for f in result.findings
-    )
+    assert any(f.code == "missing-hyperparameter-tuning-disclosure" for f in result.findings)
 
 
 def test_hyperparameter_with_tuning_no_fire() -> None:
@@ -18230,9 +18060,7 @@ def test_hyperparameter_with_tuning_no_fire() -> None:
 def test_hyperparameter_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
 
-    ms, cl = _hp312_ms(
-        "The learning rate was set to 0.01 and the number of trees was 500."
-    )
+    ms, cl = _hp312_ms("The learning rate was set to 0.01 and the number of trees was 500.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
     )
@@ -18243,9 +18071,7 @@ def test_hyperparameter_non_empirical_no_fire() -> None:
 def test_no_hyperparameter_no_fire() -> None:
     from manuscript_audit.validators.core import validate_hyperparameter_tuning_disclosure
 
-    ms, cl = _hp312_ms(
-        "Participants completed a questionnaire and data were analysed with ANOVA."
-    )
+    ms, cl = _hp312_ms("Participants completed a questionnaire and data were analysed with ANOVA.")
     result = validate_hyperparameter_tuning_disclosure(ms, cl)
     assert result.findings == []
 
@@ -18253,6 +18079,7 @@ def test_no_hyperparameter_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 313 – validate_feature_importance_method
 # ---------------------------------------------------------------------------
+
 
 def _fi313_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18286,8 +18113,7 @@ def test_feature_importance_with_shap_no_fire() -> None:
     from manuscript_audit.validators.core import validate_feature_importance_method
 
     ms, cl = _fi313_ms(
-        "Feature importance was calculated using SHAP values. Age was the most "
-        "important predictor."
+        "Feature importance was calculated using SHAP values. Age was the most important predictor."
     )
     result = validate_feature_importance_method(ms, cl)
     assert result.findings == []
@@ -18309,9 +18135,7 @@ def test_feature_importance_non_empirical_no_fire() -> None:
 def test_no_feature_importance_claim_no_fire() -> None:
     from manuscript_audit.validators.core import validate_feature_importance_method
 
-    ms, cl = _fi313_ms(
-        "We used logistic regression to predict outcomes in the study cohort."
-    )
+    ms, cl = _fi313_ms("We used logistic regression to predict outcomes in the study cohort.")
     result = validate_feature_importance_method(ms, cl)
     assert result.findings == []
 
@@ -18319,6 +18143,7 @@ def test_no_feature_importance_claim_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 314 – validate_data_leakage_prevention
 # ---------------------------------------------------------------------------
+
 
 def _dl314_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18363,9 +18188,7 @@ def test_preprocessing_with_leakage_prevention_no_fire() -> None:
 def test_leakage_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_data_leakage_prevention
 
-    ms, cl = _dl314_ms(
-        "Features were normalized before model training."
-    )
+    ms, cl = _dl314_ms("Features were normalized before model training.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
     )
@@ -18386,6 +18209,7 @@ def test_no_preprocessing_no_fire_leakage() -> None:
 # ---------------------------------------------------------------------------
 # Phase 315 – validate_ml_uncertainty_quantification
 # ---------------------------------------------------------------------------
+
 
 def _mluq315_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18408,9 +18232,7 @@ def _mluq315_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ml_model_without_uncertainty_fires() -> None:
     from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
 
-    ms, cl = _mluq315_ms(
-        "The neural network achieved 92% accuracy on the test set."
-    )
+    ms, cl = _mluq315_ms("The neural network achieved 92% accuracy on the test set.")
     result = validate_ml_uncertainty_quantification(ms, cl)
     assert any(f.code == "missing-ml-uncertainty" for f in result.findings)
 
@@ -18429,9 +18251,7 @@ def test_ml_model_with_confidence_interval_no_fire() -> None:
 def test_ml_uncertainty_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
 
-    ms, cl = _mluq315_ms(
-        "The neural network achieved 92% accuracy on the test set."
-    )
+    ms, cl = _mluq315_ms("The neural network achieved 92% accuracy on the test set.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory", paper_type="math_theory_paper", recommended_stack="minimal"
     )
@@ -18442,9 +18262,7 @@ def test_ml_uncertainty_non_empirical_no_fire() -> None:
 def test_no_ml_prediction_no_fire_uncertainty() -> None:
     from manuscript_audit.validators.core import validate_ml_uncertainty_quantification
 
-    ms, cl = _mluq315_ms(
-        "Participants rated their satisfaction on a 5-point Likert scale."
-    )
+    ms, cl = _mluq315_ms("Participants rated their satisfaction on a 5-point Likert scale.")
     result = validate_ml_uncertainty_quantification(ms, cl)
     assert result.findings == []
 
@@ -18452,6 +18270,7 @@ def test_no_ml_prediction_no_fire_uncertainty() -> None:
 # ---------------------------------------------------------------------------
 # Phase 316 – validate_class_imbalance_handling
 # ---------------------------------------------------------------------------
+
 
 def _ci316_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18496,9 +18315,7 @@ def test_class_imbalance_with_smote_no_fire() -> None:
 def test_class_imbalance_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_class_imbalance_handling
 
-    ms, cl = _ci316_ms(
-        "The dataset exhibited class imbalance with a 10:1 class ratio."
-    )
+    ms, cl = _ci316_ms("The dataset exhibited class imbalance with a 10:1 class ratio.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18511,9 +18328,7 @@ def test_class_imbalance_non_empirical_no_fire() -> None:
 def test_no_class_imbalance_no_fire() -> None:
     from manuscript_audit.validators.core import validate_class_imbalance_handling
 
-    ms, cl = _ci316_ms(
-        "We conducted a randomised controlled trial with balanced assignment."
-    )
+    ms, cl = _ci316_ms("We conducted a randomised controlled trial with balanced assignment.")
     result = validate_class_imbalance_handling(ms, cl)
     assert result.findings == []
 
@@ -18521,6 +18336,7 @@ def test_no_class_imbalance_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 317 – validate_model_calibration_reporting
 # ---------------------------------------------------------------------------
+
 
 def _cal317_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18565,9 +18381,7 @@ def test_probabilistic_model_with_brier_no_fire() -> None:
 def test_calibration_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_model_calibration_reporting
 
-    ms, cl = _cal317_ms(
-        "We used logistic regression to produce probability estimates."
-    )
+    ms, cl = _cal317_ms("We used logistic regression to produce probability estimates.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18580,9 +18394,7 @@ def test_calibration_non_empirical_no_fire() -> None:
 def test_no_probabilistic_model_no_fire_calibration() -> None:
     from manuscript_audit.validators.core import validate_model_calibration_reporting
 
-    ms, cl = _cal317_ms(
-        "We computed descriptive statistics and conducted between-group t-tests."
-    )
+    ms, cl = _cal317_ms("We computed descriptive statistics and conducted between-group t-tests.")
     result = validate_model_calibration_reporting(ms, cl)
     assert result.findings == []
 
@@ -18590,6 +18402,7 @@ def test_no_probabilistic_model_no_fire_calibration() -> None:
 # ---------------------------------------------------------------------------
 # Phase 318 – validate_fairness_metric_reporting
 # ---------------------------------------------------------------------------
+
 
 def _fair318_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18634,9 +18447,7 @@ def test_sensitive_attribute_with_fairness_metric_no_fire() -> None:
 def test_fairness_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_fairness_metric_reporting
 
-    ms, cl = _fair318_ms(
-        "The classifier uses racial and gender attributes as predictors."
-    )
+    ms, cl = _fair318_ms("The classifier uses racial and gender attributes as predictors.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18649,9 +18460,7 @@ def test_fairness_non_empirical_no_fire() -> None:
 def test_no_sensitive_attribute_no_fire_fairness() -> None:
     from manuscript_audit.validators.core import validate_fairness_metric_reporting
 
-    ms, cl = _fair318_ms(
-        "We trained a regression model to predict test scores from prior grades."
-    )
+    ms, cl = _fair318_ms("We trained a regression model to predict test scores from prior grades.")
     result = validate_fairness_metric_reporting(ms, cl)
     assert result.findings == []
 
@@ -18659,6 +18468,7 @@ def test_no_sensitive_attribute_no_fire_fairness() -> None:
 # ---------------------------------------------------------------------------
 # Phase 319 – validate_transfer_learning_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _tl319_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18681,13 +18491,9 @@ def _tl319_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_transfer_learning_without_disclosure_fires() -> None:
     from manuscript_audit.validators.core import validate_transfer_learning_disclosure
 
-    ms, cl = _tl319_ms(
-        "We fine-tuned BERT for the sentiment classification task."
-    )
+    ms, cl = _tl319_ms("We fine-tuned BERT for the sentiment classification task.")
     result = validate_transfer_learning_disclosure(ms, cl)
-    assert any(
-        f.code == "missing-transfer-learning-disclosure" for f in result.findings
-    )
+    assert any(f.code == "missing-transfer-learning-disclosure" for f in result.findings)
 
 
 def test_transfer_learning_with_disclosure_no_fire() -> None:
@@ -18705,9 +18511,7 @@ def test_transfer_learning_with_disclosure_no_fire() -> None:
 def test_transfer_learning_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_transfer_learning_disclosure
 
-    ms, cl = _tl319_ms(
-        "We fine-tuned BERT for the sentiment classification task."
-    )
+    ms, cl = _tl319_ms("We fine-tuned BERT for the sentiment classification task.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18720,9 +18524,7 @@ def test_transfer_learning_non_empirical_no_fire() -> None:
 def test_no_transfer_learning_no_fire() -> None:
     from manuscript_audit.validators.core import validate_transfer_learning_disclosure
 
-    ms, cl = _tl319_ms(
-        "We trained a logistic regression model from scratch on the collected data."
-    )
+    ms, cl = _tl319_ms("We trained a logistic regression model from scratch on the collected data.")
     result = validate_transfer_learning_disclosure(ms, cl)
     assert result.findings == []
 
@@ -18730,6 +18532,7 @@ def test_no_transfer_learning_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 320 – validate_cross_validation_strategy
 # ---------------------------------------------------------------------------
+
 
 def _cv320_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18752,9 +18555,7 @@ def _cv320_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_cv_without_strategy_fires() -> None:
     from manuscript_audit.validators.core import validate_cross_validation_strategy
 
-    ms, cl = _cv320_ms(
-        "Model performance was evaluated using cross-validation accuracy."
-    )
+    ms, cl = _cv320_ms("Model performance was evaluated using cross-validation accuracy.")
     result = validate_cross_validation_strategy(ms, cl)
     assert any(f.code == "missing-cv-strategy" for f in result.findings)
 
@@ -18762,9 +18563,7 @@ def test_cv_without_strategy_fires() -> None:
 def test_cv_with_strategy_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cross_validation_strategy
 
-    ms, cl = _cv320_ms(
-        "Model performance was evaluated using stratified 5-fold cross-validation."
-    )
+    ms, cl = _cv320_ms("Model performance was evaluated using stratified 5-fold cross-validation.")
     result = validate_cross_validation_strategy(ms, cl)
     assert result.findings == []
 
@@ -18772,9 +18571,7 @@ def test_cv_with_strategy_no_fire() -> None:
 def test_cv_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cross_validation_strategy
 
-    ms, cl = _cv320_ms(
-        "Model performance was evaluated using cross-validation accuracy."
-    )
+    ms, cl = _cv320_ms("Model performance was evaluated using cross-validation accuracy.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18787,9 +18584,7 @@ def test_cv_non_empirical_no_fire() -> None:
 def test_no_cv_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cross_validation_strategy
 
-    ms, cl = _cv320_ms(
-        "We conducted a between-subjects ANOVA on the collected survey data."
-    )
+    ms, cl = _cv320_ms("We conducted a between-subjects ANOVA on the collected survey data.")
     result = validate_cross_validation_strategy(ms, cl)
     assert result.findings == []
 
@@ -18797,6 +18592,7 @@ def test_no_cv_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 321 – validate_text_preprocessing_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _tp321_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18819,13 +18615,9 @@ def _tp321_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_nlp_without_preprocessing_fires() -> None:
     from manuscript_audit.validators.core import validate_text_preprocessing_disclosure
 
-    ms, cl = _tp321_ms(
-        "We applied TF-IDF to the corpus of 5000 documents for text classification."
-    )
+    ms, cl = _tp321_ms("We applied TF-IDF to the corpus of 5000 documents for text classification.")
     result = validate_text_preprocessing_disclosure(ms, cl)
-    assert any(
-        f.code == "missing-text-preprocessing-disclosure" for f in result.findings
-    )
+    assert any(f.code == "missing-text-preprocessing-disclosure" for f in result.findings)
 
 
 def test_nlp_with_preprocessing_no_fire() -> None:
@@ -18855,9 +18647,7 @@ def test_text_preprocessing_non_empirical_no_fire() -> None:
 def test_no_text_analysis_no_fire_tp321() -> None:
     from manuscript_audit.validators.core import validate_text_preprocessing_disclosure
 
-    ms, cl = _tp321_ms(
-        "Participants completed a questionnaire measuring depression symptoms."
-    )
+    ms, cl = _tp321_ms("Participants completed a questionnaire measuring depression symptoms.")
     result = validate_text_preprocessing_disclosure(ms, cl)
     assert result.findings == []
 
@@ -18865,6 +18655,7 @@ def test_no_text_analysis_no_fire_tp321() -> None:
 # ---------------------------------------------------------------------------
 # Phase 323 – validate_topic_model_parameter_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _tm323_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18887,9 +18678,7 @@ def _tm323_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_lda_without_params_fires() -> None:
     from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
 
-    ms, cl = _tm323_ms(
-        "We applied latent Dirichlet allocation to identify themes in the corpus."
-    )
+    ms, cl = _tm323_ms("We applied latent Dirichlet allocation to identify themes in the corpus.")
     result = validate_topic_model_parameter_disclosure(ms, cl)
     assert any(f.code == "missing-topic-model-parameters" for f in result.findings)
 
@@ -18897,9 +18686,7 @@ def test_lda_without_params_fires() -> None:
 def test_lda_with_topic_count_no_fire() -> None:
     from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
 
-    ms, cl = _tm323_ms(
-        "We applied LDA with 20 topics selected based on topic coherence scores."
-    )
+    ms, cl = _tm323_ms("We applied LDA with 20 topics selected based on topic coherence scores.")
     result = validate_topic_model_parameter_disclosure(ms, cl)
     assert result.findings == []
 
@@ -18920,9 +18707,7 @@ def test_topic_model_non_empirical_no_fire() -> None:
 def test_no_topic_model_no_fire() -> None:
     from manuscript_audit.validators.core import validate_topic_model_parameter_disclosure
 
-    ms, cl = _tm323_ms(
-        "We used structural equation modelling to test hypothesised pathways."
-    )
+    ms, cl = _tm323_ms("We used structural equation modelling to test hypothesised pathways.")
     result = validate_topic_model_parameter_disclosure(ms, cl)
     assert result.findings == []
 
@@ -18930,6 +18715,7 @@ def test_no_topic_model_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 324 – validate_inter_annotator_agreement
 # ---------------------------------------------------------------------------
+
 
 def _iaa324_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -18952,9 +18738,7 @@ def _iaa324_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_annotation_without_iaa_fires() -> None:
     from manuscript_audit.validators.core import validate_inter_annotator_agreement
 
-    ms, cl = _iaa324_ms(
-        "Two independent coders manually annotated 500 tweets for sentiment."
-    )
+    ms, cl = _iaa324_ms("Two independent coders manually annotated 500 tweets for sentiment.")
     result = validate_inter_annotator_agreement(ms, cl)
     assert any(f.code == "missing-inter-annotator-agreement" for f in result.findings)
 
@@ -18973,9 +18757,7 @@ def test_annotation_with_kappa_no_fire() -> None:
 def test_iaa_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_inter_annotator_agreement
 
-    ms, cl = _iaa324_ms(
-        "Two independent coders manually annotated 500 documents."
-    )
+    ms, cl = _iaa324_ms("Two independent coders manually annotated 500 documents.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -18988,9 +18770,7 @@ def test_iaa_non_empirical_no_fire() -> None:
 def test_no_annotation_no_fire_iaa() -> None:
     from manuscript_audit.validators.core import validate_inter_annotator_agreement
 
-    ms, cl = _iaa324_ms(
-        "We trained a random forest to classify images from the dataset."
-    )
+    ms, cl = _iaa324_ms("We trained a random forest to classify images from the dataset.")
     result = validate_inter_annotator_agreement(ms, cl)
     assert result.findings == []
 
@@ -18998,6 +18778,7 @@ def test_no_annotation_no_fire_iaa() -> None:
 # ---------------------------------------------------------------------------
 # Phase 336 – validate_strobe_observational_reporting
 # ---------------------------------------------------------------------------
+
 
 def _strobe336_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19020,9 +18801,7 @@ def _strobe336_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification
 def test_cohort_without_strobe_elements_fires() -> None:
     from manuscript_audit.validators.core import validate_strobe_observational_reporting
 
-    ms, cl = _strobe336_ms(
-        "We conducted a prospective cohort study of 1000 adults over 5 years."
-    )
+    ms, cl = _strobe336_ms("We conducted a prospective cohort study of 1000 adults over 5 years.")
     result = validate_strobe_observational_reporting(ms, cl)
     assert any(f.code == "missing-strobe-elements" for f in result.findings)
 
@@ -19043,9 +18822,7 @@ def test_cohort_with_eligibility_criteria_no_fire() -> None:
 def test_strobe_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_strobe_observational_reporting
 
-    ms, cl = _strobe336_ms(
-        "We conducted a prospective cohort study of 1000 adults."
-    )
+    ms, cl = _strobe336_ms("We conducted a prospective cohort study of 1000 adults.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -19058,9 +18835,7 @@ def test_strobe_non_empirical_no_fire() -> None:
 def test_no_observational_study_no_fire_strobe() -> None:
     from manuscript_audit.validators.core import validate_strobe_observational_reporting
 
-    ms, cl = _strobe336_ms(
-        "We conducted a randomised controlled trial comparing two treatments."
-    )
+    ms, cl = _strobe336_ms("We conducted a randomised controlled trial comparing two treatments.")
     result = validate_strobe_observational_reporting(ms, cl)
     assert result.findings == []
 
@@ -19068,6 +18843,7 @@ def test_no_observational_study_no_fire_strobe() -> None:
 # ---------------------------------------------------------------------------
 # Phase 337 – validate_selection_bias_discussion
 # ---------------------------------------------------------------------------
+
 
 def _sb337_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19090,9 +18866,7 @@ def _sb337_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_low_response_rate_without_bias_discussion_fires() -> None:
     from manuscript_audit.validators.core import validate_selection_bias_discussion
 
-    ms, cl = _sb337_ms(
-        "Questionnaires were sent to 2000 participants. Response rate was 42%."
-    )
+    ms, cl = _sb337_ms("Questionnaires were sent to 2000 participants. Response rate was 42%.")
     result = validate_selection_bias_discussion(ms, cl)
     assert any(f.code == "missing-selection-bias-discussion" for f in result.findings)
 
@@ -19124,9 +18898,7 @@ def test_selection_bias_non_empirical_no_fire() -> None:
 def test_no_selection_bias_context_no_fire() -> None:
     from manuscript_audit.validators.core import validate_selection_bias_discussion
 
-    ms, cl = _sb337_ms(
-        "All 150 eligible patients were enrolled and completed the study protocol."
-    )
+    ms, cl = _sb337_ms("All 150 eligible patients were enrolled and completed the study protocol.")
     result = validate_selection_bias_discussion(ms, cl)
     assert result.findings == []
 
@@ -19134,6 +18906,7 @@ def test_no_selection_bias_context_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 338 – validate_information_bias_discussion
 # ---------------------------------------------------------------------------
+
 
 def _ib338_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19156,9 +18929,7 @@ def _ib338_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_self_report_without_bias_discussion_fires() -> None:
     from manuscript_audit.validators.core import validate_information_bias_discussion
 
-    ms, cl = _ib338_ms(
-        "Dietary intake was assessed using self-reported 24-hour dietary recall."
-    )
+    ms, cl = _ib338_ms("Dietary intake was assessed using self-reported 24-hour dietary recall.")
     result = validate_information_bias_discussion(ms, cl)
     assert any(f.code == "missing-information-bias-discussion" for f in result.findings)
 
@@ -19190,9 +18961,7 @@ def test_information_bias_non_empirical_no_fire() -> None:
 def test_no_self_report_no_fire_ib338() -> None:
     from manuscript_audit.validators.core import validate_information_bias_discussion
 
-    ms, cl = _ib338_ms(
-        "Blood pressure was measured by trained nurses using calibrated equipment."
-    )
+    ms, cl = _ib338_ms("Blood pressure was measured by trained nurses using calibrated equipment.")
     result = validate_information_bias_discussion(ms, cl)
     assert result.findings == []
 
@@ -19200,6 +18969,7 @@ def test_no_self_report_no_fire_ib338() -> None:
 # ---------------------------------------------------------------------------
 # Phase 340 – validate_follow_up_rate_reporting
 # ---------------------------------------------------------------------------
+
 
 def _fu340_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19222,9 +18992,7 @@ def _fu340_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_longitudinal_without_follow_up_rate_fires() -> None:
     from manuscript_audit.validators.core import validate_follow_up_rate_reporting
 
-    ms, cl = _fu340_ms(
-        "Participants completed follow-up assessments at 6 and 12 months."
-    )
+    ms, cl = _fu340_ms("Participants completed follow-up assessments at 6 and 12 months.")
     result = validate_follow_up_rate_reporting(ms, cl)
     assert any(f.code == "missing-follow-up-rate" for f in result.findings)
 
@@ -19266,6 +19034,7 @@ def test_no_follow_up_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 346 – validate_measurement_invariance_testing
 # ---------------------------------------------------------------------------
+
 
 def _mi346_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19323,9 +19092,7 @@ def test_invariance_non_empirical_no_fire() -> None:
 def test_no_multigroup_comparison_no_fire() -> None:
     from manuscript_audit.validators.core import validate_measurement_invariance_testing
 
-    ms, cl = _mi346_ms(
-        "We used simple linear regression to predict depression scores from age."
-    )
+    ms, cl = _mi346_ms("We used simple linear regression to predict depression scores from age.")
     result = validate_measurement_invariance_testing(ms, cl)
     assert result.findings == []
 
@@ -19333,6 +19100,7 @@ def test_no_multigroup_comparison_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 347 – validate_convergent_discriminant_validity
 # ---------------------------------------------------------------------------
+
 
 def _cdv347_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19355,13 +19123,9 @@ def _cdv347_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_new_scale_without_validity_fires() -> None:
     from manuscript_audit.validators.core import validate_convergent_discriminant_validity
 
-    ms, cl = _cdv347_ms(
-        "We developed a novel questionnaire measuring academic motivation."
-    )
+    ms, cl = _cdv347_ms("We developed a novel questionnaire measuring academic motivation.")
     result = validate_convergent_discriminant_validity(ms, cl)
-    assert any(
-        f.code == "missing-convergent-discriminant-validity" for f in result.findings
-    )
+    assert any(f.code == "missing-convergent-discriminant-validity" for f in result.findings)
 
 
 def test_new_scale_with_ave_no_fire() -> None:
@@ -19391,9 +19155,7 @@ def test_validity_non_empirical_no_fire() -> None:
 def test_no_scale_development_no_fire() -> None:
     from manuscript_audit.validators.core import validate_convergent_discriminant_validity
 
-    ms, cl = _cdv347_ms(
-        "We used established measures with documented reliability and validity."
-    )
+    ms, cl = _cdv347_ms("We used established measures with documented reliability and validity.")
     result = validate_convergent_discriminant_validity(ms, cl)
     assert result.findings == []
 
@@ -19401,6 +19163,7 @@ def test_no_scale_development_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 348 – validate_irt_model_fit
 # ---------------------------------------------------------------------------
+
 
 def _irt348_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19423,9 +19186,7 @@ def _irt348_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_irt_without_fit_fires() -> None:
     from manuscript_audit.validators.core import validate_irt_model_fit
 
-    ms, cl = _irt348_ms(
-        "Item response theory analysis was conducted on the 20-item scale."
-    )
+    ms, cl = _irt348_ms("Item response theory analysis was conducted on the 20-item scale.")
     result = validate_irt_model_fit(ms, cl)
     assert any(f.code == "missing-irt-model-fit" for f in result.findings)
 
@@ -19457,9 +19218,7 @@ def test_irt_non_empirical_no_fire() -> None:
 def test_no_irt_no_fire() -> None:
     from manuscript_audit.validators.core import validate_irt_model_fit
 
-    ms, cl = _irt348_ms(
-        "We used exploratory factor analysis to investigate the factor structure."
-    )
+    ms, cl = _irt348_ms("We used exploratory factor analysis to investigate the factor structure.")
     result = validate_irt_model_fit(ms, cl)
     assert result.findings == []
 
@@ -19467,6 +19226,7 @@ def test_no_irt_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 349 – validate_test_retest_reliability
 # ---------------------------------------------------------------------------
+
 
 def _ttr349_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19511,9 +19271,7 @@ def test_test_retest_with_icc_no_fire() -> None:
 def test_test_retest_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_test_retest_reliability
 
-    ms, cl = _ttr349_ms(
-        "Test-retest reliability was assessed on two occasions two weeks apart."
-    )
+    ms, cl = _ttr349_ms("Test-retest reliability was assessed on two occasions two weeks apart.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -19526,9 +19284,7 @@ def test_test_retest_non_empirical_no_fire() -> None:
 def test_no_test_retest_no_fire() -> None:
     from manuscript_audit.validators.core import validate_test_retest_reliability
 
-    ms, cl = _ttr349_ms(
-        "We used structural equation modelling to test the hypothesised mediation."
-    )
+    ms, cl = _ttr349_ms("We used structural equation modelling to test the hypothesised mediation.")
     result = validate_test_retest_reliability(ms, cl)
     assert result.findings == []
 
@@ -19536,6 +19292,7 @@ def test_no_test_retest_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 356 – validate_mixed_methods_design_rationale
 # ---------------------------------------------------------------------------
+
 
 def _mmdr356_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19558,9 +19315,7 @@ def _mmdr356_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_mixed_methods_without_rationale_fires() -> None:
     from manuscript_audit.validators.core import validate_mixed_methods_design_rationale
 
-    ms, cl = _mmdr356_ms(
-        "We used an explanatory sequential mixed-methods design for this study."
-    )
+    ms, cl = _mmdr356_ms("We used an explanatory sequential mixed-methods design for this study.")
     result = validate_mixed_methods_design_rationale(ms, cl)
     assert any(f.code == "missing-mixed-methods-rationale" for f in result.findings)
 
@@ -19592,9 +19347,7 @@ def test_mixed_methods_rationale_non_empirical_no_fire() -> None:
 def test_no_mixed_methods_trigger_no_fire_rationale() -> None:
     from manuscript_audit.validators.core import validate_mixed_methods_design_rationale
 
-    ms, cl = _mmdr356_ms(
-        "We used a purely quantitative survey design with Likert items."
-    )
+    ms, cl = _mmdr356_ms("We used a purely quantitative survey design with Likert items.")
     result = validate_mixed_methods_design_rationale(ms, cl)
     assert result.findings == []
 
@@ -19602,6 +19355,7 @@ def test_no_mixed_methods_trigger_no_fire_rationale() -> None:
 # ---------------------------------------------------------------------------
 # Phase 357 – validate_simulation_parameter_justification
 # ---------------------------------------------------------------------------
+
 
 def _spj357_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19658,9 +19412,7 @@ def test_simulation_param_non_empirical_no_fire() -> None:
 def test_no_simulation_trigger_no_fire_params() -> None:
     from manuscript_audit.validators.core import validate_simulation_parameter_justification
 
-    ms, cl = _spj357_ms(
-        "We used maximum likelihood estimation to fit the model."
-    )
+    ms, cl = _spj357_ms("We used maximum likelihood estimation to fit the model.")
     result = validate_simulation_parameter_justification(ms, cl)
     assert result.findings == []
 
@@ -19668,6 +19420,7 @@ def test_no_simulation_trigger_no_fire_params() -> None:
 # ---------------------------------------------------------------------------
 # Phase 358 – validate_bootstrap_sample_size
 # ---------------------------------------------------------------------------
+
 
 def _bss358_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19701,8 +19454,7 @@ def test_bootstrap_with_sample_size_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bootstrap_sample_size
 
     ms, cl = _bss358_ms(
-        "Bootstrapping was used with 10,000 bootstrap samples to estimate "
-        "95% confidence intervals."
+        "Bootstrapping was used with 10,000 bootstrap samples to estimate 95% confidence intervals."
     )
     result = validate_bootstrap_sample_size(ms, cl)
     assert result.findings == []
@@ -19724,9 +19476,7 @@ def test_bootstrap_non_empirical_no_fire() -> None:
 def test_no_bootstrap_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bootstrap_sample_size
 
-    ms, cl = _bss358_ms(
-        "We used Bayesian credible intervals estimated via posterior samples."
-    )
+    ms, cl = _bss358_ms("We used Bayesian credible intervals estimated via posterior samples.")
     result = validate_bootstrap_sample_size(ms, cl)
     assert result.findings == []
 
@@ -19734,6 +19484,7 @@ def test_no_bootstrap_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 359 – validate_monte_carlo_replications
 # ---------------------------------------------------------------------------
+
 
 def _mcr359_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19756,9 +19507,7 @@ def _mcr359_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_monte_carlo_without_replications_fires() -> None:
     from manuscript_audit.validators.core import validate_monte_carlo_replications
 
-    ms, cl = _mcr359_ms(
-        "Monte Carlo simulation was used to evaluate the estimator's performance."
-    )
+    ms, cl = _mcr359_ms("Monte Carlo simulation was used to evaluate the estimator's performance.")
     result = validate_monte_carlo_replications(ms, cl)
     assert any(f.code == "missing-monte-carlo-replications" for f in result.findings)
 
@@ -19790,9 +19539,7 @@ def test_monte_carlo_non_empirical_no_fire() -> None:
 def test_no_monte_carlo_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_monte_carlo_replications
 
-    ms, cl = _mcr359_ms(
-        "We estimated parameters using ordinary least squares regression."
-    )
+    ms, cl = _mcr359_ms("We estimated parameters using ordinary least squares regression.")
     result = validate_monte_carlo_replications(ms, cl)
     assert result.findings == []
 
@@ -19800,6 +19547,7 @@ def test_no_monte_carlo_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 360 – validate_agent_based_model_validation
 # ---------------------------------------------------------------------------
+
 
 def _abm360_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19856,9 +19604,7 @@ def test_abm_non_empirical_no_fire() -> None:
 def test_no_abm_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_agent_based_model_validation
 
-    ms, cl = _abm360_ms(
-        "We used a compartmental SEIR model implemented in differential equations."
-    )
+    ms, cl = _abm360_ms("We used a compartmental SEIR model implemented in differential equations.")
     result = validate_agent_based_model_validation(ms, cl)
     assert result.findings == []
 
@@ -19866,6 +19612,7 @@ def test_no_abm_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 361 – validate_network_analysis_density_reporting
 # ---------------------------------------------------------------------------
+
 
 def _net361_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19888,9 +19635,7 @@ def _net361_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_network_analysis_without_density_fires() -> None:
     from manuscript_audit.validators.core import validate_network_analysis_density_reporting
 
-    ms, cl = _net361_ms(
-        "Social network analysis was conducted on the email communication network."
-    )
+    ms, cl = _net361_ms("Social network analysis was conducted on the email communication network.")
     result = validate_network_analysis_density_reporting(ms, cl)
     assert any(f.code == "missing-network-density" for f in result.findings)
 
@@ -19922,9 +19667,7 @@ def test_network_analysis_non_empirical_no_fire() -> None:
 def test_no_network_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_network_analysis_density_reporting
 
-    ms, cl = _net361_ms(
-        "We used hierarchical clustering to identify participant groups."
-    )
+    ms, cl = _net361_ms("We used hierarchical clustering to identify participant groups.")
     result = validate_network_analysis_density_reporting(ms, cl)
     assert result.findings == []
 
@@ -19932,6 +19675,7 @@ def test_no_network_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 362 – validate_spatial_autocorrelation_check
 # ---------------------------------------------------------------------------
+
 
 def _spa362_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -19988,9 +19732,7 @@ def test_spatial_non_empirical_no_fire() -> None:
 def test_no_spatial_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_spatial_autocorrelation_check
 
-    ms, cl = _spa362_ms(
-        "We used multilevel modelling with participants nested in schools."
-    )
+    ms, cl = _spa362_ms("We used multilevel modelling with participants nested in schools.")
     result = validate_spatial_autocorrelation_check(ms, cl)
     assert result.findings == []
 
@@ -19998,6 +19740,7 @@ def test_no_spatial_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 363 – validate_structural_break_test
 # ---------------------------------------------------------------------------
+
 
 def _sb363_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20054,9 +19797,7 @@ def test_structural_break_non_empirical_no_fire() -> None:
 def test_no_time_series_trigger_no_fire_break() -> None:
     from manuscript_audit.validators.core import validate_structural_break_test
 
-    ms, cl = _sb363_ms(
-        "We used logistic regression to predict binary health outcomes."
-    )
+    ms, cl = _sb363_ms("We used logistic regression to predict binary health outcomes.")
     result = validate_structural_break_test(ms, cl)
     assert result.findings == []
 
@@ -20064,6 +19805,7 @@ def test_no_time_series_trigger_no_fire_break() -> None:
 # ---------------------------------------------------------------------------
 # Phase 364 – validate_variance_inflation_factor_reporting
 # ---------------------------------------------------------------------------
+
 
 def _vif364_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20086,9 +19828,7 @@ def _vif364_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_multiple_regression_without_vif_fires() -> None:
     from manuscript_audit.validators.core import validate_variance_inflation_factor_reporting
 
-    ms, cl = _vif364_ms(
-        "Multiple regression analysis was conducted with five predictors."
-    )
+    ms, cl = _vif364_ms("Multiple regression analysis was conducted with five predictors.")
     result = validate_variance_inflation_factor_reporting(ms, cl)
     assert any(f.code == "missing-vif-reporting" for f in result.findings)
 
@@ -20130,6 +19870,7 @@ def test_no_regression_trigger_no_fire_vif() -> None:
 # ---------------------------------------------------------------------------
 # Phase 365 – validate_ordinal_regression_assumption
 # ---------------------------------------------------------------------------
+
 
 def _ord365_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20186,9 +19927,7 @@ def test_ordinal_regression_non_empirical_no_fire() -> None:
 def test_no_ordinal_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ordinal_regression_assumption
 
-    ms, cl = _ord365_ms(
-        "Binary logistic regression was used to predict the dichotomous outcome."
-    )
+    ms, cl = _ord365_ms("Binary logistic regression was used to predict the dichotomous outcome.")
     result = validate_ordinal_regression_assumption(ms, cl)
     assert result.findings == []
 
@@ -20196,6 +19935,7 @@ def test_no_ordinal_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 366 – validate_granger_causality_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _gra366_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20228,9 +19968,7 @@ def test_granger_without_lag_disclosure_fires() -> None:
 def test_granger_with_lag_no_fire() -> None:
     from manuscript_audit.validators.core import validate_granger_causality_disclosure
 
-    ms, cl = _gra366_ms(
-        "Granger causality tests were conducted with lag length selected by AIC."
-    )
+    ms, cl = _gra366_ms("Granger causality tests were conducted with lag length selected by AIC.")
     result = validate_granger_causality_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20251,9 +19989,7 @@ def test_granger_non_empirical_no_fire() -> None:
 def test_no_granger_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_granger_causality_disclosure
 
-    ms, cl = _gra366_ms(
-        "We used Pearson correlations to examine pairwise relationships."
-    )
+    ms, cl = _gra366_ms("We used Pearson correlations to examine pairwise relationships.")
     result = validate_granger_causality_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20261,6 +19997,7 @@ def test_no_granger_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 367 – validate_cointegration_test_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _coi367_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20317,9 +20054,7 @@ def test_cointegration_non_empirical_no_fire() -> None:
 def test_no_cointegration_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cointegration_test_disclosure
 
-    ms, cl = _coi367_ms(
-        "OLS regression was used to model linear relationships."
-    )
+    ms, cl = _coi367_ms("OLS regression was used to model linear relationships.")
     result = validate_cointegration_test_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20327,6 +20062,7 @@ def test_no_cointegration_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 368 – validate_unit_root_test_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _ur368_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20349,9 +20085,7 @@ def _ur368_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_time_series_without_unit_root_test_fires() -> None:
     from manuscript_audit.validators.core import validate_unit_root_test_disclosure
 
-    ms, cl = _ur368_ms(
-        "Time-series data from 1990 to 2020 were used to model inflation dynamics."
-    )
+    ms, cl = _ur368_ms("Time-series data from 1990 to 2020 were used to model inflation dynamics.")
     result = validate_unit_root_test_disclosure(ms, cl)
     assert any(f.code == "missing-unit-root-test" for f in result.findings)
 
@@ -20383,9 +20117,7 @@ def test_unit_root_non_empirical_no_fire() -> None:
 def test_no_time_series_trigger_no_fire_unit_root() -> None:
     from manuscript_audit.validators.core import validate_unit_root_test_disclosure
 
-    ms, cl = _ur368_ms(
-        "We used structural equation modelling to test mediation hypotheses."
-    )
+    ms, cl = _ur368_ms("We used structural equation modelling to test mediation hypotheses.")
     result = validate_unit_root_test_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20393,6 +20125,7 @@ def test_no_time_series_trigger_no_fire_unit_root() -> None:
 # ---------------------------------------------------------------------------
 # Phase 369 – validate_arch_garch_specification
 # ---------------------------------------------------------------------------
+
 
 def _ag369_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20415,9 +20148,7 @@ def _ag369_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_garch_without_order_fires() -> None:
     from manuscript_audit.validators.core import validate_arch_garch_specification
 
-    ms, cl = _ag369_ms(
-        "A GARCH model was estimated to capture volatility clustering in returns."
-    )
+    ms, cl = _ag369_ms("A GARCH model was estimated to capture volatility clustering in returns.")
     result = validate_arch_garch_specification(ms, cl)
     assert any(f.code == "missing-arch-order-specification" for f in result.findings)
 
@@ -20425,9 +20156,7 @@ def test_garch_without_order_fires() -> None:
 def test_garch_with_order_no_fire() -> None:
     from manuscript_audit.validators.core import validate_arch_garch_specification
 
-    ms, cl = _ag369_ms(
-        "A GARCH(1,1) model was estimated to capture volatility clustering."
-    )
+    ms, cl = _ag369_ms("A GARCH(1,1) model was estimated to capture volatility clustering.")
     result = validate_arch_garch_specification(ms, cl)
     assert result.findings == []
 
@@ -20448,9 +20177,7 @@ def test_garch_non_empirical_no_fire() -> None:
 def test_no_arch_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_arch_garch_specification
 
-    ms, cl = _ag369_ms(
-        "We used ordinary least squares regression to model GDP growth."
-    )
+    ms, cl = _ag369_ms("We used ordinary least squares regression to model GDP growth.")
     result = validate_arch_garch_specification(ms, cl)
     assert result.findings == []
 
@@ -20458,6 +20185,7 @@ def test_no_arch_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 370 – validate_panel_effects_justification
 # ---------------------------------------------------------------------------
+
 
 def _pan370_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20514,9 +20242,7 @@ def test_panel_non_empirical_no_fire() -> None:
 def test_no_panel_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_panel_effects_justification
 
-    ms, cl = _pan370_ms(
-        "We used multilevel modelling with students nested within schools."
-    )
+    ms, cl = _pan370_ms("We used multilevel modelling with students nested within schools.")
     result = validate_panel_effects_justification(ms, cl)
     assert result.findings == []
 
@@ -20524,6 +20250,7 @@ def test_no_panel_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 371 – validate_arima_order_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _arm371_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20546,9 +20273,7 @@ def _arm371_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_arima_without_order_fires() -> None:
     from manuscript_audit.validators.core import validate_arima_order_disclosure
 
-    ms, cl = _arm371_ms(
-        "An ARIMA model was fitted to the monthly sales time series."
-    )
+    ms, cl = _arm371_ms("An ARIMA model was fitted to the monthly sales time series.")
     result = validate_arima_order_disclosure(ms, cl)
     assert any(f.code == "missing-arima-order-disclosure" for f in result.findings)
 
@@ -20556,9 +20281,7 @@ def test_arima_without_order_fires() -> None:
 def test_arima_with_order_no_fire() -> None:
     from manuscript_audit.validators.core import validate_arima_order_disclosure
 
-    ms, cl = _arm371_ms(
-        "An ARIMA(1,1,1) model was fitted to the monthly sales time series."
-    )
+    ms, cl = _arm371_ms("An ARIMA(1,1,1) model was fitted to the monthly sales time series.")
     result = validate_arima_order_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20579,9 +20302,7 @@ def test_arima_non_empirical_no_fire() -> None:
 def test_no_arima_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_arima_order_disclosure
 
-    ms, cl = _arm371_ms(
-        "We used linear regression to model the relationship between X and Y."
-    )
+    ms, cl = _arm371_ms("We used linear regression to model the relationship between X and Y.")
     result = validate_arima_order_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20589,6 +20310,7 @@ def test_no_arima_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 372 – validate_var_model_lag_order
 # ---------------------------------------------------------------------------
+
 
 def _var372_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20621,9 +20343,7 @@ def test_var_without_lag_order_fires() -> None:
 def test_var_with_lag_order_no_fire() -> None:
     from manuscript_audit.validators.core import validate_var_model_lag_order
 
-    ms, cl = _var372_ms(
-        "A VAR(2) model was estimated; the lag order 2 was selected by AIC."
-    )
+    ms, cl = _var372_ms("A VAR(2) model was estimated; the lag order 2 was selected by AIC.")
     result = validate_var_model_lag_order(ms, cl)
     assert result.findings == []
 
@@ -20644,9 +20364,7 @@ def test_var_non_empirical_no_fire() -> None:
 def test_no_var_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_var_model_lag_order
 
-    ms, cl = _var372_ms(
-        "We used ordinary least squares regression for all analyses."
-    )
+    ms, cl = _var372_ms("We used ordinary least squares regression for all analyses.")
     result = validate_var_model_lag_order(ms, cl)
     assert result.findings == []
 
@@ -20654,6 +20372,7 @@ def test_no_var_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 373 – validate_impulse_response_identification
 # ---------------------------------------------------------------------------
+
 
 def _irf373_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20676,9 +20395,7 @@ def _irf373_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_irf_without_identification_fires() -> None:
     from manuscript_audit.validators.core import validate_impulse_response_identification
 
-    ms, cl = _irf373_ms(
-        "Impulse response functions were computed to examine the dynamic effects."
-    )
+    ms, cl = _irf373_ms("Impulse response functions were computed to examine the dynamic effects.")
     result = validate_impulse_response_identification(ms, cl)
     assert any(f.code == "missing-irf-identification" for f in result.findings)
 
@@ -20710,9 +20427,7 @@ def test_irf_non_empirical_no_fire() -> None:
 def test_no_irf_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_impulse_response_identification
 
-    ms, cl = _irf373_ms(
-        "We used ANOVA to compare group means across conditions."
-    )
+    ms, cl = _irf373_ms("We used ANOVA to compare group means across conditions.")
     result = validate_impulse_response_identification(ms, cl)
     assert result.findings == []
 
@@ -20720,6 +20435,7 @@ def test_no_irf_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 374 – validate_forecast_evaluation_metrics
 # ---------------------------------------------------------------------------
+
 
 def _fev374_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20742,9 +20458,7 @@ def _fev374_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_forecast_without_metric_fires() -> None:
     from manuscript_audit.validators.core import validate_forecast_evaluation_metrics
 
-    ms, cl = _fev374_ms(
-        "Out-of-sample forecast performance was evaluated for all models."
-    )
+    ms, cl = _fev374_ms("Out-of-sample forecast performance was evaluated for all models.")
     result = validate_forecast_evaluation_metrics(ms, cl)
     assert any(f.code == "missing-forecast-evaluation-metric" for f in result.findings)
 
@@ -20776,9 +20490,7 @@ def test_forecast_non_empirical_no_fire() -> None:
 def test_no_forecast_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_forecast_evaluation_metrics
 
-    ms, cl = _fev374_ms(
-        "We used logistic regression for binary classification of outcomes."
-    )
+    ms, cl = _fev374_ms("We used logistic regression for binary classification of outcomes.")
     result = validate_forecast_evaluation_metrics(ms, cl)
     assert result.findings == []
 
@@ -20786,6 +20498,7 @@ def test_no_forecast_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 375 – validate_seasonal_adjustment_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _sea375_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20808,9 +20521,7 @@ def _sea375_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_seasonal_adjustment_without_method_fires() -> None:
     from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
 
-    ms, cl = _sea375_ms(
-        "All series were seasonally adjusted before modelling."
-    )
+    ms, cl = _sea375_ms("All series were seasonally adjusted before modelling.")
     result = validate_seasonal_adjustment_disclosure(ms, cl)
     assert any(f.code == "missing-seasonal-adjustment-method" for f in result.findings)
 
@@ -20818,9 +20529,7 @@ def test_seasonal_adjustment_without_method_fires() -> None:
 def test_seasonal_adjustment_with_x13_no_fire() -> None:
     from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
 
-    ms, cl = _sea375_ms(
-        "All series were seasonally adjusted using the X-13 ARIMA-SEATS procedure."
-    )
+    ms, cl = _sea375_ms("All series were seasonally adjusted using the X-13 ARIMA-SEATS procedure.")
     result = validate_seasonal_adjustment_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20841,9 +20550,7 @@ def test_seasonal_adjustment_non_empirical_no_fire() -> None:
 def test_no_seasonal_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_seasonal_adjustment_disclosure
 
-    ms, cl = _sea375_ms(
-        "We used linear regression on cross-sectional data from a single wave."
-    )
+    ms, cl = _sea375_ms("We used linear regression on cross-sectional data from a single wave.")
     result = validate_seasonal_adjustment_disclosure(ms, cl)
     assert result.findings == []
 
@@ -20851,6 +20558,7 @@ def test_no_seasonal_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 376 – validate_interrupted_time_series_control
 # ---------------------------------------------------------------------------
+
 
 def _its376_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20907,9 +20615,7 @@ def test_its_non_empirical_no_fire() -> None:
 def test_no_its_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_interrupted_time_series_control
 
-    ms, cl = _its376_ms(
-        "We used a cross-sectional survey design with 500 participants."
-    )
+    ms, cl = _its376_ms("We used a cross-sectional survey design with 500 participants.")
     result = validate_interrupted_time_series_control(ms, cl)
     assert result.findings == []
 
@@ -20917,6 +20623,7 @@ def test_no_its_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 377 – validate_difference_in_differences_parallel_trends
 # ---------------------------------------------------------------------------
+
 
 def _did377_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -20984,6 +20691,7 @@ def test_no_did_trigger_no_fire() -> None:
 # Phase 378 – validate_regression_discontinuity_bandwidth
 # ---------------------------------------------------------------------------
 
+
 def _rd378_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -21005,9 +20713,7 @@ def _rd378_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_rd_without_bandwidth_fires() -> None:
     from manuscript_audit.validators.core import validate_regression_discontinuity_bandwidth
 
-    ms, cl = _rd378_ms(
-        "A regression discontinuity design was used to estimate the causal effect."
-    )
+    ms, cl = _rd378_ms("A regression discontinuity design was used to estimate the causal effect.")
     result = validate_regression_discontinuity_bandwidth(ms, cl)
     assert any(f.code == "missing-rd-bandwidth" for f in result.findings)
 
@@ -21039,9 +20745,7 @@ def test_rd_non_empirical_no_fire() -> None:
 def test_no_rd_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_regression_discontinuity_bandwidth
 
-    ms, cl = _rd378_ms(
-        "We used propensity score matching to compare treated and untreated units."
-    )
+    ms, cl = _rd378_ms("We used propensity score matching to compare treated and untreated units.")
     result = validate_regression_discontinuity_bandwidth(ms, cl)
     assert result.findings == []
 
@@ -21049,6 +20753,7 @@ def test_no_rd_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 379 – validate_synthetic_control_pre_period_fit
 # ---------------------------------------------------------------------------
+
 
 def _sc379_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21071,9 +20776,7 @@ def _sc379_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_synthetic_control_without_fit_fires() -> None:
     from manuscript_audit.validators.core import validate_synthetic_control_pre_period_fit
 
-    ms, cl = _sc379_ms(
-        "The synthetic control method was applied to evaluate the policy impact."
-    )
+    ms, cl = _sc379_ms("The synthetic control method was applied to evaluate the policy impact.")
     result = validate_synthetic_control_pre_period_fit(ms, cl)
     assert any(f.code == "missing-sc-pre-period-fit" for f in result.findings)
 
@@ -21105,9 +20808,7 @@ def test_synthetic_control_non_empirical_no_fire() -> None:
 def test_no_synthetic_control_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_synthetic_control_pre_period_fit
 
-    ms, cl = _sc379_ms(
-        "We used a randomized controlled trial to evaluate the intervention."
-    )
+    ms, cl = _sc379_ms("We used a randomized controlled trial to evaluate the intervention.")
     result = validate_synthetic_control_pre_period_fit(ms, cl)
     assert result.findings == []
 
@@ -21115,6 +20816,7 @@ def test_no_synthetic_control_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 380 – validate_event_study_window_specification
 # ---------------------------------------------------------------------------
+
 
 def _ew380_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21137,9 +20839,7 @@ def _ew380_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_event_study_without_window_fires() -> None:
     from manuscript_audit.validators.core import validate_event_study_window_specification
 
-    ms, cl = _ew380_ms(
-        "An event study analysis was conducted to measure abnormal returns."
-    )
+    ms, cl = _ew380_ms("An event study analysis was conducted to measure abnormal returns.")
     result = validate_event_study_window_specification(ms, cl)
     assert any(f.code == "missing-event-window-specification" for f in result.findings)
 
@@ -21171,9 +20871,7 @@ def test_event_study_non_empirical_no_fire() -> None:
 def test_no_event_study_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_event_study_window_specification
 
-    ms, cl = _ew380_ms(
-        "We used a two-way fixed-effects panel data model."
-    )
+    ms, cl = _ew380_ms("We used a two-way fixed-effects panel data model.")
     result = validate_event_study_window_specification(ms, cl)
     assert result.findings == []
 
@@ -21181,6 +20879,7 @@ def test_no_event_study_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 381 – validate_propensity_matching_balance
 # ---------------------------------------------------------------------------
+
 
 def _psm381_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21237,9 +20936,7 @@ def test_psm_non_empirical_no_fire() -> None:
 def test_no_psm_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_propensity_matching_balance
 
-    ms, cl = _psm381_ms(
-        "Participants were randomly assigned to treatment or control."
-    )
+    ms, cl = _psm381_ms("Participants were randomly assigned to treatment or control.")
     result = validate_propensity_matching_balance(ms, cl)
     assert result.findings == []
 
@@ -21247,6 +20944,7 @@ def test_no_psm_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 382 – validate_ipw_overlap_assumption
 # ---------------------------------------------------------------------------
+
 
 def _ipw382_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21269,9 +20967,7 @@ def _ipw382_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ipw_without_overlap_fires() -> None:
     from manuscript_audit.validators.core import validate_ipw_overlap_assumption
 
-    ms, cl = _ipw382_ms(
-        "Inverse probability weighting was used to adjust for confounding."
-    )
+    ms, cl = _ipw382_ms("Inverse probability weighting was used to adjust for confounding.")
     result = validate_ipw_overlap_assumption(ms, cl)
     assert any(f.code == "missing-ipw-overlap-check" for f in result.findings)
 
@@ -21304,9 +21000,7 @@ def test_ipw_non_empirical_no_fire() -> None:
 def test_no_ipw_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ipw_overlap_assumption
 
-    ms, cl = _ipw382_ms(
-        "We used Cox proportional hazards regression to model time to event."
-    )
+    ms, cl = _ipw382_ms("We used Cox proportional hazards regression to model time to event.")
     result = validate_ipw_overlap_assumption(ms, cl)
     assert result.findings == []
 
@@ -21314,6 +21008,7 @@ def test_no_ipw_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 383 – validate_mediation_sensitivity_analysis
 # ---------------------------------------------------------------------------
+
 
 def _msa383_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21370,9 +21065,7 @@ def test_mediation_sensitivity_non_empirical_no_fire() -> None:
 def test_no_mediation_trigger_no_fire_sensitivity() -> None:
     from manuscript_audit.validators.core import validate_mediation_sensitivity_analysis
 
-    ms, cl = _msa383_ms(
-        "We used structural equation modelling without mediation."
-    )
+    ms, cl = _msa383_ms("We used structural equation modelling without mediation.")
     result = validate_mediation_sensitivity_analysis(ms, cl)
     assert result.findings == []
 
@@ -21380,6 +21073,7 @@ def test_no_mediation_trigger_no_fire_sensitivity() -> None:
 # ---------------------------------------------------------------------------
 # Phase 384 – validate_moderation_interaction_probing
 # ---------------------------------------------------------------------------
+
 
 def _mip384_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21437,9 +21131,7 @@ def test_moderation_probing_non_empirical_no_fire() -> None:
 def test_no_moderation_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_moderation_interaction_probing
 
-    ms, cl = _mip384_ms(
-        "We used a two-sample t-test to compare the groups on all outcomes."
-    )
+    ms, cl = _mip384_ms("We used a two-sample t-test to compare the groups on all outcomes.")
     result = validate_moderation_interaction_probing(ms, cl)
     assert result.findings == []
 
@@ -21447,6 +21139,7 @@ def test_no_moderation_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 385 – validate_ceiling_floor_effect_reporting
 # ---------------------------------------------------------------------------
+
 
 def _cfe385_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21503,9 +21196,7 @@ def test_ceiling_floor_non_empirical_no_fire() -> None:
 def test_no_scale_trigger_no_fire_cfe() -> None:
     from manuscript_audit.validators.core import validate_ceiling_floor_effect_reporting
 
-    ms, cl = _cfe385_ms(
-        "We measured cognitive performance using reaction time in milliseconds."
-    )
+    ms, cl = _cfe385_ms("We measured cognitive performance using reaction time in milliseconds.")
     result = validate_ceiling_floor_effect_reporting(ms, cl)
     assert result.findings == []
 
@@ -21513,6 +21204,7 @@ def test_no_scale_trigger_no_fire_cfe() -> None:
 # ---------------------------------------------------------------------------
 # Phase 386 – validate_roc_auc_reporting
 # ---------------------------------------------------------------------------
+
 
 def _roc386_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21568,9 +21260,7 @@ def test_roc_non_empirical_no_fire() -> None:
 def test_no_classification_trigger_no_fire_roc() -> None:
     from manuscript_audit.validators.core import validate_roc_auc_reporting
 
-    ms, cl = _roc386_ms(
-        "We used linear regression to predict continuous outcomes."
-    )
+    ms, cl = _roc386_ms("We used linear regression to predict continuous outcomes.")
     result = validate_roc_auc_reporting(ms, cl)
     assert result.findings == []
 
@@ -21578,6 +21268,7 @@ def test_no_classification_trigger_no_fire_roc() -> None:
 # ---------------------------------------------------------------------------
 # Phase 387 – validate_logistic_model_calibration
 # ---------------------------------------------------------------------------
+
 
 def _lmc387_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21634,9 +21325,7 @@ def test_logistic_calibration_non_empirical_no_fire() -> None:
 def test_no_logistic_trigger_no_fire_calibration() -> None:
     from manuscript_audit.validators.core import validate_logistic_model_calibration
 
-    ms, cl = _lmc387_ms(
-        "We used linear mixed-effects models for repeated-measures data."
-    )
+    ms, cl = _lmc387_ms("We used linear mixed-effects models for repeated-measures data.")
     result = validate_logistic_model_calibration(ms, cl)
     assert result.findings == []
 
@@ -21644,6 +21333,7 @@ def test_no_logistic_trigger_no_fire_calibration() -> None:
 # ---------------------------------------------------------------------------
 # Phase 388 – validate_confusion_matrix_reporting
 # ---------------------------------------------------------------------------
+
 
 def _cm388_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21666,9 +21356,7 @@ def _cm388_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ml_classifier_without_confusion_matrix_fires() -> None:
     from manuscript_audit.validators.core import validate_confusion_matrix_reporting
 
-    ms, cl = _cm388_ms(
-        "A random forest classifier model was trained to predict patient outcomes."
-    )
+    ms, cl = _cm388_ms("A random forest classifier model was trained to predict patient outcomes.")
     result = validate_confusion_matrix_reporting(ms, cl)
     assert any(f.code == "missing-confusion-matrix" for f in result.findings)
 
@@ -21700,9 +21388,7 @@ def test_confusion_matrix_non_empirical_no_fire() -> None:
 def test_no_classifier_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_confusion_matrix_reporting
 
-    ms, cl = _cm388_ms(
-        "We used survival analysis to model time-to-event data."
-    )
+    ms, cl = _cm388_ms("We used survival analysis to model time-to-event data.")
     result = validate_confusion_matrix_reporting(ms, cl)
     assert result.findings == []
 
@@ -21710,6 +21396,7 @@ def test_no_classifier_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 389 – validate_learning_curve_reporting
 # ---------------------------------------------------------------------------
+
 
 def _lc389_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21732,9 +21419,7 @@ def _lc389_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_training_size_effect_without_learning_curve_fires() -> None:
     from manuscript_audit.validators.core import validate_learning_curve_reporting
 
-    ms, cl = _lc389_ms(
-        "We examined training set size sensitivity to determine data requirements."
-    )
+    ms, cl = _lc389_ms("We examined training set size sensitivity to determine data requirements.")
     result = validate_learning_curve_reporting(ms, cl)
     assert any(f.code == "missing-learning-curve" for f in result.findings)
 
@@ -21766,9 +21451,7 @@ def test_learning_curve_non_empirical_no_fire() -> None:
 def test_no_learning_curve_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_learning_curve_reporting
 
-    ms, cl = _lc389_ms(
-        "We used a fixed 80/20 train-test split for all experiments."
-    )
+    ms, cl = _lc389_ms("We used a fixed 80/20 train-test split for all experiments.")
     result = validate_learning_curve_reporting(ms, cl)
     assert result.findings == []
 
@@ -21776,6 +21459,7 @@ def test_no_learning_curve_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 390 – validate_ablation_study_reporting
 # ---------------------------------------------------------------------------
+
 
 def _abl390_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21834,9 +21518,7 @@ def test_ablation_non_empirical_no_fire() -> None:
 def test_no_ablation_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ablation_study_reporting
 
-    ms, cl = _abl390_ms(
-        "We used a single-layer logistic regression for all classification tasks."
-    )
+    ms, cl = _abl390_ms("We used a single-layer logistic regression for all classification tasks.")
     result = validate_ablation_study_reporting(ms, cl)
     assert result.findings == []
 
@@ -21844,6 +21526,7 @@ def test_no_ablation_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 392 – validate_pretrained_weight_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _ptw392_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21866,9 +21549,7 @@ def _ptw392_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_pretrained_without_disclosure_fires() -> None:
     from manuscript_audit.validators.core import validate_pretrained_weight_disclosure
 
-    ms, cl = _ptw392_ms(
-        "We fine-tuned a pre-trained BERT model for sentiment classification."
-    )
+    ms, cl = _ptw392_ms("We fine-tuned a pre-trained BERT model for sentiment classification.")
     result = validate_pretrained_weight_disclosure(ms, cl)
     assert any(f.code == "missing-pretrained-weight-disclosure" for f in result.findings)
 
@@ -21900,9 +21581,7 @@ def test_pretrained_non_empirical_no_fire() -> None:
 def test_no_pretrained_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_pretrained_weight_disclosure
 
-    ms, cl = _ptw392_ms(
-        "We trained a random forest classifier from scratch on our dataset."
-    )
+    ms, cl = _ptw392_ms("We trained a random forest classifier from scratch on our dataset.")
     result = validate_pretrained_weight_disclosure(ms, cl)
     assert result.findings == []
 
@@ -21910,6 +21589,7 @@ def test_no_pretrained_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 393 – validate_data_augmentation_description
 # ---------------------------------------------------------------------------
+
 
 def _aug393_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -21966,9 +21646,7 @@ def test_augmentation_non_empirical_no_fire() -> None:
 def test_no_augmentation_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_data_augmentation_description
 
-    ms, cl = _aug393_ms(
-        "We used a standard k-fold cross-validation procedure."
-    )
+    ms, cl = _aug393_ms("We used a standard k-fold cross-validation procedure.")
     result = validate_data_augmentation_description(ms, cl)
     assert result.findings == []
 
@@ -21976,6 +21654,7 @@ def test_no_augmentation_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 394 – validate_model_interpretability_reporting
 # ---------------------------------------------------------------------------
+
 
 def _mir394_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22032,9 +21711,7 @@ def test_interpretability_non_empirical_no_fire() -> None:
 def test_no_high_stakes_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_model_interpretability_reporting
 
-    ms, cl = _mir394_ms(
-        "We developed a topic model for document classification."
-    )
+    ms, cl = _mir394_ms("We developed a topic model for document classification.")
     result = validate_model_interpretability_reporting(ms, cl)
     assert result.findings == []
 
@@ -22042,6 +21719,7 @@ def test_no_high_stakes_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 395 – validate_dataset_split_seed
 # ---------------------------------------------------------------------------
+
 
 def _dss395_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22064,9 +21742,7 @@ def _dss395_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_train_test_split_without_seed_fires() -> None:
     from manuscript_audit.validators.core import validate_dataset_split_seed
 
-    ms, cl = _dss395_ms(
-        "An 80-20 train-test split was used for model development and evaluation."
-    )
+    ms, cl = _dss395_ms("An 80-20 train-test split was used for model development and evaluation.")
     result = validate_dataset_split_seed(ms, cl)
     assert any(f.code == "missing-split-seed" for f in result.findings)
 
@@ -22098,9 +21774,7 @@ def test_split_seed_non_empirical_no_fire() -> None:
 def test_no_split_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_dataset_split_seed
 
-    ms, cl = _dss395_ms(
-        "We used leave-one-out cross-validation for all model comparisons."
-    )
+    ms, cl = _dss395_ms("We used leave-one-out cross-validation for all model comparisons.")
     result = validate_dataset_split_seed(ms, cl)
     assert result.findings == []
 
@@ -22108,6 +21782,7 @@ def test_no_split_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 396 – validate_hardware_compute_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _hw396_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22130,9 +21805,7 @@ def _hw396_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_gpu_training_without_hw_disclosure_fires() -> None:
     from manuscript_audit.validators.core import validate_hardware_compute_disclosure
 
-    ms, cl = _hw396_ms(
-        "We trained a deep learning model using GPU acceleration for 100 epochs."
-    )
+    ms, cl = _hw396_ms("We trained a deep learning model using GPU acceleration for 100 epochs.")
     result = validate_hardware_compute_disclosure(ms, cl)
     assert any(f.code == "missing-hardware-compute-disclosure" for f in result.findings)
 
@@ -22175,6 +21848,7 @@ def test_no_compute_trigger_no_fire() -> None:
 # Phase 398 – validate_benchmark_baseline_comparison
 # ---------------------------------------------------------------------------
 
+
 def _bench398_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -22196,9 +21870,7 @@ def _bench398_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]
 def test_sota_without_baseline_fires() -> None:
     from manuscript_audit.validators.core import validate_benchmark_baseline_comparison
 
-    ms, cl = _bench398_ms(
-        "Our model outperforms state-of-the-art methods on the benchmark task."
-    )
+    ms, cl = _bench398_ms("Our model outperforms state-of-the-art methods on the benchmark task.")
     result = validate_benchmark_baseline_comparison(ms, cl)
     assert any(f.code == "missing-benchmark-baseline" for f in result.findings)
 
@@ -22217,9 +21889,7 @@ def test_sota_with_baseline_no_fire() -> None:
 def test_benchmark_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_benchmark_baseline_comparison
 
-    ms, cl = _bench398_ms(
-        "Our model outperforms state-of-the-art methods on benchmark tasks."
-    )
+    ms, cl = _bench398_ms("Our model outperforms state-of-the-art methods on benchmark tasks.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -22243,6 +21913,7 @@ def test_no_benchmark_trigger_no_fire() -> None:
 # Phase 399 – validate_dataset_version_disclosure
 # ---------------------------------------------------------------------------
 
+
 def _dver399_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -22264,9 +21935,7 @@ def _dver399_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_dataset_without_version_fires() -> None:
     from manuscript_audit.validators.core import validate_dataset_version_disclosure
 
-    ms, cl = _dver399_ms(
-        "We used the MNIST dataset for our image classification experiments."
-    )
+    ms, cl = _dver399_ms("We used the MNIST dataset for our image classification experiments.")
     result = validate_dataset_version_disclosure(ms, cl)
     assert any(f.code == "missing-dataset-version" for f in result.findings)
 
@@ -22307,6 +21976,7 @@ def test_no_dataset_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 400 – validate_hyperparameter_sensitivity
 # ---------------------------------------------------------------------------
+
 
 def _hparam400_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22350,9 +22020,7 @@ def test_hyperparams_with_grid_search_no_fire() -> None:
 def test_hyperparams_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_hyperparameter_sensitivity
 
-    ms, cl = _hparam400_ms(
-        "We set the learning rate and batch size for our neural network."
-    )
+    ms, cl = _hparam400_ms("We set the learning rate and batch size for our neural network.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -22376,6 +22044,7 @@ def test_no_hyperparameter_trigger_no_fire() -> None:
 # Phase 401 – validate_ensemble_method_description
 # ---------------------------------------------------------------------------
 
+
 def _ens401_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -22397,9 +22066,7 @@ def _ens401_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ensemble_without_description_fires() -> None:
     from manuscript_audit.validators.core import validate_ensemble_method_description
 
-    ms, cl = _ens401_ms(
-        "We used a random forest classifier for prediction."
-    )
+    ms, cl = _ens401_ms("We used a random forest classifier for prediction.")
     result = validate_ensemble_method_description(ms, cl)
     assert any(f.code == "missing-ensemble-description" for f in result.findings)
 
@@ -22430,9 +22097,7 @@ def test_ensemble_non_empirical_no_fire() -> None:
 def test_no_ensemble_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_ensemble_method_description
 
-    ms, cl = _ens401_ms(
-        "We used a linear regression model to estimate the coefficients."
-    )
+    ms, cl = _ens401_ms("We used a linear regression model to estimate the coefficients.")
     result = validate_ensemble_method_description(ms, cl)
     assert result.findings == []
 
@@ -22440,6 +22105,7 @@ def test_no_ensemble_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 402 – validate_calibration_curve_reporting
 # ---------------------------------------------------------------------------
+
 
 def _cal402_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22462,9 +22128,7 @@ def _cal402_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_predicted_probs_without_calibration_fires() -> None:
     from manuscript_audit.validators.core import validate_calibration_curve_reporting
 
-    ms, cl = _cal402_ms(
-        "The model outputs predicted probabilities for each class."
-    )
+    ms, cl = _cal402_ms("The model outputs predicted probabilities for each class.")
     result = validate_calibration_curve_reporting(ms, cl)
     assert any(f.code == "missing-calibration-reporting" for f in result.findings)
 
@@ -22496,9 +22160,7 @@ def test_calibration402_non_empirical_no_fire() -> None:
 def test_no_calibration_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_calibration_curve_reporting
 
-    ms, cl = _cal402_ms(
-        "We used ordinary least squares regression to estimate the effect."
-    )
+    ms, cl = _cal402_ms("We used ordinary least squares regression to estimate the effect.")
     result = validate_calibration_curve_reporting(ms, cl)
     assert result.findings == []
 
@@ -22506,6 +22168,7 @@ def test_no_calibration_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 403 – validate_prediction_interval_distinction
 # ---------------------------------------------------------------------------
+
 
 def _pi403_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22528,13 +22191,9 @@ def _pi403_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_prediction_interval_without_distinction_fires() -> None:
     from manuscript_audit.validators.core import validate_prediction_interval_distinction
 
-    ms, cl = _pi403_ms(
-        "We report out-of-sample prediction intervals for the forecast horizon."
-    )
+    ms, cl = _pi403_ms("We report out-of-sample prediction intervals for the forecast horizon.")
     result = validate_prediction_interval_distinction(ms, cl)
-    assert any(
-        f.code == "missing-prediction-interval-distinction" for f in result.findings
-    )
+    assert any(f.code == "missing-prediction-interval-distinction" for f in result.findings)
 
 
 def test_prediction_interval_with_distinction_no_fire() -> None:
@@ -22564,9 +22223,7 @@ def test_pi_non_empirical_no_fire() -> None:
 def test_no_pi_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_prediction_interval_distinction
 
-    ms, cl = _pi403_ms(
-        "We report 95% confidence intervals for all regression coefficients."
-    )
+    ms, cl = _pi403_ms("We report 95% confidence intervals for all regression coefficients.")
     result = validate_prediction_interval_distinction(ms, cl)
     assert result.findings == []
 
@@ -22574,6 +22231,7 @@ def test_no_pi_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 404 – validate_missing_data_imputation_method
 # ---------------------------------------------------------------------------
+
 
 def _imp404_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22596,9 +22254,7 @@ def _imp404_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_imputation_without_method_fires() -> None:
     from manuscript_audit.validators.core import validate_missing_data_imputation_method
 
-    ms, cl = _imp404_ms(
-        "Missing data were imputed prior to model fitting."
-    )
+    ms, cl = _imp404_ms("Missing data were imputed prior to model fitting.")
     result = validate_missing_data_imputation_method(ms, cl)
     assert any(f.code == "missing-imputation-method" for f in result.findings)
 
@@ -22630,9 +22286,7 @@ def test_imputation_non_empirical_no_fire() -> None:
 def test_no_imputation_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_missing_data_imputation_method
 
-    ms, cl = _imp404_ms(
-        "All 250 participants provided complete responses. No data were absent."
-    )
+    ms, cl = _imp404_ms("All 250 participants provided complete responses. No data were absent.")
     result = validate_missing_data_imputation_method(ms, cl)
     assert result.findings == []
 
@@ -22640,6 +22294,7 @@ def test_no_imputation_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 405 – validate_influential_observation_sensitivity
 # ---------------------------------------------------------------------------
+
 
 def _inf405_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22666,9 +22321,7 @@ def test_cooks_distance_without_sensitivity_fires() -> None:
         "Cook's Distance was computed to identify influential observations in the regression."
     )
     result = validate_influential_observation_sensitivity(ms, cl)
-    assert any(
-        f.code == "missing-influential-obs-sensitivity" for f in result.findings
-    )
+    assert any(f.code == "missing-influential-obs-sensitivity" for f in result.findings)
 
 
 def test_cooks_distance_with_sensitivity_no_fire() -> None:
@@ -22698,9 +22351,7 @@ def test_influential_obs_non_empirical_no_fire() -> None:
 def test_no_influential_obs_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_influential_observation_sensitivity
 
-    ms, cl = _inf405_ms(
-        "We used a standard paired t-test to compare group means."
-    )
+    ms, cl = _inf405_ms("We used a standard paired t-test to compare group means.")
     result = validate_influential_observation_sensitivity(ms, cl)
     assert result.findings == []
 
@@ -22708,6 +22359,7 @@ def test_no_influential_obs_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 406 – validate_goodness_of_fit_reporting
 # ---------------------------------------------------------------------------
+
 
 def _gof406_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22730,9 +22382,7 @@ def _gof406_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_logistic_regression_without_gof_fires() -> None:
     from manuscript_audit.validators.core import validate_goodness_of_fit_reporting
 
-    ms, cl = _gof406_ms(
-        "Logistic regression was used to predict the binary outcome variable."
-    )
+    ms, cl = _gof406_ms("Logistic regression was used to predict the binary outcome variable.")
     result = validate_goodness_of_fit_reporting(ms, cl)
     assert any(f.code == "missing-goodness-of-fit" for f in result.findings)
 
@@ -22764,9 +22414,7 @@ def test_gof_non_empirical_no_fire() -> None:
 def test_no_glm_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_goodness_of_fit_reporting
 
-    ms, cl = _gof406_ms(
-        "We used a paired t-test to compare pre- and post-intervention scores."
-    )
+    ms, cl = _gof406_ms("We used a paired t-test to compare pre- and post-intervention scores.")
     result = validate_goodness_of_fit_reporting(ms, cl)
     assert result.findings == []
 
@@ -22774,6 +22422,7 @@ def test_no_glm_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 407 – validate_aic_bic_model_selection
 # ---------------------------------------------------------------------------
+
 
 def _aic407_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22796,9 +22445,7 @@ def _aic407_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_model_comparison_without_criterion_fires() -> None:
     from manuscript_audit.validators.core import validate_aic_bic_model_selection
 
-    ms, cl = _aic407_ms(
-        "We compared several models and selected the best-fitting model."
-    )
+    ms, cl = _aic407_ms("We compared several models and selected the best-fitting model.")
     result = validate_aic_bic_model_selection(ms, cl)
     assert any(f.code == "missing-model-selection-criterion" for f in result.findings)
 
@@ -22829,9 +22476,7 @@ def test_aic_non_empirical_no_fire() -> None:
 def test_no_model_selection_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_aic_bic_model_selection
 
-    ms, cl = _aic407_ms(
-        "We used an OLS regression to estimate the effect of the treatment."
-    )
+    ms, cl = _aic407_ms("We used an OLS regression to estimate the effect of the treatment.")
     result = validate_aic_bic_model_selection(ms, cl)
     assert result.findings == []
 
@@ -22839,6 +22484,7 @@ def test_no_model_selection_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 408 – validate_log_likelihood_reporting
 # ---------------------------------------------------------------------------
+
 
 def _ll408_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22861,9 +22507,7 @@ def _ll408_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_mle_without_loglik_fires() -> None:
     from manuscript_audit.validators.core import validate_log_likelihood_reporting
 
-    ms, cl = _ll408_ms(
-        "Parameters were estimated via maximum likelihood estimation."
-    )
+    ms, cl = _ll408_ms("Parameters were estimated via maximum likelihood estimation.")
     result = validate_log_likelihood_reporting(ms, cl)
     assert any(f.code == "missing-log-likelihood" for f in result.findings)
 
@@ -22895,9 +22539,7 @@ def test_loglik_non_empirical_no_fire() -> None:
 def test_no_mle_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_log_likelihood_reporting
 
-    ms, cl = _ll408_ms(
-        "We used ordinary least squares to fit the regression model."
-    )
+    ms, cl = _ll408_ms("We used ordinary least squares to fit the regression model.")
     result = validate_log_likelihood_reporting(ms, cl)
     assert result.findings == []
 
@@ -22905,6 +22547,7 @@ def test_no_mle_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 409 – validate_link_function_justification
 # ---------------------------------------------------------------------------
+
 
 def _link409_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22927,13 +22570,9 @@ def _link409_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_glm_with_custom_link_no_justification_fires() -> None:
     from manuscript_audit.validators.core import validate_link_function_justification
 
-    ms, cl = _link409_ms(
-        "A generalized linear model with a complementary log-log link was fitted."
-    )
+    ms, cl = _link409_ms("A generalized linear model with a complementary log-log link was fitted.")
     result = validate_link_function_justification(ms, cl)
-    assert any(
-        f.code == "missing-link-function-justification" for f in result.findings
-    )
+    assert any(f.code == "missing-link-function-justification" for f in result.findings)
 
 
 def test_glm_with_link_justified_no_fire() -> None:
@@ -22950,9 +22589,7 @@ def test_glm_with_link_justified_no_fire() -> None:
 def test_link_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_link_function_justification
 
-    ms, cl = _link409_ms(
-        "A generalized linear model with a complementary log-log link was used."
-    )
+    ms, cl = _link409_ms("A generalized linear model with a complementary log-log link was used.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -22965,9 +22602,7 @@ def test_link_non_empirical_no_fire() -> None:
 def test_no_link_function_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_link_function_justification
 
-    ms, cl = _link409_ms(
-        "We applied a paired t-test to compare baseline and follow-up outcomes."
-    )
+    ms, cl = _link409_ms("We applied a paired t-test to compare baseline and follow-up outcomes.")
     result = validate_link_function_justification(ms, cl)
     assert result.findings == []
 
@@ -22975,6 +22610,7 @@ def test_no_link_function_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 410 – validate_functional_form_test
 # ---------------------------------------------------------------------------
+
 
 def _ff410_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -22997,9 +22633,7 @@ def _ff410_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_ols_without_reset_fires() -> None:
     from manuscript_audit.validators.core import validate_functional_form_test
 
-    ms, cl = _ff410_ms(
-        "An OLS regression model was estimated with four predictor variables."
-    )
+    ms, cl = _ff410_ms("An OLS regression model was estimated with four predictor variables.")
     result = validate_functional_form_test(ms, cl)
     assert any(f.code == "missing-functional-form-test" for f in result.findings)
 
@@ -23031,9 +22665,7 @@ def test_ff_non_empirical_no_fire() -> None:
 def test_no_regression_form_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_functional_form_test
 
-    ms, cl = _ff410_ms(
-        "We used a Wilcoxon signed-rank test for the non-parametric comparison."
-    )
+    ms, cl = _ff410_ms("We used a Wilcoxon signed-rank test for the non-parametric comparison.")
     result = validate_functional_form_test(ms, cl)
     assert result.findings == []
 
@@ -23041,6 +22673,7 @@ def test_no_regression_form_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 411 – validate_efa_factor_retention
 # ---------------------------------------------------------------------------
+
 
 def _efa411_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23063,9 +22696,7 @@ def _efa411_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_efa_without_retention_criterion_fires() -> None:
     from manuscript_audit.validators.core import validate_efa_factor_retention
 
-    ms, cl = _efa411_ms(
-        "An exploratory factor analysis was conducted on the 20-item scale."
-    )
+    ms, cl = _efa411_ms("An exploratory factor analysis was conducted on the 20-item scale.")
     result = validate_efa_factor_retention(ms, cl)
     assert any(f.code == "missing-efa-retention-criteria" for f in result.findings)
 
@@ -23097,9 +22728,7 @@ def test_efa_non_empirical_no_fire() -> None:
 def test_no_efa_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_efa_factor_retention
 
-    ms, cl = _efa411_ms(
-        "We used a multilevel regression model to analyze the hierarchical data."
-    )
+    ms, cl = _efa411_ms("We used a multilevel regression model to analyze the hierarchical data.")
     result = validate_efa_factor_retention(ms, cl)
     assert result.findings == []
 
@@ -23107,6 +22736,7 @@ def test_no_efa_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 412 – validate_cfa_model_fit_indices
 # ---------------------------------------------------------------------------
+
 
 def _cfa412_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23165,9 +22795,7 @@ def test_cfa412_non_empirical_no_fire() -> None:
 def test_no_cfa_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cfa_model_fit_indices
 
-    ms, cl = _cfa412_ms(
-        "We used a mixed ANOVA to assess group by time interactions."
-    )
+    ms, cl = _cfa412_ms("We used a mixed ANOVA to assess group by time interactions.")
     result = validate_cfa_model_fit_indices(ms, cl)
     assert result.findings == []
 
@@ -23175,6 +22803,7 @@ def test_no_cfa_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 413 – validate_omega_reliability
 # ---------------------------------------------------------------------------
+
 
 def _omega413_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23197,9 +22826,7 @@ def _omega413_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]
 def test_cronbach_without_omega_fires() -> None:
     from manuscript_audit.validators.core import validate_omega_reliability
 
-    ms, cl = _omega413_ms(
-        "Internal consistency was assessed using Cronbach's alpha (α=.87)."
-    )
+    ms, cl = _omega413_ms("Internal consistency was assessed using Cronbach's alpha (α=.87).")
     result = validate_omega_reliability(ms, cl)
     assert any(f.code == "missing-omega-reliability" for f in result.findings)
 
@@ -23231,9 +22858,7 @@ def test_omega_non_empirical_no_fire() -> None:
 def test_no_reliability_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_omega_reliability
 
-    ms, cl = _omega413_ms(
-        "We used a two-way ANOVA to assess the interaction effects."
-    )
+    ms, cl = _omega413_ms("We used a two-way ANOVA to assess the interaction effects.")
     result = validate_omega_reliability(ms, cl)
     assert result.findings == []
 
@@ -23241,6 +22866,7 @@ def test_no_reliability_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 414 – validate_criterion_validity_evidence
 # ---------------------------------------------------------------------------
+
 
 def _cv414_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23263,13 +22889,9 @@ def _cv414_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_criterion_validity_without_evidence_fires() -> None:
     from manuscript_audit.validators.core import validate_criterion_validity_evidence
 
-    ms, cl = _cv414_ms(
-        "We assessed the criterion validity of the new questionnaire."
-    )
+    ms, cl = _cv414_ms("We assessed the criterion validity of the new questionnaire.")
     result = validate_criterion_validity_evidence(ms, cl)
-    assert any(
-        f.code == "missing-criterion-validity-evidence" for f in result.findings
-    )
+    assert any(f.code == "missing-criterion-validity-evidence" for f in result.findings)
 
 
 def test_criterion_validity_with_correlation_no_fire() -> None:
@@ -23310,6 +22932,7 @@ def test_no_criterion_validity_trigger_no_fire() -> None:
 # Phase 415 – validate_irt_model_fit
 # ---------------------------------------------------------------------------
 
+
 def _irt415_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -23331,9 +22954,7 @@ def _irt415_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_irt_without_dif_reporting_fires() -> None:
     from manuscript_audit.validators.core import validate_irt_dif_reporting
 
-    ms, cl = _irt415_ms(
-        "A Rasch model was fitted to assess item discrimination and difficulty."
-    )
+    ms, cl = _irt415_ms("A Rasch model was fitted to assess item discrimination and difficulty.")
     result = validate_irt_dif_reporting(ms, cl)
     assert any(f.code == "missing-irt-dif-reporting" for f in result.findings)
 
@@ -23365,9 +22986,7 @@ def test_irt415_non_empirical_no_fire() -> None:
 def test_no_irt415_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_irt_dif_reporting
 
-    ms, cl = _irt415_ms(
-        "We used a mixed-effects regression to analyze the repeated measures data."
-    )
+    ms, cl = _irt415_ms("We used a mixed-effects regression to analyze the repeated measures data.")
     result = validate_irt_dif_reporting(ms, cl)
     assert result.findings == []
 
@@ -23375,6 +22994,7 @@ def test_no_irt415_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 416 – validate_robust_standard_errors
 # ---------------------------------------------------------------------------
+
 
 def _rse416_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23431,9 +23051,7 @@ def test_rse_non_empirical_no_fire() -> None:
 def test_no_regression_rse_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_robust_standard_errors
 
-    ms, cl = _rse416_ms(
-        "We used a Wilcoxon signed-rank test for the non-parametric comparison."
-    )
+    ms, cl = _rse416_ms("We used a Wilcoxon signed-rank test for the non-parametric comparison.")
     result = validate_robust_standard_errors(ms, cl)
     assert result.findings == []
 
@@ -23441,6 +23059,7 @@ def test_no_regression_rse_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 417 – validate_cluster_robust_inference
 # ---------------------------------------------------------------------------
+
 
 def _clr417_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23463,9 +23082,7 @@ def _clr417_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_clustered_data_without_robust_inference_fires() -> None:
     from manuscript_audit.validators.core import validate_cluster_robust_inference
 
-    ms, cl = _clr417_ms(
-        "Students were nested within schools in a clustered sample design."
-    )
+    ms, cl = _clr417_ms("Students were nested within schools in a clustered sample design.")
     result = validate_cluster_robust_inference(ms, cl)
     assert any(f.code == "missing-cluster-robust-inference" for f in result.findings)
 
@@ -23497,9 +23114,7 @@ def test_cluster_non_empirical_no_fire() -> None:
 def test_no_cluster_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cluster_robust_inference
 
-    ms, cl = _clr417_ms(
-        "We collected a simple random sample of 500 participants."
-    )
+    ms, cl = _clr417_ms("We collected a simple random sample of 500 participants.")
     result = validate_cluster_robust_inference(ms, cl)
     assert result.findings == []
 
@@ -23507,6 +23122,7 @@ def test_no_cluster_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 418 – validate_propensity_score_overlap
 # ---------------------------------------------------------------------------
+
 
 def _pso418_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23563,9 +23179,7 @@ def test_psm_overlap_non_empirical_no_fire() -> None:
 def test_no_psm_overlap_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_propensity_score_overlap
 
-    ms, cl = _pso418_ms(
-        "We conducted a randomized controlled trial with block randomization."
-    )
+    ms, cl = _pso418_ms("We conducted a randomized controlled trial with block randomization.")
     result = validate_propensity_score_overlap(ms, cl)
     assert result.findings == []
 
@@ -23573,6 +23187,7 @@ def test_no_psm_overlap_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 419 – validate_cure_model_fraction_reporting
 # ---------------------------------------------------------------------------
+
 
 def _cure419_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23595,9 +23210,7 @@ def _cure419_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_cure_model_without_fraction_fires() -> None:
     from manuscript_audit.validators.core import validate_cure_model_fraction_reporting
 
-    ms, cl = _cure419_ms(
-        "A mixture cure model was fitted to account for long-term survivors."
-    )
+    ms, cl = _cure419_ms("A mixture cure model was fitted to account for long-term survivors.")
     result = validate_cure_model_fraction_reporting(ms, cl)
     assert any(f.code == "missing-cure-fraction" for f in result.findings)
 
@@ -23629,9 +23242,7 @@ def test_cure_model_non_empirical_no_fire() -> None:
 def test_no_cure_model_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_cure_model_fraction_reporting
 
-    ms, cl = _cure419_ms(
-        "A Cox proportional hazards model was used to estimate survival times."
-    )
+    ms, cl = _cure419_ms("A Cox proportional hazards model was used to estimate survival times.")
     result = validate_cure_model_fraction_reporting(ms, cl)
     assert result.findings == []
 
@@ -23639,6 +23250,7 @@ def test_no_cure_model_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 420 – validate_recurrent_event_modeling
 # ---------------------------------------------------------------------------
+
 
 def _rec420_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23661,9 +23273,7 @@ def _rec420_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_recurrent_event_without_method_fires() -> None:
     from manuscript_audit.validators.core import validate_recurrent_event_modeling
 
-    ms, cl = _rec420_ms(
-        "Patients experienced recurrent events over the follow-up period."
-    )
+    ms, cl = _rec420_ms("Patients experienced recurrent events over the follow-up period.")
     result = validate_recurrent_event_modeling(ms, cl)
     assert any(f.code == "missing-recurrent-event-method" for f in result.findings)
 
@@ -23695,9 +23305,7 @@ def test_recurrent_event_non_empirical_no_fire() -> None:
 def test_no_recurrent_event_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_recurrent_event_modeling
 
-    ms, cl = _rec420_ms(
-        "Patients were followed until first event or censoring."
-    )
+    ms, cl = _rec420_ms("Patients were followed until first event or censoring.")
     result = validate_recurrent_event_modeling(ms, cl)
     assert result.findings == []
 
@@ -23705,6 +23313,7 @@ def test_no_recurrent_event_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 421 – validate_prior_specification_justification
 # ---------------------------------------------------------------------------
+
 
 def _prior421_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23729,9 +23338,7 @@ def test_bayesian_without_prior_justification_fires() -> None:
         validate_prior_specification_justification,
     )
 
-    ms, cl = _prior421_ms(
-        "A Bayesian regression was estimated using Stan with 4 MCMC chains."
-    )
+    ms, cl = _prior421_ms("A Bayesian regression was estimated using Stan with 4 MCMC chains.")
     result = validate_prior_specification_justification(ms, cl)
     assert any(f.code == "missing-prior-justification" for f in result.findings)
 
@@ -23769,9 +23376,7 @@ def test_no_bayesian_prior_trigger_no_fire() -> None:
         validate_prior_specification_justification,
     )
 
-    ms, cl = _prior421_ms(
-        "We used a frequentist OLS regression to estimate the effect."
-    )
+    ms, cl = _prior421_ms("We used a frequentist OLS regression to estimate the effect.")
     result = validate_prior_specification_justification(ms, cl)
     assert result.findings == []
 
@@ -23779,6 +23384,7 @@ def test_no_bayesian_prior_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 422 – validate_credible_interval_interpretation
 # ---------------------------------------------------------------------------
+
 
 def _cri422_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23801,13 +23407,9 @@ def _cri422_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_credible_interval_without_interpretation_fires() -> None:
     from manuscript_audit.validators.core import validate_credible_interval_interpretation
 
-    ms, cl = _cri422_ms(
-        "The 95% credible interval for the effect was [0.12, 0.45]."
-    )
+    ms, cl = _cri422_ms("The 95% credible interval for the effect was [0.12, 0.45].")
     result = validate_credible_interval_interpretation(ms, cl)
-    assert any(
-        f.code == "missing-credible-interval-interpretation" for f in result.findings
-    )
+    assert any(f.code == "missing-credible-interval-interpretation" for f in result.findings)
 
 
 def test_credible_interval_with_interpretation_no_fire() -> None:
@@ -23837,9 +23439,7 @@ def test_cri_non_empirical_no_fire() -> None:
 def test_no_credible_interval_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_credible_interval_interpretation
 
-    ms, cl = _cri422_ms(
-        "The 95% confidence interval for the coefficient was [0.12, 0.45]."
-    )
+    ms, cl = _cri422_ms("The 95% confidence interval for the coefficient was [0.12, 0.45].")
     result = validate_credible_interval_interpretation(ms, cl)
     assert result.findings == []
 
@@ -23847,6 +23447,7 @@ def test_no_credible_interval_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 423 – validate_bayesian_sequential_stopping_rule
 # ---------------------------------------------------------------------------
+
 
 def _bsq423_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23869,9 +23470,7 @@ def _bsq423_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_bayesian_sequential_without_stopping_rule_fires() -> None:
     from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
 
-    ms, cl = _bsq423_ms(
-        "We used sequential Bayesian analysis to update our evidence continuously."
-    )
+    ms, cl = _bsq423_ms("We used sequential Bayesian analysis to update our evidence continuously.")
     result = validate_bayesian_sequential_stopping_rule(ms, cl)
     assert any(f.code == "missing-bayesian-stopping-rule" for f in result.findings)
 
@@ -23890,9 +23489,7 @@ def test_bayesian_sequential_with_stopping_rule_no_fire() -> None:
 def test_bayes_seq_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
 
-    ms, cl = _bsq423_ms(
-        "We used sequential Bayesian analysis to update our evidence."
-    )
+    ms, cl = _bsq423_ms("We used sequential Bayesian analysis to update our evidence.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -23905,9 +23502,7 @@ def test_bayes_seq_non_empirical_no_fire() -> None:
 def test_no_bayes_seq_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_bayesian_sequential_stopping_rule
 
-    ms, cl = _bsq423_ms(
-        "We used a standard Bayesian regression with a fixed sample."
-    )
+    ms, cl = _bsq423_ms("We used a standard Bayesian regression with a fixed sample.")
     result = validate_bayesian_sequential_stopping_rule(ms, cl)
     assert result.findings == []
 
@@ -23915,6 +23510,7 @@ def test_no_bayes_seq_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 424 – validate_variational_inference_elbo
 # ---------------------------------------------------------------------------
+
 
 def _vi424_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -23937,9 +23533,7 @@ def _vi424_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_vi_without_elbo_fires() -> None:
     from manuscript_audit.validators.core import validate_variational_inference_elbo
 
-    ms, cl = _vi424_ms(
-        "Variational inference was used to approximate the posterior distribution."
-    )
+    ms, cl = _vi424_ms("Variational inference was used to approximate the posterior distribution.")
     result = validate_variational_inference_elbo(ms, cl)
     assert any(f.code == "missing-elbo-reporting" for f in result.findings)
 
@@ -23958,9 +23552,7 @@ def test_vi_with_elbo_no_fire() -> None:
 def test_vi_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_variational_inference_elbo
 
-    ms, cl = _vi424_ms(
-        "Variational inference was used to approximate the posterior."
-    )
+    ms, cl = _vi424_ms("Variational inference was used to approximate the posterior.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -23973,9 +23565,7 @@ def test_vi_non_empirical_no_fire() -> None:
 def test_no_vi_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_variational_inference_elbo
 
-    ms, cl = _vi424_ms(
-        "We used MCMC sampling to obtain posterior draws from the full model."
-    )
+    ms, cl = _vi424_ms("We used MCMC sampling to obtain posterior draws from the full model.")
     result = validate_variational_inference_elbo(ms, cl)
     assert result.findings == []
 
@@ -23983,6 +23573,7 @@ def test_no_vi_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 425 – validate_hierarchical_shrinkage_reporting
 # ---------------------------------------------------------------------------
+
 
 def _hs425_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24005,9 +23596,7 @@ def _hs425_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_hierarchical_without_shrinkage_reporting_fires() -> None:
     from manuscript_audit.validators.core import validate_hierarchical_shrinkage_reporting
 
-    ms, cl = _hs425_ms(
-        "A hierarchical model was estimated with partial pooling across sites."
-    )
+    ms, cl = _hs425_ms("A hierarchical model was estimated with partial pooling across sites.")
     result = validate_hierarchical_shrinkage_reporting(ms, cl)
     assert any(f.code == "missing-hierarchical-shrinkage" for f in result.findings)
 
@@ -24039,9 +23628,7 @@ def test_hier_shrinkage_non_empirical_no_fire() -> None:
 def test_no_hierarchical_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_hierarchical_shrinkage_reporting
 
-    ms, cl = _hs425_ms(
-        "We used an OLS regression with fixed effects for all predictors."
-    )
+    ms, cl = _hs425_ms("We used an OLS regression with fixed effects for all predictors.")
     result = validate_hierarchical_shrinkage_reporting(ms, cl)
     assert result.findings == []
 
@@ -24049,6 +23636,7 @@ def test_no_hierarchical_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 426 – validate_spatial_weights_matrix_specification
 # ---------------------------------------------------------------------------
+
 
 def _swm426_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24077,9 +23665,7 @@ def test_spatial_regression_without_weights_spec_fires() -> None:
         "A spatial autoregressive model was estimated to account for spatial dependence."
     )
     result = validate_spatial_weights_matrix_specification(ms, cl)
-    assert any(
-        f.code == "missing-spatial-weights-specification" for f in result.findings
-    )
+    assert any(f.code == "missing-spatial-weights-specification" for f in result.findings)
 
 
 def test_spatial_regression_with_weights_spec_no_fire() -> None:
@@ -24100,9 +23686,7 @@ def test_spatial_wm_non_empirical_no_fire() -> None:
         validate_spatial_weights_matrix_specification,
     )
 
-    ms, cl = _swm426_ms(
-        "A spatial autoregressive model was estimated for regional analysis."
-    )
+    ms, cl = _swm426_ms("A spatial autoregressive model was estimated for regional analysis.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -24117,9 +23701,7 @@ def test_no_spatial_regression_trigger_no_fire() -> None:
         validate_spatial_weights_matrix_specification,
     )
 
-    ms, cl = _swm426_ms(
-        "We used a panel fixed-effects regression to estimate the causal effect."
-    )
+    ms, cl = _swm426_ms("We used a panel fixed-effects regression to estimate the causal effect.")
     result = validate_spatial_weights_matrix_specification(ms, cl)
     assert result.findings == []
 
@@ -24127,6 +23709,7 @@ def test_no_spatial_regression_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 427 – validate_spatial_spillover_effects
 # ---------------------------------------------------------------------------
+
 
 def _ssp427_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24194,6 +23777,7 @@ def test_no_spatial_lag_trigger_no_fire() -> None:
 # Phase 428 – validate_gwr_bandwidth_specification
 # ---------------------------------------------------------------------------
 
+
 def _gwr428_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
         ParsedManuscript(
@@ -24236,9 +23820,7 @@ def test_gwr_with_bandwidth_no_fire() -> None:
 def test_gwr_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_gwr_bandwidth_specification
 
-    ms, cl = _gwr428_ms(
-        "Geographically weighted regression was used to analyze spatial variation."
-    )
+    ms, cl = _gwr428_ms("Geographically weighted regression was used to analyze spatial variation.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -24251,9 +23833,7 @@ def test_gwr_non_empirical_no_fire() -> None:
 def test_no_gwr_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_gwr_bandwidth_specification
 
-    ms, cl = _gwr428_ms(
-        "We used a standard OLS regression to estimate the effect of income."
-    )
+    ms, cl = _gwr428_ms("We used a standard OLS regression to estimate the effect of income.")
     result = validate_gwr_bandwidth_specification(ms, cl)
     assert result.findings == []
 
@@ -24261,6 +23841,7 @@ def test_no_gwr_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 429 – validate_spatial_panel_fe_re_selection
 # ---------------------------------------------------------------------------
+
 
 def _spfr429_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24283,13 +23864,9 @@ def _spfr429_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_spatial_panel_without_model_selection_fires() -> None:
     from manuscript_audit.validators.core import validate_spatial_panel_fe_re_selection
 
-    ms, cl = _spfr429_ms(
-        "A spatial panel model was estimated using fixed effects for the regions."
-    )
+    ms, cl = _spfr429_ms("A spatial panel model was estimated using fixed effects for the regions.")
     result = validate_spatial_panel_fe_re_selection(ms, cl)
-    assert any(
-        f.code == "missing-spatial-panel-model-selection" for f in result.findings
-    )
+    assert any(f.code == "missing-spatial-panel-model-selection" for f in result.findings)
 
 
 def test_spatial_panel_with_hausman_no_fire() -> None:
@@ -24319,9 +23896,7 @@ def test_spatial_panel_non_empirical_no_fire() -> None:
 def test_no_spatial_panel_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_spatial_panel_fe_re_selection
 
-    ms, cl = _spfr429_ms(
-        "We used a standard panel fixed-effects model with time dummies."
-    )
+    ms, cl = _spfr429_ms("We used a standard panel fixed-effects model with time dummies.")
     result = validate_spatial_panel_fe_re_selection(ms, cl)
     assert result.findings == []
 
@@ -24329,6 +23904,7 @@ def test_no_spatial_panel_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 430 – validate_coordinate_reference_system_disclosure
 # ---------------------------------------------------------------------------
+
 
 def _crs430_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24393,9 +23969,7 @@ def test_no_geodata_trigger_no_fire() -> None:
         validate_coordinate_reference_system_disclosure,
     )
 
-    ms, cl = _crs430_ms(
-        "We collected survey data from 500 participants in urban areas."
-    )
+    ms, cl = _crs430_ms("We collected survey data from 500 participants in urban areas.")
     result = validate_coordinate_reference_system_disclosure(ms, cl)
     assert result.findings == []
 
@@ -24403,6 +23977,7 @@ def test_no_geodata_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 431 – validate_annotation_agreement_reporting
 # ---------------------------------------------------------------------------
+
 
 def _ann431_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24425,9 +24000,7 @@ def _ann431_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
 def test_annotation_without_agreement_fires() -> None:
     from manuscript_audit.validators.core import validate_annotation_agreement_reporting
 
-    ms, cl = _ann431_ms(
-        "Two annotators manually labeled 500 sentences for sentiment polarity."
-    )
+    ms, cl = _ann431_ms("Two annotators manually labeled 500 sentences for sentiment polarity.")
     result = validate_annotation_agreement_reporting(ms, cl)
     assert any(f.code == "missing-annotation-agreement" for f in result.findings)
 
@@ -24459,9 +24032,7 @@ def test_annotation_non_empirical_no_fire() -> None:
 def test_no_annotation_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_annotation_agreement_reporting
 
-    ms, cl = _ann431_ms(
-        "We used a supervised machine learning model trained on existing labels."
-    )
+    ms, cl = _ann431_ms("We used a supervised machine learning model trained on existing labels.")
     result = validate_annotation_agreement_reporting(ms, cl)
     assert result.findings == []
 
@@ -24469,6 +24040,7 @@ def test_no_annotation_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 432 – validate_crowdsourcing_quality_control
 # ---------------------------------------------------------------------------
+
 
 def _crowd432_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24491,9 +24063,7 @@ def _crowd432_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]
 def test_mturk_without_qc_fires() -> None:
     from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
 
-    ms, cl = _crowd432_ms(
-        "Data were collected via Amazon Mechanical Turk from 500 participants."
-    )
+    ms, cl = _crowd432_ms("Data were collected via Amazon Mechanical Turk from 500 participants.")
     result = validate_crowdsourcing_quality_control(ms, cl)
     assert any(f.code == "missing-crowdsourcing-qc" for f in result.findings)
 
@@ -24512,9 +24082,7 @@ def test_mturk_with_qc_no_fire() -> None:
 def test_crowdsourcing_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
 
-    ms, cl = _crowd432_ms(
-        "Data were collected via Amazon Mechanical Turk from 500 participants."
-    )
+    ms, cl = _crowd432_ms("Data were collected via Amazon Mechanical Turk from 500 participants.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -24527,9 +24095,7 @@ def test_crowdsourcing_non_empirical_no_fire() -> None:
 def test_no_crowdsourcing_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_crowdsourcing_quality_control
 
-    ms, cl = _crowd432_ms(
-        "We recruited participants from a university participant pool."
-    )
+    ms, cl = _crowd432_ms("We recruited participants from a university participant pool.")
     result = validate_crowdsourcing_quality_control(ms, cl)
     assert result.findings == []
 
@@ -24537,6 +24103,7 @@ def test_no_crowdsourcing_trigger_no_fire() -> None:
 # ---------------------------------------------------------------------------
 # Phase 433 – validate_active_learning_strategy
 # ---------------------------------------------------------------------------
+
 
 def _al433_ms(body: str) -> tuple[ParsedManuscript, ManuscriptClassification]:
     return (
@@ -24580,9 +24147,7 @@ def test_active_learning_with_strategy_no_fire() -> None:
 def test_active_learning_non_empirical_no_fire() -> None:
     from manuscript_audit.validators.core import validate_active_learning_strategy
 
-    ms, cl = _al433_ms(
-        "Active learning was used to label the most informative samples."
-    )
+    ms, cl = _al433_ms("Active learning was used to label the most informative samples.")
     cl = ManuscriptClassification(
         pathway="math_stats_theory",
         paper_type="math_theory_paper",
@@ -24595,8 +24160,6 @@ def test_active_learning_non_empirical_no_fire() -> None:
 def test_no_active_learning_trigger_no_fire() -> None:
     from manuscript_audit.validators.core import validate_active_learning_strategy
 
-    ms, cl = _al433_ms(
-        "We used a fully supervised approach with a fixed labeled dataset."
-    )
+    ms, cl = _al433_ms("We used a fully supervised approach with a fixed labeled dataset.")
     result = validate_active_learning_strategy(ms, cl)
     assert result.findings == []

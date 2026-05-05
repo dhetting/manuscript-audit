@@ -1,6 +1,4 @@
-from manuscript_audit.bibliography_confidence.core import (
-    compute_confidence_summary as build_bibliography_confidence_summary,
-)
+from manuscript_audit.parsers.source_verification import build_bibliography_confidence_summary
 from manuscript_audit.parsers.bibtex import parse_bibtex
 from manuscript_audit.parsers.dispatch import parse_manuscript
 from manuscript_audit.parsers.latex import parse_latex_manuscript
