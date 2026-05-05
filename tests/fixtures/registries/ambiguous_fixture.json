@@ -1,0 +1,26 @@
+{
+  "query": {
+    "ambiguous query example": [
+      {
+        "provider": "fixture",
+        "doi": "10.2000/amb1",
+        "title": "Ambiguous Paper",
+        "authors": ["C Doe"],
+        "year": "2020",
+        "venue": "Conf A",
+        "url": "https://example.org/amb1",
+        "source_url": "https://example.org/amb1"
+      },
+      {
+        "provider": "fixture",
+        "doi": "10.2000/amb2",
+        "title": "Ambiguous Paper: alternative",
+        "authors": ["C D"],
+        "year": "2020",
+        "venue": "Conference A",
+        "url": "https://example.org/amb2",
+        "source_url": "https://example.org/amb2"
+      }
+    ]
+  }
+}

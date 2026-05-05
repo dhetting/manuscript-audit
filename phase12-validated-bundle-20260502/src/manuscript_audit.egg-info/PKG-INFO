@@ -1,0 +1,44 @@
+Metadata-Version: 2.4
+Name: manuscript-audit
+Version: 0.1.0
+Summary: Local, reproducible manuscript audit framework with explicit routing and deterministic validation.
+Requires-Python: <3.14,>=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: duckdb<2,>=1.5.0
+Requires-Dist: pydantic<3,>=2.12.0
+Requires-Dist: PyYAML<7,>=6.0
+Requires-Dist: typer<0.22,>=0.21.0
+Provides-Extra: dev
+Requires-Dist: pytest<10,>=9.0.0; extra == "dev"
+Requires-Dist: ruff<0.16,>=0.15.0; extra == "dev"
+
+# manuscript-audit
+
+Local, Pixi-managed manuscript audit framework for statistical manuscripts.
+
+## Current implemented slices
+
+The project currently supports:
+
+- deterministic parsing for Markdown and LaTeX manuscripts,
+- companion BibTeX parsing,
+- explicit manuscript classification and routing,
+- deterministic validation with structured artifacts,
+- a routed standard audit stack with persisted per-module outputs,
+- revision verification with structured resolved, persistent, and new findings,
+- local DuckDB storage for run, routing, validator, agent, revision, and report artifacts.
+
+## Quickstart
+
+```bash
+pixi run lint
+pixi run test
+pixi run audit-core examples/software_equivalence_manuscript.md --output-dir data/outputs/core-demo
+pixi run audit-standard examples/software_equivalence_manuscript.md --output-dir data/outputs/standard-demo
+pixi run verify-revision tests/fixtures/manuscripts/revision_old.md tests/fixtures/manuscripts/revision_new.md --output-dir data/outputs/revision-demo
+```
+
+
+## Optional source verification
+
+Use `pixi run verify-sources` with a registry fixture or a live provider to verify source-record candidates against a selected registry.

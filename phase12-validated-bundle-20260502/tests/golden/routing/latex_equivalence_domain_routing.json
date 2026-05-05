@@ -1,0 +1,35 @@
+{
+  "domains": [
+    {
+      "applicable": true,
+      "name": "equivalence_noninferiority",
+      "rationale": "Activated by explicit equivalence or TOST language."
+    },
+    {
+      "applicable": true,
+      "name": "simulation_studies",
+      "rationale": "Activated when simulation evidence is present."
+    },
+    {
+      "applicable": true,
+      "name": "software_workflow_papers",
+      "rationale": "Activated for software, pipeline, and workflow manuscripts."
+    },
+    {
+      "applicable": false,
+      "name": "spatial_spatiotemporal_statistics",
+      "rationale": "Activated by explicit spatial or spatiotemporal language."
+    },
+    {
+      "applicable": false,
+      "name": "causal_inference",
+      "rationale": "Activated by causal design language."
+    },
+    {
+      "applicable": false,
+      "name": "time_series_forecasting",
+      "rationale": "Activated by forecasting or temporal-model language."
+    }
+  ],
+  "route_version": "routing-mvp-v1"
+}

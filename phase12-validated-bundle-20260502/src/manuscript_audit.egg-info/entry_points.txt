@@ -1,0 +1,2 @@
+[console_scripts]
+manuscript-audit = manuscript_audit.cli:main

@@ -1,0 +1,43 @@
+{
+  "modules": [
+    {
+      "applicable": true,
+      "name": "structure_contribution_and_fit",
+      "rationale": "Core manuscript structure review is always required."
+    },
+    {
+      "applicable": true,
+      "name": "bibliography_metadata_validation",
+      "rationale": "Bibliography structure must be inspected before agent reasoning."
+    },
+    {
+      "applicable": true,
+      "name": "statistical_validity_and_assumptions",
+      "rationale": "Applied or data-science manuscripts require statistical validity review."
+    },
+    {
+      "applicable": false,
+      "name": "math_proofs_and_notation",
+      "rationale": "Activated when proof-oriented mathematical content is present."
+    },
+    {
+      "applicable": true,
+      "name": "results_figures_tables_consistency",
+      "rationale": "Activated when the manuscript references figures or tables."
+    },
+    {
+      "applicable": true,
+      "name": "reproducibility_and_computational_audit",
+      "rationale": "Activated for software and workflow dissemination papers."
+    },
+    {
+      "applicable": true,
+      "name": "ai_generated_manuscript_risk_audit",
+      "rationale": "Dedicated AI-risk review remains part of the default stack."
+    }
+  ],
+  "paper_type": "software_workflow_paper",
+  "pathway": "data_science",
+  "recommended_stack": "maximal",
+  "route_version": "routing-mvp-v1"
+}

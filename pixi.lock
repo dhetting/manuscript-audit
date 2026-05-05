@@ -532,7 +532,7 @@ packages:
 - pypi: ./
   name: manuscript-audit
   version: 0.1.0
-  sha256: cbef0a022ebb4273ff82b5e0720d8224f9d7dd97a3237c74769eb864219f5dc2
+  sha256: f8c53c790d54f72edff688a2db02add6d3ddbd7f09d8a66290a2d017e705150f
   requires_dist:
   - duckdb>=1.5.0,<2
   - pydantic>=2.12.0,<3

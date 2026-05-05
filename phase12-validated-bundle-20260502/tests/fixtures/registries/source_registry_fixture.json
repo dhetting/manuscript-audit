@@ -1,0 +1,36 @@
+{
+  "doi": {
+    "10.1234/example-doi": {
+      "title": "A complete reference entry",
+      "authors": ["Jane Smith", "John Doe"],
+      "year": "2022",
+      "venue": "Journal of Testing",
+      "doi": "10.1234/example-doi",
+      "url": "https://doi.org/10.1234/example-doi",
+      "provider": "fixture_crossref",
+      "source_url": "https://doi.org/10.1234/example-doi"
+    }
+  },
+  "query": {
+    "Reference with a bad year Adams, Amy Spring 2021 Metadata Quarterly": {
+      "title": "Reference with a bad year",
+      "authors": ["Amy Adams"],
+      "year": "2021",
+      "venue": "Metadata Quarterly",
+      "doi": "10.5555/metadata-quarterly.2021.1",
+      "url": "https://doi.org/10.5555/metadata-quarterly.2021.1",
+      "provider": "fixture_crossref",
+      "source_url": "https://doi.org/10.5555/metadata-quarterly.2021.1"
+    },
+    "Reference with a bad doi Baker, Ben 2021 DOI Studies": {
+      "title": "Reference with a corrected doi",
+      "authors": ["Ben Baker"],
+      "year": "2021",
+      "venue": "DOI Studies",
+      "doi": "10.9999/corrected-doi",
+      "url": "https://doi.org/10.9999/corrected-doi",
+      "provider": "fixture_crossref",
+      "source_url": "https://doi.org/10.9999/corrected-doi"
+    }
+  }
+}

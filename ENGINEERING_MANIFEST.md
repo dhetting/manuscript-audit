@@ -29,3 +29,16 @@ If any workflow fails: debug, patch, re-run until green. Do not package or relea
 
 Authored-by: Dylan Hettinger
 Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
+
+## Session update 2026-05-03T14:20:42-06:00
+- Added bibliography_confidence scaffold; tests passed (1428).
+- Plan created at /Users/dhetting/.copilot/session-state/b9e2cc10-7671-4448-a65c-2b606bf9f400/plan.md
+
+## Session update 2026-05-04T10:12:00-06:00
+- Phase-13 work started: wired authoritative implementation for bibliography confidence
+  into manuscript_audit.parsers (build_bibliography_confidence_summary → source_verification).
+- Restored package-local bibliography_confidence test scaffold to preserve lightweight
+  unit tests (compute_confidence_summary returns dict for package tests).
+- Run full test suite: 1428 passed (pixi run test -q).
+- Next: run targeted calibration tests (pixi run ci-biblio) and iterate on scoring
+  coefficients and thresholds with added calibration fixtures and tests.
