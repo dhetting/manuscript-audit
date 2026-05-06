@@ -12,18 +12,28 @@ Audit summary
   - MEMORY.md: 1,537 lines
 - Recent change: removed domain-specific validators and corresponding tests; repo now focuses on statistics and data-science methodology only.
 
-Recommended immediate next steps
-1. Update MEMORY.md to reflect the cleanup and confirm phase-12 closure (validator counts, removed phases).
-2. Run fixture-backed validations (collect artifacts):
-   - pixi run audit-standard -- use fixture-backed source verification
-   - pixi run verify-sources -- ambiguous fixture
-3. If both workflows pass, produce a validated phase-12 bundle (archive root must contain repo-relative contents directly).
-4. Begin phase 13 work: finalize bibliography confidence rollups integration, add/restore any missing unit tests, update report synthesis to include bibliography confidence artifacts.
-5. Clean up branches and ensure PRs are merged before branching for phase 13 work.
+Phase 13 status — bibliography confidence calibration (Updated: 2026-05-05T23:21:43Z)
 
-Short-term todos created (see project tracking):
-- finalize-phase-12-bundle (pending): run workflows, collect artifacts, produce validated bundle
-- prepare-phase-13 (pending): finalize bibliography confidence rollup integration, add tests and docs
+- Phase 13 work completed and merged to main (PR #6). Authoritative implementation located at src/manuscript_audit/parsers/source_verification.py.
+- New package-level scaffold retained for lightweight unit tests (src/manuscript_audit/bibliography_confidence/).
+- Extensive calibration tests and fixtures were added under tests/unit and tests/fixtures/registries/.
+- Final Pixi CI and validation: targeted ci-biblio and full test suite passed; final Pixi runs and local validation completed successfully.
+- Final deterministic validations (audit-standard and verify-sources) were executed on a canonical fixture and both succeeded locally. Validation outputs were persisted to data/outputs/ and a summary JSON was committed to the repo.
+- Phase13 validated bundle was created and uploaded to GitHub Release v0.13.0 (SHA256: 5fa11ecad4e306d176bdcdc56027ebaf1e5714235cebf134c01152a2db7d697b). Release: https://github.com/dhetting/manuscript-audit/releases/tag/v0.13.0
+- start-phase-13 todo marked done in session tracking.
+
+Remaining / recommended next steps:
+1. Add CONTRIBUTING/RELEASE guidelines to avoid committing large bundles into git; recommend artifact hosting (external store or GitHub Releases).
+2. Optionally prune large bundle artifacts from repository history or move retained artifacts to an external store if long-term retention on git is undesired.
+3. Triage and resolve remaining major/moderate findings from the final audit run and schedule follow-up work as needed.
+4. Close phase-13 tracking and create post-release maintenance todos (monitoring, backporting, documentation).
+
+Short-term todos updated:
+- finalize-phase-12-bundle: CLOSED (phase-12 artifacts reconciled during merge)
+- prepare-phase-13: DONE
+
+Authored-by: Dylan Hettinger
+Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 If any workflow fails: debug, patch, re-run until green. Do not package or release until workflows pass from this repo state.
 
